@@ -1,0 +1,42 @@
+import org.apache.tools.ant.filters.ReplaceTokens
+
+apply plugin: 'application'
+apply plugin: 'com.github.johnrengelman.shadow'
+
+// Major application version
+version = "0.6.0"
+mainClassName = "org.jetbrains.bio.span.SpanCLA"
+applicationDefaultJvmArgs = ["-Xmx2G"]
+
+task processBuildProperties(type: Copy) {
+    // turn of cache for this task
+    outputs.upToDateWhen { false }
+
+    // Fix version and build in properties file
+    from(project.projectDir) {
+        include 'span-build.properties'
+    }
+    into "${project.projectDir}/src/main/resources"
+    filter(ReplaceTokens, tokens: [
+            VERSION: version,
+            BUILD: project.buildCounter,
+            DATE: new Date().format('MMMM dd, yyyy')
+    ])
+}
+
+compileJava.dependsOn processBuildProperties
+
+shadowJar {
+    // File name: "$baseName-$version-$classifier.jar"
+    baseName = 'span'
+    version = "${version}.${project.buildCounter}"
+    classifier = ''
+}
+
+jar {
+    manifest {
+        attributes provider: 'gradle'
+        attributes 'Application-Name': "SPAN $version"
+        attributes 'Built-By': 'JetBrains Research TeamCity'
+    }
+}

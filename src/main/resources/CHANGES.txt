@@ -1,0 +1,84 @@
+SPAN Changelog
+===============
+
+Here you can see the full list of changes between each release.
+
+Version 0.7.0
+-------------
+
+Released on ?
+
+- Renamed to SPAN (Semi-supervised Peak Analyzer)
+
+Version 0.6.0
+-------------
+
+Released on May 31th, 2018
+
+- Save resulting model to tar file, which can be uploaded to JBR genome browser
+- Various bugfixes
+
+Version 0.5.1
+-------------
+
+Released on January 30th, 2018
+
+- Use median p- and q-value for peaks
+
+Version 0.5.0
+-------------
+
+Released on January 24th, 2018
+
+- Use single model for all chromosomes
+- Utilize concurrency
+
+Version 0.4.0
+-------------
+
+Released on July 27th, 2017
+
+- Fragment size support.
+- Control support.
+- Use gap to union close narrow peaks into a broad ones.
+
+Version 0.3.0
+-------------
+
+Released on May 10th, 2017
+
+- New CLI: bed and fdr are now obligatory arguments.
+- Instead of 2bit reference we now use chrom.sizes.
+
+Version 0.2.3
+-------------
+
+Released on February 10th, 2016
+
+- Show meaningful error message on uncorrelated replicates.
+
+Version 0.2.2
+-------------
+
+Released on January 19th, 2016
+
+- Support BAM input file format.
+
+Version 0.2.1
+-------------
+
+Released on January 11th, 2016
+
+- Fixed an issue with difference asymmetry.
+
+Version 0.2.0
+-------------
+
+Released on December 16th, 2015
+
+- Fixed an issue with possible states switching in comparison analysis.
+
+Version 0.0.1
+-------------
+
+Initial release, released on September 15th, 2015
