@@ -13,10 +13,10 @@ task processBuildProperties(type: Copy) {
     outputs.upToDateWhen { false }
 
     // Fix version and build in properties file
-    from(project.projectDir) {
+    from(sourceSets.main.resources) {
         include 'span-build.properties'
     }
-    into "${project.projectDir}/src/main/resources"
+    into sourceSets.main.output.resourcesDir
     filter(ReplaceTokens, tokens: [
             VERSION: version,
             BUILD: project.buildCounter,
