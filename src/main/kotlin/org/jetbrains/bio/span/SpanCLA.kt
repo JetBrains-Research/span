@@ -149,8 +149,9 @@ compare                         Differential peak calling mode (experimental, us
                 val peakCallingExperiment = Span.getPeakCallingExperiment(genomeQuery, coverageQueries, bin)
                 if (outputBed != null) {
                     if (labelsPath == null) {
-                        val peaks = peakCallingExperiment.getPeaks(fdr, gap)
-                        savePeaks(peaks, outputBed, "peak${if (fragment != null) "_$fragment" else ""}_${bin}_${fdr}_${gap}")
+                        val peaks = peakCallingExperiment.results.getPeaks(genomeQuery, fdr, gap)
+                        savePeaks(peaks, outputBed,
+                                  "peak${if (fragment != null) "_$fragment" else ""}_${bin}_${fdr}_${gap}")
                         LOG.info("Saved result to $outputBed")
                         LOG.info("\n" + PeaksInfo.aboutText(genomeQuery,
                                 peaks.map { it.location }.stream(),
@@ -168,11 +169,11 @@ compare                         Differential peak calling mode (experimental, us
                                     i == index)
                         }
                         results.saveTuningErrors(outputBed.parent / "${outputBed.fileName.stem}_errors.csv")
-                        results.saveOptimalResults(outputBed.parent / "${outputBed.fileName.stem}_parameters.csv")
-                        val peaks = Span.getPeakCallingExperiment(genomeQuery,
-                                coverageQueries, SPAN.DEFAULT_BIN).getPeaks(optimalFDR, optimalGap)
+                        results.saveOptimalResults(outputBed.parent
+                                                           / "${outputBed.fileName.stem}_parameters.csv")
+                        val peaks = peakCallingExperiment.results.getPeaks(genomeQuery, optimalFDR, optimalGap)
                         savePeaks(peaks, outputBed, "peak${if (fragment != null) "_$fragment" else ""}_" +
-                                "${SPAN.DEFAULT_BIN}_${optimalFDR}_$optimalGap")
+                                "${bin}_${optimalFDR}_$optimalGap")
                         LOG.info("Saved result to $outputBed")
                         LOG.info("\n" + PeaksInfo.aboutText(genomeQuery,
                                 peaks.map { it.location }.stream(),
@@ -273,7 +274,7 @@ compare                         Differential peak calling mode (experimental, us
                 val experiment = Span.getDifferentialPeakCallingExperiment(
                         genomeQuery, coverageQueries1, coverageQueries2, bin)
                 if (outputBed != null) {
-                    val peaks = experiment.getPeaks(fdr, gap)
+                    val peaks = experiment.results.getPeaks(experiment.genomeQuery, fdr, gap)
                     peaks.forEach { peak ->
                         peak.value =
                                 Math.max(1.0, coverageQueries1.map {

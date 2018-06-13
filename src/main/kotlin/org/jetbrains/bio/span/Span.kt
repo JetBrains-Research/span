@@ -328,7 +328,8 @@ object Span {
                                              bin: Int = BIN,
                                              fdr: Double = FDR,
                                              gap: Int = GAP): List<Peak> {
-        return getDifferentialPeakCallingExperiment(genomeQuery, queries1, queries2, bin).getPeaks(fdr, gap)
+        return getDifferentialPeakCallingExperiment(genomeQuery, queries1, queries2, bin)
+                .results.getPeaks(genomeQuery, fdr, gap)
     }
 
     fun computeDirectedDifferencePeaks(genomeQuery: GenomeQuery,
@@ -339,7 +340,7 @@ object Span {
                                        gap: Int = GAP): Pair<List<Peak>, List<Peak>> {
         val spanExperiment = getDifferentialPeakCallingExperiment(genomeQuery, queries1, queries2, bin)
         val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
-            spanExperiment.getPeaks(chromosome, fdr, gap)
+            spanExperiment.results.getChromosomePeaks(chromosome, fdr, gap, spanExperiment.getData(chromosome))
         }
         val highLow = arrayListOf<Peak>()
         val lowHigh = arrayListOf<Peak>()

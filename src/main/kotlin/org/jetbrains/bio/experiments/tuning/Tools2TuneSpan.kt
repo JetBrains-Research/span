@@ -75,7 +75,8 @@ object SPAN : Tool2Tune<Pair<Double, Int>>() {
                 parameters.forEach { parameter ->
                     val peaksPath = folder / transform(parameter) / fileName(cellId, replicate, target, parameter)
                     peaksPath.checkOrRecalculate(ignoreEmptyFile = true) { (path) ->
-                        savePeaks(peakCallingExperiment.getPeaks(parameter.first, parameter.second), path)
+                        savePeaks(peakCallingExperiment.results.getPeaks(configuration.genomeQuery,
+                                                                         parameter.first, parameter.second), path)
                     }
                     progress.report()
                 }
@@ -92,7 +93,9 @@ object SPAN : Tool2Tune<Pair<Double, Int>>() {
             cleanup(folder, cellId, replicate)
             val optimalParameters = parameters[index]
             val optimalPeaksPath = folder / fileName(cellId, replicate, target, optimalParameters)
-            savePeaks(peakCallingExperiment.getPeaks(optimalParameters.first, optimalParameters.second), optimalPeaksPath)
+            savePeaks(peakCallingExperiment.results.getPeaks(configuration.genomeQuery,
+                                                             optimalParameters.first, optimalParameters.second),
+                      optimalPeaksPath)
             labelErrorsGrid.forEachIndexed { i, error ->
                 results.addRecord(replicate, transform(parameters[i]), error, i == index)
             }
@@ -235,7 +238,9 @@ object SPAN_REPLICATED : ReplicatedTool2Tune<Pair<Double, Int>>() {
             SPAN.parameters.forEach { parameter ->
                 val peaksPath = folder / transform(parameter) / fileName(target, parameter)
                 peaksPath.checkOrRecalculate(ignoreEmptyFile = true) { (path) ->
-                    savePeaks(replicatedPeakCallingExperiment.getPeaks(parameter.first, parameter.second), path)
+                    savePeaks(replicatedPeakCallingExperiment.results.getPeaks(configuration.genomeQuery,
+                                                                               parameter.first, parameter.second),
+                              path)
                 }
                 progress.report()
             }
@@ -254,8 +259,9 @@ object SPAN_REPLICATED : ReplicatedTool2Tune<Pair<Double, Int>>() {
             PeakCallerTuning.LOG.info("Removing obsolete file $it")
             it.deleteIfExists()
         }
-        savePeaks(replicatedPeakCallingExperiment.getPeaks(parameters[index].first, parameters[index].second),
-                folder / fileName(target, parameters[index]))
+        savePeaks(replicatedPeakCallingExperiment.results.getPeaks(configuration.genomeQuery,
+                                                                   parameters[index].first, parameters[index].second),
+                  folder / fileName(target, parameters[index]))
 
         val results = TuningResults()
         labelErrorsGrid.forEachIndexed { i, error ->

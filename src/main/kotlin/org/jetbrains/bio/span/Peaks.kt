@@ -58,7 +58,7 @@ data class Peak(val chromosome: Chromosome,
  *
  * [coverageDataFrame] is used to compute either coverage or log fold change.
  */
-fun getChromosomePeaks(logNullMemberships: F64Array,
+internal fun getChromosomePeaks(logNullMemberships: F64Array,
                        offsets: IntArray,
                        chromosome: Chromosome,
                        fdr: Double,
@@ -131,14 +131,6 @@ fun CoverageFitResults.getPeaks(genomeQuery: GenomeQuery,
     }
     return genomeQuery.get().flatMap { map[it] }
 }
-
-fun <State : Enum<State>> CoverageFitExperiment<*, State>.getPeaks(chromosome: Chromosome,
-                                                                   fdr: Double,
-                                                                   gap: Int): List<Peak> =
-        results.getChromosomePeaks(chromosome, fdr, gap, getData(chromosome))
-
-fun <State : Enum<State>> CoverageFitExperiment<*, State>.getPeaks(fdr: Double, gap: Int): List<Peak> =
-        results.getPeaks(genomeQuery, fdr, gap)
 
 fun savePeaks(peaks: List<Peak>, path: Path, peakName: String = "") {
     Peak.LOG.debug("""FORMAT $path:
