@@ -3,9 +3,9 @@ package org.jetbrains.bio.span
 import com.google.common.annotations.VisibleForTesting
 import org.apache.log4j.Logger
 import org.jetbrains.bio.coverage.Coverage
-import org.jetbrains.bio.experiments.fit.CoverageAnalyzeExperiment
-import org.jetbrains.bio.experiments.fit.CoverageComparisonExperiment
 import org.jetbrains.bio.experiments.fit.ModelFitExperiment
+import org.jetbrains.bio.experiments.fit.SpanDifferentialPeakCallingExperiment
+import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.experiments.tuning.SPAN
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.LocationsMergingList
@@ -47,20 +47,20 @@ object Span {
      * for given number of [queries].
      * Not restricted for single query and constrained for multiple queries.
      *
-     * @return experiment [CoverageAnalyzeExperiment]
+     * @return experiment [SpanPeakCallingExperiment]
      */
     fun getPeakCallingExperiment(genomeQuery: GenomeQuery,
                                  queries: List<InputQuery<Coverage>>,
                                  bin: Int):
-            CoverageAnalyzeExperiment<out MLAbstractHMM, ZHL> {
+            SpanPeakCallingExperiment<out MLAbstractHMM, ZHL> {
         check(queries.isNotEmpty()) { "No data" }
         return if (queries.size == 1) {
-            CoverageAnalyzeExperiment(genomeQuery, queries.first(),
+            SpanPeakCallingExperiment(genomeQuery, queries.first(),
                     semanticCheck(MLFreeNBHMM.fitter()),
                     MLFreeNBHMM::class.java,
                     bin, ZHL.values(), NullHypothesis.of(ZHL.Z, ZHL.L))
         } else {
-            CoverageAnalyzeExperiment(genomeQuery, queries,
+            SpanPeakCallingExperiment(genomeQuery, queries,
                     semanticCheck(MLConstrainedNBHMM.fitter(queries.size), queries.size),
                     MLConstrainedNBHMM::class.java,
                     bin, ZHL.values(), NullHypothesis.of(ZHL.Z, ZHL.L))
@@ -71,21 +71,21 @@ object Span {
      * Creates experiment for model-based comparison of binned coverage tracks for given queries.
      * Not restricted for single query and constrained for multiple queries.
      *
-     * @return experiment [CoverageComparisonExperiment]
+     * @return experiment [SpanDifferentialPeakCallingExperiment]
      */
     fun getDifferentialPeakCallingExperiment(genomeQuery: GenomeQuery,
                                              queries1: List<InputQuery<Coverage>>,
                                              queries2: List<InputQuery<Coverage>>,
                                              bin: Int):
-            CoverageComparisonExperiment<*, ZLHID> {
+            SpanDifferentialPeakCallingExperiment<*, ZLHID> {
         check(queries1.isNotEmpty() && queries2.isNotEmpty()) { "No data" }
         return if (queries1.size == 1 && queries2.size == 1) {
-            CoverageComparisonExperiment(genomeQuery, queries1.first(), queries2.first(), bin,
+            SpanDifferentialPeakCallingExperiment(genomeQuery, queries1.first(), queries2.first(), bin,
                     semanticCheck(MLConstrainedNBHMM.fitter(1, 1), 1, 1),
                     MLConstrainedNBHMM::class.java,
                     ZLHID.values(), NullHypothesis.of(ZLHID.same()))
         } else {
-            CoverageComparisonExperiment(genomeQuery, queries1, queries2, bin,
+            SpanDifferentialPeakCallingExperiment(genomeQuery, queries1, queries2, bin,
                     semanticCheck(MLConstrainedNBHMM.fitter(queries1.size, queries2.size),
                             queries1.size, queries2.size),
                     MLConstrainedNBHMM::class.java,

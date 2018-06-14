@@ -178,8 +178,7 @@ abstract class CoverageFitExperiment<out Model : ClassificationModel, State : An
         loadResults(genomeQuery, tarPath)
     }
 
-    override fun getStatesDataFrame(chromosome: Chromosome): DataFrame
-            = sliceStatesDataFrame(statesDataFrame, chromosome)
+    override fun getStatesDataFrame(chromosome: Chromosome): DataFrame = sliceStatesDataFrame(statesDataFrame, chromosome)
 
     override fun doCalculations() {
         results.logNullMemberships
@@ -287,12 +286,10 @@ abstract class CoverageFitExperiment<out Model : ClassificationModel, State : An
 }
 
 /**
- * A generic experiment for model-based enrichment of binned coverage tracks (e.g. ChIP-seq tracks).
- *
  * @author Alexey Dievsky
  * @since 10/04/15
  */
-class CoverageAnalyzeExperiment<Model : ClassificationModel, State : Any> : CoverageFitExperiment<Model, State> {
+class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any> : CoverageFitExperiment<Model, State> {
 
     constructor(genomeQuery: GenomeQuery,
                 coverageQuery: InputQuery<Coverage>,
@@ -301,9 +298,8 @@ class CoverageAnalyzeExperiment<Model : ClassificationModel, State : Any> : Cove
                 binSize: Int,
                 states: Array<State>,
                 nullHypothesis: NullHypothesis<State>) :
-            super(genomeQuery,
-                    createAnalyzeQuery(binSize, coverageQuery), binSize,
-                    modelFitter, modelClass, states, nullHypothesis)
+            super(genomeQuery, createDataQuery(binSize, coverageQuery),
+                    binSize, modelFitter, modelClass, states, nullHypothesis)
 
     constructor(genomeQuery: GenomeQuery,
                 coverageQueries: List<InputQuery<Coverage>>,
@@ -313,8 +309,8 @@ class CoverageAnalyzeExperiment<Model : ClassificationModel, State : Any> : Cove
                 states: Array<State>,
                 nullHypothesis: NullHypothesis<State>) :
             super(genomeQuery,
-                    createAnalyzeQuery(binSize, coverageQueries), binSize,
-                    modelFitter, modelClass, states, nullHypothesis)
+                    createDataQuery(binSize, coverageQueries),
+                    binSize, modelFitter, modelClass, states, nullHypothesis)
 
     companion object {
         const val X_PREFIX = "x"
@@ -326,8 +322,8 @@ class CoverageAnalyzeExperiment<Model : ClassificationModel, State : Any> : Cove
             }
         }
 
-        private fun createAnalyzeQuery(binSize: Int,
-                                       coverageQuery: InputQuery<Coverage>): Query<Chromosome, DataFrame> {
+        private fun createDataQuery(binSize: Int,
+                                    coverageQuery: InputQuery<Coverage>): Query<Chromosome, DataFrame> {
             return object : CachingQuery<Chromosome, DataFrame>() {
                 override fun getUncached(input: Chromosome): DataFrame {
                     return listOf(coverageQuery).coverageDataFrame(input, binSize, arrayOf(X_PREFIX))
@@ -339,8 +335,8 @@ class CoverageAnalyzeExperiment<Model : ClassificationModel, State : Any> : Cove
             }
         }
 
-        private fun createAnalyzeQuery(binSize: Int,
-                                       coverageQueries: List<InputQuery<Coverage>>): Query<Chromosome, DataFrame> {
+        private fun createDataQuery(binSize: Int,
+                                    coverageQueries: List<InputQuery<Coverage>>): Query<Chromosome, DataFrame> {
             return object : CachingQuery<Chromosome, DataFrame>() {
                 override fun getUncached(input: Chromosome): DataFrame {
                     return coverageQueries.coverageDataFrame(input, binSize,
@@ -360,22 +356,18 @@ class CoverageAnalyzeExperiment<Model : ClassificationModel, State : Any> : Cove
 }
 
 /**
- * A generic experiment for model-based comparison of binned coverage
- * tracks (e.g. ChIP-seq tracks).
- *
  * @author Alexey Dievsky
  * @since 10/04/15
  */
-class CoverageComparisonExperiment<Model : ClassificationModel, State : Any> : CoverageFitExperiment<Model, State> {
+class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State : Any> : CoverageFitExperiment<Model, State> {
 
     constructor(genomeQuery: GenomeQuery,
                 coverageQueries1: List<InputQuery<Coverage>>,
                 coverageQueries2: List<InputQuery<Coverage>>,
                 binSize: Int, modelFitter: Fitter<Model>, modelClass: Class<Model>,
                 states: Array<State>, nullHypothesis: NullHypothesis<State>) :
-            super(genomeQuery,
-                    createCompareQuery(binSize, coverageQueries1, coverageQueries2), binSize,
-                    modelFitter, modelClass, states, nullHypothesis)
+            super(genomeQuery, createDataQuery(binSize, coverageQueries1, coverageQueries2),
+                    binSize, modelFitter, modelClass, states, nullHypothesis)
 
     constructor(genomeQuery: GenomeQuery,
                 coverageQuery1: InputQuery<Coverage>,
@@ -384,17 +376,16 @@ class CoverageComparisonExperiment<Model : ClassificationModel, State : Any> : C
                 modelFitter: Fitter<Model>,
                 modelClass: Class<Model>,
                 states: Array<State>, nullHypothesis: NullHypothesis<State>) :
-            super(genomeQuery,
-                    createCompareQuery(binSize, coverageQuery1, coverageQuery2), binSize,
-                    modelFitter, modelClass, states, nullHypothesis)
+            super(genomeQuery, createDataQuery(binSize, coverageQuery1, coverageQuery2),
+                    binSize, modelFitter, modelClass, states, nullHypothesis)
 
     companion object {
         const val TRACK1_PREFIX = "track1_"
         const val TRACK2_PREFIX = "track2_"
 
-        internal fun createCompareQuery(binSize: Int,
-                                        coverageQueries1: List<InputQuery<Coverage>>,
-                                        coverageQueries2: List<InputQuery<Coverage>>): Query<Chromosome, DataFrame> {
+        internal fun createDataQuery(binSize: Int,
+                                     coverageQueries1: List<InputQuery<Coverage>>,
+                                     coverageQueries2: List<InputQuery<Coverage>>): Query<Chromosome, DataFrame> {
             return object : CachingQuery<Chromosome, DataFrame>() {
                 override fun getUncached(input: Chromosome): DataFrame {
                     val labels1 = MultiLabels.generate(TRACK1_PREFIX, coverageQueries1.size)
@@ -415,9 +406,9 @@ class CoverageComparisonExperiment<Model : ClassificationModel, State : Any> : C
             }
         }
 
-        internal fun createCompareQuery(binSize: Int,
-                                        coverageQuery1: InputQuery<Coverage>,
-                                        coverageQuery2: InputQuery<Coverage>): Query<Chromosome, DataFrame> {
+        internal fun createDataQuery(binSize: Int,
+                                     coverageQuery1: InputQuery<Coverage>,
+                                     coverageQuery2: InputQuery<Coverage>): Query<Chromosome, DataFrame> {
             return object : CachingQuery<Chromosome, DataFrame>() {
                 override fun getUncached(input: Chromosome): DataFrame {
                     val labels = arrayOf(coverageQuery1.id, coverageQuery2.id)

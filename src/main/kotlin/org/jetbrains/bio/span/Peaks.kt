@@ -82,21 +82,21 @@ internal fun getChromosomePeaks(logNullMemberships: F64Array,
         var value = 0.0
         if (coverageDataFrame != null) {
             if (coverageDataFrame.labels.size == 1 ||
-                    coverageDataFrame.labels.all { it.startsWith(CoverageAnalyzeExperiment.D_PREFIX) }) {
+                    coverageDataFrame.labels.all { it.startsWith(SpanPeakCallingExperiment.D_PREFIX) }) {
                 value = coverageDataFrame.labels.map { label ->
                     (i until j).map { coverageDataFrame.getAsInt(i, label) }.sum().toDouble()
                 }.average()
             } else if (coverageDataFrame.labels.all {
-                        it.startsWith(CoverageComparisonExperiment.TRACK1_PREFIX) ||
-                                it.startsWith(CoverageComparisonExperiment.TRACK2_PREFIX)
+                        it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX) ||
+                                it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
                     }) {
                 val track1 = coverageDataFrame.labels.filter {
-                    it.startsWith(CoverageComparisonExperiment.TRACK1_PREFIX)
+                    it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX)
                 }.map { label ->
                     (i until j).map { coverageDataFrame.getAsInt(i, label) }.sum().toDouble()
                 }.average()
                 val track2 = coverageDataFrame.labels.filter {
-                    it.startsWith(CoverageComparisonExperiment.TRACK2_PREFIX)
+                    it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
                 }.map { label ->
                     (i until j).map { coverageDataFrame.getAsInt(i, label) }.sum().toDouble()
                 }.average()

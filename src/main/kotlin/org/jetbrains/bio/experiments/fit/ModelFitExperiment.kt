@@ -20,7 +20,7 @@ import org.jetbrains.bio.viktor.F64Array
  */
 abstract class ModelFitExperiment<out Model : ClassificationModel, State : Any>(
         val genomeQuery: GenomeQuery,
-        protected val inputQuery: Query<Chromosome, DataFrame>,
+        protected val dataQuery: Query<Chromosome, DataFrame>,
         protected val modelFitter: Fitter<Model>,
         private val modelClass: Class<out Model>,
         protected val availableStates: Array<State>)
@@ -35,11 +35,11 @@ abstract class ModelFitExperiment<out Model : ClassificationModel, State : Any>(
                     model,
                     states,
                     genomeQuery.id,
-                    inputQuery.id)
+                    dataQuery.id)
         }
 
 
-    fun getData(chromosome: Chromosome) = inputQuery.apply(chromosome)
+    fun getData(chromosome: Chromosome) = dataQuery.apply(chromosome)
 
     /**
      * Returns a data frame with the following columns:
