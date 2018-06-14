@@ -51,7 +51,7 @@ class SpanCLALongTest {
         val stream = ByteArrayOutputStream()
         System.setErr(PrintStream(stream))
         SpanCLA.main(arrayOf())
-        assertEquals("""
+        assertLinesEqual("""
 ERROR: No command given; analyze or compare expected.
 
 Option                          Description
@@ -68,7 +68,7 @@ compare                         Differential peak calling mode (experimental, us
         val stream = ByteArrayOutputStream()
         System.setErr(PrintStream(stream))
         SpanCLA.main(arrayOf("foobar"))
-        assertEquals("""
+        assertLinesEqual("""
 ERROR: Unknown command: foobar; analyze or compare expected.
 
 Option                          Description
@@ -85,7 +85,7 @@ compare                         Differential peak calling mode (experimental, us
         val stream = ByteArrayOutputStream()
         System.setErr(PrintStream(stream))
         SpanCLA.main(arrayOf("foobar", "quiet"))
-        assertEquals("""
+        assertLinesEqual("""
 ERROR: Unknown command: foobar; analyze or compare expected.
 
 Option                          Description
@@ -323,5 +323,7 @@ LABELS, FDR, GAP options are ignored.
         private val OUT = System.out
         private val ERR = System.err
         private val FORMAT = CSVFormat.TDF
+
+        fun assertLinesEqual(expected: String, actual: String) = assertEquals(expected.lines(), actual.lines())
     }
 }
