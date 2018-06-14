@@ -45,6 +45,11 @@ data class Peak(val chromosome: Chromosome,
     }
 }
 
+/**
+ * Compute the mean of total coverage from i-th to j-th bin for given labels.
+ */
+internal fun DataFrame.partialMean(from: Int, to: Int, labelArray: List<String> = labels.toList()) =
+        labelArray.map { label -> (from until to).map { getAsInt(it, label) }.sum().toDouble() }.average()
 
 /**
  * The peaks are called in three steps.
@@ -83,23 +88,19 @@ internal fun getChromosomePeaks(logNullMemberships: F64Array,
         if (coverageDataFrame != null) {
             if (coverageDataFrame.labels.size == 1 ||
                     coverageDataFrame.labels.all { it.startsWith(SpanPeakCallingExperiment.D_PREFIX) }) {
-                value = coverageDataFrame.labels.map { label ->
-                    (i until j).map { coverageDataFrame.getAsInt(it, label) }.sum().toDouble()
-                }.average()
+                value = coverageDataFrame.partialMean(i, j)
             } else if (coverageDataFrame.labels.all {
                         it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX) ||
                                 it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
                     }) {
-                val track1 = coverageDataFrame.labels.filter {
-                    it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX)
-                }.map { label ->
-                    (i until j).map { coverageDataFrame.getAsInt(it, label) }.sum().toDouble()
-                }.average()
-                val track2 = coverageDataFrame.labels.filter {
-                    it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
-                }.map { label ->
-                    (i until j).map { coverageDataFrame.getAsInt(it, label) }.sum().toDouble()
-                }.average()
+                val track1 = coverageDataFrame.partialMean(i, j, coverageDataFrame.labels
+                        .filter {
+                            it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX)
+                        })
+                val track2 = coverageDataFrame.partialMean(i, j, coverageDataFrame.labels
+                        .filter {
+                            it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX)
+                        })
                 // Value if LogFC
                 value = if (track2 != 0.0) Math.log(track1) - Math.log(track2) else Double.MAX_VALUE
             } else {
