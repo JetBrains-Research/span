@@ -84,7 +84,7 @@ internal fun getChromosomePeaks(logNullMemberships: F64Array,
             if (coverageDataFrame.labels.size == 1 ||
                     coverageDataFrame.labels.all { it.startsWith(SpanPeakCallingExperiment.D_PREFIX) }) {
                 value = coverageDataFrame.labels.map { label ->
-                    (i until j).map { coverageDataFrame.getAsInt(i, label) }.sum().toDouble()
+                    (i until j).map { coverageDataFrame.getAsInt(it, label) }.sum().toDouble()
                 }.average()
             } else if (coverageDataFrame.labels.all {
                         it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX) ||
@@ -93,12 +93,12 @@ internal fun getChromosomePeaks(logNullMemberships: F64Array,
                 val track1 = coverageDataFrame.labels.filter {
                     it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX)
                 }.map { label ->
-                    (i until j).map { coverageDataFrame.getAsInt(i, label) }.sum().toDouble()
+                    (i until j).map { coverageDataFrame.getAsInt(it, label) }.sum().toDouble()
                 }.average()
                 val track2 = coverageDataFrame.labels.filter {
                     it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
                 }.map { label ->
-                    (i until j).map { coverageDataFrame.getAsInt(i, label) }.sum().toDouble()
+                    (i until j).map { coverageDataFrame.getAsInt(it, label) }.sum().toDouble()
                 }.average()
                 // Value if LogFC
                 value = if (track2 != 0.0) Math.log(track1) - Math.log(track2) else Double.MAX_VALUE
