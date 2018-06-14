@@ -102,7 +102,7 @@ compare                         Differential peak calling mode (experimental, us
         val stream = ByteArrayOutputStream()
         System.setOut(PrintStream(stream))
         SpanCLA.main(arrayOf("--help"))
-        assertEquals("""
+        assertLinesEqual("""
 Option                          Description
 ---------------------           -----------
 -?, -h, --help                  Show help
@@ -155,7 +155,7 @@ compare                         Differential peak calling mode (experimental, us
                 }
 
                 val out = String(stream.toByteArray())
-                assertTrue("""WORKING DIR: $it
+                assertIn("""WORKING DIR: $it
 THREADS: 1
 TREATMENT1: $path
 CONTROL1: none
@@ -168,10 +168,10 @@ BIN: $BIN
 FDR: $FDR
 GAP: $GAP
 OUTPUT: $bedPath
-""" in out)
-                assertTrue("Saved result to $bedPath" in out)
+""", out)
+                assertIn("Saved result to $bedPath", out)
                 // Check model fit has a progress
-                assertTrue("] 0.00% (0/250), Elapsed time" in out)
+                assertIn("] 0.00% (0/250), Elapsed time", out)
             }
         }
     }
@@ -225,11 +225,11 @@ OUTPUT: $bedPath
                         "--threads", THREADS.toString()))
                 Thread.sleep(1000)
                 val out = String(stream.toByteArray())
-                assertTrue("""NO output path given, process model fitting only.
+                assertIn("""NO output path given, process model fitting only.
 LABELS, FDR, GAP options are ignored.
-""" in out)
-                assertTrue(".tar: done in " in out)
-                assertTrue("Model fit result: " in out)
+""", out)
+                assertIn(".tar: done in ", out)
+                assertIn("Model fit result: ", out)
             }
         }
     }
@@ -259,11 +259,11 @@ LABELS, FDR, GAP options are ignored.
                 assertFalse("""NO output path given, process model fitting only.
 LABELS, FDR, GAP options are ignored.
 """ in out)
-                assertTrue("Track source: $path" in out)
-                assertTrue("Peaks Statistics:\n" in out)
-                assertTrue("FRIP: " in out)
+                assertIn("Track source: $path", out)
+                assertIn("Peaks Statistics:\n", out)
+                assertIn("FRIP: ", out)
                 // TODO[shpynov] fix me
-                assertTrue("Failed to estimate signal-to-noise ratio" in out)
+                assertIn("Failed to estimate signal-to-noise ratio", out)
             }
         }
     }
@@ -325,5 +325,9 @@ LABELS, FDR, GAP options are ignored.
         private val FORMAT = CSVFormat.TDF
 
         fun assertLinesEqual(expected: String, actual: String) = assertEquals(expected.lines(), actual.lines())
+
+        fun assertIn(substring: String, fullString: String) {
+            assertTrue(substring in fullString, "Expected <$substring> to be in <$fullString>.")
+        }
     }
 }
