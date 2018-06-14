@@ -34,7 +34,6 @@ abstract class ModelFitExperiment<out Model : ClassificationModel, State : Any>(
             return Joiner.on('_').join(
                     model,
                     states,
-                    genomeQuery.id,
                     dataQuery.id)
         }
 
