@@ -21,7 +21,6 @@ import org.junit.Before
 import org.junit.Test
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
-import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -118,8 +117,7 @@ compare                         Differential peak calling mode (experimental, us
         val stream = ByteArrayOutputStream()
         System.setOut(PrintStream(stream))
         SpanCLA.main(arrayOf("--version"))
-        assertEquals("0.6.0.build built on ${SimpleDateFormat("MMMM dd, yyyy").format(Date())}",
-                String(stream.toByteArray()).trim())
+        assertEquals("@VERSION@.@BUILD@ built on @DATE@", String(stream.toByteArray()).trim())
     }
 
 
