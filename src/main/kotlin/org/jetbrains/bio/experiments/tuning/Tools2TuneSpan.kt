@@ -66,43 +66,43 @@ object SPAN : Tool2Tune<Pair<Double, Int>>() {
             val peakCallingExperiment = Span.getPeakCallingExperiment(
                     configuration.genomeQuery,
                     queries = listOf(ReadsQuery(configuration.genomeQuery, signalPath, inputPath)),
-                    bin = SPAN.DEFAULT_BIN)
+                    bin = DEFAULT_BIN)
 
             if (saveAllPeaks) {
                 val progress = Progress {
-                    title = "Processing ${SPAN.id} $target $cellId $replicate optimal peaks"
+                    title = "Processing $id $target $cellId $replicate optimal peaks"
                 }.bounded(parameters.size.toLong())
                 parameters.forEach { parameter ->
                     val peaksPath = folder / transform(parameter) / fileName(cellId, replicate, target, parameter)
                     peaksPath.checkOrRecalculate(ignoreEmptyFile = true) { (path) ->
                         savePeaks(peakCallingExperiment.results.getPeaks(configuration.genomeQuery,
-                                                                         parameter.first, parameter.second), path)
+                                parameter.first, parameter.second), path)
                     }
                     progress.report()
                 }
                 progress.done()
             }
 
-            PeakCallerTuning.LOG.info("Tuning ${SPAN.id} $target $cellId $replicate peaks")
+            PeakCallerTuning.LOG.info("Tuning $id $target $cellId $replicate peaks")
             val labels = PeakAnnotation.loadLabels(labelsPath, configuration.genomeQuery.build)
             val (labelErrorsGrid, index) =
-                    tune(peakCallingExperiment, labels, "${SPAN.id} $target $cellId $replicate", parameters)
+                    tune(peakCallingExperiment, labels, "$id $target $cellId $replicate", parameters)
 
 
-            PeakCallerTuning.LOG.info("Saving ${SPAN.id} $target $cellId $replicate optimal peaks to $folder")
+            PeakCallerTuning.LOG.info("Saving $id $target $cellId $replicate optimal peaks to $folder")
             cleanup(folder, cellId, replicate)
             val optimalParameters = parameters[index]
             val optimalPeaksPath = folder / fileName(cellId, replicate, target, optimalParameters)
             savePeaks(peakCallingExperiment.results.getPeaks(configuration.genomeQuery,
-                                                             optimalParameters.first, optimalParameters.second),
-                      optimalPeaksPath)
+                    optimalParameters.first, optimalParameters.second),
+                    optimalPeaksPath)
             labelErrorsGrid.forEachIndexed { i, error ->
                 results.addRecord(replicate, transform(parameters[i]), error, i == index)
             }
         }
 
-        results.saveTuningErrors(folder / "${target}_${SPAN}_errors.csv")
-        results.saveOptimalResults(folder / "${target}_${SPAN}_parameters.csv")
+        results.saveTuningErrors(folder / "${target}_${id}_errors.csv")
+        results.saveOptimalResults(folder / "${target}_${id}_parameters.csv")
         saveGrid(path, target, useInput)
     }
 
@@ -235,12 +235,12 @@ object SPAN_REPLICATED : ReplicatedTool2Tune<Pair<Double, Int>>() {
             val progress = Progress {
                 title = "Processing $id $target"
             }.bounded(parameters.size.toLong())
-            SPAN.parameters.forEach { parameter ->
+            parameters.forEach { parameter ->
                 val peaksPath = folder / transform(parameter) / fileName(target, parameter)
                 peaksPath.checkOrRecalculate(ignoreEmptyFile = true) { (path) ->
                     savePeaks(replicatedPeakCallingExperiment.results.getPeaks(configuration.genomeQuery,
-                                                                               parameter.first, parameter.second),
-                              path)
+                            parameter.first, parameter.second),
+                            path)
                 }
                 progress.report()
             }
@@ -260,8 +260,8 @@ object SPAN_REPLICATED : ReplicatedTool2Tune<Pair<Double, Int>>() {
             it.deleteIfExists()
         }
         savePeaks(replicatedPeakCallingExperiment.results.getPeaks(configuration.genomeQuery,
-                                                                   parameters[index].first, parameters[index].second),
-                  folder / fileName(target, parameters[index]))
+                parameters[index].first, parameters[index].second),
+                folder / fileName(target, parameters[index]))
 
         val results = TuningResults()
         labelErrorsGrid.forEachIndexed { i, error ->
