@@ -32,11 +32,13 @@ abstract class Tool2Tune<T> {
      * Returns folder for given [target] and [tool], takes into account [useInput] in case of [Span]
      */
     internal fun folder(path: Path, target: String, useInput: Boolean) =
-            path / target /
+            (path / target /
                     (if (this == SPAN)
                         "$id${if (!useInput) "_noinput" else ""}"
                     else
-                        id)
+                        id)).apply {
+                createDirectories()
+            }
 
     fun defaultsFolder(path: Path, target: String, useInput: Boolean, uli: Boolean) =
             folder(path, target, useInput) / transform(defaultParams(uli))
