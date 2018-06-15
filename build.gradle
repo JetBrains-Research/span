@@ -6,7 +6,6 @@ apply plugin: 'com.github.johnrengelman.shadow'
 // Major application version
 version = "0.6.0"
 mainClassName = "org.jetbrains.bio.span.SpanCLA"
-applicationDefaultJvmArgs = ["-Xmx2G"]
 
 task processBuildProperties(type: Copy) {
     // turn of cache for this task
