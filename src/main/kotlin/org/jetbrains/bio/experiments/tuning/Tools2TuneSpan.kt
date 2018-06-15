@@ -172,15 +172,19 @@ object SPAN_REPLICATED : ReplicatedTool2Tune<Pair<Double, Int>>() {
             "${target}_${DEFAULT_BIN}_${parameter.first}_${parameter.second}_peaks.bed"
 
     override fun findReplicatedPeaks(path: Path, target: String, useInput: Boolean): Path {
+        val peaks = findReplicatedFiles(path, target, useInput)
+        check(peaks.size == 1) {
+            "No or more than 1 replicated peaks file was found for $id and $target at $path"
+        }
+        return peaks.first()
+    }
+
+    private fun findReplicatedFiles(path: Path, target: String, useInput: Boolean): List<Path> {
         val folder = folder(path, target, useInput)
         check(folder.exists) {
             "Folder $target $id $folder doesn't exist"
         }
-        val peaks = folder.glob("*${target}_*$suffix").firstOrNull()
-        check(peaks != null) {
-            "No replicated peak file was found for $id and $target at $folder"
-        }
-        return peaks!!
+        return folder.glob("*${target}_*$suffix").toList()
     }
 
 
@@ -189,13 +193,13 @@ object SPAN_REPLICATED : ReplicatedTool2Tune<Pair<Double, Int>>() {
      */
     private fun checkTuningReplicatedRequired(path: Path, target: String, useInput: Boolean): Boolean {
         val grid = parameters.joinToString(separator = ",", transform = transform)
-        val existingPeaks = try {
-            findReplicatedPeaks(path, target, useInput)
-        } catch (ignore: Exception) {
-            null
-        }
-        if (existingPeaks == null || !existingPeaks.exists) {
-            PeakCallerTuning.LOG.info("$target $id Missing peak files detected, launching tuning.")
+        val existingPeaks = findReplicatedFiles(path, target, useInput)
+        if (existingPeaks.size != 1) {
+            PeakCallerTuning.LOG.info("$target $id Missing or extra peak files detected, launching tuning.")
+            existingPeaks.forEach {
+                PeakCallerTuning.LOG.info("Removing obsolete file $it")
+                it.deleteIfExists()
+            }
             return true
         }
         if (loadGrid(path, target, useInput) != grid) {
@@ -237,10 +241,10 @@ object SPAN_REPLICATED : ReplicatedTool2Tune<Pair<Double, Int>>() {
             }.bounded(parameters.size.toLong())
             parameters.forEach { parameter ->
                 val peaksPath = folder / transform(parameter) / fileName(target, parameter)
-                peaksPath.checkOrRecalculate(ignoreEmptyFile = true) { (path) ->
+                peaksPath.checkOrRecalculate(ignoreEmptyFile = true) { (p) ->
                     savePeaks(replicatedPeakCallingExperiment.results.getPeaks(configuration.genomeQuery,
                             parameter.first, parameter.second),
-                            path)
+                            p)
                 }
                 progress.report()
             }
@@ -253,24 +257,18 @@ object SPAN_REPLICATED : ReplicatedTool2Tune<Pair<Double, Int>>() {
         val (labelErrorsGrid, index) = SPAN.tune(replicatedPeakCallingExperiment, labels, target, parameters)
 
         PeakCallerTuning.LOG.info("Saving $target optimal $id peaks to $folder")
-        val replicate = "all"
-        val existingPaths = findReplicatedPeaks(folder, target, useInput)
-        existingPaths.forEach {
-            PeakCallerTuning.LOG.info("Removing obsolete file $it")
-            it.deleteIfExists()
-        }
         savePeaks(replicatedPeakCallingExperiment.results.getPeaks(configuration.genomeQuery,
                 parameters[index].first, parameters[index].second),
                 folder / fileName(target, parameters[index]))
 
         val results = TuningResults()
         labelErrorsGrid.forEachIndexed { i, error ->
-            results.addRecord(replicate, transform(parameters[i]), error, index == i)
+            results.addRecord("", transform(parameters[i]), error, index == i)
         }
-        results.saveTuningErrors(folder / "${target}_${SPAN_REPLICATED}_errors.csv")
-        results.saveOptimalResults(folder / "${target}_${SPAN_REPLICATED}_parameters.csv")
+        results.saveTuningErrors(folder / "${target}_${id}_errors.csv")
+        results.saveOptimalResults(folder / "${target}_${id}_parameters.csv")
 
-        val labelErrorsPath = folder / "${target}_${SPAN_REPLICATED}_error_labels.bed"
+        val labelErrorsPath = folder / "${target}_${id}_error_labels.bed"
         BedFormat().print(labelErrorsPath).use { printer ->
             for (entry in labelErrorsGrid[index]) {
                 val score = Shorts.checkedCast((entry.value.rate() * 1000).toLong())
