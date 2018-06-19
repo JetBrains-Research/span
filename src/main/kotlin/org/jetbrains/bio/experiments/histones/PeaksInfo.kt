@@ -41,7 +41,7 @@ object PeaksInfo {
         val coverage = peaksLenSum / genomeQuery.get().map { it.length.toLong() }.sum()
         val srcBlock = if (src != null) """
                     |Track source: ${src.presentablePath()}
-                    |Source size: ${src.size}
+                    |Source size: ${src.size}${if (!src.isAccessible()) "<not accessible>" else ""}
                     |
                 """.trimMargin() else ""
         val peaksLengthsBlock = """
