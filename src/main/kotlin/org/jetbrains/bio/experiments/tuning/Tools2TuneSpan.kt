@@ -13,7 +13,7 @@ import org.jetbrains.bio.experiments.fit.CoverageFitResults
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.io.BedFormat
-import org.jetbrains.bio.query.ReadsQuery
+import org.jetbrains.bio.query.BinnedReadsQuery
 import org.jetbrains.bio.span.Span
 import org.jetbrains.bio.span.getPeaks
 import org.jetbrains.bio.span.savePeaks
@@ -65,7 +65,7 @@ object SPAN : Tool2Tune<Pair<Double, Int>>() {
         labelledTracks.forEach { (cellId, replicate, signalPath, labelsPath) ->
             val peakCallingExperiment = Span.getPeakCallingExperiment(
                     configuration.genomeQuery,
-                    queries = listOf(ReadsQuery(configuration.genomeQuery, signalPath, inputPath)),
+                    queries = listOf(BinnedReadsQuery(configuration.genomeQuery, signalPath, DEFAULT_BIN, inputPath)),
                     bin = DEFAULT_BIN)
 
             if (saveAllPeaks) {
@@ -230,7 +230,7 @@ object SPAN_REPLICATED : ReplicatedTool2Tune<Pair<Double, Int>>() {
         val replicatedPeakCallingExperiment = Span.getPeakCallingExperiment(
                 configuration.genomeQuery,
                 queries = labelledTracks.map(LabelledTrack::signalPath).map {
-                    ReadsQuery(configuration.genomeQuery, it, inputPath)
+                    BinnedReadsQuery(configuration.genomeQuery, it, DEFAULT_BIN, inputPath)
                 },
                 bin = DEFAULT_BIN)
 

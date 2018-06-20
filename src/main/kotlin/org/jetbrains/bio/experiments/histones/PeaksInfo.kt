@@ -10,6 +10,7 @@ import org.jetbrains.bio.genome.Location
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.sampling.XSRandom
 import org.jetbrains.bio.genome.sequence.BinaryLut
+import org.jetbrains.bio.query.BinnedReadsQuery
 import org.jetbrains.bio.query.InputQuery
 import org.jetbrains.bio.query.ReadsQuery
 import org.jetbrains.bio.util.isAccessible
@@ -60,7 +61,7 @@ object PeaksInfo {
                     |""".trimMargin()
         var signalBlock = ""
         // Don't recompute coverage if it is not processed locally
-        if (coverageQueries.isNotEmpty() && coverageQueries.all { it is ReadsQuery && it.npzPath().isAccessible() }) {
+        if (coverageQueries.isNotEmpty() && coverageQueries.all(::cacheAccessible)) {
             val coverages = coverageQueries.map { it.get() }
             val frip = frip(genomeQuery, peaks, coverages)
             val signalToNoise = signalToNoise(genomeQuery, peaks, coverages)
@@ -71,6 +72,10 @@ object PeaksInfo {
         }
         return srcBlock + peaksLengthsBlock + signalBlock
     }
+
+    private fun cacheAccessible(query: InputQuery<Coverage>) =
+            (query is ReadsQuery && query.npzPath().isAccessible()) ||
+                    (query is BinnedReadsQuery && query.bwPath(query.path).isAccessible())
 
 
     private fun frip(genomeQuery: GenomeQuery, peakLocations: List<Location>, coverages: List<Coverage>): Double {

@@ -12,7 +12,7 @@ import org.jetbrains.bio.experiments.tuning.PeakAnnotation
 import org.jetbrains.bio.experiments.tuning.SPAN
 import org.jetbrains.bio.experiments.tuning.TuningResults
 import org.jetbrains.bio.genome.GenomeQuery
-import org.jetbrains.bio.query.ReadsQuery
+import org.jetbrains.bio.query.BinnedReadsQuery
 import org.jetbrains.bio.util.*
 import java.io.PrintStream
 import java.nio.file.Path
@@ -144,7 +144,7 @@ compare                         Differential peak calling mode (experimental, us
                 }
 
                 configurePaths(workingDir, chromSizesPath)
-                val coverageQueries = coverageQueries(genomeQuery, treatmentPaths, controlPaths, fragment)
+                val coverageQueries = coverageQueries(genomeQuery, treatmentPaths, controlPaths, bin, fragment)
 
                 val peakCallingExperiment = Span.getPeakCallingExperiment(genomeQuery, coverageQueries, bin)
                 if (outputBed != null) {
@@ -269,8 +269,8 @@ compare                         Differential peak calling mode (experimental, us
                 }
                 configurePaths(workingDir, chromSizesPath)
 
-                val coverageQueries1 = coverageQueries(genomeQuery, treatmentPaths1, controlPaths1, fragment)
-                val coverageQueries2 = coverageQueries(genomeQuery, treatmentPaths2, controlPaths2, fragment)
+                val coverageQueries1 = coverageQueries(genomeQuery, treatmentPaths1, controlPaths1, bin, fragment)
+                val coverageQueries2 = coverageQueries(genomeQuery, treatmentPaths2, controlPaths2, bin, fragment)
                 val experiment = Span.getDifferentialPeakCallingExperiment(
                         genomeQuery, coverageQueries1, coverageQueries2, bin)
                 if (outputBed != null) {
@@ -297,11 +297,12 @@ compare                         Differential peak calling mode (experimental, us
     private fun coverageQueries(genomeQuery: GenomeQuery,
                                 treatmentPaths: List<Path>,
                                 controlPaths: List<Path>?,
-                                fragment: Int?): List<ReadsQuery> {
+                                bin: Int,
+                                fragment: Int?): List<BinnedReadsQuery> {
         if (controlPaths != null && controlPaths.isNotEmpty()) {
-            if (controlPaths.size == 1) {
-                return treatmentPaths.map {
-                    ReadsQuery(genomeQuery, it, controlPaths.first(), unique = true, fragment = fragment)
+            return if (controlPaths.size == 1) {
+                treatmentPaths.map {
+                    BinnedReadsQuery(genomeQuery, it, bin, controlPaths.first(), unique = true, fragment = fragment)
                 }
             } else {
                 if (controlPaths.size != treatmentPaths.size) {
@@ -309,11 +310,11 @@ compare                         Differential peak calling mode (experimental, us
                     System.exit(1)
                 }
                 treatmentPaths.zip(controlPaths).map {
-                    ReadsQuery(genomeQuery, it.first, it.second, unique = true, fragment = fragment)
+                    BinnedReadsQuery(genomeQuery, it.first, bin, it.second, unique = true, fragment = fragment)
                 }
             }
         }
-        return treatmentPaths.map { ReadsQuery(genomeQuery, it, unique = true, fragment = fragment) }
+        return treatmentPaths.map { BinnedReadsQuery(genomeQuery, it, bin, unique = true, fragment = fragment) }
     }
 
     private fun configurePaths(outputPath: Path, chromSizesPath: Path) {
