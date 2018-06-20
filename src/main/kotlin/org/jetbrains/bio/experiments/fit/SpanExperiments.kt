@@ -151,9 +151,7 @@ internal fun List<InputQuery<Coverage>>.coverageDataFrame(chromosome: Chromosome
     var res = DataFrame()
     forEachIndexed { d, inputQuery ->
         val coverage = inputQuery.get()
-        val binnedCoverage = chromosome.range.slice(binSize)
-                .mapToInt { coverage.getBothStrandCoverage(it.on(chromosome)) }
-                .toArray()
+        val binnedCoverage = coverage.getBinnedChromosomeCoverage(chromosome, binSize).toIntArray()
         res = res.with(labels[d], binnedCoverage)
     }
     return res
@@ -312,6 +310,9 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any> : Cove
                     createDataQuery(binSize, coverageQueries),
                     binSize, modelFitter, modelClass, states, nullHypothesis)
 
+    override val id: String
+        get() = "span_${dataQuery.id}"
+
     companion object {
         const val X_PREFIX = "x"
         const val D_PREFIX = "d"
@@ -378,6 +379,9 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
                 states: Array<State>, nullHypothesis: NullHypothesis<State>) :
             super(genomeQuery, createDataQuery(binSize, coverageQuery1, coverageQuery2),
                     binSize, modelFitter, modelClass, states, nullHypothesis)
+
+    override val id: String
+        get() = "span_diff_${dataQuery.id}"
 
     companion object {
         const val TRACK1_PREFIX = "track1_"

@@ -26,7 +26,7 @@ abstract class ModelFitExperiment<out Model : ClassificationModel, State : Any>(
         protected val availableStates: Array<State>)
     : Experiment("fit") {
 
-    val id: String
+    open val id: String
         get() {
             val model = modelClass.simpleName.replace(Regex("[^A-Z0-9]"), "").toLowerCase()
             require(availableStates.isNotEmpty())
