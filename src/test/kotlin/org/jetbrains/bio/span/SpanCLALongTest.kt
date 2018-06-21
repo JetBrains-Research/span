@@ -150,8 +150,10 @@ compare                         Differential peak calling mode (experimental, us
                 }
 
                 val out = String(stream.toByteArray())
-                assertIn("""WORKING DIR: $it
-THREADS: 1
+                assertIn("""SPAN
+COMMAND:
+WORKING DIR: $it
+THREADS: $THREADS
 TREATMENT1: $path
 CONTROL1: none
 TREATMENT2: $path
@@ -247,6 +249,8 @@ LABELS, FDR, GAP options are ignored.
                         "-t", path.toString(),
                         "--threads", THREADS.toString()))
                 Thread.sleep(1000)
+                // Log file
+                assertTrue((dir / "logs" / "span.log").exists)
                 // Coverage test
                 assertTrue((dir / "cache" / "coverage").exists)
                 assertEquals(1, (dir / "cache" / "coverage").glob("*").size)
@@ -257,7 +261,7 @@ LABELS, FDR, GAP options are ignored.
                 assertEquals(1, (dir / "fit").glob("*").size)
                 val modelName = (dir / "fit").glob("*").first().fileName.toString()
                 assertTrue("span_track[0-9]+\\.bed_200_unique.tar".toRegex().matches(modelName))
-                assertTrue(dir.glob("**/*.*").size == 2)
+                assertEquals(3, dir.glob("**/*.*").size)
             }
         }
     }
@@ -357,7 +361,7 @@ LABELS, FDR, GAP options are ignored.
         fun assertIn(substring: String, fullString: String) {
             // Process Windows with different line separators correctly.
             for (s in substring.lines()) {
-                assertTrue(s in fullString, "Expected <$substring> to be in <$fullString>.")
+                assertTrue(s in fullString, "Expected <$s> to be in <$fullString>.")
             }
         }
     }

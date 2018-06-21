@@ -96,11 +96,15 @@ compare                         Differential peak calling mode (experimental, us
 
             parse(params) { options ->
                 configureLogging("quiet" in options, "debug" in options)
-                configureParallelism(options.valueOf("threads") as Int?)
-
                 val workingDir = options.valueOf("workdir") as Path
-                println("WORKING DIR: $workingDir")
-                println("THREADS: ${parallelismLevel()}")
+                Logs.addLoggingToFile(workingDir / "logs" / "span.log")
+
+                LOG.info("SPAN ${version()}")
+                LOG.info("COMMAND:\nanalyze ${params.joinToString(" ")}")
+                LOG.info("WORKING DIR: $workingDir")
+
+                configureParallelism(options.valueOf("threads") as Int?)
+                LOG.info("THREADS: ${parallelismLevel()}")
 
                 val chromSizesPath = options.valueOf("chrom.sizes") as Path
                 val chromosomes = options.valuesOf("only") as List<String>
@@ -118,29 +122,29 @@ compare                         Differential peak calling mode (experimental, us
                 val outputBed = options.valueOf("output") as Path?
 
                 val fdr = options.valueOf("fdr") as Double
-                println("TREATMENT: ${treatmentPaths.joinToString(", ", transform = Path::toString)}")
+                LOG.info("TREATMENT: ${treatmentPaths.joinToString(", ", transform = Path::toString)}")
                 if (controlPaths != null && controlPaths.isNotEmpty()) {
-                    println("CONTROL: ${controlPaths.joinToString(", ", transform = Path::toString)}")
+                    LOG.info("CONTROL: ${controlPaths.joinToString(", ", transform = Path::toString)}")
                 } else {
-                    println("CONTROL: none")
+                    LOG.info("CONTROL: none")
                 }
-                println("CHROM.SIZES: $chromSizesPath")
-                println("GENOME: ${genomeQuery.id}")
-                println("FRAGMENT: $fragment")
+                LOG.info("CHROM.SIZES: $chromSizesPath")
+                LOG.info("GENOME: ${genomeQuery.id}")
+                LOG.info("FRAGMENT: $fragment")
                 if (outputBed != null) {
                     if (labelsPath != null) {
-                        println("LABELS: $labelsPath")
-                        println("BIN, FDR, GAP options are ignored.")
+                        LOG.info("LABELS: $labelsPath")
+                        LOG.info("BIN, FDR, GAP options are ignored.")
                     } else {
-                        println("BIN: $bin")
-                        println("FDR: $fdr")
-                        println("GAP: $gap")
+                        LOG.info("BIN: $bin")
+                        LOG.info("FDR: $fdr")
+                        LOG.info("GAP: $gap")
                     }
-                    println("OUTPUT: $outputBed")
+                    LOG.info("OUTPUT: $outputBed")
                 } else {
-                    println("BIN: $bin")
-                    println("NO output path given, process model fitting only.")
-                    println("LABELS, FDR, GAP options are ignored.")
+                    LOG.info("BIN: $bin")
+                    LOG.info("NO output path given, process model fitting only.")
+                    LOG.info("LABELS, FDR, GAP options are ignored.")
                 }
 
                 configurePaths(workingDir, chromSizesPath)
@@ -221,11 +225,16 @@ compare                         Differential peak calling mode (experimental, us
 
             parse(params) { options ->
                 configureLogging("quiet" in options, "debug" in options)
-                configureParallelism(options.valueOf("threads") as Int?)
 
                 val workingDir = options.valueOf("workdir") as Path
-                println("WORKING DIR: $workingDir")
-                println("THREADS: ${parallelismLevel()}")
+                Logs.addLoggingToFile(workingDir / "logs" / "span.log")
+
+                LOG.info("SPAN ${version()}")
+                LOG.info("COMMAND:\ncompare ${params.joinToString(" ")}")
+                LOG.info("WORKING DIR: $workingDir")
+
+                configureParallelism(options.valueOf("threads") as Int?)
+                LOG.info("THREADS: ${parallelismLevel()}")
 
                 val chromSizesPath = options.valueOf("chrom.sizes") as Path
                 val chromosomes = options.valuesOf("only") as List<String>
@@ -242,30 +251,30 @@ compare                         Differential peak calling mode (experimental, us
                 val outputBed = options.valueOf("output") as Path?
                 val genomeQuery = loadGenomeQuery(chromSizesPath, chromosomes)
 
-                println("TREATMENT1: ${treatmentPaths1.joinToString(", ", transform = Path::toString)}")
+                LOG.info("TREATMENT1: ${treatmentPaths1.joinToString(", ", transform = Path::toString)}")
                 if (controlPaths1 != null && controlPaths1.isNotEmpty()) {
-                    println("CONTROL1: ${controlPaths1.joinToString(", ", transform = Path::toString)}")
+                    LOG.info("CONTROL1: ${controlPaths1.joinToString(", ", transform = Path::toString)}")
                 } else {
-                    println("CONTROL1: none")
+                    LOG.info("CONTROL1: none")
                 }
-                println("TREATMENT2: ${treatmentPaths2.joinToString(", ", transform = Path::toString)}")
+                LOG.info("TREATMENT2: ${treatmentPaths2.joinToString(", ", transform = Path::toString)}")
                 if (controlPaths2 != null && controlPaths2.isNotEmpty()) {
-                    println("CONTROL2: ${controlPaths2.joinToString(", ", transform = Path::toString)}")
+                    LOG.info("CONTROL2: ${controlPaths2.joinToString(", ", transform = Path::toString)}")
                 } else {
-                    println("CONTROL2: none")
+                    LOG.info("CONTROL2: none")
                 }
-                println("CHROM.SIZES: $chromSizesPath")
-                println("GENOME: ${genomeQuery.id}")
-                println("FRAGMENT: $fragment")
-                println("BIN: $bin")
-                println("FDR: $fdr")
-                println("GAP: $gap")
+                LOG.info("CHROM.SIZES: $chromSizesPath")
+                LOG.info("GENOME: ${genomeQuery.id}")
+                LOG.info("FRAGMENT: $fragment")
+                LOG.info("BIN: $bin")
+                LOG.info("FDR: $fdr")
+                LOG.info("GAP: $gap")
                 if (outputBed != null) {
-                    println("OUTPUT: $outputBed")
+                    LOG.info("OUTPUT: $outputBed")
                 } else {
-                    println("BIN: $bin")
-                    println("NO output path given, process model fitting only.")
-                    println("LABELS, FDR, GAP options are ignored.")
+                    LOG.info("BIN: $bin")
+                    LOG.info("NO output path given, process model fitting only.")
+                    LOG.info("LABELS, FDR, GAP options are ignored.")
                 }
                 configurePaths(workingDir, chromSizesPath)
 
