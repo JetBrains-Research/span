@@ -330,7 +330,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any> : Cove
                     return listOf(coverageQuery).coverageDataFrame(input, binSize, arrayOf(X_PREFIX))
                 }
 
-                override val id: String get() = "${coverageQuery.id.reduceId}_$binSize"
+                override val id: String get() = reduceIds(listOf(coverageQuery.id, "$binSize"))
 
                 override val description: String get() = "${coverageQuery.description}; analysis bin size: $binSize"
             }
@@ -345,9 +345,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any> : Cove
                 }
 
                 override val id: String
-                    get() {
-                        return reduceIds(coverageQueries.map { it.id } + listOf("$binSize"))
-                    }
+                    get() = reduceIds(coverageQueries.map { it.id } + listOf("$binSize"))
 
                 override val description: String
                     get() = "${coverageQueries.joinToString(";") { it.description }} analysis bin size: $binSize"
@@ -400,9 +398,7 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
                 }
 
                 override val id: String
-                    get() {
-                        return "${reduceIds((coverageQueries1 + coverageQueries2).map { it.id })}_$binSize"
-                    }
+                    get() = reduceIds((coverageQueries1 + coverageQueries2).map { it.id } + "$binSize")
 
                 override val description: String
                     get() = "${coverageQueries1.joinToString(", ") { it.description }} " +
@@ -420,14 +416,11 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
                 }
 
                 override val id: String
-                    get() {
-                        return "${reduceIds(listOf(coverageQuery1, coverageQuery2).map { it.id })}_$binSize"
-                    }
+                    get() = reduceIds(listOf(coverageQuery1, coverageQuery2).map { it.id } + listOf("$binSize"))
 
                 override val description: String
-                    get() {
-                        return ("${coverageQuery1.description} compared to ${coverageQuery2.description} bin size: $binSize")
-                    }
+                    get() =
+                        ("${coverageQuery1.description} compared to ${coverageQuery2.description} bin size: $binSize")
             }
         }
     }

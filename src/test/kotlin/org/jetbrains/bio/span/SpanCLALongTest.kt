@@ -12,10 +12,7 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.Location
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.genome.containers.genomeMap
-import org.jetbrains.bio.util.bufferedReader
-import org.jetbrains.bio.util.div
-import org.jetbrains.bio.util.withTempDirectory
-import org.jetbrains.bio.util.withTempFile
+import org.jetbrains.bio.util.*
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -228,6 +225,39 @@ LABELS, FDR, GAP options are ignored.
 """, out)
                 assertIn(".tar: done in ", out)
                 assertIn("Model fit result: ", out)
+            }
+        }
+    }
+
+
+    // sample random coverage and test the same model prediction at least.
+    @Test
+    fun testFilesCreatedByAnalyze() {
+        // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
+        withTempFile("track", ".bed.gz") { path ->
+
+            sampleCoverage(path, TO, BIN)
+            print("Saved sampled track file: $path")
+
+            withTempDirectory("work") { dir ->
+                val chromsizes = Genome["to1"].chromSizesPath.toString()
+                SpanCLA.main(arrayOf("analyze",
+                        "-cs", chromsizes,
+                        "--workdir", dir.toString(),
+                        "-t", path.toString(),
+                        "--threads", THREADS.toString()))
+                Thread.sleep(1000)
+                // Coverage test
+                assertTrue((dir / "cache" / "coverage").exists)
+                assertEquals(1, (dir / "cache" / "coverage").glob("*").size)
+                val coverageName = (dir / "cache" / "coverage").glob("*").first().fileName.toString()
+                assertTrue("track[0-9]+\\.bed_200_unique#.*\\.bw".toRegex().matches(coverageName))
+                // Model test
+                assertTrue((dir / "fit").exists)
+                assertEquals(1, (dir / "fit").glob("*").size)
+                val modelName = (dir / "fit").glob("*").first().fileName.toString()
+                assertTrue("span_track[0-9]+\\.bed_200_unique.tar".toRegex().matches(modelName))
+                assertTrue(dir.glob("**/*.*").size == 2)
             }
         }
     }
