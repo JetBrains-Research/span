@@ -325,7 +325,10 @@ LABELS, FDR, GAP options are ignored.
         fun assertLinesEqual(expected: String, actual: String) = assertEquals(expected.lines(), actual.lines())
 
         fun assertIn(substring: String, fullString: String) {
-            assertTrue(substring in fullString, "Expected <$substring> to be in <$fullString>.")
+            // Process Windows with different line separators correctly.
+            for (s in substring.split("\n")) {
+                assertTrue(s in fullString, "Expected <$substring> to be in <$fullString>.")
+            }
         }
     }
 }
