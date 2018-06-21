@@ -8,12 +8,14 @@ version = "0.6.0"
 mainClassName = "org.jetbrains.bio.span.SpanCLA"
 
 task processBuildProperties(type: Copy) {
+    shadowJar.dependsOn name
+    
     // turn of cache for this task
     outputs.upToDateWhen { false }
 
     // Fix version and build in properties file
     from(sourceSets.main.resources) {
-        include 'span-build.properties'
+        include 'span.properties'
     }
     into sourceSets.main.output.resourcesDir
     filter(ReplaceTokens, tokens: [
@@ -22,8 +24,6 @@ task processBuildProperties(type: Copy) {
             DATE: new Date().format('MMMM dd, yyyy')
     ])
 }
-
-compileJava.dependsOn processBuildProperties
 
 shadowJar {
     // File name: "$baseName-$version-$classifier.jar"
