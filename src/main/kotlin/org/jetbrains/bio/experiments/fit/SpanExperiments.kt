@@ -346,7 +346,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any> : Cove
 
                 override val id: String
                     get() {
-                        return "${reduceIds(coverageQueries.map { it.id })}_$binSize"
+                        return reduceIds(coverageQueries.map { it.id } + listOf("$binSize"))
                     }
 
                 override val description: String
