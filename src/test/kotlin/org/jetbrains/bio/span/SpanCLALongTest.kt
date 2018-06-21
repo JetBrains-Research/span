@@ -226,7 +226,9 @@ OUTPUT: $bedPath
 LABELS, FDR, GAP options are ignored.
 """, out)
                 assertIn(".tar: done in ", out)
-                assertIn("Model fit result: ", out)
+                assertIn("Model saved: ", out)
+                assertFalse("Loading model"  in out)
+                assertFalse("Completed loading model" in out)
             }
         }
     }

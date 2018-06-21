@@ -172,8 +172,7 @@ abstract class CoverageFitExperiment<out Model : ClassificationModel, State : An
     : ModelFitExperiment<Model, State>(genomeQuery, coverageQuery, modelFitter, modelClass, availableStates) {
 
     val results: CoverageFitResults by lazy {
-        saveResults()
-        loadResults(genomeQuery, tarPath)
+        getOrLoadResults()
     }
 
     override fun getStatesDataFrame(chromosome: Chromosome): DataFrame = sliceStatesDataFrame(statesDataFrame, chromosome)
@@ -190,6 +189,7 @@ abstract class CoverageFitExperiment<out Model : ClassificationModel, State : An
         }
     }
 
+    @Suppress("LeakingThis")
     private val tarPath: Path = experimentPath / "$id.tar"
 
     private fun calculateModel(): Model {
@@ -214,6 +214,7 @@ abstract class CoverageFitExperiment<out Model : ClassificationModel, State : An
             }.toTypedArray())
 
     private val statesDataFrame: DataFrame by lazy {
+        @Suppress("UNCHECKED_CAST")
         calculateStatesDataFrame(results.model as Model)
     }
 
@@ -223,11 +224,15 @@ abstract class CoverageFitExperiment<out Model : ClassificationModel, State : An
     }
 
     /**
-     * Save fit information, trained model and null hypothesis probabilities.
+     * Compute and save [CoverageFitResults], i.e. fit information, trained model and null hypothesis probabilities.
+     * If already processed, load them [loadResults].
+     *
+     * IMPORTANT!
      * We take care not to access any of the lazy properties here, since they depend on this method for initialization.
      */
-    private fun saveResults() {
-        tarPath.checkOrRecalculate("Model fit result") { (p) ->
+    private fun getOrLoadResults(): CoverageFitResults {
+        var computedResults: CoverageFitResults? = null
+        tarPath.checkOrRecalculate("Model fit") { (p) ->
             withTempDirectory(tarPath.stem) { dir ->
                 val modelPath = dir / MODEL_JSON
                 val model = calculateModel()
@@ -239,24 +244,31 @@ abstract class CoverageFitExperiment<out Model : ClassificationModel, State : An
                 val statesDataFrame = calculateStatesDataFrame(model)
 
                 val nullHypothesisPath = dir / NULL_NPZ
-                DataFrame.rowBind(
-                        fitInformation.sortedChromosomes(genomeQuery).map { chromosome ->
+                val logNullMembershipsDF = DataFrame.rowBind(
+                        fitInformation.sortedChromosomes(this.genomeQuery).map { chromosome ->
                             val logMemberships = getLogMemberships(sliceStatesDataFrame(statesDataFrame, chromosome))
                             val logNullMemberships = nullHypothesis.apply(logMemberships)
                             // Convert [Double] to [Float] to save space, see #1163
                             DataFrame().with(NULL, logNullMemberships.toFloatArray())
                         }.toTypedArray()
-                ).save(nullHypothesisPath)
+                )
+                logNullMembershipsDF.save(nullHypothesisPath)
 
                 // Sanity check: model load
                 ClassificationModel.load<Model>(modelPath)
                 // Sanity check: information load
                 CoverageFitInformation.load(informationPath)
-
+                val logNullMembershipsMap = fitInformation.dataFrameToMap(logNullMembershipsDF, genomeQuery)
+                computedResults = CoverageFitResults(fitInformation, model, logNullMembershipsMap)
                 Tar.compress(p, modelPath.toFile(), informationPath.toFile(), nullHypothesisPath.toFile())
             }
         }
-        LOG.info("Model fit result: $tarPath")
+        return if (computedResults != null) {
+            LOG.info("Model saved: $tarPath")
+            computedResults!!
+        } else {
+            loadResults(genomeQuery, tarPath)
+        }
     }
 
     companion object {
@@ -266,18 +278,21 @@ abstract class CoverageFitExperiment<out Model : ClassificationModel, State : An
         const val NULL = "null"
 
         fun loadResults(genomeQuery: GenomeQuery, tarPath: Path): CoverageFitResults {
+            LOG.info("Loading model: $tarPath")
             return withTempDirectory(tarPath.stem) { dir ->
-                LOG.info("Started tar decompress: $tarPath")
+                LOG.debug("Started tar decompress: $tarPath")
                 Tar.decompress(tarPath, dir.toFile())
 
-                LOG.info("Completed tar decompress and started loading: $tarPath")
+                LOG.debug("Completed tar decompress and started loading: $tarPath")
                 val info = CoverageFitInformation.load(dir / CoverageFitExperiment.INFORMATION_JSON)
                 // Sanity check
                 info.checkGenomeQuery(genomeQuery)
                 val model = ClassificationModel.load<ClassificationModel>(dir / MODEL_JSON)
-                val nullLogMembershipsDF = DataFrame.load(dir / CoverageFitExperiment.NULL_NPZ)
-                LOG.info("Completed loading: $tarPath")
-                return@withTempDirectory CoverageFitResults(info, model, info.dataFrameToMap(nullLogMembershipsDF, genomeQuery))
+                val logNullMembershipsDF = DataFrame.load(dir / CoverageFitExperiment.NULL_NPZ)
+                val logNullMembershipsMap = info.dataFrameToMap(logNullMembershipsDF, genomeQuery)
+
+                LOG.info("Completed loading model: $tarPath")
+                return@withTempDirectory CoverageFitResults(info, model, logNullMembershipsMap)
             }
         }
     }
