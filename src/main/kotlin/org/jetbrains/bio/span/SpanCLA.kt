@@ -1,6 +1,7 @@
 package org.jetbrains.bio.span
 
 import com.google.common.io.ByteStreams
+import joptsimple.BuiltinHelpFormatter
 import joptsimple.OptionParser
 import org.apache.log4j.Level
 import org.apache.log4j.LogManager
@@ -48,7 +49,7 @@ Option                          Description
 -?, -h, --help                  Show help
 -v, --version                   Show version
 analyze                         Peak calling mode
-compare                         Differential peak calling mode (experimental, use at your own risk)
+compare                         Differential peak calling mode, experimental
 """
     private const val ANALYZE = "analyze"
     private const val COMPARE = "compare"
@@ -372,7 +373,7 @@ compare                         Differential peak calling mode (experimental, us
         init {
             acceptsAll(listOf("d", "debug"), "Print all the debug information, used for troubleshooting.")
             acceptsAll(listOf("q", "quiet"), "Turn off output")
-            acceptsAll(listOf("cs", "chrom.sizes"), "Chromosome sizes path, can be downloaded at " +
+            acceptsAll(listOf("cs", "chrom.sizes"), "Chromosome sizes path, can be downloaded at\n" +
                     "http://hgdownload.cse.ucsc.edu/goldenPath/<build>/bigZips/<build>.chrom.sizes")
                     .withRequiredArg().required()
                     .withValuesConvertedBy(PathConverter.exists())
@@ -409,6 +410,7 @@ compare                         Differential peak calling mode (experimental, us
             acceptsAll(listOf("threads"), "Parallelism level")
                     .withRequiredArg()
                     .ofType(Int::class.java)
+            formatHelpWith(BuiltinHelpFormatter(200, 2))
         }
     }
 
