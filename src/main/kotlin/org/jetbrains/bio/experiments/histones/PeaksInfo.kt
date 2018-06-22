@@ -64,10 +64,10 @@ object PeaksInfo {
         if (coverageQueries.isNotEmpty() && coverageQueries.all(::cacheAccessible)) {
             val coverages = coverageQueries.map { it.get() }
             val frip = frip(genomeQuery, peaks, coverages)
-            val signalToNoise = signalToNoise(genomeQuery, peaks, coverages)
             signalBlock += "FRIP: $frip\n"
+            val signalToNoise = signalToNoise(genomeQuery, peaks, coverages)
             if (signalToNoise != null) {
-                signalBlock = "Signal to noise: $signalToNoise\n"
+                signalBlock += "Signal to noise: $signalToNoise\n"
             }
         }
         return srcBlock + peaksLengthsBlock + signalBlock
@@ -118,7 +118,7 @@ object PeaksInfo {
         val desertCoverage = desertRanges.map {
             coverages.map { coverage -> coverage.getBothStrandCoverage(it) }.average()
         }.average()
-        val signalToNoise = 1.0 * topPeaksSummitsCoverage / desertCoverage
+        val signalToNoise = 1.0 * (topPeaksSummitsCoverage + 1e-6) / (desertCoverage + 1e-6)
         LOG.debug("Signal-to-noise ratio $signalToNoise")
         return signalToNoise
     }
@@ -145,13 +145,17 @@ object PeaksInfo {
             }
             val startOffset = RANDOM.nextInt(chromosome.length - RANGE_LENGTH)
             range = ChromosomeRange(startOffset, startOffset + RANGE_LENGTH, chromosome)
-            // Check if we are not too close to real peaks
-            if (lut.nearestElemDist(coords, range.startOffset).first < DESERT_DISTANCE ||
-                    lut.nearestElemDist(coords, range.endOffset).first < DESERT_DISTANCE) {
-                continue
+            if (checkDistance(lut, coords, range.startOffset) && checkDistance(lut, coords, range.endOffset)) {
+                return range
             }
-            return range
         }
+    }
+
+    // Check if we are not too close to real peaks
+    private fun checkDistance(lut: BinaryLut, coords: IntArray, boundary: Int): Boolean {
+        val (low, high) = lut.nearestElemDist(coords, boundary)
+        check(low != -1 && high != -1)
+        return Math.abs(boundary - coords[low]) > DESERT_DISTANCE && Math.abs(boundary - coords[high]) > DESERT_DISTANCE
     }
 
     private fun topSummits(peaks: List<Location>, coverages: List<Coverage>): List<ChromosomeRange> {

@@ -293,8 +293,7 @@ LABELS, FDR, GAP options are ignored.
                 assertIn("Track source: $path", out)
                 assertIn("Peaks Statistics:\n", out)
                 assertIn("FRIP: ", out)
-                // TODO[shpynov] fix me
-                assertIn("Failed to estimate signal-to-noise ratio", out)
+                assertIn("Signal to noise: ", out)
             }
         }
     }
