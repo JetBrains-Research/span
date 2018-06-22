@@ -55,7 +55,7 @@ Option                          Description
 -?, -h, --help                  Show help
 -v, --version                   Show version
 analyze                         Peak calling mode
-compare                         Differential peak calling mode (experimental, use at your own risk)
+compare                         Differential peak calling mode, experimental
 """.trim(), String(stream.toByteArray()).trim())
     }
 
@@ -72,7 +72,7 @@ Option                          Description
 -?, -h, --help                  Show help
 -v, --version                   Show version
 analyze                         Peak calling mode
-compare                         Differential peak calling mode (experimental, use at your own risk)
+compare                         Differential peak calling mode, experimental
 """.trim(), String(stream.toByteArray()).trim())
     }
 
@@ -89,7 +89,7 @@ Option                          Description
 -?, -h, --help                  Show help
 -v, --version                   Show version
 analyze                         Peak calling mode
-compare                         Differential peak calling mode (experimental, use at your own risk)
+compare                         Differential peak calling mode, experimental
         """.trim(), String(stream.toByteArray()).trim())
     }
 
@@ -104,7 +104,7 @@ Option                          Description
 -?, -h, --help                  Show help
 -v, --version                   Show version
 analyze                         Peak calling mode
-compare                         Differential peak calling mode (experimental, use at your own risk)
+compare                         Differential peak calling mode, experimental
 """.trim(), String(stream.toByteArray()).trim())
     }
 
