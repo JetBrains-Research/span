@@ -118,7 +118,6 @@ compare                         Differential peak calling mode (experimental, us
     }
 
 
-
     // sample random coverage and test the same model prediction at least.
     @Test
     fun compareSameTestOrganismTracks() {
@@ -152,6 +151,7 @@ compare                         Differential peak calling mode (experimental, us
                 val out = String(stream.toByteArray())
                 assertIn("""SPAN
 COMMAND:
+LOG:
 WORKING DIR: $it
 THREADS: $THREADS
 TREATMENT1: $path
@@ -220,14 +220,13 @@ OUTPUT: $bedPath
                         "--workdir", it.toString(),
                         "-t", path.toString(),
                         "--threads", THREADS.toString()))
-                Thread.sleep(1000)
                 val out = String(stream.toByteArray())
                 assertIn("""NO output path given, process model fitting only.
 LABELS, FDR, GAP options are ignored.
 """, out)
                 assertIn(".tar: done in ", out)
                 assertIn("Model saved: ", out)
-                assertFalse("Loading model"  in out)
+                assertFalse("Loading model" in out)
                 assertFalse("Completed loading model" in out)
             }
         }
@@ -237,35 +236,34 @@ LABELS, FDR, GAP options are ignored.
     // sample random coverage and test the same model prediction at least.
     @Test
     fun testFilesCreatedByAnalyze() {
-        // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
-        withTempFile("track", ".bed.gz") { path ->
+        withTempDirectory("work") { dir ->
+            // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
+            val path = dir / "track.bed.gz"
 
             sampleCoverage(path, TO, BIN)
             print("Saved sampled track file: $path")
 
-            withTempDirectory("work") { dir ->
-                val chromsizes = Genome["to1"].chromSizesPath.toString()
-                SpanCLA.main(arrayOf("analyze",
-                        "-cs", chromsizes,
-                        "--workdir", dir.toString(),
-                        "-t", path.toString(),
-                        "--threads", THREADS.toString()))
-                Thread.sleep(1000)
-                // Log file
-                assertTrue((dir / "logs" / "span.log").exists)
-                // Coverage test
-                assertTrue((dir / "cache" / "coverage").exists)
-                assertEquals(1, (dir / "cache" / "coverage").glob("*").size)
-                val coverageName = (dir / "cache" / "coverage").glob("*").first().fileName.toString()
-                assertTrue("track[0-9]+\\.bed_200_unique#.*\\.bw".toRegex().matches(coverageName))
-                // Model test
-                assertTrue((dir / "fit").exists)
-                assertEquals(1, (dir / "fit").glob("*").size)
-                val modelName = (dir / "fit").glob("*").first().fileName.toString()
-                assertTrue("span_track[0-9]+\\.bed_200_unique.tar".toRegex().matches(modelName))
-                assertEquals(3, dir.glob("**/*.*").size)
-            }
+            val chromsizes = Genome["to1"].chromSizesPath.toString()
+            SpanCLA.main(arrayOf("analyze",
+                    "-cs", chromsizes,
+                    "--workdir", dir.toString(),
+                    "-t", path.toString(),
+                    "--threads", THREADS.toString()))
+            // Log file
+            assertTrue((dir /  "logs" / "track_200.log").exists)
+            // Coverage test
+            assertTrue((dir / "cache" / "coverage").exists)
+            assertEquals(1, (dir / "cache" / "coverage").glob("*").size)
+            val coverageName = (dir / "cache" / "coverage").glob("*").first().fileName.toString()
+            assertTrue("track_200_unique#.*\\.bw".toRegex().matches(coverageName))
+            // Model test
+            assertTrue((dir / "fit").exists)
+            assertEquals(1, (dir / "fit").glob("*").size)
+            val modelName = (dir / "fit").glob("*").first().fileName.toString()
+            assertTrue("span_track_200_unique.tar".toRegex().matches(modelName))
+            assertEquals(3, dir.glob("**/*.*").size)
         }
+
     }
 
 
@@ -288,7 +286,6 @@ LABELS, FDR, GAP options are ignored.
                         "-t", path.toString(),
                         "--threads", THREADS.toString(),
                         "-o", path.toString()))
-                Thread.sleep(1000)
                 val out = String(stream.toByteArray())
                 assertFalse("""NO output path given, process model fitting only.
 LABELS, FDR, GAP options are ignored.
@@ -301,7 +298,6 @@ LABELS, FDR, GAP options are ignored.
             }
         }
     }
-
 
 
     @Test
@@ -342,6 +338,8 @@ LABELS, FDR, GAP options are ignored.
                         "-t", path.toString()))
                 // Check created bed file
                 assertTrue(Location(1100 * BIN, 1900 * BIN, TO.get().first()) in LocationsMergingList.load(TO, bedPath))
+                // Check correct log file name
+                assertTrue((it / "logs" / "${bedPath.stem}.log").exists)
             }
         }
     }

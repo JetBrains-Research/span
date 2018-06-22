@@ -13,6 +13,7 @@ import org.jetbrains.bio.experiments.tuning.SPAN
 import org.jetbrains.bio.experiments.tuning.TuningResults
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.query.BinnedReadsQuery
+import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.util.*
 import java.io.PrintStream
 import java.nio.file.Path
@@ -96,38 +97,46 @@ compare                         Differential peak calling mode (experimental, us
 
             parse(params) { options ->
                 configureLogging("quiet" in options, "debug" in options)
+
                 val workingDir = options.valueOf("workdir") as Path
-                Logs.addLoggingToFile(workingDir / "logs" / "span.log")
-
-                LOG.info("SPAN ${version()}")
-                LOG.info("COMMAND:\nanalyze ${params.joinToString(" ")}")
-                LOG.info("WORKING DIR: $workingDir")
-
-                configureParallelism(options.valueOf("threads") as Int?)
-                LOG.info("THREADS: ${parallelismLevel()}")
-
+                // We would like to reuse as much caching as possible, resolve all the symbolic links
+                val treatmentPaths = (options.valuesOf("treatment") as List<Path>).map { it.toRealPath() }
+                val controlPaths = (options.valuesOf("control") as List<Path>?)?.map { it.toRealPath() }
+                val outputBed = options.valueOf("output") as Path?
+                val labelsPath = options.valueOf("labels") as Path?
                 val chromSizesPath = options.valueOf("chrom.sizes") as Path
                 val chromosomes = options.valuesOf("only") as List<String>
                 val bin = options.valueOf("bin") as Int
                 val fragment = options.valueOf("fragment") as Int?
                 val gap = options.valueOf("gap") as Int
-
-                // We would like to reuse as much caching as possible, resolve all the symbolic links
-                val treatmentPaths = (options.valuesOf("treatment") as List<Path>).map { it.toRealPath() }
-                val controlPaths = (options.valuesOf("control") as List<Path>?)?.map { it.toRealPath() }
-
-                val genomeQuery = loadGenomeQuery(chromSizesPath, chromosomes)
-
-                val labelsPath = options.valueOf("labels") as Path?
-                val outputBed = options.valueOf("output") as Path?
-
                 val fdr = options.valueOf("fdr") as Double
+                val threads = options.valueOf("threads") as Int?
+
+                // Configure logs path
+                val logPath: Path
+                if (outputBed != null) {
+                    logPath = workingDir / "logs" / "${outputBed.stem}.log"
+                } else {
+                    var ids = listOfNotNull(treatmentPaths, controlPaths).flatMap { it.map { it.stem } }
+                    ids += bin.toString()
+                    if (labelsPath != null) {
+                        ids += labelsPath.stem
+                    }
+                    logPath = workingDir / "logs"/ "${reduceIds(ids)}.log"
+                }
+                Logs.addLoggingToFile(logPath)
+
+                LOG.info("SPAN ${version()}")
+                LOG.info("COMMAND:\nanalyze ${params.joinToString(" ")}")
+                LOG.info("LOG: $logPath")
+                LOG.info("WORKING DIR: $workingDir")
                 LOG.info("TREATMENT: ${treatmentPaths.joinToString(", ", transform = Path::toString)}")
                 if (controlPaths != null && controlPaths.isNotEmpty()) {
                     LOG.info("CONTROL: ${controlPaths.joinToString(", ", transform = Path::toString)}")
                 } else {
                     LOG.info("CONTROL: none")
                 }
+                val genomeQuery = loadGenomeQuery(chromSizesPath, chromosomes)
                 LOG.info("CHROM.SIZES: $chromSizesPath")
                 LOG.info("GENOME: ${genomeQuery.id}")
                 LOG.info("FRAGMENT: $fragment")
@@ -147,6 +156,9 @@ compare                         Differential peak calling mode (experimental, us
                     LOG.info("LABELS, FDR, GAP options are ignored.")
                 }
 
+                configureParallelism(threads)
+                LOG.info("THREADS: ${parallelismLevel()}")
+
                 configurePaths(workingDir, chromSizesPath)
                 val coverageQueries = coverageQueries(genomeQuery, treatmentPaths, controlPaths, bin, fragment)
 
@@ -155,7 +167,7 @@ compare                         Differential peak calling mode (experimental, us
                     if (labelsPath == null) {
                         val peaks = peakCallingExperiment.results.getPeaks(genomeQuery, fdr, gap)
                         savePeaks(peaks, outputBed,
-                                  "peak${if (fragment != null) "_$fragment" else ""}_${bin}_${fdr}_${gap}")
+                                "peak${if (fragment != null) "_$fragment" else ""}_${bin}_${fdr}_${gap}")
                         LOG.info("Saved result to $outputBed")
                         LOG.info("\n" + PeaksInfo.aboutText(genomeQuery,
                                 peaks.map { it.location }.stream(),
@@ -174,7 +186,7 @@ compare                         Differential peak calling mode (experimental, us
                         }
                         results.saveTuningErrors(outputBed.parent / "${outputBed.fileName.stem}_errors.csv")
                         results.saveOptimalResults(outputBed.parent
-                                                           / "${outputBed.fileName.stem}_parameters.csv")
+                                / "${outputBed.fileName.stem}_parameters.csv")
                         val peaks = peakCallingExperiment.results.getPeaks(genomeQuery, optimalFDR, optimalGap)
                         savePeaks(peaks, outputBed, "peak${if (fragment != null) "_$fragment" else ""}_" +
                                 "${bin}_${optimalFDR}_$optimalGap")
@@ -227,30 +239,35 @@ compare                         Differential peak calling mode (experimental, us
                 configureLogging("quiet" in options, "debug" in options)
 
                 val workingDir = options.valueOf("workdir") as Path
-                Logs.addLoggingToFile(workingDir / "logs" / "span.log")
-
-                LOG.info("SPAN ${version()}")
-                LOG.info("COMMAND:\ncompare ${params.joinToString(" ")}")
-                LOG.info("WORKING DIR: $workingDir")
-
-                configureParallelism(options.valueOf("threads") as Int?)
-                LOG.info("THREADS: ${parallelismLevel()}")
-
                 val chromSizesPath = options.valueOf("chrom.sizes") as Path
                 val chromosomes = options.valuesOf("only") as List<String>
-
-                val fragment = options.valueOf("fragment") as Int?
-                val bin = options.valueOf("bin") as Int
-                val gap = options.valueOf("gap") as Int
-                val fdr = options.valueOf("fdr") as Double
-
                 val treatmentPaths1 = options.valuesOf("treatment1") as List<Path>
                 val treatmentPaths2 = options.valuesOf("treatment2") as List<Path>
                 val controlPaths1 = options.valuesOf("control1") as List<Path>?
                 val controlPaths2 = options.valuesOf("control2") as List<Path>?
+                val fragment = options.valueOf("fragment") as Int?
+                val bin = options.valueOf("bin") as Int
+                val gap = options.valueOf("gap") as Int
+                val fdr = options.valueOf("fdr") as Double
                 val outputBed = options.valueOf("output") as Path?
-                val genomeQuery = loadGenomeQuery(chromSizesPath, chromosomes)
+                val threads = options.valueOf("threads") as Int?
 
+                // Configure logs path
+                val logPath: Path
+                if (outputBed != null) {
+                    logPath = workingDir / "logs" / "${outputBed.stem}.log"
+                } else {
+                    var ids = listOfNotNull(treatmentPaths1, controlPaths1, treatmentPaths2, controlPaths2)
+                            .flatMap { it.map { it.stem } }
+                    ids += bin.toString()
+                    logPath = workingDir / "logs" / "${reduceIds(ids)}.log"
+                }
+                Logs.addLoggingToFile(logPath)
+
+                LOG.info("SPAN ${version()}")
+                LOG.info("COMMAND:\ncompare ${params.joinToString(" ")}")
+                LOG.info("LOG: $logPath")
+                LOG.info("WORKING DIR: $workingDir")
                 LOG.info("TREATMENT1: ${treatmentPaths1.joinToString(", ", transform = Path::toString)}")
                 if (controlPaths1 != null && controlPaths1.isNotEmpty()) {
                     LOG.info("CONTROL1: ${controlPaths1.joinToString(", ", transform = Path::toString)}")
@@ -264,6 +281,7 @@ compare                         Differential peak calling mode (experimental, us
                     LOG.info("CONTROL2: none")
                 }
                 LOG.info("CHROM.SIZES: $chromSizesPath")
+                val genomeQuery = loadGenomeQuery(chromSizesPath, chromosomes)
                 LOG.info("GENOME: ${genomeQuery.id}")
                 LOG.info("FRAGMENT: $fragment")
                 LOG.info("BIN: $bin")
@@ -276,6 +294,9 @@ compare                         Differential peak calling mode (experimental, us
                     LOG.info("NO output path given, process model fitting only.")
                     LOG.info("LABELS, FDR, GAP options are ignored.")
                 }
+                configureParallelism(threads)
+                LOG.info("THREADS: ${parallelismLevel()}")
+
                 configurePaths(workingDir, chromSizesPath)
 
                 val coverageQueries1 = coverageQueries(genomeQuery, treatmentPaths1, controlPaths1, bin, fragment)
