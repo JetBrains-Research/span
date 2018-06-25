@@ -30,8 +30,13 @@ object Tar {
                 val entry = fin.nextTarEntry ?: break
                 val outputFile = File(folder, entry.name)
                 if (entry.isDirectory) {
+                    check(!outputFile.exists()) {
+                        "Cannot untar file: Directory already exists '${outputFile.path}'"
+                    }
                     val res = outputFile.mkdirs()
-                    check(res) { "Cannot untar file: Failed to created directory '${outputFile.path}'" }
+                    check(res) {
+                        "Cannot untar file: Failed to created directory '${outputFile.path}'"
+                    }
                 } else {
                     FileOutputStream(outputFile).use { output ->
                         IOUtils.copy(fin, output)
