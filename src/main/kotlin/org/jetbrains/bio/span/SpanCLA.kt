@@ -14,6 +14,7 @@ import org.jetbrains.bio.experiments.tuning.SPAN
 import org.jetbrains.bio.experiments.tuning.TuningResults
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.query.BinnedReadsQuery
+import org.jetbrains.bio.query.readsName
 import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.util.*
 import java.io.PrintStream
@@ -116,12 +117,12 @@ compare                         Differential peak calling mode, experimental
                 // Configure logs path
                 val logPath: Path
                 if (outputBed != null) {
-                    logPath = workingDir / "logs" / "${outputBed.stem}.log"
+                    logPath = workingDir / "logs" / "${outputBed.readsName()}.log"
                 } else {
-                    var ids = listOfNotNull(treatmentPaths, controlPaths).flatMap { it.map { it.stem } }
+                    var ids = listOfNotNull(treatmentPaths, controlPaths).flatMap { it.map { it.readsName() } }
                     ids += bin.toString()
                     if (labelsPath != null) {
-                        ids += labelsPath.stem
+                        ids += labelsPath.readsName()
                     }
                     logPath = workingDir / "logs"/ "${reduceIds(ids)}.log"
                 }
@@ -256,10 +257,10 @@ compare                         Differential peak calling mode, experimental
                 // Configure logs path
                 val logPath: Path
                 if (outputBed != null) {
-                    logPath = workingDir / "logs" / "${outputBed.stem}.log"
+                    logPath = workingDir / "logs" / "${outputBed.readsName()}.log"
                 } else {
                     var ids = listOfNotNull(treatmentPaths1, controlPaths1, treatmentPaths2, controlPaths2)
-                            .flatMap { it.map { it.stem } }
+                            .flatMap { it.map { it.readsName() } }
                     ids += bin.toString()
                     logPath = workingDir / "logs" / "${reduceIds(ids)}.log"
                 }

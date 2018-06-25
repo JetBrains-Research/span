@@ -204,7 +204,7 @@ OUTPUT: $bedPath
 
     // sample random coverage and test the same model prediction at least.
     @Test
-    fun testModelFitTar() {
+    fun testModelFitFile() {
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
         withTempFile("track", ".bed.gz") { path ->
 
@@ -224,7 +224,7 @@ OUTPUT: $bedPath
                 assertIn("""NO output path given, process model fitting only.
 LABELS, FDR, GAP options are ignored.
 """, out)
-                assertIn(".tar: done in ", out)
+                assertIn(".span: done in ", out)
                 assertIn("Model saved: ", out)
                 assertFalse("Loading model" in out)
                 assertFalse("Completed loading model" in out)
@@ -260,7 +260,7 @@ LABELS, FDR, GAP options are ignored.
             assertTrue((dir / "fit").exists)
             assertEquals(1, (dir / "fit").glob("*").size)
             val modelName = (dir / "fit").glob("*").first().fileName.toString()
-            assertTrue("span_track_200_unique.tar".toRegex().matches(modelName))
+            assertTrue("track_200_unique.span".toRegex().matches(modelName))
             assertEquals(3, dir.glob("**/*.*").size)
         }
 
@@ -346,11 +346,11 @@ LABELS, FDR, GAP options are ignored.
 
     companion object {
         private val TO = GenomeQuery("to1")
-        private val BIN = 200
-        private val FDR = 1e-10
-        private val GAP = 10
-        private val THREADS = 1
-        private val FRAGMENT = 150
+        private const val BIN = 200
+        private const val FDR = 1e-10
+        private const val GAP = 10
+        private const val THREADS = 1
+        private const val FRAGMENT = 150
         private val OUT = System.out
         private val ERR = System.err
         private val FORMAT = CSVFormat.TDF
