@@ -190,7 +190,7 @@ abstract class CoverageFitExperiment<out Model : ClassificationModel, State : An
     }
 
     @Suppress("LeakingThis")
-    private val tarPath: Path = experimentPath / "$id.tar"
+    private val tarPath: Path = experimentPath / "$id.span"
 
     private fun calculateModel(): Model {
         MultitaskProgress.addTask(coverageQuery.id, (Fitter.MAX_ITERATIONS / 4).toLong())
@@ -280,10 +280,10 @@ abstract class CoverageFitExperiment<out Model : ClassificationModel, State : An
         fun loadResults(genomeQuery: GenomeQuery, tarPath: Path): CoverageFitResults {
             LOG.info("Loading model: $tarPath")
             return withTempDirectory(tarPath.stem) { dir ->
-                LOG.debug("Started tar decompress: $tarPath")
+                LOG.debug("Started model file decompress: $tarPath")
                 Tar.decompress(tarPath, dir.toFile())
 
-                LOG.debug("Completed tar decompress and started loading: $tarPath")
+                LOG.debug("Completed model file decompress and started loading: $tarPath")
                 val info = CoverageFitInformation.load(dir / CoverageFitExperiment.INFORMATION_JSON)
                 // Sanity check
                 info.checkGenomeQuery(genomeQuery)
@@ -326,7 +326,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any> : Cove
                     binSize, modelFitter, modelClass, states, nullHypothesis)
 
     override val id: String
-        get() = "span_${dataQuery.id}"
+        get() = dataQuery.id
 
     companion object {
         const val X_PREFIX = "x"
@@ -394,7 +394,7 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
                     binSize, modelFitter, modelClass, states, nullHypothesis)
 
     override val id: String
-        get() = "span_diff_${dataQuery.id}"
+        get() = "${dataQuery.id}_diff"
 
     companion object {
         const val TRACK1_PREFIX = "track1_"
