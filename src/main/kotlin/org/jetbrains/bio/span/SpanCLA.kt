@@ -17,6 +17,7 @@ import org.jetbrains.bio.query.BinnedReadsQuery
 import org.jetbrains.bio.query.readsName
 import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.util.*
+import org.jetbrains.bio.util.FileSize.Companion.GB
 import java.io.PrintStream
 import java.nio.file.Path
 
@@ -161,6 +162,8 @@ compare                         Differential peak calling mode, experimental
                 configureParallelism(threads)
                 LOG.info("THREADS: ${parallelismLevel()}")
 
+                checkMemory()
+
                 configurePaths(workingDir, chromSizesPath)
                 val coverageQueries = coverageQueries(genomeQuery, treatmentPaths, controlPaths, bin, fragment)
 
@@ -203,6 +206,18 @@ compare                         Differential peak calling mode, experimental
                     peakCallingExperiment.run()
                 }
             }
+        }
+    }
+
+    private fun checkMemory() {
+        val maxMemory = Runtime.getRuntime().maxMemory()
+        // [Shpynov] This is a hack: since -Xmx4G results in about 3.5G max memory available
+        // The reason of such a discrepancy is the size of the garbage collector's survivor space.
+        // https://stackoverflow.com/questions/23701207/why-do-xmx-and-runtime-maxmemory-not-agree
+        // 3.5 works, however use decreased level to be sure.
+        if (maxMemory < 3 * GB) {
+            LOG.warn("Recommended memory settings ${FileSize(4 * GB)} are not set. Current settings: ${FileSize(maxMemory)}.\n" +
+                    "Please use java memory option '-Xmx4G' to configure memory available for SPAN.")
         }
     }
 
@@ -298,6 +313,8 @@ compare                         Differential peak calling mode, experimental
                 }
                 configureParallelism(threads)
                 LOG.info("THREADS: ${parallelismLevel()}")
+
+                checkMemory()
 
                 configurePaths(workingDir, chromSizesPath)
 
