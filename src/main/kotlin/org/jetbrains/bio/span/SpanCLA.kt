@@ -368,9 +368,9 @@ compare                         Differential peak calling mode, experimental
 
     private fun configurePaths(outputPath: Path, chromSizesPath: Path) {
         outputPath.createDirectories()
-        Configuration.setWorkDir(outputPath)
+        Configuration.experimentsPath = outputPath
+        Configuration.genomesPath = chromSizesPath.parent
         System.getProperties().setProperty("chrom.sizes", chromSizesPath.toString())
-        System.getProperties().setProperty("genomes.path", chromSizesPath.parent.toString())
     }
 
     private fun loadGenomeQuery(chromSizesPath: Path, chromosomes: List<String>): GenomeQuery {

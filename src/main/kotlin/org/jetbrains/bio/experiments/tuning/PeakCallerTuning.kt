@@ -10,13 +10,13 @@ import org.jetbrains.bio.datasets.DataType
 import org.jetbrains.bio.datasets.toDataType
 import org.jetbrains.bio.experiments.DataConfig
 import org.jetbrains.bio.experiments.DataConfigExperiment
-import org.jetbrains.bio.experimentsPath
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.tools.Washu
 import org.jetbrains.bio.util.PathConverter
 import org.jetbrains.bio.util.contains
 import org.jetbrains.bio.util.div
 import java.nio.file.Path
+import java.nio.file.Paths
 
 /**
  * Created by Aleksei Dievskii on 24.10.2017.
@@ -105,8 +105,6 @@ class PeakCallerTuning(configuration: DataConfig,
     companion object {
         internal val LOG = Logger.getLogger(PeakCallerTuning::class.java)
 
-        private val DEFAULT_WORK_DIR = Configuration.defaultWorkDir("benchmark")
-
         @JvmStatic
         fun main(args: Array<String>) {
             Logs.addConsoleAppender(Level.INFO)
@@ -116,7 +114,7 @@ class PeakCallerTuning(configuration: DataConfig,
                         .withRequiredArg().defaultsTo(Washu.PATH.toString())
                         .withValuesConvertedBy(PathConverter.exists())
                 accepts("dir", "Working dir").withRequiredArg()
-                        .defaultsTo(DEFAULT_WORK_DIR.toString())
+                        .defaultsTo(Paths.get(".").toAbsolutePath().toString()) // curr dir
                         .withValuesConvertedBy(PathConverter.exists())
                 accepts("p", "Run SPAN")
                 accepts("r", "Run replicated SPAN")
@@ -165,9 +163,7 @@ class PeakCallerTuning(configuration: DataConfig,
             val test = options.has("t")
 
             // Configuration
-            if (options.has("dir")) {
-                Configuration.setWorkDir(options.valueOf("dir") as Path)
-            }
+            Configuration.setExperimentWorkinDir(options.valueOf("dir") as Path)
 
             LOG.info("CONFIG:\t$config")
             LOG.info("WASHU PATH:\t$washuPath")
