@@ -1,0 +1,44 @@
+{
+  "zero_emission": {
+    "degrees_of_freedom": 0,
+    "emission": 0
+  },
+  "neg_bin_emission_schemes": [
+    {
+      "degrees_of_freedom": 2,
+      "mean": 0.5740416877258986,
+      "failures": 0.19524522159609142
+    },
+    {
+      "degrees_of_freedom": 2,
+      "mean": 2.456680637077443,
+      "failures": 7.759761970565152
+    }
+  ],
+  "num_dimensions": 1,
+  "log_prior_probabilities": [
+    0.0,
+    -57.24368104204006,
+    -468.0641814933199
+  ],
+  "log_transition_probabilities": [
+    [
+      -0.017567524258785383,
+      -4.050474197091784,
+      -43.537483061916596
+    ],
+    [
+      -5.53904928907393,
+      -0.2102602523275614,
+      -1.6836420816082622
+    ],
+    [
+      -44.79410011537671,
+      -1.0577880908977395,
+      -0.42651968924952577
+    ]
+  ],
+  "num_states": 3,
+  "model.class.fqn": "org.jetbrains.bio.statistics.hmm.MLFreeNBHMM",
+  "model.class.format": "1"
+}

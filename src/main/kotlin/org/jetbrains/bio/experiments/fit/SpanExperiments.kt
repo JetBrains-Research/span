@@ -2,18 +2,13 @@ package org.jetbrains.bio.experiments.fit
 
 import com.google.gson.GsonBuilder
 import kotlinx.support.jdk7.use
-import org.jetbrains.bio.big.BedEntry
 import org.jetbrains.bio.coverage.Coverage
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
-import org.jetbrains.bio.genome.containers.GenomeMap
-import org.jetbrains.bio.genome.containers.genomeMap
-import org.jetbrains.bio.io.BedFormat
 import org.jetbrains.bio.query.*
 import org.jetbrains.bio.statistics.*
 import org.jetbrains.bio.statistics.data.DataFrame
 import org.jetbrains.bio.statistics.gson.GSONUtil
-import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.util.*
 import java.nio.file.Path
 import java.util.*
@@ -436,94 +431,6 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
                 override val description: String
                     get() =
                         ("${coverageQuery1.description} compared to ${coverageQuery2.description} bin size: $binSize")
-            }
-        }
-    }
-}
-
-
-/**
- * Sample model was obtained using command line long long ago.
- * Zinbra analyze -i GSM646345_H1_H3K4me3_rep1.hg19.bed.gz -r hg19.2bit
- * Here we take serialized JSON model params for chr22
- */
-private const val NMBHMM_JSON = """
-{
-  "zero_emission": {
-    "degrees_of_freedom": 0,
-    "emission": 0
-  },
-  "neg_bin_emission_schemes": [
-    {
-      "degrees_of_freedom": 2,
-      "mean": 0.36580807929296383,
-      "failures": 4.55287841504805
-    },
-    {
-      "degrees_of_freedom": 2,
-      "mean": 9.113896687733767,
-      "failures": 1.2063636869250343
-    }
-  ],
-  "num_dimensions": 1,
-  "log_prior_probabilities": {
-    "data": [
-      0.0,
-      -458.45231473760214,
-      -678.6316904222185
-    ],
-    "offset": 0,
-    "shape": [3],
-    "strides": [1]
-  },
-  "log_transition_probabilities": {
-    "shape": [3, 3],
-    "offset": 0,
-    "data": [
-      -7.310075786470804E-5,
-      -9.822331256310488,
-      -10.877880685894235,
-      -10.235962387178493,
-      -0.00423689029743457,
-      -5.4745606324923415,
-      -99.54283232484013,
-      -2.243988567781109,
-      -0.11208835590641897
-    ],
-    "strides": [3, 1]
-  },
-  "num_states": 3,
-  "model.class.fqn": "org.jetbrains.bio.statistics.hmm.MLFreeNBHMM",
-  "model.class.format": "1"
-}
-"""
-
-fun sampleCoverage(path: Path, genomeQuery: GenomeQuery, bin: Int) = sampleCoverage(path,
-        genomeQuery, bin,
-        genomeMap(genomeQuery) { BitSet() },
-        genomeMap(genomeQuery) { BitSet() })
-
-fun sampleCoverage(path: Path,
-                   genomeQuery: GenomeQuery, bin: Int,
-                   fulls: GenomeMap<BitSet>, zeroes: GenomeMap<BitSet>) {
-    val model = withTempFile("model", ".json") { p ->
-        p.write(NMBHMM_JSON)
-        ClassificationModel.load<MLFreeNBHMM>(p)
-    }
-
-    BedFormat().print(path).use {
-        genomeQuery.get().forEach { chr ->
-            val bins = chr.length / bin
-            val coverage = model.sample(bins).sliceAsInt("d0")
-            for (b in 0 until bins) {
-                val enriched = fulls[chr][b]
-                val zero = zeroes[chr][b]
-                check(!(enriched && zero)) { "Both enriched and zero for $b" }
-                val c = if (enriched) bin else if (zero) 0 else coverage[b]
-                for (i in 0 until c) {
-                    val start = b * bin + i
-                    it.print(BedEntry(chr.name, start, start + 1))
-                }
             }
         }
     }

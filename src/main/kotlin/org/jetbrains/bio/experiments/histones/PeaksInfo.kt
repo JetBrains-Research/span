@@ -50,7 +50,6 @@ object PeaksInfo {
                     |  Peaks number: ${peaksCount.toLong().formatLongNumber()}
                     |  Peaks summary length : ${peaksLenSum.toLong().formatLongNumber()} bp
                     |  Genome (${genomeQuery.description}) coverage: ${String.format("%.2f%%", coverage)}
-                    |
                     |  Lengths:
                     |    Min: ${(if (peaksLengths.isEmpty()) 0L else StatUtils.min(peaksLengths).toLong()).formatLongNumber()} bp
                     |    Mean: ${(if (peaksLengths.isEmpty()) 0L else StatUtils.mean(peaksLengths).toLong()).formatLongNumber()} bp

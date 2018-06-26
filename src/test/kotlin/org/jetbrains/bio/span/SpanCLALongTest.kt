@@ -7,19 +7,25 @@ import org.apache.log4j.LogManager
 import org.apache.log4j.Logger
 import org.jetbrains.bio.Configuration
 import org.jetbrains.bio.Logs
-import org.jetbrains.bio.experiments.fit.sampleCoverage
+import org.jetbrains.bio.big.BedEntry
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.Location
+import org.jetbrains.bio.genome.containers.GenomeMap
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.genome.containers.genomeMap
+import org.jetbrains.bio.io.BedFormat
 import org.jetbrains.bio.query.readsName
+import org.jetbrains.bio.statistics.ClassificationModel
+import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.util.*
 import org.junit.After
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
+import java.nio.file.Path
 import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -27,6 +33,8 @@ import kotlin.test.assertTrue
 
 class SpanCLALongTest {
 
+    @get:Rule
+    var rule = RetryRule(3)
 
     @Before
     fun setUp() {
@@ -122,13 +130,13 @@ compare                         Differential peak calling mode, experimental
     }
 
 
-    // sample random coverage and test the same model prediction at least.
+    @Retry
     @Test
     fun compareSameTestOrganismTracks() {
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
         withTempFile("track", ".bed.gz") { path ->
 
-            sampleCoverage(path, TO, BIN)
+            sampleCoverage(path, TO, BIN, goodQuality = true)
             print("Saved sampled track file: $path")
 
             withTempDirectory("work") {
@@ -177,12 +185,12 @@ OUTPUT: $bedPath
         }
     }
 
-    // sample random coverage and test the same model prediction at least.
+    @Retry
     @Test
     fun compareSameTestOrganismTracksReplicates() {
         withTempFile("track", ".bed.gz") { path ->
 
-            sampleCoverage(path, TO, BIN)
+            sampleCoverage(path, TO, BIN, goodQuality = true)
             print("Saved sampled track file: $path")
 
             withTempDirectory("work") {
@@ -206,13 +214,13 @@ OUTPUT: $bedPath
         }
     }
 
-    // sample random coverage and test the same model prediction at least.
+    @Retry
     @Test
     fun testModelFitFile() {
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
         withTempFile("track", ".bed.gz") { path ->
 
-            sampleCoverage(path, TO, BIN)
+            sampleCoverage(path, TO, BIN, goodQuality = true)
             print("Saved sampled track file: $path")
 
             withTempDirectory("work") {
@@ -236,15 +244,42 @@ LABELS, FDR, GAP options are ignored.
         }
     }
 
+    @Retry
+    @Test
+    fun testBadTrackQualityWarning() {
+        // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
+        withTempFile("track", ".bed.gz") { path ->
 
-    // sample random coverage and test the same model prediction at least.
+            sampleCoverage(path, TO, BIN, goodQuality = false)
+            print("Saved sampled track file: $path")
+
+            withTempDirectory("work") {
+                val stream = ByteArrayOutputStream()
+                System.setOut(PrintStream(stream))
+                val chromsizes = Genome["to1"].chromSizesPath.toString()
+                SpanCLA.main(arrayOf("analyze",
+                        "-cs", chromsizes,
+                        "--workdir", it.toString(),
+                        "-t", path.toString(),
+                        "--threads", THREADS.toString()))
+                val out = String(stream.toByteArray())
+                assertIn("""WARN Span] After fitting the model, emission's parameter p in LOW state
+is higher than emission's parameter p in HIGH state
+WARN Span] This is generally harmless, but could indicate low quality of data.
+""", out)
+            }
+        }
+    }
+
+
+    @Retry
     @Test
     fun testFilesCreatedByAnalyze() {
         withTempDirectory("work") { dir ->
             // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
             withTempFile("track", ".bed.gz", dir) { path ->
 
-                sampleCoverage(path, TO, BIN)
+                sampleCoverage(path, TO, BIN, goodQuality = true)
                 print("Saved sampled track file: $path")
 
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
@@ -274,30 +309,30 @@ LABELS, FDR, GAP options are ignored.
     }
 
 
-    // sample random coverage and test the same model prediction at least.
+    @Retry
     @Test
     fun testPeaksStats() {
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
         withTempFile("track", ".bed.gz") { path ->
 
-            sampleCoverage(path, TO, BIN)
-            print("Saved sampled track file: $path")
+            sampleCoverage(path, TO, BIN, goodQuality = true)
+            println("Saved sampled track file: $path")
 
             withTempDirectory("work") {
                 val stream = ByteArrayOutputStream()
                 System.setOut(PrintStream(stream))
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
-                SpanCLA.main(arrayOf("analyze",
-                        "-cs", chromsizes,
+                val peaksPath = path.parent / "${path.stem}.peak"
+                SpanCLA.main(arrayOf("analyze", "-cs", chromsizes,
                         "--workdir", it.toString(),
                         "-t", path.toString(),
                         "--threads", THREADS.toString(),
-                        "-o", path.toString()))
+                        "-o", peaksPath.toString()))
                 val out = String(stream.toByteArray())
                 assertFalse("""NO output path given, process model fitting only.
-LABELS, FDR, GAP options are ignored.
-""" in out)
-                assertIn("Track source: $path", out)
+    LABELS, FDR, GAP options are ignored.
+    """ in out)
+                assertIn("Track source: $peaksPath", out)
                 assertIn("Peaks Statistics:\n", out)
                 assertIn("FRIP: ", out)
                 assertIn("Signal to noise: ", out)
@@ -306,6 +341,7 @@ LABELS, FDR, GAP options are ignored.
     }
 
 
+    @Retry
     @Test
     fun analyzeSampledEnrichment() {
         withTempFile("track", ".bed.gz") { path ->
@@ -324,7 +360,7 @@ LABELS, FDR, GAP options are ignored.
                 }
                 zeroes
             }
-            sampleCoverage(path, TO, BIN, enrichedRegions, zeroRegions)
+            sampleCoverage(path, TO, BIN, enrichedRegions, zeroRegions, goodQuality = true)
             println("Saved sampled track file: $path")
             withTempDirectory("work") {
                 val bedPath = it / "result.bed"
@@ -368,6 +404,43 @@ LABELS, FDR, GAP options are ignored.
             // Process Windows with different line separators correctly.
             for (s in substring.lines()) {
                 assertTrue(s in fullString, "Expected <$s> to be in <$fullString>.")
+            }
+        }
+
+
+        fun sampleCoverage(path: Path, genomeQuery: GenomeQuery, bin: Int, goodQuality: Boolean) =
+                sampleCoverage(path,
+                        genomeQuery, bin,
+                        genomeMap(genomeQuery) { BitSet() },
+                        genomeMap(genomeQuery) { BitSet() },
+                        goodQuality)
+
+        fun sampleCoverage(path: Path,
+                           genomeQuery: GenomeQuery, bin: Int,
+                           fulls: GenomeMap<BitSet>, zeroes: GenomeMap<BitSet>,
+                           goodQuality: Boolean) {
+            withResource(SpanCLALongTest::class.java,
+                    if (goodQuality)
+                        "GSM646345_H1_H3K4me3_rep1_hg19_model.json"
+                    else
+                        "yd6_k27ac_failed_model.json") { modelPath ->
+                val model = ClassificationModel.load<MLFreeNBHMM>(modelPath)
+                BedFormat().print(path).use {
+                    genomeQuery.get().forEach { chr ->
+                        val bins = chr.length / bin
+                        val coverage = model.sample(bins).sliceAsInt("d0")
+                        for (b in 0 until bins) {
+                            val enriched = fulls[chr][b]
+                            val zero = zeroes[chr][b]
+                            check(!(enriched && zero)) { "Both enriched and zero for $b" }
+                            val c = if (enriched) bin else if (zero) 0 else coverage[b]
+                            for (i in 0 until c) {
+                                val start = b * bin + i
+                                it.print(BedEntry(chr.name, start, start + 1))
+                            }
+                        }
+                    }
+                }
             }
         }
     }
