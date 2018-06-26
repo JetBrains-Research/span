@@ -47,9 +47,6 @@ class SpanCLALongTest {
     @After
     fun tearDown() {
         SpanCLA.ignoreConfigurePaths = false
-        if (LogManager.getRootLogger().getAppender(Logs.CONSOLE_APPENDER) != null) {
-            LogManager.getRootLogger().removeAppender(Logs.CONSOLE_APPENDER)
-        }
         System.setOut(OUT)
         System.setErr(ERR)
     }
@@ -143,6 +140,9 @@ compare                         Differential peak calling mode, experimental
                 val bedPath = it / "peaks.bed"
                 val stream = ByteArrayOutputStream()
                 System.setOut(PrintStream(stream))
+                // Update with changed System.out
+                Logs.addConsoleAppender(Level.INFO)
+
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 SpanCLA.main(arrayOf("compare",
                         "-cs", chromsizes,
@@ -226,6 +226,9 @@ OUTPUT: $bedPath
             withTempDirectory("work") {
                 val stream = ByteArrayOutputStream()
                 System.setOut(PrintStream(stream))
+                // Update with changed System.out
+                Logs.addConsoleAppender(Level.INFO)
+
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 SpanCLA.main(arrayOf("analyze",
                         "-cs", chromsizes,
@@ -256,6 +259,9 @@ LABELS, FDR, GAP options are ignored.
             withTempDirectory("work") {
                 val stream = ByteArrayOutputStream()
                 System.setOut(PrintStream(stream))
+                // Update with changed System.out
+                Logs.addConsoleAppender(Level.INFO)
+
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 SpanCLA.main(arrayOf("analyze",
                         "-cs", chromsizes,
@@ -321,6 +327,9 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
             withTempDirectory("work") {
                 val stream = ByteArrayOutputStream()
                 System.setOut(PrintStream(stream))
+                // Update with changed System.out
+                Logs.addConsoleAppender(Level.INFO)
+
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 val peaksPath = path.parent / "${path.stem}.peak"
                 SpanCLA.main(arrayOf("analyze", "-cs", chromsizes,
