@@ -370,6 +370,7 @@ compare                         Differential peak calling mode, experimental
         outputPath.createDirectories()
         Configuration.experimentsPath = outputPath
         Configuration.genomesPath = chromSizesPath.parent
+        // See [Genome#chromSizesPath] for details
         System.getProperties().setProperty("chrom.sizes", chromSizesPath.toString())
     }
 

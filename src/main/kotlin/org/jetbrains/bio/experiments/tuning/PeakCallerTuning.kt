@@ -163,7 +163,7 @@ class PeakCallerTuning(configuration: DataConfig,
             val test = options.has("t")
 
             // Configuration
-            Configuration.setExperimentWorkinDir(options.valueOf("dir") as Path)
+            Configuration.setExperimentWorkingDir(options.valueOf("dir") as Path)
 
             LOG.info("CONFIG:\t$config")
             LOG.info("WASHU PATH:\t$washuPath")
