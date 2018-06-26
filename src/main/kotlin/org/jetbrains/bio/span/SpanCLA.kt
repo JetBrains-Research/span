@@ -31,7 +31,7 @@ import java.nio.file.Path
  */
 @Suppress("UNCHECKED_CAST")
 object SpanCLA {
-    private val LOG = Logger.getLogger(SpanCLA::class.java)
+    private val LOG: Logger
 
     /**
      * Shpynov:
@@ -42,8 +42,12 @@ object SpanCLA {
     @VisibleForTesting
     internal var ignoreConfigurePaths: Boolean = false
 
-    // Load build properties
     init {
+        // Add appender before initializing logger to avoid Log4j warnings
+        Logs.addConsoleAppender(Level.INFO)
+        LOG = Logger.getLogger(SpanCLA::class.java)
+
+        // Load build properties
         val resource = SpanCLA::class.java.getResource("/span.properties")
         if (resource != null) {
             resource.openStream().use { System.getProperties().load(it) }
@@ -68,7 +72,6 @@ compare                         Differential peak calling mode, experimental
 
     @JvmStatic
     fun main(args: Array<String>) {
-        Logs.addConsoleAppender(Level.INFO)
         if (args.isEmpty()) {
             System.err.println("ERROR: No command given; $ANALYZE or $COMPARE expected.")
             System.err.println(HELP)
