@@ -1,5 +1,6 @@
 package org.jetbrains.bio.span
 
+import com.google.common.annotations.VisibleForTesting
 import com.google.common.io.ByteStreams
 import joptsimple.BuiltinHelpFormatter
 import joptsimple.OptionParser
@@ -31,6 +32,15 @@ import java.nio.file.Path
 @Suppress("UNCHECKED_CAST")
 object SpanCLA {
     private val LOG = Logger.getLogger(SpanCLA::class.java)
+
+    /**
+     * Shpynov:
+     * Since [Configuration] allows to configure experimentsPath only once,
+     * SpanCLA fails to setup correct working directory, if launched within the same process.
+     * This is a HACK.
+     */
+    @VisibleForTesting
+    internal var ignoreConfigurePaths: Boolean = false
 
     // Load build properties
     init {
@@ -367,6 +377,10 @@ compare                         Differential peak calling mode, experimental
     }
 
     private fun configurePaths(outputPath: Path, chromSizesPath: Path) {
+        if (ignoreConfigurePaths) {
+            LOG.debug("IGNORE configurePaths")
+            return
+        }
         outputPath.createDirectories()
         Configuration.experimentsPath = outputPath
         Configuration.genomesPath = chromSizesPath.parent

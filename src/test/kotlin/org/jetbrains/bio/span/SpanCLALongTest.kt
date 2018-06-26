@@ -5,6 +5,7 @@ import org.apache.commons.csv.CSVFormat
 import org.apache.log4j.Level
 import org.apache.log4j.LogManager
 import org.apache.log4j.Logger
+import org.jetbrains.bio.Configuration
 import org.jetbrains.bio.Logs
 import org.jetbrains.bio.experiments.fit.sampleCoverage
 import org.jetbrains.bio.genome.Genome
@@ -12,6 +13,7 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.Location
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.genome.containers.genomeMap
+import org.jetbrains.bio.query.readsName
 import org.jetbrains.bio.util.*
 import org.junit.After
 import org.junit.Before
@@ -31,10 +33,12 @@ class SpanCLALongTest {
         (LogManager.getCurrentLoggers().toList() + listOf(LogManager.getRootLogger())).forEach {
             (it as Logger).level = Level.INFO
         }
+        SpanCLA.ignoreConfigurePaths = true
     }
 
     @After
     fun tearDown() {
+        SpanCLA.ignoreConfigurePaths = false
         if (LogManager.getRootLogger().getAppender(Logs.CONSOLE_APPENDER) != null) {
             LogManager.getRootLogger().removeAppender(Logs.CONSOLE_APPENDER)
         }
@@ -238,32 +242,35 @@ LABELS, FDR, GAP options are ignored.
     fun testFilesCreatedByAnalyze() {
         withTempDirectory("work") { dir ->
             // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
-            val path = dir / "track.bed.gz"
+            withTempFile("track", ".bed.gz", dir) { path ->
 
-            sampleCoverage(path, TO, BIN)
-            print("Saved sampled track file: $path")
+                sampleCoverage(path, TO, BIN)
+                print("Saved sampled track file: $path")
 
-            val chromsizes = Genome["to1"].chromSizesPath.toString()
-            SpanCLA.main(arrayOf("analyze",
-                    "-cs", chromsizes,
-                    "--workdir", dir.toString(),
-                    "-t", path.toString(),
-                    "--threads", THREADS.toString()))
-            // Log file
-            assertTrue((dir /  "logs" / "track_200.log").exists)
-            // Coverage test
-            assertTrue((dir / "cache" / "coverage").exists)
-            assertEquals(1, (dir / "cache" / "coverage").glob("*").size)
-            val coverageName = (dir / "cache" / "coverage").glob("*").first().fileName.toString()
-            assertTrue("track_200_unique#.*\\.bw".toRegex().matches(coverageName))
-            // Model test
-            assertTrue((dir / "fit").exists)
-            assertEquals(1, (dir / "fit").glob("*").size)
-            val modelName = (dir / "fit").glob("*").first().fileName.toString()
-            assertTrue("track_200_unique.span".toRegex().matches(modelName))
-            assertEquals(3, dir.glob("**/*.*").size)
+                val chromsizes = Genome["to1"].chromSizesPath.toString()
+                SpanCLA.main(arrayOf("analyze",
+                        "-cs", chromsizes,
+                        "--workdir", dir.toString(),
+                        "-t", path.toString(),
+                        "--threads", THREADS.toString()))
+
+                // Check that log file was created correctly
+                assertTrue((dir / "logs" / "${path.readsName()}_200.log").exists)
+
+                /**
+                 * Shpynov: since [Configuration] allows only single initialization of experimentPath,
+                 * [SpanCLA] uses ignoreConfigurePaths variable to ignore it
+                 */
+                val dir = Configuration.experimentsPath
+
+                // Coverage test
+                assertTrue((dir / "cache" / "coverage").exists)
+                assertTrue((dir / "cache" / "coverage").glob("{${path.readsName()}}_200_unique#*.bw").isNotEmpty())
+                // Model test
+                assertTrue((dir / "fit").exists)
+                assertTrue((dir / "fit" / "${path.readsName()}_200_unique.span").exists)
+            }
         }
-
     }
 
 
