@@ -23,16 +23,19 @@ object Tar {
         }
     }
 
-    fun decompress(input: InputStream, folder: File) {
+    fun decompress(input: InputStream, folder: File, skipExisting: Boolean = false) {
         folder.mkdirs()
         TarArchiveInputStream(input).use { fin ->
             while (true) {
                 val entry = fin.nextTarEntry ?: break
                 val outputFile = File(folder, entry.name)
-                if (entry.isDirectory) {
-                    check(!outputFile.exists()) {
-                        "Cannot untar file: Directory already exists '${outputFile.path}'"
+                if (outputFile.exists()) {
+                    if (skipExisting) {
+                        continue
                     }
+                    error("Cannot untar file: File already exists '${outputFile.path}'")
+                }
+                if (entry.isDirectory) {
                     val res = outputFile.mkdirs()
                     check(res) {
                         "Cannot untar file: Failed to created directory '${outputFile.path}'"
