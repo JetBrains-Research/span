@@ -16,25 +16,25 @@ import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.io.BedFormat
 import org.jetbrains.bio.query.readsName
+import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.util.*
 import org.junit.After
 import org.junit.Before
-import org.junit.Rule
 import org.junit.Test
 import java.io.ByteArrayOutputStream
+import java.io.FileReader
 import java.io.PrintStream
 import java.nio.file.Path
+import java.security.Permission
 import java.util.*
 import kotlin.test.assertEquals
+import kotlin.test.assertFails
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SpanCLALongTest {
-
-    @get:Rule
-    var rule = RetryRule(3)
 
     @Before
     fun setUp() {
@@ -127,7 +127,6 @@ compare                         Differential peak calling mode, experimental
     }
 
 
-    @Retry
     @Test
     fun compareSameTestOrganismTracks() {
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
@@ -185,7 +184,6 @@ OUTPUT: $bedPath
         }
     }
 
-    @Retry
     @Test
     fun compareSameTestOrganismTracksReplicates() {
         withTempFile("track", ".bed.gz") { path ->
@@ -214,7 +212,6 @@ OUTPUT: $bedPath
         }
     }
 
-    @Retry
     @Test
     fun testModelFitFile() {
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
@@ -247,7 +244,6 @@ LABELS, FDR, GAP options are ignored.
         }
     }
 
-    @Retry
     @Test
     fun testBadTrackQualityWarning() {
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
@@ -278,7 +274,6 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
     }
 
 
-    @Retry
     @Test
     fun testFilesCreatedByAnalyze() {
         withTempDirectory("work") { dir ->
@@ -315,7 +310,6 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
     }
 
 
-    @Retry
     @Test
     fun testPeaksStats() {
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
@@ -350,7 +344,6 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
     }
 
 
-    @Retry
     @Test
     fun analyzeSampledEnrichment() {
         withTempFile("track", ".bed.gz") { path ->
@@ -392,6 +385,49 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
                 // Check correct log file name
                 assertTrue((it / "logs" / "${bedPath.stem}.log").exists)
             }
+        }
+    }
+
+    @Test
+    fun analyzeEmptyCoverage() {
+        withTempFile("track", ".bed.gz") { path ->
+            val enrichedRegions = genomeMap(TO) { BitSet() }
+
+            val zeroRegions = genomeMap(TO) {
+                val zeroes = BitSet()
+                zeroes.set(0, it.length / BIN)
+                zeroes
+            }
+
+            sampleCoverage(path, TO, BIN, enrichedRegions, zeroRegions, goodQuality = true)
+            println("Saved sampled track file: $path")
+
+            val securityManager = object : SecurityManager() {
+                override fun checkPermission(permission: Permission) {
+                    if ("exitVM" in permission.name) {
+                        throw SecurityException()
+                    }
+                }
+            }
+
+            withTempDirectory("work") {
+                withSecurityManager(securityManager) {
+                    assertFails {
+                        SpanCLA.main(arrayOf("analyze",
+                                             "-cs", Genome["to1"].chromSizesPath.toString(),
+                                             "-w", it.toString(),
+                                             "-t", path.toString()))
+                    }
+                }
+
+                // Check correct log file name
+                val logPath = it / "logs" / "${reduceIds(listOf(path.readsName()))}_${BIN}.log"
+                assertTrue(logPath.exists)
+                assertIn("Model can't be trained on empty coverage, exiting.",
+                         FileReader(logPath.toFile()).use { it.readText() })
+            }
+            // we have unfinished tracked tasks which will never be complete, let's drop them
+            MultitaskProgress.clear()
         }
     }
 
@@ -452,5 +488,13 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
                 }
             }
         }
+
+        inline fun withSecurityManager(securityManager: SecurityManager, block: () -> Any) {
+            val oldManager = System.getSecurityManager()
+            System.setSecurityManager(securityManager)
+            block.invoke()
+            System.setSecurityManager(oldManager)
+        }
+
     }
 }
