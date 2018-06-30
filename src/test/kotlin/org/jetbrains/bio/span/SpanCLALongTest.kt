@@ -414,12 +414,12 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
 
             withTempDirectory("work") {
                 withSecurityManager(securityManager) {
-                    assertFails {
+                    try {
                         SpanCLA.main(arrayOf("analyze",
                                              "-cs", Genome["to1"].chromSizesPath.toString(),
                                              "-w", it.toString(),
                                              "-t", path.toString()))
-                    }
+                    } catch (ignore: Throwable) { }
                 }
 
                 // Check correct log file name
