@@ -49,6 +49,8 @@ class SpanCLALongTest {
         SpanCLA.ignoreConfigurePaths = false
         System.setOut(OUT)
         System.setErr(ERR)
+        // we might have unfinished tracked tasks which will never be complete, let's drop them
+        MultitaskProgress.clear()
     }
 
     @Test
@@ -426,8 +428,6 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
                 assertIn("Model can't be trained on empty coverage, exiting.",
                          FileReader(logPath.toFile()).use { it.readText() })
             }
-            // we have unfinished tracked tasks which will never be complete, let's drop them
-            MultitaskProgress.clear()
         }
     }
 
