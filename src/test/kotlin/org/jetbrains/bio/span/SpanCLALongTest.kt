@@ -473,7 +473,13 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
                 BedFormat().print(path).use {
                     genomeQuery.get().forEach { chr ->
                         val bins = chr.length / bin
-                        val coverage = model.sample(bins).sliceAsInt("d0")
+                        val coverage = run {
+                            while (true) {
+                                val sample = model.sample(bins).sliceAsInt("d0")
+                                if (sample.any { it != 0 }) return@run sample
+                            }
+                            return@run IntArray(0)
+                        }
                         for (b in 0 until bins) {
                             val enriched = fulls[chr][b]
                             val zero = zeroes[chr][b]
