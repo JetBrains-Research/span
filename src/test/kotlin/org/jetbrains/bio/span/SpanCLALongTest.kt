@@ -27,10 +27,8 @@ import java.io.ByteArrayOutputStream
 import java.io.FileReader
 import java.io.PrintStream
 import java.nio.file.Path
-import java.security.Permission
 import java.util.*
 import kotlin.test.assertEquals
-import kotlin.test.assertFails
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -404,28 +402,19 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
             sampleCoverage(path, TO, BIN, enrichedRegions, zeroRegions, goodQuality = true)
             println("Saved sampled track file: $path")
 
-            val securityManager = object : SecurityManager() {
-                override fun checkPermission(permission: Permission) {
-                    if ("exitVM" in permission.name) {
-                        throw SecurityException()
-                    }
-                }
-            }
-
             withTempDirectory("work") {
-                withSecurityManager(securityManager) {
-                    try {
-                        SpanCLA.main(arrayOf("analyze",
-                                             "-cs", Genome["to1"].chromSizesPath.toString(),
-                                             "-w", it.toString(),
-                                             "-t", path.toString()))
-                    } catch (ignore: Throwable) { }
+                /* Turn suppressExit on, otherwise Span would call System.exit */
+                withSystemProperty("joptsimple.suppressExit", "true") {
+                    SpanCLA.main(arrayOf("analyze",
+                                         "-cs", Genome["to1"].chromSizesPath.toString(),
+                                         "-w", it.toString(),
+                                         "-t", path.toString()))
                 }
 
                 // Check correct log file name
                 val logPath = it / "logs" / "${reduceIds(listOf(path.readsName()))}_${BIN}.log"
                 assertTrue(logPath.exists)
-                assertIn("Model can't be trained on empty coverage, exiting.",
+                assertIn("ERROR: Model can't be trained on empty coverage, exiting.",
                          FileReader(logPath.toFile()).use { it.readText() })
             }
         }
@@ -495,11 +484,13 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
             }
         }
 
-        inline fun withSecurityManager(securityManager: SecurityManager, block: () -> Any) {
-            val oldManager = System.getSecurityManager()
-            System.setSecurityManager(securityManager)
-            block.invoke()
-            System.setSecurityManager(oldManager)
+        inline fun withSystemProperty(property: String, value: String, block: () -> Any) {
+            val oldValue = System.setProperty(property, value)
+            try {
+                block.invoke()
+            } finally {
+                if (oldValue != null) System.setProperty(property, oldValue) else System.clearProperty(property)
+            }
         }
 
     }
