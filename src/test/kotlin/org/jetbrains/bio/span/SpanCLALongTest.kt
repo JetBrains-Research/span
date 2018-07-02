@@ -399,6 +399,13 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
                 zeroes
             }
 
+            val outStream = ByteArrayOutputStream()
+            val errStream = ByteArrayOutputStream()
+            System.setOut(PrintStream(outStream))
+            System.setErr(PrintStream(errStream))
+            // Update with changed System.out
+            Logs.addConsoleAppender(Level.INFO)
+
             sampleCoverage(path, TO, BIN, enrichedRegions, zeroRegions, goodQuality = true)
             println("Saved sampled track file: $path")
 
@@ -411,11 +418,17 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
                                          "-t", path.toString()))
                 }
 
+                val out = String(outStream.toByteArray())
+                val err = String(outStream.toByteArray())
+
                 // Check correct log file name
                 val logPath = it / "logs" / "${reduceIds(listOf(path.readsName()))}_${BIN}.log"
                 assertTrue(logPath.exists)
-                assertIn("ERROR: Model can't be trained on empty coverage, exiting.",
-                         FileReader(logPath.toFile()).use { it.readText() })
+                val log = FileReader(logPath.toFile()).use { it.readText() }
+                val errorMessage = "Model can't be trained on empty coverage, exiting."
+                assertIn(errorMessage, log)
+                assertIn(errorMessage, out)
+                assertIn(errorMessage, err)
             }
         }
     }
