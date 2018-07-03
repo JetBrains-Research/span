@@ -419,7 +419,7 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
                 }
 
                 val out = String(outStream.toByteArray())
-                val err = String(outStream.toByteArray())
+                val err = String(errStream.toByteArray())
 
                 // Check correct log file name
                 val logPath = it / "logs" / "${reduceIds(listOf(path.readsName()))}_${BIN}.log"
