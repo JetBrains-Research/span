@@ -468,11 +468,11 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
                     genomeQuery.get().forEach { chr ->
                         val bins = chr.length / bin
                         val coverage = run {
-                            while (true) {
+                            (0..9).forEach {
                                 val sample = model.sample(bins).sliceAsInt("d0")
                                 if (sample.any { it != 0 }) return@run sample
                             }
-                            return@run IntArray(0)
+                            throw IllegalStateException("Couldn't sample coverage.")
                         }
                         for (b in 0 until bins) {
                             val enriched = fulls[chr][b]
