@@ -74,7 +74,7 @@ object PeaksInfo {
 
     private fun cacheAccessible(query: InputQuery<Coverage>) =
             (query is ReadsQuery && query.npzPath().isAccessible()) ||
-                    (query is BinnedReadsQuery && query.bwPath(query.path).isAccessible())
+                    (query is BinnedReadsQuery && query.bwPath().isAccessible())
 
 
     private fun frip(genomeQuery: GenomeQuery, peakLocations: List<Location>, coverages: List<Coverage>): Double {
