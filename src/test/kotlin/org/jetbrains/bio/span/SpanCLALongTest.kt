@@ -17,6 +17,7 @@ import org.jetbrains.bio.io.BedFormat
 import org.jetbrains.bio.query.readsName
 import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.statistics.ClassificationModel
+import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.util.*
 import org.junit.After
@@ -39,6 +40,7 @@ class SpanCLALongTest {
             (it as Logger).level = Level.INFO
         }
         SpanCLA.ignoreConfigurePaths = true
+        Sampling.RANDOM_DATA_GENERATOR.randomGenerator.setSeed(1234L)
     }
 
     @After
