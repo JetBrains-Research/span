@@ -14,6 +14,7 @@ import org.jetbrains.bio.genome.containers.GenomeMap
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.io.BedFormat
+import org.jetbrains.bio.query.BinnedReadsQuery
 import org.jetbrains.bio.query.readsName
 import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.statistics.ClassificationModel
@@ -425,6 +426,47 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
                 assertIn(errorMessage, out)
                 assertIn(errorMessage, err)
             }
+        }
+    }
+
+    @Test
+    fun compareBedToBigWig() {
+        withTempFile("track", ".bed.gz") { inputBedPath ->
+            /*val enrichedRegions = genomeMap(TO) {
+                val enriched = BitSet()
+                if (it.name == "chr1") {
+                    enriched.set(1000, 8000)
+                }
+                enriched
+            }
+
+            val zeroRegions = genomeMap(TO) { BitSet() }*/
+
+            sampleCoverage(inputBedPath, TO, BIN, /*enrichedRegions, zeroRegions,*/ goodQuality = true)
+            println("Saved sampled track file: $inputBedPath")
+
+            withTempDirectory("work") { dir ->
+                val outputBedPath = dir / "outputBed.peaks"
+                SpanCLA.main(arrayOf("analyze",
+                                     "-cs", Genome["to1"].chromSizesPath.toString(),
+                                     "-w", dir.toString(),
+                                     "-t", inputBedPath.toString(),
+                                     "-fdr", FDR.toString(),
+                                     "-o", outputBedPath.toString()))
+                val inputBWPath = BinnedReadsQuery(TO, inputBedPath, Span.BIN).bwPath()
+                val outputBWPath = dir / "outputBW.peaks"
+                SpanCLA.main(arrayOf("analyze",
+                                     "-cs", Genome["to1"].chromSizesPath.toString(),
+                                     "-w", dir.toString(),
+                                     "-t", inputBWPath.toString(),
+                                     "-fdr", FDR.toString(),
+                                     "-o", outputBWPath.toString()))
+                val bedOutput = FileReader(outputBedPath.toFile()).use { it.readText() }
+                val bwOutput = FileReader(outputBWPath.toFile()).use { it.readText() }
+                assertEquals(bedOutput, bwOutput,
+                             "Span produced different results for raw and binned coverage.")
+            }
+
         }
     }
 
