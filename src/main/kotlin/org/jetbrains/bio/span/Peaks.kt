@@ -2,7 +2,6 @@ package org.jetbrains.bio.span
 
 import com.google.common.collect.ComparisonChain
 import org.apache.commons.csv.CSVFormat
-import org.apache.commons.math3.stat.descriptive.rank.Median
 import org.apache.log4j.Logger
 import org.jetbrains.bio.experiments.fit.*
 import org.jetbrains.bio.genome.*
@@ -74,11 +73,10 @@ internal fun getChromosomePeaks(logNullMemberships: F64Array,
     val enrichedBins = BitterSet(logNullMemberships.size)
     0.until(enrichedBins.size()).filter { qvalues[it] < fdr }.forEach(enrichedBins::set)
 
-    val median = Median()
     return enrichedBins.aggregate(gap).map { (i, j) ->
         val set = (i until j).filter { qvalues[it] < fdr }
-        val pvalue = median.evaluate(set.map { logNullMemberships[it] }.toDoubleArray())
-        val qvalue = median.evaluate(set.map { qvalues[it] }.toDoubleArray())
+        val pvalue = set.map { logNullMemberships[it] }.median()
+        val qvalue = set.map { qvalues[it] }.median()
         val start = offsets[i]
         val end = if (j < offsets.size) offsets[j] else chromosome.length
         // Score should be proportional to length of peak and average original q-value
@@ -151,5 +149,15 @@ chromosome, start, end, name, score, strand, coverage/foldchange, -log(pvalue), 
                     it.mlogpvalue.toString(),
                     it.mlogqvalue.toString())
         }
+    }
+}
+
+fun List<Double>.median(): Double {
+    if (isEmpty()) throw IllegalStateException("Can't compute median for an empty list.")
+    return sorted().let {
+        if (it.size % 2 != 0)
+            it[it.size / 2]
+        else
+            (it[it.size / 2 - 1] + it[it.size / 2]) * 0.5
     }
 }
