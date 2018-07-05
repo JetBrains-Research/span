@@ -95,13 +95,13 @@ compare                         Differential peak calling mode, experimental
     private fun analyze(params: Array<String>) {
         with(getOptionParser()) {
             acceptsAll(listOf("t", "treatment"),
-                    "ChIP-seq treatment file. bam, bed, or .bed.gz file;\n" +
+                    "ChIP-seq treatment file. bam, bed, .bed.gz or bigWig file;\n" +
                             "If multiple files are given, treated as replicates.")
                     .withRequiredArg().required()
                     .withValuesSeparatedBy(",")
                     .withValuesConvertedBy(PathConverter.exists())
             acceptsAll(listOf("c", "control"),
-                    "Control file. bam, bed or bed.gz file;\n" +
+                    "Control file. bam, bed, bed.gz or bigWig file;\n" +
                             "Single control file or separate file per each\n" +
                             "treatment file required.")
                     .withRequiredArg()
@@ -238,13 +238,13 @@ compare                         Differential peak calling mode, experimental
     private fun compare(params: Array<String>) {
         with(getOptionParser()) {
             acceptsAll(listOf("t1", "treatment1"),
-                    "ChIP-seq treatment file 1. bam, bed, or .bed.gz file;\n" +
+                    "ChIP-seq treatment file 1. bam, bed, .bed.gz or bigWig file;\n" +
                             "If multiple files are given, treated as replicates.")
                     .withRequiredArg().required()
                     .withValuesSeparatedBy(",")
                     .withValuesConvertedBy(PathConverter.exists())
             acceptsAll(listOf("c1", "control1"),
-                    "Control file 1. bam, bed or bed.gz file;\n" +
+                    "Control file 1. bam, bed, .bed.gz or bigWig file;\n" +
                             "Single control file or separate file per each\n" +
                             "treatment file required.")
                     .withRequiredArg()
@@ -252,13 +252,13 @@ compare                         Differential peak calling mode, experimental
                     .withValuesConvertedBy(PathConverter.exists())
 
             acceptsAll(listOf("t2", "treatment2"),
-                    "ChIP-seq treatment file 2. bam, bed, or .bed.gz file;\n" +
+                    "ChIP-seq treatment file 2. bam, bed, .bed.gz or bigWig file;\n" +
                             "If multiple files are given, treated as replicates.")
                     .withRequiredArg().required()
                     .withValuesSeparatedBy(",")
                     .withValuesConvertedBy(PathConverter.exists())
             acceptsAll(listOf("c2", "control2"),
-                    "Control file 2. bam, bed or bed.gz file;\n" +
+                    "Control file 2. bam, bed, .bed.gz or bigWig file;\n" +
                             "Single control file or separate file per each\n" +
                             "treatment file required.")
                     .withRequiredArg()
