@@ -3,6 +3,7 @@ package org.jetbrains.bio.experiments.histones
 import org.apache.commons.math3.stat.StatUtils
 import org.apache.log4j.Logger
 import org.jetbrains.bio.coverage.Coverage
+import org.jetbrains.bio.coverage.CoverageWithControl
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
@@ -79,9 +80,10 @@ object PeaksInfo {
 
     private fun frip(genomeQuery: GenomeQuery, peakLocations: List<Location>, coverages: List<Coverage>): Double {
         val frip = coverages.map { coverage ->
-            1.0 * peakLocations.map { coverage.getBothStrandCoverage(it.toChromosomeRange()).toLong() }.sum() /
+            val signalCoverage = if (coverage is CoverageWithControl) coverage.conditionCoverage else coverage
+            1.0 * peakLocations.map { signalCoverage.getBothStrandCoverage(it.toChromosomeRange()).toLong() }.sum() /
                     genomeQuery.get().map {
-                        coverage.getBothStrandCoverage(ChromosomeRange(0, it.length, it)).toLong()
+                        signalCoverage.getBothStrandCoverage(ChromosomeRange(0, it.length, it)).toLong()
                     }.sum()
         }.average()
         LOG.debug("Frip: $frip")
