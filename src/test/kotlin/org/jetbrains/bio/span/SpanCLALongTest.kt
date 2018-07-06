@@ -274,34 +274,33 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
     fun testFilesCreatedByAnalyze() {
         withTempDirectory("work") { dir ->
             // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
-            withTempFile("track", ".bed.gz", dir) { path ->
+            val path = dir / "track.bed.gz"
 
-                sampleCoverage(path, TO, BIN, goodQuality = true)
-                print("Saved sampled track file: $path")
+            sampleCoverage(path, TO, BIN, goodQuality = true)
+            print("Saved sampled track file: $path")
 
-                val chromsizes = Genome["to1"].chromSizesPath.toString()
-                SpanCLA.main(arrayOf("analyze",
-                                     "-cs", chromsizes,
-                                     "--workdir", dir.toString(),
-                                     "-t", path.toString(),
-                                     "--threads", THREADS.toString()))
+            val chromsizes = Genome["to1"].chromSizesPath.toString()
+            SpanCLA.main(arrayOf("analyze",
+                                 "-cs", chromsizes,
+                                 "--workdir", dir.toString(),
+                                 "-t", path.toString(),
+                                 "--threads", THREADS.toString()))
 
-                // Check that log file was created correctly
-                assertTrue((dir / "logs" / "${path.readsName()}_200.log").exists)
+            // Check that log file was created correctly
+            assertTrue((dir / "logs" / "${path.readsName()}_200.log").exists)
 
-                /**
-                 * Shpynov: since [Configuration] allows only single initialization of experimentPath,
-                 * [SpanCLA] uses ignoreConfigurePaths variable to ignore it
-                 */
-                val dir = Configuration.experimentsPath
+            /**
+             * Shpynov: since [Configuration] allows only single initialization of experimentPath,
+             * [SpanCLA] uses ignoreConfigurePaths variable to ignore it
+             */
+            val dir = Configuration.experimentsPath
 
-                // Coverage test
-                assertTrue((dir / "cache" / "coverage").exists)
-                assertTrue((dir / "cache" / "coverage").glob("{${path.readsName()}}_200_unique#*.bw").isNotEmpty())
-                // Model test
-                assertTrue((dir / "fit").exists)
-                assertTrue((dir / "fit" / "${path.readsName()}_200_unique.span").exists)
-            }
+            // Coverage test
+            assertTrue((dir / "cache" / "coverage").exists)
+            assertTrue((dir / "cache" / "coverage").glob("{${path.readsName()}}_200_unique#*.bw").isNotEmpty())
+            // Model test
+            assertTrue((dir / "fit").exists)
+            assertTrue((dir / "fit" / "${path.readsName()}_200_unique.span").exists)
         }
     }
 
