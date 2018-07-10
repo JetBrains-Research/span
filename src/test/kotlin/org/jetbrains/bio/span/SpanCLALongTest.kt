@@ -431,17 +431,8 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
     @Test
     fun compareBedToBigWig() {
         withTempFile("track", ".bed.gz") { inputBedPath ->
-            /*val enrichedRegions = genomeMap(TO) {
-                val enriched = BitSet()
-                if (it.name == "chr1") {
-                    enriched.set(1000, 8000)
-                }
-                enriched
-            }
 
-            val zeroRegions = genomeMap(TO) { BitSet() }*/
-
-            sampleCoverage(inputBedPath, TO, BIN, /*enrichedRegions, zeroRegions,*/ goodQuality = true)
+            sampleCoverage(inputBedPath, TO, BIN, goodQuality = true)
             println("Saved sampled track file: $inputBedPath")
 
             withTempDirectory("work") { dir ->
