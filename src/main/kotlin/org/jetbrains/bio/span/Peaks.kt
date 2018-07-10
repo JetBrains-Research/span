@@ -63,11 +63,11 @@ internal fun DataFrame.partialMean(from: Int, to: Int, labelArray: List<String> 
  * [coverageDataFrame] is used to compute either coverage or log fold change.
  */
 internal fun getChromosomePeaks(logNullMemberships: F64Array,
-                       offsets: IntArray,
-                       chromosome: Chromosome,
-                       fdr: Double,
-                       gap: Int,
-                       coverageDataFrame: DataFrame? = null): List<Peak> {
+                                offsets: IntArray,
+                                chromosome: Chromosome,
+                                fdr: Double,
+                                gap: Int,
+                                coverageDataFrame: DataFrame? = null): List<Peak> {
     // Filter by qvalues
     val qvalues = Fdr.qvalidate(logNullMemberships)
     val enrichedBins = BitterSet(logNullMemberships.size)
@@ -123,8 +123,8 @@ fun CoverageFitResults.getChromosomePeaks(chromosome: Chromosome,
                 coverageDataFrame)
 
 fun CoverageFitResults.getPeaks(genomeQuery: GenomeQuery,
-                                                                                        fdr: Double,
-                                                                                        gap: Int): List<Peak> {
+                                fdr: Double,
+                                gap: Int): List<Peak> {
     val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
         getChromosomePeaks(chromosome, fdr, gap)
     }
@@ -134,20 +134,19 @@ fun CoverageFitResults.getPeaks(genomeQuery: GenomeQuery,
 fun savePeaks(peaks: List<Peak>, path: Path, peakName: String = "") {
     Peak.LOG.debug("""FORMAT $path:
 chromosome, start, end, name, score, strand, coverage/foldchange, -log(pvalue), -log(qvalue)""")
-    var n = 1
     CSVFormat.TDF.print(path.bufferedWriter()).use { printer ->
-        peaks.sorted().forEach {
+        peaks.sorted().forEachIndexed { i, peak ->
             /* See MACS2 output format for details https://github.com/taoliu/MACS/ */
             printer.printRecord(
-                    it.chromosome.name,
-                    it.range.startOffset.toString(),
-                    it.range.endOffset.toString(),
-                    "${if (peakName.isNotEmpty()) peakName else "peak"}_${n++}",
-                    it.score.toString(),
+                    peak.chromosome.name,
+                    peak.range.startOffset.toString(),
+                    peak.range.endOffset.toString(),
+                    "${if (peakName.isNotEmpty()) peakName else "peak"}_${i + 1}",
+                    peak.score.toString(),
                     ".",
-                    it.value.toString(),
-                    it.mlogpvalue.toString(),
-                    it.mlogqvalue.toString())
+                    peak.value.toString(),
+                    peak.mlogpvalue.toString(),
+                    peak.mlogqvalue.toString())
         }
     }
 }
