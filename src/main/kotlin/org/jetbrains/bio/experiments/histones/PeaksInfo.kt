@@ -79,11 +79,10 @@ object PeaksInfo {
 
 
     private fun frip(genomeQuery: GenomeQuery, peakLocations: List<Location>, coverages: List<Coverage>): Double {
-        val frip = coverages.map { coverage ->
-            val signalCoverage = if (coverage is CoverageWithControl) coverage.conditionCoverage else coverage
-            1.0 * peakLocations.map { signalCoverage.getBothStrandCoverage(it.toChromosomeRange()).toLong() }.sum() /
+        val frip = coverages.map(Coverage::signalCoverage).map { coverage ->
+            1.0 * peakLocations.map { coverage.getBothStrandCoverage(it.toChromosomeRange()).toLong() }.sum() /
                     genomeQuery.get().map {
-                        signalCoverage.getBothStrandCoverage(ChromosomeRange(0, it.length, it)).toLong()
+                        coverage.getBothStrandCoverage(ChromosomeRange(0, it.length, it)).toLong()
                     }.sum()
         }.average()
         LOG.debug("Frip: $frip")
@@ -94,8 +93,9 @@ object PeaksInfo {
     private fun signalToNoise(genomeQuery: GenomeQuery,
                               peaks: List<Location>,
                               coverages: List<Coverage>): Double? {
+        val signalCoverages = coverages.map { it.signalCoverage }
         LOG.debug("Generating ${NUMBER_OF_RANGES}x${RANGE_LENGTH}bp top summits")
-        val topSummits = topSummits(peaks.toList(), coverages)
+        val topSummits = topSummits(peaks.toList(), signalCoverages)
         val allPeaksCoords = genomeMap(genomeQuery) { chr ->
             val coords = peaks.filter { it.chromosome == chr }
                     .flatMap { listOf(it.startOffset, it.endOffset) }
@@ -114,10 +114,10 @@ object PeaksInfo {
             return null
         }
         val topPeaksSummitsCoverage = topSummits.map {
-            coverages.map { coverage -> coverage.getBothStrandCoverage(it) }.average()
+            signalCoverages.map { coverage -> coverage.getBothStrandCoverage(it) }.average()
         }.average()
         val desertCoverage = desertRanges.map {
-            coverages.map { coverage -> coverage.getBothStrandCoverage(it) }.average()
+            signalCoverages.map { coverage -> coverage.getBothStrandCoverage(it) }.average()
         }.average()
         val signalToNoise = 1.0 * (topPeaksSummitsCoverage + 1e-6) / (desertCoverage + 1e-6)
         LOG.debug("Signal-to-noise ratio $signalToNoise")
@@ -176,3 +176,5 @@ object PeaksInfo {
     }
 
 }
+
+val Coverage.signalCoverage: Coverage get() = if (this is CoverageWithControl) this.conditionCoverage else this
