@@ -443,7 +443,7 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
                                      "-t", inputBedPath.toString(),
                                      "-fdr", FDR.toString(),
                                      "-o", outputBedPath.toString()))
-                val inputBWPath = BinnedReadsQuery(TO, inputBedPath, Span.BIN).bwPath()
+                val inputBWPath = BinnedReadsQuery(TO, inputBedPath.toRealPath(), Span.BIN).bwPath()
                 val outputBWPath = dir / "outputBW.peaks"
                 SpanCLA.main(arrayOf("analyze",
                                      "-cs", Genome["to1"].chromSizesPath.toString(),
