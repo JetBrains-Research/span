@@ -35,7 +35,7 @@ object PeaksInfo {
     fun aboutText(genomeQuery: GenomeQuery,
                   peaksStream: Stream<Location>,
                   src: URI?,
-                  coverageQueries: List<InputQuery<Coverage>>): String {
+                  readQueries: List<InputQuery<Coverage>>): String {
         val peaks = peaksStream.collect(Collectors.toList())
         val peaksLengths = peaks.map { it.length().toDouble() }.toDoubleArray()
         val peaksCount = peaksLengths.count()
@@ -61,8 +61,8 @@ object PeaksInfo {
                     |""".trimMargin()
         var signalBlock = ""
         // Don't recompute coverage if it is not processed locally
-        if (coverageQueries.isNotEmpty() && coverageQueries.all(::cacheAccessible)) {
-            val coverages = coverageQueries.map { it.get() }
+        if (readQueries.isNotEmpty() && readQueries.all(::cacheAccessible)) {
+            val coverages = readQueries.map { it.get() }
             val frip = frip(genomeQuery, peaks, coverages)
             signalBlock += "FRIP: $frip\n"
             val signalToNoise = signalToNoise(genomeQuery, peaks, coverages)
