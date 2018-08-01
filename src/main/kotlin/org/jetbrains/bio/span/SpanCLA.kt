@@ -340,10 +340,10 @@ compare                         Differential peak calling mode, experimental
                     peaks.forEach { peak ->
                         peak.value =
                                 Math.max(1.0, coverageQueries1.map {
-                                    it.get().getBothStrandCoverage(peak.range.on(peak.chromosome))
+                                    it.get().getBothStrandsCoverage(peak.range.on(peak.chromosome))
                                 }.average()) /
                                 Math.max(1.0, coverageQueries2.map {
-                                    it.get().getBothStrandCoverage(peak.range.on(peak.chromosome))
+                                    it.get().getBothStrandsCoverage(peak.range.on(peak.chromosome))
                                 }.average())
                     }
                     savePeaks(peaks, outputBed, "diff${if (fragment != null) "_$fragment" else ""}_${bin}_${fdr}_${gap}")

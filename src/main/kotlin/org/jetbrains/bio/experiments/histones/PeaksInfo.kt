@@ -80,9 +80,9 @@ object PeaksInfo {
 
     private fun frip(genomeQuery: GenomeQuery, peakLocations: List<Location>, coverages: List<Coverage>): Double {
         val frip = coverages.map(Coverage::signalCoverage).map { coverage ->
-            1.0 * peakLocations.map { coverage.getBothStrandCoverage(it.toChromosomeRange()).toLong() }.sum() /
+            1.0 * peakLocations.map { coverage.getBothStrandsCoverage(it.toChromosomeRange()).toLong() }.sum() /
                     genomeQuery.get().map {
-                        coverage.getBothStrandCoverage(ChromosomeRange(0, it.length, it)).toLong()
+                        coverage.getBothStrandsCoverage(ChromosomeRange(0, it.length, it)).toLong()
                     }.sum()
         }.average()
         LOG.debug("Frip: $frip")
@@ -114,10 +114,10 @@ object PeaksInfo {
             return null
         }
         val topPeaksSummitsCoverage = topSummits.map {
-            signalCoverages.map { coverage -> coverage.getBothStrandCoverage(it) }.average()
+            signalCoverages.map { coverage -> coverage.getBothStrandsCoverage(it) }.average()
         }.average()
         val desertCoverage = desertRanges.map {
-            signalCoverages.map { coverage -> coverage.getBothStrandCoverage(it) }.average()
+            signalCoverages.map { coverage -> coverage.getBothStrandsCoverage(it) }.average()
         }.average()
         val signalToNoise = 1.0 * (topPeaksSummitsCoverage + 1e-6) / (desertCoverage + 1e-6)
         LOG.debug("Signal-to-noise ratio $signalToNoise")
@@ -163,7 +163,7 @@ object PeaksInfo {
         return peaks
                 .sortedByDescending {
                     coverages.map { coverage ->
-                        coverage.getBothStrandCoverage(it.toChromosomeRange())
+                        coverage.getBothStrandsCoverage(it.toChromosomeRange())
                     }.average()
                 }
                 .map {

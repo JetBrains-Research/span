@@ -146,7 +146,7 @@ internal fun List<InputQuery<Coverage>>.coverageDataFrame(chromosome: Chromosome
     var res = DataFrame()
     forEachIndexed { d, inputQuery ->
         val coverage = inputQuery.get()
-        val binnedCoverage = coverage.getBinnedChromosomeCoverage(chromosome, binSize).toIntArray()
+        val binnedCoverage = coverage.getBothStrandsBinnedChromosomeCoverage(chromosome, binSize).toIntArray()
         res = res.with(labels[d], binnedCoverage)
     }
     return res
