@@ -9,14 +9,14 @@ import org.apache.log4j.LogManager
 import org.apache.log4j.Logger
 import org.jetbrains.bio.Configuration
 import org.jetbrains.bio.Logs
-import org.jetbrains.bio.experiments.histones.PeaksInfo
+import org.jetbrains.bio.experiments.fit.SpanDifferentialPeakCallingExperiment
+import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.experiments.tuning.PeakAnnotation
 import org.jetbrains.bio.experiments.tuning.SPAN
 import org.jetbrains.bio.experiments.tuning.TuningResults
 import org.jetbrains.bio.genome.GenomeQuery
-import org.jetbrains.bio.query.BinnedReadsQuery
-import org.jetbrains.bio.query.readsName
 import org.jetbrains.bio.query.reduceIds
+import org.jetbrains.bio.query.stemGz
 import org.jetbrains.bio.util.*
 import org.jetbrains.bio.util.FileSize.Companion.GB
 import java.io.PrintStream
@@ -121,7 +121,6 @@ compare                         Differential peak calling mode, experimental
                 val outputBed = options.valueOf("output") as Path?
                 val labelsPath = options.valueOf("labels") as Path?
                 val chromSizesPath = options.valueOf("chrom.sizes") as Path
-                val chromosomes = options.valuesOf("only") as List<String>
                 val bin = options.valueOf("bin") as Int
                 val fragment = options.valueOf("fragment") as Int?
                 val gap = options.valueOf("gap") as Int
@@ -131,14 +130,14 @@ compare                         Differential peak calling mode, experimental
                 // Configure logs path
                 val logPath: Path
                 if (outputBed != null) {
-                    logPath = workingDir / "logs" / "${outputBed.readsName()}.log"
+                    logPath = workingDir / "logs" / "${outputBed.stemGz}.log"
                 } else {
-                    var ids = listOfNotNull(treatmentPaths, controlPaths).flatMap { it.map { it.readsName() } }
+                    var ids = listOfNotNull(treatmentPaths, controlPaths).flatMap { it.map { it.stemGz } }
                     ids += bin.toString()
                     if (labelsPath != null) {
-                        ids += labelsPath.readsName()
+                        ids += labelsPath.stemGz
                     }
-                    logPath = workingDir / "logs"/ "${reduceIds(ids)}.log"
+                    logPath = workingDir / "logs" / "${reduceIds(ids)}.log"
                 }
                 Logs.addLoggingToFile(logPath)
 
@@ -152,7 +151,7 @@ compare                         Differential peak calling mode, experimental
                 } else {
                     LOG.info("CONTROL: none")
                 }
-                val genomeQuery = loadGenomeQuery(chromSizesPath, chromosomes)
+                val genomeQuery = createGenomeQuery(chromSizesPath)
                 LOG.info("CHROM.SIZES: $chromSizesPath")
                 LOG.info("GENOME: ${genomeQuery.id}")
                 LOG.info("FRAGMENT: $fragment")
@@ -178,19 +177,18 @@ compare                         Differential peak calling mode, experimental
                 checkMemory()
 
                 configurePaths(workingDir, chromSizesPath)
-                val coverageQueries = coverageQueries(genomeQuery, treatmentPaths, controlPaths, bin, fragment)
-
-                val peakCallingExperiment = Span.getPeakCallingExperiment(genomeQuery, coverageQueries, bin)
+                val paths = matchTreatmentAndControls(treatmentPaths, controlPaths)
+                val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(genomeQuery, paths, bin, fragment)
                 if (outputBed != null) {
                     if (labelsPath == null) {
                         val peaks = peakCallingExperiment.results.getPeaks(genomeQuery, fdr, gap)
                         savePeaks(peaks, outputBed,
                                 "peak${if (fragment != null) "_$fragment" else ""}_${bin}_${fdr}_${gap}")
                         LOG.info("Saved result to $outputBed")
-                        LOG.info("\n" + PeaksInfo.aboutText(genomeQuery,
-                                peaks.map { it.location }.stream(),
-                                outputBed.toUri(),
-                                coverageQueries))
+//                        LOG.info("\n" + PeaksInfo.compute(genomeQuery,
+//                                peaks.map { it.location }.stream(),
+//                                outputBed.toUri(),
+//                                paths))
                     } else {
                         val results = TuningResults()
                         val labels = PeakAnnotation.loadLabels(labelsPath, genomeQuery.build)
@@ -209,10 +207,10 @@ compare                         Differential peak calling mode, experimental
                         savePeaks(peaks, outputBed, "peak${if (fragment != null) "_$fragment" else ""}_" +
                                 "${bin}_${optimalFDR}_$optimalGap")
                         LOG.info("Saved result to $outputBed")
-                        LOG.info("\n" + PeaksInfo.aboutText(genomeQuery,
-                                peaks.map { it.location }.stream(),
-                                outputBed.toUri(),
-                                coverageQueries))
+//                        LOG.info("\n" + PeaksInfo.compute(genomeQuery,
+//                                peaks.map { it.location }.stream(),
+//                                outputBed.toUri(),
+//                                paths))
                     }
                 } else {
                     // Just fit the model
@@ -270,7 +268,6 @@ compare                         Differential peak calling mode, experimental
 
                 val workingDir = options.valueOf("workdir") as Path
                 val chromSizesPath = options.valueOf("chrom.sizes") as Path
-                val chromosomes = options.valuesOf("only") as List<String>
                 val treatmentPaths1 = options.valuesOf("treatment1") as List<Path>
                 val treatmentPaths2 = options.valuesOf("treatment2") as List<Path>
                 val controlPaths1 = options.valuesOf("control1") as List<Path>?
@@ -285,10 +282,10 @@ compare                         Differential peak calling mode, experimental
                 // Configure logs path
                 val logPath: Path
                 if (outputBed != null) {
-                    logPath = workingDir / "logs" / "${outputBed.readsName()}.log"
+                    logPath = workingDir / "logs" / "${outputBed.stemGz}.log"
                 } else {
                     var ids = listOfNotNull(treatmentPaths1, controlPaths1, treatmentPaths2, controlPaths2)
-                            .flatMap { it.map { it.readsName() } }
+                            .flatMap { it.map { it.stemGz } }
                     ids += bin.toString()
                     logPath = workingDir / "logs" / "${reduceIds(ids)}.log"
                 }
@@ -311,7 +308,7 @@ compare                         Differential peak calling mode, experimental
                     LOG.info("CONTROL2: none")
                 }
                 LOG.info("CHROM.SIZES: $chromSizesPath")
-                val genomeQuery = loadGenomeQuery(chromSizesPath, chromosomes)
+                val genomeQuery = createGenomeQuery(chromSizesPath)
                 LOG.info("GENOME: ${genomeQuery.id}")
                 LOG.info("FRAGMENT: $fragment")
                 LOG.info("BIN: $bin")
@@ -331,20 +328,19 @@ compare                         Differential peak calling mode, experimental
 
                 configurePaths(workingDir, chromSizesPath)
 
-                val coverageQueries1 = coverageQueries(genomeQuery, treatmentPaths1, controlPaths1, bin, fragment)
-                val coverageQueries2 = coverageQueries(genomeQuery, treatmentPaths2, controlPaths2, bin, fragment)
-                val experiment = Span.getDifferentialPeakCallingExperiment(
-                        genomeQuery, coverageQueries1, coverageQueries2, bin)
+                val paths1 = matchTreatmentAndControls(treatmentPaths1, controlPaths1)
+                val paths2 = matchTreatmentAndControls(treatmentPaths2, controlPaths2)
+                val experiment = SpanDifferentialPeakCallingExperiment.getExperiment(genomeQuery, paths1, paths2, bin, fragment)
                 if (outputBed != null) {
                     val peaks = experiment.results.getPeaks(experiment.genomeQuery, fdr, gap)
                     peaks.forEach { peak ->
-                        peak.value =
-                                Math.max(1.0, coverageQueries1.map {
-                                    it.get().getBothStrandsCoverage(peak.range.on(peak.chromosome))
-                                }.average()) /
-                                Math.max(1.0, coverageQueries2.map {
-                                    it.get().getBothStrandsCoverage(peak.range.on(peak.chromosome))
-                                }.average())
+                        //                        peak.value =
+//                                Math.max(1.0, paths1.map {
+//                                    it.get().getBothStrandsCoverage(peak.range.on(peak.chromosome))
+//                                }.average()) /
+//                                Math.max(1.0, paths2.map {
+//                                    it.get().getBothStrandsCoverage(peak.range.on(peak.chromosome))
+//                                }.average())
                     }
                     savePeaks(peaks, outputBed, "diff${if (fragment != null) "_$fragment" else ""}_${bin}_${fdr}_${gap}")
                     LOG.info("Saved result to $outputBed")
@@ -356,27 +352,21 @@ compare                         Differential peak calling mode, experimental
     }
 
 
-    private fun coverageQueries(genomeQuery: GenomeQuery,
-                                treatmentPaths: List<Path>,
-                                controlPaths: List<Path>?,
-                                bin: Int,
-                                fragment: Int?): List<BinnedReadsQuery> {
+    private fun matchTreatmentAndControls(treatmentPaths: List<Path>,
+                                          controlPaths: List<Path>?): List<Pair<Path, Path?>> {
         if (controlPaths != null && controlPaths.isNotEmpty()) {
-            return if (controlPaths.size == 1) {
-                treatmentPaths.map {
-                    BinnedReadsQuery(genomeQuery, it, bin, controlPaths.first(), unique = true, fragment = fragment)
-                }
-            } else {
-                if (controlPaths.size != treatmentPaths.size) {
-                    System.err.println("ERROR: required single control file or separate file for each treatment.")
-                    System.exit(1)
-                }
-                treatmentPaths.zip(controlPaths).map {
-                    BinnedReadsQuery(genomeQuery, it.first, bin, it.second, unique = true, fragment = fragment)
-                }
+            if (controlPaths.size != 1 && controlPaths.size != treatmentPaths.size) {
+                System.err.println("ERROR: required single control file or separate file for each treatment.")
+                System.exit(1)
             }
+            return treatmentPaths.zip(Array(treatmentPaths.size) {
+                if (controlPaths.size != 1) controlPaths[it] else controlPaths.first()
+            }
+            )
         }
-        return treatmentPaths.map { BinnedReadsQuery(genomeQuery, it, bin, unique = true, fragment = fragment) }
+        return treatmentPaths.map {
+            it to null
+        }
     }
 
     private fun configurePaths(outputPath: Path, chromSizesPath: Path) {
@@ -391,15 +381,12 @@ compare                         Differential peak calling mode, experimental
         System.getProperties().setProperty("chrom.sizes", chromSizesPath.toString())
     }
 
-    private fun loadGenomeQuery(chromSizesPath: Path, chromosomes: List<String>): GenomeQuery {
+    private fun createGenomeQuery(chromSizesPath: Path): GenomeQuery {
         val fileName = chromSizesPath.fileName.toString()
-        if (fileName.endsWith(".chrom.sizes")) {
-            return GenomeQuery(fileName.substringBeforeLast(".chrom.sizes"), *chromosomes.toTypedArray())
-        } else {
-            throw IllegalArgumentException(
-                    "ERROR: Unexpected reference name, please use the" +
-                            "name of form <build>.chrom.sizes.")
+        check(fileName.endsWith(".chrom.sizes")) {
+            "ERROR: Unexpected reference name, please use the name of form <build>.chrom.sizes."
         }
+        return GenomeQuery(fileName.substringBeforeLast(".chrom.sizes"))
     }
 
 
@@ -413,9 +400,6 @@ compare                         Differential peak calling mode, experimental
                     "http://hgdownload.cse.ucsc.edu/goldenPath/<build>/bigZips/<build>.chrom.sizes")
                     .withRequiredArg().required()
                     .withValuesConvertedBy(PathConverter.exists())
-            accepts("only").withOptionalArg().describedAs("chr1,chrN,...")
-                    .withValuesSeparatedBy(',')
-
             acceptsAll(listOf("o", "output"), "Path to result bed")
                     .withRequiredArg()
                     .withValuesConvertedBy(PathConverter.noCheck())
@@ -426,19 +410,19 @@ compare                         Differential peak calling mode, experimental
                 acceptsAll(listOf("b", "bin"), "Bin size")
                         .withRequiredArg()
                         .ofType(Int::class.java)
-                        .defaultsTo(Span.BIN)
+                        .defaultsTo(SPAN.DEFAULT_BIN)
             }
             if (fdr) {
                 acceptsAll(listOf("f", "fdr"), "Fdr value")
                         .withRequiredArg()
                         .ofType(Double::class.java)
-                        .defaultsTo(Span.FDR)
+                        .defaultsTo(SPAN.DEFAULT_FDR)
             }
             if (gap) {
                 acceptsAll(listOf("g", "gap"), "Gap size to merge peaks")
                         .withRequiredArg()
                         .ofType(Int::class.java)
-                        .defaultsTo(Span.GAP)
+                        .defaultsTo(SPAN.DEFAULT_GAP)
             }
             acceptsAll(listOf("w", "workdir"), "Path to the working dir")
                     .withRequiredArg().withValuesConvertedBy(PathConverter.exists())

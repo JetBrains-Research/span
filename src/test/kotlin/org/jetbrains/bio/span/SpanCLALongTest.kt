@@ -14,9 +14,8 @@ import org.jetbrains.bio.genome.containers.GenomeMap
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.io.BedFormat
-import org.jetbrains.bio.query.BinnedReadsQuery
-import org.jetbrains.bio.query.readsName
 import org.jetbrains.bio.query.reduceIds
+import org.jetbrains.bio.query.stemGz
 import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
@@ -146,17 +145,16 @@ compare                         Differential peak calling mode, experimental
 
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 SpanCLA.main(arrayOf("compare",
-                                     "-cs", chromsizes,
-                                     "--workdir", it.toString(),
-                                     "-t1", path.toString(),
-                                     "-t2", path.toString(),
-                                     "--output", bedPath.toString(),
-                                     "--fdr", FDR.toString(),
-                                     "--gap", GAP.toString(),
-                                     "--threads", THREADS.toString()))
+                        "-cs", chromsizes,
+                        "--workdir", it.toString(),
+                        "-t1", path.toString(),
+                        "-t2", path.toString(),
+                        "--output", bedPath.toString(),
+                        "--fdr", FDR.toString(),
+                        "--gap", GAP.toString(),
+                        "--threads", THREADS.toString()))
 
-                assertTrue(bedPath.size.isEmpty(),
-                           "Found differential peaks in identical signals.")
+                assertTrue(bedPath.size.isEmpty(), "Found differential peaks in identical signals.")
 
                 val out = String(stream.toByteArray())
                 assertIn("""SPAN
@@ -193,17 +191,17 @@ OUTPUT: $bedPath
             withTempDirectory("work") {
                 val bedPath = it / "peaks.bed"
                 SpanCLA.main(arrayOf("compare",
-                                     "-cs", Genome["to1"].chromSizesPath.toString(),
-                                     "-w", it.toString(),
-                                     "-b", BIN.toString(),
-                                     "-g", GAP.toString(),
-                                     "-fragment", FRAGMENT.toString(),
-                                     "-t1", "$path,$path",
-                                     "-t2", "$path,$path,$path",
-                                     "-o", bedPath.toString(),
-                                     "--fdr", FDR.toString()))
+                        "-cs", Genome["to1"].chromSizesPath.toString(),
+                        "-w", it.toString(),
+                        "-b", BIN.toString(),
+                        "-g", GAP.toString(),
+                        "-fragment", FRAGMENT.toString(),
+                        "-t1", "$path,$path",
+                        "-t2", "$path,$path,$path",
+                        "-o", bedPath.toString(),
+                        "--fdr", FDR.toString()))
                 assertTrue(bedPath.size.isEmpty(),
-                           "Found differential peaks in identical signals.")
+                        "Found differential peaks in identical signals.")
             }
         }
     }
@@ -224,10 +222,10 @@ OUTPUT: $bedPath
 
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 SpanCLA.main(arrayOf("analyze",
-                                     "-cs", chromsizes,
-                                     "--workdir", it.toString(),
-                                     "-t", path.toString(),
-                                     "--threads", THREADS.toString()))
+                        "-cs", chromsizes,
+                        "--workdir", it.toString(),
+                        "-t", path.toString(),
+                        "--threads", THREADS.toString()))
                 val out = String(stream.toByteArray())
                 assertIn("""NO output path given, process model fitting only.
 LABELS, FDR, GAP options are ignored.
@@ -256,10 +254,10 @@ LABELS, FDR, GAP options are ignored.
 
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 SpanCLA.main(arrayOf("analyze",
-                                     "-cs", chromsizes,
-                                     "--workdir", it.toString(),
-                                     "-t", path.toString(),
-                                     "--threads", THREADS.toString()))
+                        "-cs", chromsizes,
+                        "--workdir", it.toString(),
+                        "-t", path.toString(),
+                        "--threads", THREADS.toString()))
                 val out = String(stream.toByteArray())
                 assertIn("""WARN Span] After fitting the model, emission's parameter p in LOW state
 is higher than emission's parameter p in HIGH state
@@ -281,13 +279,13 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
 
             val chromsizes = Genome["to1"].chromSizesPath.toString()
             SpanCLA.main(arrayOf("analyze",
-                                 "-cs", chromsizes,
-                                 "--workdir", dir.toString(),
-                                 "-t", path.toString(),
-                                 "--threads", THREADS.toString()))
+                    "-cs", chromsizes,
+                    "--workdir", dir.toString(),
+                    "-t", path.toString(),
+                    "--threads", THREADS.toString()))
 
             // Check that log file was created correctly
-            assertTrue((dir / "logs" / "${path.readsName()}_200.log").exists)
+            assertTrue((dir / "logs" / "${path.stemGz}_200.log").exists)
 
             /**
              * Shpynov: since [Configuration] allows only single initialization of experimentPath,
@@ -297,10 +295,10 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
 
             // Coverage test
             assertTrue((dir / "cache" / "coverage").exists)
-            assertTrue((dir / "cache" / "coverage").glob("{${path.readsName()}}_200_unique#*.bw").isNotEmpty())
+            assertTrue((dir / "cache" / "coverage").glob("{${path.stemGz}}_200_unique#*.bw").isNotEmpty())
             // Model test
             assertTrue((dir / "fit").exists)
-            assertTrue((dir / "fit" / "${path.readsName()}_200_unique.span").exists)
+            assertTrue((dir / "fit" / "${path.stemGz}_200_unique.span").exists)
         }
     }
 
@@ -322,10 +320,10 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 val peaksPath = path.parent / "${path.stem}.peak"
                 SpanCLA.main(arrayOf("analyze", "-cs", chromsizes,
-                                     "--workdir", it.toString(),
-                                     "-t", path.toString(),
-                                     "--threads", THREADS.toString(),
-                                     "-o", peaksPath.toString()))
+                        "--workdir", it.toString(),
+                        "-t", path.toString(),
+                        "--threads", THREADS.toString(),
+                        "-o", peaksPath.toString()))
                 val out = String(stream.toByteArray())
                 assertFalse("""NO output path given, process model fitting only.
     LABELS, FDR, GAP options are ignored.
@@ -362,19 +360,17 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
             withTempDirectory("work") {
                 val bedPath = it / "result.bed"
                 SpanCLA.main(arrayOf("analyze",
-                                     "-cs", Genome["to1"].chromSizesPath.toString(),
-                                     "-only", "chr1",
-                                     "-w", it.toString(),
-                                     "-o", bedPath.toString(),
-                                     "-fdr", FDR.toString(),
-                                     "-t", path.toString()))
+                        "-cs", Genome["to1"].chromSizesPath.toString(),
+                        "-w", it.toString(),
+                        "-o", bedPath.toString(),
+                        "-fdr", FDR.toString(),
+                        "-t", path.toString()))
                 SpanCLA.main(arrayOf("analyze",
-                                     "-cs", Genome["to1"].chromSizesPath.toString(),
-                                     "-only", "chr1",
-                                     "-w", it.toString(),
-                                     "-o", bedPath.toString(),
-                                     "-fdr", FDR.toString(),
-                                     "-t", path.toString()))
+                        "-cs", Genome["to1"].chromSizesPath.toString(),
+                        "-w", it.toString(),
+                        "-o", bedPath.toString(),
+                        "-fdr", FDR.toString(),
+                        "-t", path.toString()))
                 // Check created bed file
                 assertTrue(Location(1100 * BIN, 1900 * BIN, TO.get().first()) in LocationsMergingList.load(TO, bedPath))
                 // Check correct log file name
@@ -408,16 +404,16 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
                 /* Turn suppressExit on, otherwise Span would call System.exit */
                 withSystemProperty("joptsimple.suppressExit", "true") {
                     SpanCLA.main(arrayOf("analyze",
-                                         "-cs", Genome["to1"].chromSizesPath.toString(),
-                                         "-w", it.toString(),
-                                         "-t", path.toString()))
+                            "-cs", Genome["to1"].chromSizesPath.toString(),
+                            "-w", it.toString(),
+                            "-t", path.toString()))
                 }
 
                 val out = String(outStream.toByteArray())
                 val err = String(errStream.toByteArray())
 
                 // Check correct log file name
-                val logPath = it / "logs" / "${reduceIds(listOf(path.readsName()))}_${BIN}.log"
+                val logPath = it / "logs" / "${reduceIds(listOf(path.stemGz))}_${BIN}.log"
                 assertTrue(logPath.exists)
                 val log = FileReader(logPath.toFile()).use { it.readText() }
                 val errorMessage = "Model can't be trained on empty coverage, exiting."
@@ -427,39 +423,6 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
             }
         }
     }
-
-    @Test
-    fun compareBedToBigWig() {
-        withTempFile("track", ".bed.gz") { inputBedPath ->
-
-            sampleCoverage(inputBedPath, TO, BIN, goodQuality = true)
-            println("Saved sampled track file: $inputBedPath")
-
-            withTempDirectory("work") { dir ->
-                val outputBedPath = dir / "outputBed.peaks"
-                SpanCLA.main(arrayOf("analyze",
-                                     "-cs", Genome["to1"].chromSizesPath.toString(),
-                                     "-w", dir.toString(),
-                                     "-t", inputBedPath.toString(),
-                                     "-fdr", FDR.toString(),
-                                     "-o", outputBedPath.toString()))
-                val inputBWPath = BinnedReadsQuery(TO, inputBedPath.toRealPath(), Span.BIN).bwPath()
-                val outputBWPath = dir / "outputBW.peaks"
-                SpanCLA.main(arrayOf("analyze",
-                                     "-cs", Genome["to1"].chromSizesPath.toString(),
-                                     "-w", dir.toString(),
-                                     "-t", inputBWPath.toString(),
-                                     "-fdr", FDR.toString(),
-                                     "-o", outputBWPath.toString()))
-                val bedOutput = FileReader(outputBedPath.toFile()).use { it.readText() }
-                val bwOutput = FileReader(outputBWPath.toFile()).use { it.readText() }
-                assertEquals(bedOutput, bwOutput,
-                             "Span produced different results for raw and binned coverage.")
-            }
-
-        }
-    }
-
 
     companion object {
         private val TO = GenomeQuery("to1")
@@ -483,20 +446,20 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
 
         fun sampleCoverage(path: Path, genomeQuery: GenomeQuery, bin: Int, goodQuality: Boolean) =
                 sampleCoverage(path,
-                               genomeQuery, bin,
-                               genomeMap(genomeQuery) { BitSet() },
-                               genomeMap(genomeQuery) { BitSet() },
-                               goodQuality)
+                        genomeQuery, bin,
+                        genomeMap(genomeQuery) { BitSet() },
+                        genomeMap(genomeQuery) { BitSet() },
+                        goodQuality)
 
         fun sampleCoverage(path: Path,
                            genomeQuery: GenomeQuery, bin: Int,
                            fulls: GenomeMap<BitSet>, zeroes: GenomeMap<BitSet>,
                            goodQuality: Boolean) {
             withResource(SpanCLALongTest::class.java,
-                         if (goodQuality)
-                             "GSM646345_H1_H3K4me3_rep1_hg19_model.json"
-                         else
-                             "yd6_k27ac_failed_model.json") { modelPath ->
+                    if (goodQuality)
+                        "GSM646345_H1_H3K4me3_rep1_hg19_model.json"
+                    else
+                        "yd6_k27ac_failed_model.json") { modelPath ->
                 val model = ClassificationModel.load<MLFreeNBHMM>(modelPath)
                 BedFormat().print(path).use {
                     genomeQuery.get().forEach { chr ->
@@ -531,6 +494,5 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
                 if (oldValue != null) System.setProperty(property, oldValue) else System.clearProperty(property)
             }
         }
-
     }
 }

@@ -15,7 +15,7 @@ import kotlin.test.assertEquals
  * @since 04/04/2018.
  */
 
-class CoverageFitInformationTest {
+class SpanFitInformationTest {
     @get:Rule
     var expectedEx = ExpectedException.none()
 
@@ -26,26 +26,26 @@ class CoverageFitInformationTest {
     fun checkBinSize() {
         expectedEx.expect(IllegalStateException::class.java)
         expectedEx.expectMessage("Wrong bin size, expected: 100, got: 50")
-        CoverageFitInformation("foo", 100, "hg19", LinkedHashMap()).checkBinSize(50)
+        SpanFitInformation("foo", 100, "hg19", LinkedHashMap()).checkBinSize(50)
     }
 
     @Test
     fun checkBuild() {
         expectedEx.expect(IllegalStateException::class.java)
         expectedEx.expectMessage("Wrong genome build, expected: hg19, got: to2")
-        CoverageFitInformation("foo", 100, "hg19", LinkedHashMap()).checkGenomeQuery(GenomeQuery("to2"))
+        SpanFitInformation("foo", 100, "hg19", LinkedHashMap()).checkGenomeQuery(GenomeQuery("to2"))
     }
 
     @Test
     fun checkGenomeQuery() {
         expectedEx.expect(IllegalStateException::class.java)
         expectedEx.expectMessage("Wrong chromosomes, expected: [chr1, chr2, chr3, chrX], got: [chr1]")
-        CoverageFitInformation.of("foo", 100, gq).checkGenomeQuery(GenomeQuery("to1", "chr1"))
+        SpanFitInformation("foo", 100, gq).checkGenomeQuery(GenomeQuery("to1", "chr1"))
     }
 
     @Test
     fun checkGenomeQueryOrder() {
-        CoverageFitInformation.of("foo", 100, GenomeQuery("to1", "chr1", "chr2"))
+        SpanFitInformation("foo", 100, GenomeQuery("to1", "chr1", "chr2"))
                 .checkGenomeQuery(GenomeQuery("to1", "chr2", "chr1"))
     }
 
@@ -66,13 +66,13 @@ class CoverageFitInformationTest {
 
     @Test
     fun checkOf() {
-        val of = CoverageFitInformation.of("foobar", 200, gq)
+        val of = SpanFitInformation("foobar", 200, gq)
         assertEquals(listOf("chr1", "chr2", "chr3", "chrX"), of.chromosomesSizes.keys.toList())
     }
 
     @Test
     fun checkSave() {
-        val info = CoverageFitInformation.of("foobar", 200, gq)
+        val info = SpanFitInformation("foobar", 200, gq)
         withTempFile("foo", ".tar") { path ->
             info.save(path)
             val output = path.bufferedReader().lines().collect(Collectors.joining("\n"))
@@ -83,22 +83,22 @@ class CoverageFitInformationTest {
 
     @Test
     fun checkLoad() {
-        val info = CoverageFitInformation.of("foobar", 200, gq)
+        val info = SpanFitInformation("foobar", 200, gq)
         withTempFile("foo", ".tar") { path ->
             path.bufferedWriter().use { it.write(JSON) }
-            assertEquals(info, CoverageFitInformation.load(path))
+            assertEquals(info, SpanFitInformation.load(path))
         }
     }
 
     @Test
     fun checkIndices() {
-        val info = CoverageFitInformation.of("foobar", 200, gq)
+        val info = SpanFitInformation("foobar", 200, gq)
         assertEquals(50000 to 55000, info.getChromosomesIndices(gq, chr2))
     }
 
     @Test
     fun checkOffsets() {
-        val info = CoverageFitInformation.of("foobar", 200, gq)
+        val info = SpanFitInformation("foobar", 200, gq)
         assertEquals(listOf(0, 200, 400, 600, 800), info.offsets(chr2).take(5))
         assertEquals(5000, chr2.length / 200)
         assertEquals(5000, info.offsets(chr2).size)

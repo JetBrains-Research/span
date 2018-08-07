@@ -113,18 +113,18 @@ internal fun getChromosomePeaks(logNullMemberships: F64Array,
     }
 }
 
-fun CoverageFitResults.getChromosomePeaks(chromosome: Chromosome,
-                                          fdr: Double,
-                                          gap: Int,
-                                          coverageDataFrame: DataFrame? = null): List<Peak> =
-        getChromosomePeaks(logNullMemberships[chromosome.name]!!.f64Array(CoverageFitExperiment.NULL),
+fun SpanFitResults.getChromosomePeaks(chromosome: Chromosome,
+                                      fdr: Double,
+                                      gap: Int,
+                                      coverageDataFrame: DataFrame? = null): List<Peak> =
+        getChromosomePeaks(logNullMemberships[chromosome.name]!!.f64Array(SpanFitExperiment.NULL),
                 fitInfo.offsets(chromosome),
                 chromosome, fdr, gap,
                 coverageDataFrame)
 
-fun CoverageFitResults.getPeaks(genomeQuery: GenomeQuery,
-                                fdr: Double,
-                                gap: Int): List<Peak> {
+fun SpanFitResults.getPeaks(genomeQuery: GenomeQuery,
+                            fdr: Double,
+                            gap: Int): List<Peak> {
     val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
         getChromosomePeaks(chromosome, fdr, gap)
     }

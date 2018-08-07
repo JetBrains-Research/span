@@ -8,13 +8,12 @@ import org.jetbrains.bio.datasets.ChipSeqTarget
 import org.jetbrains.bio.datasets.DataType
 import org.jetbrains.bio.datasets.toDataType
 import org.jetbrains.bio.experiments.DataConfig
-import org.jetbrains.bio.experiments.fit.CoverageFitExperiment
-import org.jetbrains.bio.experiments.fit.CoverageFitResults
+import org.jetbrains.bio.experiments.fit.SpanFitExperiment
+import org.jetbrains.bio.experiments.fit.SpanFitResults
+import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.io.BedFormat
-import org.jetbrains.bio.query.BinnedReadsQuery
-import org.jetbrains.bio.span.Span
 import org.jetbrains.bio.span.getPeaks
 import org.jetbrains.bio.span.savePeaks
 import org.jetbrains.bio.statistics.ClassificationModel
@@ -63,10 +62,9 @@ object SPAN : Tool2Tune<Pair<Double, Int>>() {
         val labelledTracks = configuration.extractLabelledTracks(target)
 
         labelledTracks.forEach { (cellId, replicate, signalPath, labelsPath) ->
-            val peakCallingExperiment = Span.getPeakCallingExperiment(
-                    configuration.genomeQuery,
-                    queries = listOf(BinnedReadsQuery(configuration.genomeQuery, signalPath, DEFAULT_BIN, inputPath)),
-                    bin = DEFAULT_BIN)
+            val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(configuration.genomeQuery,
+                    listOf(signalPath to inputPath),
+                    DEFAULT_BIN, null)
 
             if (saveAllPeaks) {
                 val progress = Progress {
@@ -107,7 +105,7 @@ object SPAN : Tool2Tune<Pair<Double, Int>>() {
     }
 
     fun <Model : ClassificationModel, State : Any>
-            tune(experiment: CoverageFitExperiment<Model, State>,
+            tune(experiment: SpanFitExperiment<Model, State>,
                  labels: List<PeakAnnotation>,
                  id: String,
                  parameters: List<Pair<Double, Int>>,
@@ -120,7 +118,7 @@ object SPAN : Tool2Tune<Pair<Double, Int>>() {
     }
 
 
-    fun tune(results: CoverageFitResults,
+    fun tune(results: SpanFitResults,
              genomeQuery: GenomeQuery,
              labels: List<PeakAnnotation>,
              id: String,
@@ -227,12 +225,9 @@ object SPAN_REPLICATED : ReplicatedTool2Tune<Pair<Double, Int>>() {
                 .filter { it.key.dataType.toDataType() == DataType.CHIP_SEQ && ChipSeqTarget.isInput(it.key.dataType) }
                 .flatMap { it.value }.map { it.second.path }.firstOrNull()
 
-        val replicatedPeakCallingExperiment = Span.getPeakCallingExperiment(
-                configuration.genomeQuery,
-                queries = labelledTracks.map(LabelledTrack::signalPath).map {
-                    BinnedReadsQuery(configuration.genomeQuery, it, DEFAULT_BIN, inputPath)
-                },
-                bin = DEFAULT_BIN)
+        val replicatedPeakCallingExperiment = SpanPeakCallingExperiment.getExperiment(configuration.genomeQuery,
+                labelledTracks.map(LabelledTrack::signalPath).map { it to inputPath },
+                DEFAULT_BIN, null)
 
         if (saveAllPeaks) {
             PeakCallerTuning.LOG.info("Saving all $id peaks $target")

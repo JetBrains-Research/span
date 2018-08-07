@@ -49,7 +49,7 @@ class PeakCallerTuningTest {
         val outcomes2 = (0 until 100).map { RANDOM.nextBoolean() }
         val errorRate1 = ErrorRate()
         val errorRate2 = ErrorRate()
-        val errorRate3 = ErrorRate() // same as errorRate1, introduced since `coverageDataFrame` is destructive
+        val errorRate3 = ErrorRate() // same as errorRate1, introduced since `scoresDataFrame` is destructive
         outcomes1.forEach(errorRate1::observe)
         outcomes2.forEach(errorRate2::observe)
         outcomes1.forEach(errorRate3::observe)
@@ -102,7 +102,7 @@ class PeakCallerTuningTest {
         (0 until 100).forEach {
             labelErrors1.observe(labels[labelIndices1[it]], outcomes1[it])
             labelErrors2.observe(labels[labelIndices2[it]], outcomes2[it])
-            labelErrors3.observe(labels[labelIndices1[it]], outcomes1[it]) // 'coverageDataFrame' is destructive, we need a copy
+            labelErrors3.observe(labels[labelIndices1[it]], outcomes1[it]) // 'scoresDataFrame' is destructive, we need a copy
         }
         labelErrors1.combine(labelErrors2)
         labelErrors2.combine(labelErrors3)

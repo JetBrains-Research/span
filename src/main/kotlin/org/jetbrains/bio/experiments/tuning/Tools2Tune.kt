@@ -4,7 +4,6 @@ import kotlinx.support.jdk7.use
 import org.jetbrains.bio.datasets.CellId
 import org.jetbrains.bio.experiments.DataConfig
 import org.jetbrains.bio.genome.containers.LocationsMergingList
-import org.jetbrains.bio.span.Span
 import org.jetbrains.bio.tools.runBatch
 import org.jetbrains.bio.util.*
 import java.nio.file.Path
