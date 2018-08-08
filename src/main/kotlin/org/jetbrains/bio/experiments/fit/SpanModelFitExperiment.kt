@@ -146,7 +146,7 @@ data class SpanFitInformation(val build: String,
                     "Failed to load info from $path"
                 }
                 check(VERSION == info.version) {
-                    "Wrong $path version: expected: $VERSION, got: ${info.version}"
+                    "Wrong version: expected: $VERSION, got: ${info.version}"
                 }
                 return@use info
             }
