@@ -8,8 +8,8 @@ import org.jetbrains.bio.datasets.ChipSeqTarget
 import org.jetbrains.bio.datasets.DataType
 import org.jetbrains.bio.datasets.toDataType
 import org.jetbrains.bio.experiments.DataConfig
-import org.jetbrains.bio.experiments.fit.SpanFitExperiment
 import org.jetbrains.bio.experiments.fit.SpanFitResults
+import org.jetbrains.bio.experiments.fit.SpanModelFitExperiment
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.LocationsMergingList
@@ -105,7 +105,7 @@ object SPAN : Tool2Tune<Pair<Double, Int>>() {
     }
 
     fun <Model : ClassificationModel, State : Any>
-            tune(experiment: SpanFitExperiment<Model, State>,
+            tune(experiment: SpanModelFitExperiment<Model, State>,
                  labels: List<PeakAnnotation>,
                  id: String,
                  parameters: List<Pair<Double, Int>>,

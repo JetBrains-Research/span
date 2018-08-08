@@ -259,10 +259,8 @@ LABELS, FDR, GAP options are ignored.
                         "-t", path.toString(),
                         "--threads", THREADS.toString()))
                 val out = String(stream.toByteArray())
-                assertIn("""WARN Span] After fitting the model, emission's parameter p in LOW state
-is higher than emission's parameter p in HIGH state
-WARN Span] This is generally harmless, but could indicate low quality of data.
-""", out)
+                assertIn("WARN SPAN] After fitting the model, emission's parameter p in LOW state", out)
+                assertIn("WARN SPAN] This is generally harmless, but could indicate low quality of data.", out)
             }
         }
     }
@@ -273,32 +271,28 @@ WARN Span] This is generally harmless, but could indicate low quality of data.
         withTempDirectory("work") { dir ->
             // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
             val path = dir / "track.bed.gz"
+            val control = dir / "control.bed.gz"
 
             sampleCoverage(path, TO, BIN, goodQuality = true)
-            print("Saved sampled track file: $path")
+            sampleCoverage(control, TO, BIN, goodQuality = false)
 
             val chromsizes = Genome["to1"].chromSizesPath.toString()
             SpanCLA.main(arrayOf("analyze",
                     "-cs", chromsizes,
                     "--workdir", dir.toString(),
                     "-t", path.toString(),
+                    "-c", control.toString(),
                     "--threads", THREADS.toString()))
 
             // Check that log file was created correctly
-            assertTrue((dir / "logs" / "${path.stemGz}_200.log").exists)
-
-            /**
-             * Shpynov: since [Configuration] allows only single initialization of experimentPath,
-             * [SpanCLA] uses ignoreConfigurePaths variable to ignore it
-             */
-            val dir = Configuration.experimentsPath
+            assertTrue((dir / "logs" / "${path.stemGz}_${control.stemGz}_200.log").exists)
 
             // Coverage test
-            assertTrue((dir / "cache" / "coverage").exists)
-            assertTrue((dir / "cache" / "coverage").glob("{${path.stemGz}}_200_unique#*.bw").isNotEmpty())
+            assertTrue((Configuration.experimentsPath / "cache").exists)
+            assertTrue((Configuration.experimentsPath / "cache").glob("${path.stemGz}_${control.stemGz}_200#*.bw").isNotEmpty())
             // Model test
-            assertTrue((dir / "fit").exists)
-            assertTrue((dir / "fit" / "${path.stemGz}_200_unique.span").exists)
+            assertTrue((Configuration.experimentsPath / "fit").exists)
+            assertTrue((Configuration.experimentsPath / "fit" / "${path.stemGz}_${control.stemGz}_200.span").exists)
         }
     }
 

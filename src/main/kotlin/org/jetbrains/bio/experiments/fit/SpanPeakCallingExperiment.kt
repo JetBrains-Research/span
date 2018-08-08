@@ -19,7 +19,7 @@ import java.nio.file.Path
  * @author Alexey Dievsky
  * @since 10/04/15
  */
-class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any> : SpanFitExperiment<Model, State> {
+class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any> : SpanModelFitExperiment<Model, State> {
 
     constructor(genomeQuery: GenomeQuery,
                 paths: Pair<Path, Path?>,
@@ -58,7 +58,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any> : Span
                                     fragment: Int?,
                                     labels: Array<String>): Query<Chromosome, DataFrame> {
             return object : CachingQuery<Chromosome, DataFrame>() {
-                val scores = paths.map { GenomeScoresQuery.create(genomeQuery, it.first, it.second, fragment, binSize) }
+                val scores = paths.map { GenomeScoresQuery(genomeQuery, it.first, it.second, fragment, binSize) }
 
                 override fun getUncached(input: Chromosome): DataFrame {
                     return scores.scoresDataFrame(input, labels)

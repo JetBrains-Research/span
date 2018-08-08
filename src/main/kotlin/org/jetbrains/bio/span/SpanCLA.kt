@@ -11,10 +11,12 @@ import org.jetbrains.bio.Configuration
 import org.jetbrains.bio.Logs
 import org.jetbrains.bio.experiments.fit.SpanDifferentialPeakCallingExperiment
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment
+import org.jetbrains.bio.experiments.histones.PeaksInfo
 import org.jetbrains.bio.experiments.tuning.PeakAnnotation
 import org.jetbrains.bio.experiments.tuning.SPAN
 import org.jetbrains.bio.experiments.tuning.TuningResults
 import org.jetbrains.bio.genome.GenomeQuery
+import org.jetbrains.bio.query.ReadsQuery
 import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.query.stemGz
 import org.jetbrains.bio.util.*
@@ -132,7 +134,7 @@ compare                         Differential peak calling mode, experimental
                 if (outputBed != null) {
                     logPath = workingDir / "logs" / "${outputBed.stemGz}.log"
                 } else {
-                    var ids = listOfNotNull(treatmentPaths, controlPaths).flatMap { it.map { it.stemGz } }
+                    var ids = listOfNotNull(treatmentPaths, controlPaths).flatMap { paths -> paths.map { it.stemGz } }
                     ids += bin.toString()
                     if (labelsPath != null) {
                         ids += labelsPath.stemGz
@@ -185,10 +187,10 @@ compare                         Differential peak calling mode, experimental
                         savePeaks(peaks, outputBed,
                                 "peak${if (fragment != null) "_$fragment" else ""}_${bin}_${fdr}_${gap}")
                         LOG.info("Saved result to $outputBed")
-//                        LOG.info("\n" + PeaksInfo.compute(genomeQuery,
-//                                peaks.map { it.location }.stream(),
-//                                outputBed.toUri(),
-//                                paths))
+                        LOG.info("\n" + PeaksInfo.compute(genomeQuery,
+                                peaks.map { it.location }.stream(),
+                                outputBed.toUri(),
+                                paths))
                     } else {
                         val results = TuningResults()
                         val labels = PeakAnnotation.loadLabels(labelsPath, genomeQuery.build)
@@ -207,10 +209,10 @@ compare                         Differential peak calling mode, experimental
                         savePeaks(peaks, outputBed, "peak${if (fragment != null) "_$fragment" else ""}_" +
                                 "${bin}_${optimalFDR}_$optimalGap")
                         LOG.info("Saved result to $outputBed")
-//                        LOG.info("\n" + PeaksInfo.compute(genomeQuery,
-//                                peaks.map { it.location }.stream(),
-//                                outputBed.toUri(),
-//                                paths))
+                        LOG.info("\n" + PeaksInfo.compute(genomeQuery,
+                                peaks.map { it.location }.stream(),
+                                outputBed.toUri(),
+                                paths))
                     }
                 } else {
                     // Just fit the model
@@ -285,7 +287,7 @@ compare                         Differential peak calling mode, experimental
                     logPath = workingDir / "logs" / "${outputBed.stemGz}.log"
                 } else {
                     var ids = listOfNotNull(treatmentPaths1, controlPaths1, treatmentPaths2, controlPaths2)
-                            .flatMap { it.map { it.stemGz } }
+                            .flatMap { paths -> paths.map { it.stemGz } }
                     ids += bin.toString()
                     logPath = workingDir / "logs" / "${reduceIds(ids)}.log"
                 }
@@ -329,18 +331,20 @@ compare                         Differential peak calling mode, experimental
                 configurePaths(workingDir, chromSizesPath)
 
                 val paths1 = matchTreatmentAndControls(treatmentPaths1, controlPaths1)
+                val coverages1 = treatmentPaths1.map { ReadsQuery(genomeQuery, it, fragment = fragment) }
                 val paths2 = matchTreatmentAndControls(treatmentPaths2, controlPaths2)
+                val coverages2 = treatmentPaths1.map { ReadsQuery(genomeQuery, it, fragment = fragment) }
                 val experiment = SpanDifferentialPeakCallingExperiment.getExperiment(genomeQuery, paths1, paths2, bin, fragment)
                 if (outputBed != null) {
                     val peaks = experiment.results.getPeaks(experiment.genomeQuery, fdr, gap)
                     peaks.forEach { peak ->
-                        //                        peak.value =
-//                                Math.max(1.0, paths1.map {
-//                                    it.get().getBothStrandsCoverage(peak.range.on(peak.chromosome))
-//                                }.average()) /
-//                                Math.max(1.0, paths2.map {
-//                                    it.get().getBothStrandsCoverage(peak.range.on(peak.chromosome))
-//                                }.average())
+                        peak.value =
+                                Math.max(1.0, coverages1.map {
+                                    it.get().getBothStrandsCoverage(peak.range.on(peak.chromosome))
+                                }.average()) /
+                                Math.max(1.0, coverages2.map {
+                                    it.get().getBothStrandsCoverage(peak.range.on(peak.chromosome))
+                                }.average())
                     }
                     savePeaks(peaks, outputBed, "diff${if (fragment != null) "_$fragment" else ""}_${bin}_${fdr}_${gap}")
                     LOG.info("Saved result to $outputBed")

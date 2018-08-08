@@ -21,7 +21,7 @@ import java.util.*
 import kotlin.collections.LinkedHashMap
 
 /**
- * Since all the chromosomes are squashed in [SpanFitExperiment] and processed by the single model,
+ * Since all the chromosomes are squashed in [SpanModelFitExperiment] and processed by the single model,
  * this class is used to access chromosomes information from that model.
  *
  * See [getChromosomesIndices] and [offsets] for details.
@@ -84,7 +84,7 @@ data class SpanFitInformation(val description: String,
     }
 
     /**
-     * Since all chromosomes are squashed into a single data frame for [SpanFitExperiment]
+     * Since all chromosomes are squashed into a single data frame for [SpanModelFitExperiment]
      * This method computes indices of data frame, for given [chromosome]
      */
     internal fun getChromosomesIndices(genomeQuery: GenomeQuery, chromosome: Chromosome): Pair<Int, Int> {
@@ -156,7 +156,7 @@ data class SpanFitResults(val fitInfo: SpanFitInformation,
  * - States: [ZLHID]
  * - Any number of replicates: [MLConstrainedNBHMM]
  */
-abstract class SpanFitExperiment<out Model : ClassificationModel, State : Any>(
+abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : Any>(
         genomeQuery: GenomeQuery,
         dataQuery: Query<Chromosome, DataFrame>,
         val binSize: Int,
@@ -279,11 +279,11 @@ abstract class SpanFitExperiment<out Model : ClassificationModel, State : Any>(
                 Tar.decompress(tarPath, dir.toFile())
 
                 LOG.debug("Completed model file decompress and started loading: $tarPath")
-                val info = SpanFitInformation.load(dir / SpanFitExperiment.INFORMATION_JSON)
+                val info = SpanFitInformation.load(dir / SpanModelFitExperiment.INFORMATION_JSON)
                 // Sanity check
                 info.checkGenomeQuery(genomeQuery)
                 val model = ClassificationModel.load<ClassificationModel>(dir / MODEL_JSON)
-                val logNullMembershipsDF = DataFrame.load(dir / SpanFitExperiment.NULL_NPZ)
+                val logNullMembershipsDF = DataFrame.load(dir / SpanModelFitExperiment.NULL_NPZ)
                 val logNullMembershipsMap = info.dataFrameToMap(logNullMembershipsDF, genomeQuery)
 
                 LOG.info("Completed loading model: $tarPath")

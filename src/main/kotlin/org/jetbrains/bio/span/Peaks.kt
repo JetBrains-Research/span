@@ -117,7 +117,7 @@ fun SpanFitResults.getChromosomePeaks(chromosome: Chromosome,
                                       fdr: Double,
                                       gap: Int,
                                       coverageDataFrame: DataFrame? = null): List<Peak> =
-        getChromosomePeaks(logNullMemberships[chromosome.name]!!.f64Array(SpanFitExperiment.NULL),
+        getChromosomePeaks(logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL),
                 fitInfo.offsets(chromosome),
                 chromosome, fdr, gap,
                 coverageDataFrame)

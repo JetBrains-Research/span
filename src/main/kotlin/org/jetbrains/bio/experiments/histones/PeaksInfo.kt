@@ -10,12 +10,12 @@ import org.jetbrains.bio.genome.Location
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.sampling.XSRandom
 import org.jetbrains.bio.genome.sequence.BinaryLut
-import org.jetbrains.bio.query.InputQuery
 import org.jetbrains.bio.query.ReadsQuery
 import org.jetbrains.bio.util.isAccessible
 import org.jetbrains.bio.util.presentablePath
 import org.jetbrains.bio.util.size
 import java.net.URI
+import java.nio.file.Path
 import java.util.stream.Collectors
 import java.util.stream.Stream
 
@@ -33,7 +33,8 @@ object PeaksInfo {
     fun compute(genomeQuery: GenomeQuery,
                 peaksStream: Stream<Location>,
                 src: URI?,
-                readQueries: List<InputQuery<Coverage>>): String {
+                paths: List<Pair<Path, Path?>>,
+                fragment: Int? = null): String {
         val peaks = peaksStream.collect(Collectors.toList())
         val peaksLengths = peaks.map { it.length().toDouble() }.toDoubleArray()
         val peaksCount = peaksLengths.count()
@@ -58,14 +59,17 @@ object PeaksInfo {
                     |    95%: ${(if (peaksLengths.isEmpty()) 0L else StatUtils.percentile(peaksLengths, 95.0).toLong()).formatLongNumber()} bp
                     |""".trimMargin()
         var signalBlock = ""
-        // Don't recompute coverage if it is not processed locally
-        if (readQueries.isNotEmpty() && readQueries.all { it is ReadsQuery && it.npzPath().isAccessible() }) {
-            val coverages = readQueries.map { it.get() }
-            val frip = frip(genomeQuery, peaks, coverages)
-            signalBlock += "FRIP: $frip\n"
-            val signalToNoise = signalToNoise(genomeQuery, peaks, coverages)
-            if (signalToNoise != null) {
-                signalBlock += "Signal to noise: $signalToNoise\n"
+        // Don't recompute tags coverage if it is not processed locally
+        if (paths.isNotEmpty()) {
+            val readQueries = paths.map { ReadsQuery(genomeQuery, it.first, true, fragment) }
+            if (readQueries.all { it.tagsPath().isAccessible() }) {
+                val coverages = readQueries.map { it.get() }
+                val frip = frip(genomeQuery, peaks, coverages)
+                signalBlock += "FRIP: $frip\n"
+                val signalToNoise = signalToNoise(genomeQuery, peaks, coverages)
+                if (signalToNoise != null) {
+                    signalBlock += "Signal to noise: $signalToNoise\n"
+                }
             }
         }
         return srcBlock + peaksLengthsBlock + signalBlock

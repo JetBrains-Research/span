@@ -1,9 +1,13 @@
 package org.jetbrains.bio.experiments.fit
 
+import org.apache.log4j.Logger
+import org.jetbrains.bio.experiments.tuning.SPAN
 import org.jetbrains.bio.statistics.NegBinEmissionScheme
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 
+
+private val LOG = Logger.getLogger(SPAN::class.java)
 
 internal fun MLFreeNBHMM.probabilityFlip(state1: Int, state2: Int) {
     for (i in 0..2) {
@@ -54,20 +58,20 @@ internal fun MLFreeNBHMM.flipStatesIfNecessary() {
     val meanFlipped = meanLow > meanHigh
     val pFlipped = pLow > pHigh
     if (meanFlipped) {
-        ModelFitExperiment.LOG.warn("After fitting the model, mean emission in LOW state ($meanLow) is higher than " +
+        LOG.warn("After fitting the model, mean emission in LOW state ($meanLow) is higher than " +
                 "mean emission in HIGH state ($meanHigh).")
     }
     if (pFlipped) {
-        ModelFitExperiment.LOG.warn("After fitting the model, emission's parameter p in LOW state ($pLow) is higher than " +
+        LOG.warn("After fitting the model, emission's parameter p in LOW state ($pLow) is higher than " +
                 "emission's parameter p in HIGH state ($pHigh).")
     }
     if (meanFlipped && pFlipped) {
-        ModelFitExperiment.LOG.warn("This usually indicates that the states were flipped during fitting. We will now flip them back.")
+        LOG.warn("This usually indicates that the states were flipped during fitting. We will now flip them back.")
         this[2] = lowScheme
         this[1] = highScheme
         this.probabilityFlip(1, 2)
     } else if (meanFlipped || pFlipped) {
-        ModelFitExperiment.LOG.warn("This is generally harmless, but could indicate low quality of data.")
+        LOG.warn("This is generally harmless, but could indicate low quality of data.")
     }
 }
 
@@ -80,10 +84,10 @@ internal fun MLConstrainedNBHMM.flipStatesIfNecessary(tracks: Int) {
     val switchNeeded = (0 until tracks).filter { means[it] > means[it + tracks] && ps[it] > ps[it + tracks] }
     val switchNotNeeded = (0 until tracks).filter { means[it] < means[it + tracks] || ps[it] < ps[it + tracks] }
     if (switchNeeded.isNotEmpty() && switchNotNeeded.isNotEmpty()) {
-        ModelFitExperiment.LOG.error("Irrecoverable fitting error")
-        ModelFitExperiment.LOG.error("means: " + means.toString())
-        ModelFitExperiment.LOG.error("ps: " + ps.toString())
-        ModelFitExperiment.LOG.error("track(s) " + switchNeeded.joinToString(transform = Int::toString)
+        LOG.error("Irrecoverable fitting error")
+        LOG.error("means: " + means.toString())
+        LOG.error("ps: " + ps.toString())
+        LOG.error("track(s) " + switchNeeded.joinToString(transform = Int::toString)
                 + " contradict track(s) " + switchNotNeeded.joinToString(transform = Int::toString))
         throw IllegalStateException("Irrecoverable fitting error")
     }
@@ -112,18 +116,18 @@ internal fun MLConstrainedNBHMM.flipStatesIfNecessary(tracks1: Int, tracks2: Int
     val switchNotNeeded2 = (2 * tracks1 until 2 * tracks1 + tracks2)
             .filter { means[it] < means[it + tracks2] && ps[it] < ps[it + tracks2] }
     if (switchNeeded1.isNotEmpty() && switchNotNeeded1.isNotEmpty()) {
-        ModelFitExperiment.LOG.error("Irrecoverable fitting error")
-        ModelFitExperiment.LOG.error("means: " + means.toString())
-        ModelFitExperiment.LOG.error("ps: " + ps.toString())
-        ModelFitExperiment.LOG.error("track(s) " + switchNeeded1.joinToString(transform = Int::toString)
+        LOG.error("Irrecoverable fitting error")
+        LOG.error("means: " + means.toString())
+        LOG.error("ps: " + ps.toString())
+        LOG.error("track(s) " + switchNeeded1.joinToString(transform = Int::toString)
                 + " contradict track(s) " + switchNotNeeded1.joinToString(transform = Int::toString))
         throw IllegalStateException("Irrecoverable fitting error")
     }
     if (switchNeeded2.isNotEmpty() && switchNotNeeded2.isNotEmpty()) {
-        ModelFitExperiment.LOG.error("Irrecoverable fitting error")
-        ModelFitExperiment.LOG.error("means: " + means.toString())
-        ModelFitExperiment.LOG.error("ps: " + ps.toString())
-        ModelFitExperiment.LOG.error("track(s) " + switchNeeded2.joinToString(transform = Int::toString)
+        LOG.error("Irrecoverable fitting error")
+        LOG.error("means: " + means.toString())
+        LOG.error("ps: " + ps.toString())
+        LOG.error("track(s) " + switchNeeded2.joinToString(transform = Int::toString)
                 + " contradict track(s) " + switchNotNeeded2.joinToString(transform = Int::toString))
         throw IllegalStateException("Irrecoverable fitting error")
     }
