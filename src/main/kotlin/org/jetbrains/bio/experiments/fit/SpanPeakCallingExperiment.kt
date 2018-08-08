@@ -1,12 +1,8 @@
 package org.jetbrains.bio.experiments.fit
 
-import org.jetbrains.bio.coverage.GenomeScoresQuery
-import org.jetbrains.bio.coverage.scoresDataFrame
-import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
-import org.jetbrains.bio.query.CachingQuery
-import org.jetbrains.bio.query.Query
 import org.jetbrains.bio.query.reduceIds
+import org.jetbrains.bio.query.stemGz
 import org.jetbrains.bio.statistics.*
 import org.jetbrains.bio.statistics.data.DataFrame
 import org.jetbrains.bio.statistics.hmm.MLAbstractHMM
@@ -19,58 +15,36 @@ import java.nio.file.Path
  * @author Alexey Dievsky
  * @since 10/04/15
  */
-class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any> : SpanModelFitExperiment<Model, State> {
+class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
+        genomeQuery: GenomeQuery,
+        paths: List<Pair<Path, Path?>>,
+        fragment: Int?,
+        binSize: Int,
+        modelFitter: Fitter<Model>,
+        modelClass: Class<Model>,
+        states: Array<State>,
+        nullHypothesis: NullHypothesis<State>) : SpanModelFitExperiment<Model, State>(genomeQuery,
+        paths, MultiLabels.generate(TRACK_PREFIX, paths.size).toList(),
+        fragment, binSize,
+        modelFitter, modelClass, states, nullHypothesis) {
 
     constructor(genomeQuery: GenomeQuery,
                 paths: Pair<Path, Path?>,
                 modelFitter: Fitter<Model>,
                 modelClass: Class<Model>,
-                binSize: Int,
                 fragment: Int?,
+                binSize: Int,
                 states: Array<State>,
                 nullHypothesis: NullHypothesis<State>) :
-            super(genomeQuery,
-                    createDataQuery(genomeQuery, listOf(paths), binSize, fragment, arrayOf(X_PREFIX)),
-                    binSize, modelFitter, modelClass, states, nullHypothesis)
+            this(genomeQuery, listOf(paths), fragment, binSize, modelFitter, modelClass, states, nullHypothesis)
 
-    constructor(genomeQuery: GenomeQuery,
-                paths: List<Pair<Path, Path?>>,
-                modelFitter: Fitter<Model>,
-                modelClass: Class<Model>,
-                binSize: Int,
-                fragment: Int?,
-                states: Array<State>,
-                nullHypothesis: NullHypothesis<State>) :
-            super(genomeQuery,
-                    createDataQuery(genomeQuery, paths, binSize, fragment, MultiLabels.generate(D_PREFIX, paths.size)),
-                    binSize, modelFitter, modelClass, states, nullHypothesis)
+    override val id: String =
+            reduceIds(paths.flatMap { listOfNotNull(it.first, it.second) }.map { it.stemGz } +
+                    listOfNotNull(fragment, binSize).map { it.toString() })
 
-    override val id: String
-        get() = dataQuery.id
 
     companion object {
-        const val X_PREFIX = "x"
-        const val D_PREFIX = "d"
-
-        private fun createDataQuery(genomeQuery: GenomeQuery,
-                                    paths: List<Pair<Path, Path?>>,
-                                    binSize: Int,
-                                    fragment: Int?,
-                                    labels: Array<String>): Query<Chromosome, DataFrame> {
-            return object : CachingQuery<Chromosome, DataFrame>() {
-                val scores = paths.map { GenomeScoresQuery(genomeQuery, it.first, it.second, fragment, binSize) }
-
-                override fun getUncached(input: Chromosome): DataFrame {
-                    return scores.scoresDataFrame(input, labels)
-                }
-
-                override val id: String
-                    get() = reduceIds(scores.map { it.id })
-
-                override val description: String
-                    get() = scores.joinToString(";") { it.description }
-            }
-        }
+        const val TRACK_PREFIX = "track_"
 
         /**
          * Creates experiment for model-based enrichment of binned coverage tracks (e.g. ChIP-seq tracks)
@@ -89,13 +63,13 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any> : Span
                 SpanPeakCallingExperiment(genomeQuery, paths.first(),
                         semanticCheck(MLFreeNBHMM.fitter()),
                         MLFreeNBHMM::class.java,
-                        bin, fragment,
+                        fragment, bin,
                         ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L))
             } else {
                 SpanPeakCallingExperiment(genomeQuery, paths,
-                        semanticCheck(MLConstrainedNBHMM.fitter(paths.size), paths.size),
-                        MLConstrainedNBHMM::class.java,
-                        bin, fragment,
+                        fragment,
+                        bin,
+                        semanticCheck(MLConstrainedNBHMM.fitter(paths.size), paths.size), MLConstrainedNBHMM::class.java,
                         ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L))
             }
         }

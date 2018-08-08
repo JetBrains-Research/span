@@ -85,7 +85,7 @@ internal fun getChromosomePeaks(logNullMemberships: F64Array,
         var value = 0.0
         if (coverageDataFrame != null) {
             if (coverageDataFrame.labels.size == 1 ||
-                    coverageDataFrame.labels.all { it.startsWith(SpanPeakCallingExperiment.D_PREFIX) }) {
+                    coverageDataFrame.labels.all { it.startsWith(SpanPeakCallingExperiment.TRACK_PREFIX) }) {
                 value = coverageDataFrame.partialMean(i, j)
             } else if (coverageDataFrame.labels.all {
                         it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX) ||

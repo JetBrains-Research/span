@@ -3,6 +3,7 @@ package org.jetbrains.bio.experiments.histones
 import org.apache.commons.math3.stat.StatUtils
 import org.apache.log4j.Logger
 import org.jetbrains.bio.coverage.Coverage
+import org.jetbrains.bio.experiments.fit.SpanFitInformation
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
@@ -29,6 +30,12 @@ object PeaksInfo {
     private val LOG = Logger.getLogger(PeaksInfo::class.java)
 
     private fun Long.formatLongNumber() = String.format("%,d", this).replace(',', ' ')
+
+    fun compute(genomeQuery: GenomeQuery, peaksStream: Stream<Location>, src: URI?,
+                paths: SpanFitInformation): String {
+        throw UnsupportedOperationException()
+    }
+
 
     fun compute(genomeQuery: GenomeQuery,
                 peaksStream: Stream<Location>,

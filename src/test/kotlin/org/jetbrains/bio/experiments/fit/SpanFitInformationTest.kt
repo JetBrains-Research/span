@@ -25,80 +25,132 @@ class SpanFitInformationTest {
     @Test
     fun checkBinSize() {
         expectedEx.expect(IllegalStateException::class.java)
-        expectedEx.expectMessage("Wrong bin size, expected: 100, got: 50")
-        SpanFitInformation("foo", 100, "hg19", LinkedHashMap()).checkBinSize(50)
+        expectedEx.expectMessage("Wrong bin size, expected: 200, got: 50")
+        SpanFitInformation("foo", emptyList(), emptyList(), 100, 200, LinkedHashMap()).checkBinSize(50)
     }
 
     @Test
     fun checkBuild() {
         expectedEx.expect(IllegalStateException::class.java)
         expectedEx.expectMessage("Wrong genome build, expected: hg19, got: to2")
-        SpanFitInformation("foo", 100, "hg19", LinkedHashMap()).checkGenomeQuery(GenomeQuery("to2"))
+        SpanFitInformation("hg19", emptyList(), emptyList(), 100, 200, LinkedHashMap()).checkGenomeQuery(GenomeQuery("to2"))
     }
 
     @Test
     fun checkGenomeQuery() {
         expectedEx.expect(IllegalStateException::class.java)
         expectedEx.expectMessage("Wrong chromosomes, expected: [chr1, chr2, chr3, chrX], got: [chr1]")
-        SpanFitInformation("foo", 100, gq).checkGenomeQuery(GenomeQuery("to1", "chr1"))
+        SpanFitInformation(gq, emptyList(), emptyList(), 100, 200).checkGenomeQuery(GenomeQuery("to1", "chr1"))
     }
 
     @Test
     fun checkGenomeQueryOrder() {
-        SpanFitInformation("foo", 100, GenomeQuery("to1", "chr1", "chr2"))
+        SpanFitInformation(GenomeQuery("to1", "chr1", "chr2"), emptyList(), emptyList(), 100, 200)
                 .checkGenomeQuery(GenomeQuery("to1", "chr2", "chr1"))
     }
 
 
+    @Test
+    fun checkOf() {
+        val of = SpanFitInformation(gq, emptyList(), emptyList(), 100, 200)
+        assertEquals(listOf("chr1", "chr2", "chr3", "chrX"), of.chromosomesSizes.keys.toList())
+    }
 
-    val JSON = """{
-  "description": "foobar",
-  "bin_size": 200,
+    @Test
+    fun checkSave() {
+        withTempFile("treatment", ".bam") { t ->
+            withTempFile("control", ".bam") { c ->
+                val info = SpanFitInformation(gq, listOf(t to c), listOf("treatment_control"), 100, 200)
+                withTempFile("foo", ".tar") { path ->
+                    info.save(path)
+                    val output = path.bufferedReader().lines().collect(Collectors.joining("\n"))
+                    assertEquals("""{
   "build": "to1",
+  "data": [
+    {
+      "path": "$t",
+      "control": "$c"
+    }
+  ],
+  "labels": [
+    "treatment_control"
+  ],
+  "fragment": 100,
+  "bin_size": 200,
   "chromosomes_sizes": {
     "chr1": 10000000,
     "chr2": 1000000,
     "chr3": 1000000,
     "chrX": 1000000
   }
-}
-"""
-
-    @Test
-    fun checkOf() {
-        val of = SpanFitInformation("foobar", 200, gq)
-        assertEquals(listOf("chr1", "chr2", "chr3", "chrX"), of.chromosomesSizes.keys.toList())
-    }
-
-    @Test
-    fun checkSave() {
-        val info = SpanFitInformation("foobar", 200, gq)
-        withTempFile("foo", ".tar") { path ->
-            info.save(path)
-            val output = path.bufferedReader().lines().collect(Collectors.joining("\n"))
-            assertEquals(JSON.trim(), output.trim())
+}""".trim(), output.trim())
+                }
+                assertEquals(listOf("chr1", "chr2", "chr3", "chrX"), info.chromosomesSizes.keys.toList())
+            }
         }
-        assertEquals(listOf("chr1", "chr2", "chr3", "chrX"), info.chromosomesSizes.keys.toList())
     }
 
     @Test
     fun checkLoad() {
-        val info = SpanFitInformation("foobar", 200, gq)
+        withTempFile("treatment", ".bam") { t ->
+            val info = SpanFitInformation(gq, listOf(t to null), listOf("treatment_control"), null, 200)
+            withTempFile("foo", ".tar") { path ->
+                path.bufferedWriter().use {
+                    it.write("""{
+  "build": "to1",
+  "data": [
+    {
+      "path": "$t"
+    }
+  ],
+  "labels": [
+    "treatment_control"
+  ],
+  "fragment": null,
+  "bin_size": 200,
+  "chromosomes_sizes": {
+    "chr1": 10000000,
+    "chr2": 1000000,
+    "chr3": 1000000,
+    "chrX": 1000000
+  }
+}""")
+                }
+                assertEquals(info, SpanFitInformation.load(path))
+            }
+        }
+    }
+
+
+    @Test
+    fun checkVersion() {
+        expectedEx.expect(IllegalStateException::class.java)
+        expectedEx.expectMessage("Wrong version: expected: 1, got: 2")
         withTempFile("foo", ".tar") { path ->
-            path.bufferedWriter().use { it.write(JSON) }
-            assertEquals(info, SpanFitInformation.load(path))
+            path.bufferedWriter().use {
+                it.write("""{
+  "build": "to1",
+  "data": [],
+  "labels": [],
+  "fragment": null,
+  "bin_size": 200,
+  "chromosomes_sizes": {},
+  "version": 2
+}""")
+            }
+            SpanFitInformation.load(path)
         }
     }
 
     @Test
     fun checkIndices() {
-        val info = SpanFitInformation("foobar", 200, gq)
+        val info = SpanFitInformation(gq, emptyList(), emptyList(), 100, 200)
         assertEquals(50000 to 55000, info.getChromosomesIndices(gq, chr2))
     }
 
     @Test
     fun checkOffsets() {
-        val info = SpanFitInformation("foobar", 200, gq)
+        val info = SpanFitInformation(gq, emptyList(), emptyList(), 100, 200)
         assertEquals(listOf(0, 200, 400, 600, 800), info.offsets(chr2).take(5))
         assertEquals(5000, chr2.length / 200)
         assertEquals(5000, info.offsets(chr2).size)
