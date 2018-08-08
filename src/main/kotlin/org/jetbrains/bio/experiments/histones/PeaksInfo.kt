@@ -15,6 +15,7 @@ import org.jetbrains.bio.query.ReadsQuery
 import org.jetbrains.bio.util.isAccessible
 import org.jetbrains.bio.util.presentablePath
 import org.jetbrains.bio.util.size
+import org.jetbrains.bio.util.toPath
 import java.net.URI
 import java.nio.file.Path
 import java.util.stream.Collectors
@@ -32,15 +33,15 @@ object PeaksInfo {
     private fun Long.formatLongNumber() = String.format("%,d", this).replace(',', ' ')
 
     fun compute(genomeQuery: GenomeQuery, peaksStream: Stream<Location>, src: URI?,
-                paths: SpanFitInformation): String {
-        throw UnsupportedOperationException()
+                fitInformation: SpanFitInformation): String {
+        return compute(genomeQuery, peaksStream, src, fitInformation.data.map { it.path.toPath() })
     }
 
 
     fun compute(genomeQuery: GenomeQuery,
                 peaksStream: Stream<Location>,
                 src: URI?,
-                paths: List<Pair<Path, Path?>>,
+                paths: List<Path>,
                 fragment: Int? = null): String {
         val peaks = peaksStream.collect(Collectors.toList())
         val peaksLengths = peaks.map { it.length().toDouble() }.toDoubleArray()
@@ -68,7 +69,7 @@ object PeaksInfo {
         var signalBlock = ""
         // Don't recompute tags coverage if it is not processed locally
         if (paths.isNotEmpty()) {
-            val readQueries = paths.map { ReadsQuery(genomeQuery, it.first, true, fragment) }
+            val readQueries = paths.map { ReadsQuery(genomeQuery, it, true, fragment) }
             if (readQueries.all { it.tagsPath().isAccessible() }) {
                 val coverages = readQueries.map { it.get() }
                 val frip = frip(genomeQuery, peaks, coverages)

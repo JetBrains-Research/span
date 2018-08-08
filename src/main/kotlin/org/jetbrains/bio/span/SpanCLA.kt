@@ -42,7 +42,7 @@ object SpanCLA {
      * This is a HACK.
      */
     @VisibleForTesting
-    internal var ignoreConfigurePaths: Boolean = false
+    var ignoreConfigurePaths: Boolean = false
 
     init {
         // Add appender before initializing logger to avoid Log4j warnings
@@ -190,7 +190,7 @@ compare                         Differential peak calling mode, experimental
                         LOG.info("\n" + PeaksInfo.compute(genomeQuery,
                                 peaks.map { it.location }.stream(),
                                 outputBed.toUri(),
-                                paths))
+                                peakCallingExperiment.fitInformation))
                     } else {
                         val results = TuningResults()
                         val labels = PeakAnnotation.loadLabels(labelsPath, genomeQuery.build)
@@ -209,10 +209,6 @@ compare                         Differential peak calling mode, experimental
                         savePeaks(peaks, outputBed, "peak${if (fragment != null) "_$fragment" else ""}_" +
                                 "${bin}_${optimalFDR}_$optimalGap")
                         LOG.info("Saved result to $outputBed")
-                        LOG.info("\n" + PeaksInfo.compute(genomeQuery,
-                                peaks.map { it.location }.stream(),
-                                outputBed.toUri(),
-                                paths))
                     }
                 } else {
                     // Just fit the model
@@ -365,8 +361,7 @@ compare                         Differential peak calling mode, experimental
             }
             return treatmentPaths.zip(Array(treatmentPaths.size) {
                 if (controlPaths.size != 1) controlPaths[it] else controlPaths.first()
-            }
-            )
+            })
         }
         return treatmentPaths.map {
             it to null

@@ -143,10 +143,10 @@ data class SpanFitInformation(val build: String,
             return path.bufferedReader().use {
                 val info = GSON.fromJson(it, SpanFitInformation::class.java)
                 checkNotNull(info) {
-                    "failed to load info from $path"
+                    "Failed to load info from $path"
                 }
                 check(VERSION == info.version) {
-                    "Wrong version: expected: $VERSION, got: ${info.version}"
+                    "Wrong $path version: expected: $VERSION, got: ${info.version}"
                 }
                 return@use info
             }
@@ -199,7 +199,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
         results.logNullMemberships
     }
 
-    protected val fitInformation = SpanFitInformation(genomeQuery, paths, labels, fragment, binSize)
+    val fitInformation = SpanFitInformation(genomeQuery, paths, labels, fragment, binSize)
 
     private val preprocessedData: List<Preprocessed<DataFrame>> by lazy {
         fitInformation.sortedChromosomes(genomeQuery).map {
@@ -207,7 +207,9 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
         }
     }
 
-    private val tarPath: Path = experimentPath / "$id.span"
+    // XXX It is important to use get() here, because id is overridden in superclasses
+    private val tarPath: Path
+        get() = experimentPath / "$id.span"
 
     private fun calculateModel(): Model {
         MultitaskProgress.addTask(dataQuery.id, (Fitter.MAX_ITERATIONS / 4).toLong())
