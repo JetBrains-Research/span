@@ -269,30 +269,35 @@ LABELS, FDR, GAP options are ignored.
     @Test
     fun testFilesCreatedByAnalyze() {
         withTempDirectory("work") { dir ->
-            // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
-            val path = dir / "track.bed.gz"
-            val control = dir / "control.bed.gz"
+            withTempFile("track", ".bed.gz", dir) { path ->
+                withTempFile("control", ".bed.gz", dir) { control ->
+                    // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
+                    sampleCoverage(path, TO, BIN, goodQuality = true)
+                    sampleCoverage(control, TO, BIN, goodQuality = false)
 
-            sampleCoverage(path, TO, BIN, goodQuality = true)
-            sampleCoverage(control, TO, BIN, goodQuality = false)
+                    val chromsizes = Genome["to1"].chromSizesPath.toString()
+                    SpanCLA.main(arrayOf("analyze",
+                            "-cs", chromsizes,
+                            "--workdir", dir.toString(),
+                            "-t", path.toString(),
+                            "-c", control.toString(),
+                            "--threads", THREADS.toString()))
 
-            val chromsizes = Genome["to1"].chromSizesPath.toString()
-            SpanCLA.main(arrayOf("analyze",
-                    "-cs", chromsizes,
-                    "--workdir", dir.toString(),
-                    "-t", path.toString(),
-                    "-c", control.toString(),
-                    "--threads", THREADS.toString()))
+                    // Check that log file was created correctly
+                    assertTrue((dir / "logs" / "${path.stemGz}_${control.stemGz}_200.log").exists)
 
-            // Check that log file was created correctly
-            assertTrue((dir / "logs" / "${path.stemGz}_${control.stemGz}_200.log").exists)
+                    assertTrue((Configuration.experimentsPath / "cache").exists)
 
-            // Coverage test
-            assertTrue((Configuration.experimentsPath / "cache").exists)
-            assertTrue((Configuration.experimentsPath / "cache").glob("${path.stemGz}_${control.stemGz}_200#*.bw").isNotEmpty())
-            // Model test
-            assertTrue((Configuration.experimentsPath / "fit").exists)
-            assertTrue((Configuration.experimentsPath / "fit" / "${path.stemGz}_${control.stemGz}_200.span").exists)
+                    // Genome Coverage test
+                    assertEquals(1, (Configuration.experimentsPath / "cache").glob("coverage_${path.stemGz}_unique#*.npz").size)
+                    assertEquals(1, (Configuration.experimentsPath / "cache").glob("coverage_${control.stemGz}_unique#*.npz").size)
+                    // Genome Scores test
+                    assertTrue((Configuration.experimentsPath / "cache").glob("${path.stemGz}_${control.stemGz}_200#*.bw").isNotEmpty())
+                    // Model test
+                    assertTrue((Configuration.experimentsPath / "fit").exists)
+                    assertEquals(1, (Configuration.experimentsPath / "fit").glob("${path.stemGz}_${control.stemGz}_200#*.span").size)
+                }
+            }
         }
     }
 

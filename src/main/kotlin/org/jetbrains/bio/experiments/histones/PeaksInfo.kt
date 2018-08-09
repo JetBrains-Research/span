@@ -70,7 +70,7 @@ object PeaksInfo {
         // Don't recompute tags coverage if it is not processed locally
         if (paths.isNotEmpty()) {
             val readQueries = paths.map { ReadsQuery(genomeQuery, it, true, fragment) }
-            if (readQueries.all { it.tagsPath().isAccessible() }) {
+            if (readQueries.all { it.npzPath().isAccessible() }) {
                 val coverages = readQueries.map { it.get() }
                 val frip = frip(genomeQuery, peaks, coverages)
                 signalBlock += "FRIP: $frip\n"
