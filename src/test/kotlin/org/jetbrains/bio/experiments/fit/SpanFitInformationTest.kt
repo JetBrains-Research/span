@@ -82,7 +82,8 @@ class SpanFitInformationTest {
     "chr2": 1000000,
     "chr3": 1000000,
     "chrX": 1000000
-  }
+  },
+  "version": 1
 }""".trim(), output.trim())
                 }
                 assertEquals(listOf("chr1", "chr2", "chr3", "chrX"), info.chromosomesSizes.keys.toList())
@@ -113,7 +114,8 @@ class SpanFitInformationTest {
     "chr2": 1000000,
     "chr3": 1000000,
     "chrX": 1000000
-  }
+  },
+  "version": 1
 }""")
                 }
                 assertEquals(info, SpanFitInformation.load(path))
