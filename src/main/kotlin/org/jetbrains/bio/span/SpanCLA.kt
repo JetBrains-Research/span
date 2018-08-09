@@ -136,6 +136,9 @@ compare                         Differential peak calling mode, experimental
                 } else {
                     var ids = listOfNotNull(treatmentPaths, controlPaths).flatMap { paths -> paths.map { it.stemGz } }
                     ids += bin.toString()
+                    if (fragment != null) {
+                        ids += fragment.toString()
+                    }
                     if (labelsPath != null) {
                         ids += labelsPath.stemGz
                     }
@@ -285,6 +288,9 @@ compare                         Differential peak calling mode, experimental
                     var ids = listOfNotNull(treatmentPaths1, controlPaths1, treatmentPaths2, controlPaths2)
                             .flatMap { paths -> paths.map { it.stemGz } }
                     ids += bin.toString()
+                    if (fragment != null) {
+                        ids += fragment.toString()
+                    }
                     logPath = workingDir / "logs" / "${reduceIds(ids)}.log"
                 }
                 Logs.addLoggingToFile(logPath)
