@@ -54,11 +54,6 @@ there is no difference in **enrichment** for the two biological conditions.
 
 `span` supports BED reads and BAM as input.
 
-#### How to analyze a subset of chromosomes?
-
-Use the `--only` option, which accepts a comma-separated list of chromosomes,
-for example `--only chr1,chr2,chrX`.
-
 #### Where is `span` source code?
 
 We are working on open sourcing complete `span` source code. At the moment only the JAR is available.

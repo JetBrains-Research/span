@@ -97,13 +97,13 @@ compare                         Differential peak calling mode, experimental
     private fun analyze(params: Array<String>) {
         with(getOptionParser()) {
             acceptsAll(listOf("t", "treatment"),
-                    "ChIP-seq treatment file. bam, bed, .bed.gz or bigWig file;\n" +
+                    "ChIP-seq treatment file. bam, bed or .bed.gz file;\n" +
                             "If multiple files are given, treated as replicates.")
                     .withRequiredArg().required()
                     .withValuesSeparatedBy(",")
                     .withValuesConvertedBy(PathConverter.exists())
             acceptsAll(listOf("c", "control"),
-                    "Control file. bam, bed, bed.gz or bigWig file;\n" +
+                    "Control file. bam, bed or bed.gz file;\n" +
                             "Single control file or separate file per each\n" +
                             "treatment file required.")
                     .withRequiredArg()
@@ -120,7 +120,7 @@ compare                         Differential peak calling mode, experimental
                 // We would like to reuse as much caching as possible, resolve all the symbolic links
                 val treatmentPaths = (options.valuesOf("treatment") as List<Path>).map { it.toRealPath() }
                 val controlPaths = (options.valuesOf("control") as List<Path>?)?.map { it.toRealPath() }
-                val outputBed = options.valueOf("output") as Path?
+                val peaksPath = options.valueOf("peaks") as Path?
                 val labelsPath = options.valueOf("labels") as Path?
                 val chromSizesPath = options.valueOf("chrom.sizes") as Path
                 val bin = options.valueOf("bin") as Int
@@ -131,8 +131,8 @@ compare                         Differential peak calling mode, experimental
 
                 // Configure logs path
                 val logPath: Path
-                if (outputBed != null) {
-                    logPath = workingDir / "logs" / "${outputBed.stemGz}.log"
+                if (peaksPath != null) {
+                    logPath = workingDir / "logs" / "${peaksPath.stemGz}.log"
                 } else {
                     var ids = listOfNotNull(treatmentPaths, controlPaths).flatMap { paths -> paths.map { it.stemGz } }
                     ids += bin.toString()
@@ -160,7 +160,7 @@ compare                         Differential peak calling mode, experimental
                 LOG.info("CHROM.SIZES: $chromSizesPath")
                 LOG.info("GENOME: ${genomeQuery.id}")
                 LOG.info("FRAGMENT: $fragment")
-                if (outputBed != null) {
+                if (peaksPath != null) {
                     if (labelsPath != null) {
                         LOG.info("LABELS: $labelsPath")
                         LOG.info("BIN, FDR, GAP options are ignored.")
@@ -169,7 +169,7 @@ compare                         Differential peak calling mode, experimental
                         LOG.info("FDR: $fdr")
                         LOG.info("GAP: $gap")
                     }
-                    LOG.info("OUTPUT: $outputBed")
+                    LOG.info("PEAKS: $peaksPath")
                 } else {
                     LOG.info("BIN: $bin")
                     LOG.info("NO output path given, process model fitting only.")
@@ -184,15 +184,15 @@ compare                         Differential peak calling mode, experimental
                 configurePaths(workingDir, chromSizesPath)
                 val paths = matchTreatmentAndControls(treatmentPaths, controlPaths)
                 val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(genomeQuery, paths, bin, fragment)
-                if (outputBed != null) {
+                if (peaksPath != null) {
                     if (labelsPath == null) {
                         val peaks = peakCallingExperiment.results.getPeaks(genomeQuery, fdr, gap)
-                        savePeaks(peaks, outputBed,
+                        savePeaks(peaks, peaksPath,
                                 "peak${if (fragment != null) "_$fragment" else ""}_${bin}_${fdr}_${gap}")
-                        LOG.info("Saved result to $outputBed")
+                        LOG.info("Saved result to $peaksPath")
                         LOG.info("\n" + PeaksInfo.compute(genomeQuery,
                                 peaks.map { it.location }.stream(),
-                                outputBed.toUri(),
+                                peaksPath.toUri(),
                                 peakCallingExperiment.fitInformation))
                     } else {
                         val results = TuningResults()
@@ -205,13 +205,13 @@ compare                         Differential peak calling mode, experimental
                                     error,
                                     i == index)
                         }
-                        results.saveTuningErrors(outputBed.parent / "${outputBed.fileName.stem}_errors.csv")
-                        results.saveOptimalResults(outputBed.parent
-                                / "${outputBed.fileName.stem}_parameters.csv")
+                        results.saveTuningErrors(peaksPath.parent / "${peaksPath.fileName.stem}_errors.csv")
+                        results.saveOptimalResults(peaksPath.parent
+                                / "${peaksPath.fileName.stem}_parameters.csv")
                         val peaks = peakCallingExperiment.results.getPeaks(genomeQuery, optimalFDR, optimalGap)
-                        savePeaks(peaks, outputBed, "peak${if (fragment != null) "_$fragment" else ""}_" +
+                        savePeaks(peaks, peaksPath, "peak${if (fragment != null) "_$fragment" else ""}_" +
                                 "${bin}_${optimalFDR}_$optimalGap")
-                        LOG.info("Saved result to $outputBed")
+                        LOG.info("Saved result to $peaksPath")
                     }
                 } else {
                     // Just fit the model
@@ -237,13 +237,13 @@ compare                         Differential peak calling mode, experimental
     private fun compare(params: Array<String>) {
         with(getOptionParser()) {
             acceptsAll(listOf("t1", "treatment1"),
-                    "ChIP-seq treatment file 1. bam, bed, .bed.gz or bigWig file;\n" +
+                    "ChIP-seq treatment file 1. bam, bed or .bed.gz file;\n" +
                             "If multiple files are given, treated as replicates.")
                     .withRequiredArg().required()
                     .withValuesSeparatedBy(",")
                     .withValuesConvertedBy(PathConverter.exists())
             acceptsAll(listOf("c1", "control1"),
-                    "Control file 1. bam, bed, .bed.gz or bigWig file;\n" +
+                    "Control file 1. bam, bed or .bed.gz file;\n" +
                             "Single control file or separate file per each\n" +
                             "treatment file required.")
                     .withRequiredArg()
@@ -251,13 +251,13 @@ compare                         Differential peak calling mode, experimental
                     .withValuesConvertedBy(PathConverter.exists())
 
             acceptsAll(listOf("t2", "treatment2"),
-                    "ChIP-seq treatment file 2. bam, bed, .bed.gz or bigWig file;\n" +
+                    "ChIP-seq treatment file 2. bam, bed or .bed.gz file;\n" +
                             "If multiple files are given, treated as replicates.")
                     .withRequiredArg().required()
                     .withValuesSeparatedBy(",")
                     .withValuesConvertedBy(PathConverter.exists())
             acceptsAll(listOf("c2", "control2"),
-                    "Control file 2. bam, bed, .bed.gz or bigWig file;\n" +
+                    "Control file 2. bam, bed or .bed.gz file;\n" +
                             "Single control file or separate file per each\n" +
                             "treatment file required.")
                     .withRequiredArg()
@@ -277,13 +277,13 @@ compare                         Differential peak calling mode, experimental
                 val bin = options.valueOf("bin") as Int
                 val gap = options.valueOf("gap") as Int
                 val fdr = options.valueOf("fdr") as Double
-                val outputBed = options.valueOf("output") as Path?
+                val peaksPath = options.valueOf("peaks") as Path?
                 val threads = options.valueOf("threads") as Int?
 
                 // Configure logs path
                 val logPath: Path
-                if (outputBed != null) {
-                    logPath = workingDir / "logs" / "${outputBed.stemGz}.log"
+                if (peaksPath != null) {
+                    logPath = workingDir / "logs" / "${peaksPath.stemGz}.log"
                 } else {
                     var ids = listOfNotNull(treatmentPaths1, controlPaths1, treatmentPaths2, controlPaths2)
                             .flatMap { paths -> paths.map { it.stemGz } }
@@ -318,8 +318,8 @@ compare                         Differential peak calling mode, experimental
                 LOG.info("BIN: $bin")
                 LOG.info("FDR: $fdr")
                 LOG.info("GAP: $gap")
-                if (outputBed != null) {
-                    LOG.info("OUTPUT: $outputBed")
+                if (peaksPath != null) {
+                    LOG.info("PEAKS: $peaksPath")
                 } else {
                     LOG.info("BIN: $bin")
                     LOG.info("NO output path given, process model fitting only.")
@@ -337,7 +337,7 @@ compare                         Differential peak calling mode, experimental
                 val paths2 = matchTreatmentAndControls(treatmentPaths2, controlPaths2)
                 val coverages2 = treatmentPaths1.map { ReadsQuery(genomeQuery, it, fragment = fragment) }
                 val experiment = SpanDifferentialPeakCallingExperiment.getExperiment(genomeQuery, paths1, paths2, bin, fragment)
-                if (outputBed != null) {
+                if (peaksPath != null) {
                     val peaks = experiment.results.getPeaks(experiment.genomeQuery, fdr, gap)
                     peaks.forEach { peak ->
                         peak.value =
@@ -348,8 +348,8 @@ compare                         Differential peak calling mode, experimental
                                     it.get().getBothStrandsCoverage(peak.range.on(peak.chromosome))
                                 }.average())
                     }
-                    savePeaks(peaks, outputBed, "diff${if (fragment != null) "_$fragment" else ""}_${bin}_${fdr}_${gap}")
-                    LOG.info("Saved result to $outputBed")
+                    savePeaks(peaks, peaksPath, "diff${if (fragment != null) "_$fragment" else ""}_${bin}_${fdr}_${gap}")
+                    LOG.info("Saved result to $peaksPath")
                 } else {
                     experiment.run()
                 }
@@ -405,7 +405,7 @@ compare                         Differential peak calling mode, experimental
                     "http://hgdownload.cse.ucsc.edu/goldenPath/<build>/bigZips/<build>.chrom.sizes")
                     .withRequiredArg().required()
                     .withValuesConvertedBy(PathConverter.exists())
-            acceptsAll(listOf("o", "output"), "Path to result bed")
+            acceptsAll(listOf("p", "peaks"), "Path to result peaks file in ENCODE broadPeak (BED 6+3) format")
                     .withRequiredArg()
                     .withValuesConvertedBy(PathConverter.noCheck())
             acceptsAll(listOf("fragment"), "Fragment size, read length if not given")

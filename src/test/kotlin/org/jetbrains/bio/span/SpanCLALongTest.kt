@@ -137,7 +137,7 @@ compare                         Differential peak calling mode, experimental
             print("Saved sampled track file: $path")
 
             withTempDirectory("work") {
-                val bedPath = it / "peaks.bed"
+                val peaksPath = it / "peaks.bed"
                 val stream = ByteArrayOutputStream()
                 System.setOut(PrintStream(stream))
                 // Update with changed System.out
@@ -149,12 +149,12 @@ compare                         Differential peak calling mode, experimental
                         "--workdir", it.toString(),
                         "-t1", path.toString(),
                         "-t2", path.toString(),
-                        "--output", bedPath.toString(),
+                        "--peaks", peaksPath.toString(),
                         "--fdr", FDR.toString(),
                         "--gap", GAP.toString(),
                         "--threads", THREADS.toString()))
 
-                assertTrue(bedPath.size.isEmpty(), "Found differential peaks in identical signals.")
+                assertTrue(peaksPath.size.isEmpty(), "Found differential peaks in identical signals.")
 
                 val out = String(stream.toByteArray())
                 assertIn("""SPAN
@@ -172,9 +172,9 @@ FRAGMENT: null
 BIN: $BIN
 FDR: $FDR
 GAP: $GAP
-OUTPUT: $bedPath
+PEAKS: $peaksPath
 """, out)
-                assertIn("Saved result to $bedPath", out)
+                assertIn("Saved result to $peaksPath", out)
                 // Check model fit has a progress
                 assertIn("] 0.00% (0/250), Elapsed time", out)
             }
@@ -198,7 +198,7 @@ OUTPUT: $bedPath
                         "-fragment", FRAGMENT.toString(),
                         "-t1", "$path,$path",
                         "-t2", "$path,$path,$path",
-                        "-o", bedPath.toString(),
+                        "--peaks", bedPath.toString(),
                         "--fdr", FDR.toString()))
                 assertTrue(bedPath.size.isEmpty(),
                         "Found differential peaks in identical signals.")
@@ -322,7 +322,7 @@ LABELS, FDR, GAP options are ignored.
                         "--workdir", it.toString(),
                         "-t", path.toString(),
                         "--threads", THREADS.toString(),
-                        "-o", peaksPath.toString()))
+                        "--peaks", peaksPath.toString()))
                 val out = String(stream.toByteArray())
                 assertFalse("""NO output path given, process model fitting only.
     LABELS, FDR, GAP options are ignored.
@@ -361,13 +361,13 @@ LABELS, FDR, GAP options are ignored.
                 SpanCLA.main(arrayOf("analyze",
                         "-cs", Genome["to1"].chromSizesPath.toString(),
                         "-w", it.toString(),
-                        "-o", bedPath.toString(),
+                        "--peaks", bedPath.toString(),
                         "-fdr", FDR.toString(),
                         "-t", path.toString()))
                 SpanCLA.main(arrayOf("analyze",
                         "-cs", Genome["to1"].chromSizesPath.toString(),
                         "-w", it.toString(),
-                        "-o", bedPath.toString(),
+                        "--peaks", bedPath.toString(),
                         "-fdr", FDR.toString(),
                         "-t", path.toString()))
                 // Check created bed file

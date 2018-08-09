@@ -4,7 +4,7 @@ apply plugin: 'application'
 apply plugin: 'com.github.johnrengelman.shadow'
 
 // Major application version
-version = "0.6.0"
+version = "0.7.0"
 mainClassName = "org.jetbrains.bio.span.SpanCLA"
 
 task processBuildProperties(type: Copy) {
