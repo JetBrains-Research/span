@@ -3,6 +3,7 @@ package org.jetbrains.bio.experiments.fit
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.util.bufferedReader
 import org.jetbrains.bio.util.bufferedWriter
+import org.jetbrains.bio.util.toPath
 import org.jetbrains.bio.util.withTempFile
 import org.junit.Rule
 import org.junit.Test
@@ -63,13 +64,13 @@ class SpanFitInformationTest {
                 val info = SpanFitInformation(gq, listOf(t to c), listOf("treatment_control"), 100, 200)
                 withTempFile("foo", ".tar") { path ->
                     info.save(path)
-                    val output = path.bufferedReader().lines().collect(Collectors.joining("\n"))
+                    // Escape Windows separators here
                     assertEquals("""{
   "build": "to1",
   "data": [
     {
-      "path": "$t",
-      "control": "$c"
+      "path": "${t.toString().replace("\\", "\\\\")}",
+      "control": "${c.toString().replace("\\", "\\\\")}"
     }
   ],
   "labels": [
@@ -84,7 +85,7 @@ class SpanFitInformationTest {
     "chrX": 1000000
   },
   "version": 1
-}""".trim(), output.trim())
+}""".trim().lines(), path.bufferedReader().lines().collect(Collectors.toList()))
                 }
                 assertEquals(listOf("chr1", "chr2", "chr3", "chrX"), info.chromosomesSizes.keys.toList())
             }
@@ -93,15 +94,14 @@ class SpanFitInformationTest {
 
     @Test
     fun checkLoad() {
-        withTempFile("treatment", ".bam") { t ->
-            val info = SpanFitInformation(gq, listOf(t to null), listOf("treatment_control"), null, 200)
+            val info = SpanFitInformation(gq, listOf("path_to_file".toPath() to null), listOf("treatment_control"), null, 200)
             withTempFile("foo", ".tar") { path ->
                 path.bufferedWriter().use {
                     it.write("""{
   "build": "to1",
   "data": [
     {
-      "path": "$t"
+      "path": "path_to_file"
     }
   ],
   "labels": [
@@ -120,7 +120,6 @@ class SpanFitInformationTest {
                 }
                 assertEquals(info, SpanFitInformation.load(path))
             }
-        }
     }
 
 
