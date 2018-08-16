@@ -2,6 +2,7 @@ package org.jetbrains.bio.experiments.fit
 
 import com.google.gson.GsonBuilder
 import kotlinx.support.jdk7.use
+import org.apache.log4j.Logger
 import org.jetbrains.bio.coverage.GenomeScoresQuery
 import org.jetbrains.bio.coverage.scoresDataFrame
 import org.jetbrains.bio.genome.Chromosome
@@ -131,6 +132,7 @@ data class SpanFitInformation(val build: String,
 
     companion object {
         const val VERSION: Int = 1
+        private val LOG = Logger.getLogger("SPAN")
 
         data class TC(val path: String, val control: String?)
 
@@ -145,8 +147,9 @@ data class SpanFitInformation(val build: String,
                 checkNotNull(info) {
                     "Failed to load info from $path"
                 }
-                check(VERSION == info.version) {
-                    "Wrong version: expected: $VERSION, got: ${info.version}"
+                // TODO[shpynov]: fix version check, ABF data lacking this
+                if(VERSION != info.version) {
+                    LOG.error("Wrong version: expected: $VERSION, got: ${info.version}")
                 }
                 return@use info
             }
