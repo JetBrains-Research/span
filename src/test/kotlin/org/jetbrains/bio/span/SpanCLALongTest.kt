@@ -401,7 +401,7 @@ LABELS, FDR, GAP options are ignored.
 
             withTempDirectory("work") {
                 /* Turn suppressExit on, otherwise Span would call System.exit */
-                withSystemProperty("joptsimple.suppressExit", "true") {
+                withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
                     SpanCLA.main(arrayOf("analyze",
                             "-cs", Genome["to1"].chromSizesPath.toString(),
                             "-w", it.toString(),
