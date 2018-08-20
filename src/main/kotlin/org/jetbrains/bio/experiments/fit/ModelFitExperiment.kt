@@ -32,6 +32,7 @@ abstract class ModelFitExperiment<out Model : ClassificationModel, State : Any>(
             require(availableStates.isNotEmpty())
             val states = availableStates[0].javaClass.simpleName.replace(Regex("[^A-Z0-9]"), "").toLowerCase()
             return Joiner.on('_').join(
+                    genomeQuery.id,
                     model,
                     states,
                     dataQuery.id)

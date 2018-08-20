@@ -48,7 +48,7 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
                     listOf("vs") +
                     paths2.flatMap { listOfNotNull(it.first, it.second) }.map { it.stemGz }
                     + listOfNotNull(fragment, binSize).map { it.toString() }) +
-                    (paths1 + paths2).flatMap { listOfNotNull(it.first, it.second) }.joinToString(";") { it.toString() }.sha
+                    super.id.sha
 
 
     fun computeDirectedDifferencePeaks(fdr: Double,

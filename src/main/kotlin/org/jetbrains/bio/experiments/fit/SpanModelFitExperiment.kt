@@ -38,7 +38,7 @@ data class SpanFitInformation(val build: String,
                               val fragment: Int?,
                               val binSize: Int,
                               val chromosomesSizes: LinkedHashMap<String, Int>,
-                              val version: Int = VERSION) {
+                              val version: Int) {
 
     constructor(genomeQuery: GenomeQuery,
                 paths: List<Pair<Path, Path?>>,
@@ -48,15 +48,10 @@ data class SpanFitInformation(val build: String,
             this(genomeQuery.build,
                     paths.map { TC(it.first.toString(), it.second?.toString()) },
                     labels, fragment, binSize,
-                    chromosomesSizes = LinkedHashMap<String, Int>().apply {
+                    LinkedHashMap<String, Int>().apply {
                         genomeQuery.get().sortedBy { it.name }.forEach { this[it.name] = it.length }
-                    })
-
-    fun checkBinSize(binSize: Int) {
-        check(this.binSize == binSize) {
-            "Wrong bin size, expected: ${this.binSize}, got: $binSize"
-        }
-    }
+                    },
+                    VERSION)
 
     private fun checkBuild(build: String) {
         check(this.build == build) {
@@ -147,9 +142,8 @@ data class SpanFitInformation(val build: String,
                 checkNotNull(info) {
                     "Failed to load info from $path"
                 }
-                // TODO[shpynov]: fix version check, ABF data lacking this
-                if(VERSION != info.version) {
-                    LOG.error("Wrong version: expected: $VERSION, got: ${info.version}")
+                check (VERSION == info.version) {
+                    "Wrong version: expected: $VERSION, got: ${info.version}"
                 }
                 return@use info
             }
@@ -182,7 +176,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
         paths: List<Pair<Path, Path?>>,
         labels: List<String>,
         fragment: Int?,
-        binSize: Int,
+        val binSize: Int,
         modelFitter: Fitter<Model>,
         modelClass: Class<Model>,
         availableStates: Array<State>,
@@ -211,7 +205,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
     }
 
     // XXX It is important to use get() here, because id is overridden in superclasses
-    private val tarPath: Path
+     val tarPath: Path
         get() = experimentPath / "$id.span"
 
     private fun calculateModel(): Model {
@@ -289,7 +283,11 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
             LOG.info("Model saved: $tarPath")
             computedResults!!
         } else {
-            loadResults(genomeQuery, tarPath)
+            loadResults(genomeQuery, tarPath).apply {
+                check(this.fitInfo.binSize == binSize) {
+                    "Wrong bin size: expected $binSize, but got ${this.fitInfo.binSize}"
+                }
+            }
         }
     }
 

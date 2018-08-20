@@ -23,18 +23,12 @@ class SpanFitInformationTest {
     val gq = GenomeQuery("to1")
     val chr2 = gq.get()[1]
 
-    @Test
-    fun checkBinSize() {
-        expectedEx.expect(IllegalStateException::class.java)
-        expectedEx.expectMessage("Wrong bin size, expected: 200, got: 50")
-        SpanFitInformation("foo", emptyList(), emptyList(), 100, 200, LinkedHashMap()).checkBinSize(50)
-    }
 
     @Test
     fun checkBuild() {
         expectedEx.expect(IllegalStateException::class.java)
         expectedEx.expectMessage("Wrong genome build, expected: hg19, got: to2")
-        SpanFitInformation("hg19", emptyList(), emptyList(), 100, 200, LinkedHashMap()).checkGenomeQuery(GenomeQuery("to2"))
+        SpanFitInformation("hg19", emptyList(), emptyList(), 100, 200, LinkedHashMap(), 1).checkGenomeQuery(GenomeQuery("to2"))
     }
 
     @Test
@@ -122,26 +116,25 @@ class SpanFitInformationTest {
             }
     }
 
-//    TODO[shpynov] version was not logged for ABF files processing, uncomment later.
-//    @Test
-//    fun checkVersion() {
-//        expectedEx.expect(IllegalStateException::class.java)
-//        expectedEx.expectMessage("Wrong version: expected: 1, got: 2")
-//        withTempFile("foo", ".tar") { path ->
-//            path.bufferedWriter().use {
-//                it.write("""{
-//  "build": "to1",
-//  "data": [],
-//  "labels": [],
-//  "fragment": null,
-//  "bin_size": 200,
-//  "chromosomes_sizes": {},
-//  "version": 2
-//}""")
-//            }
-//            SpanFitInformation.load(path)
-//        }
-//    }
+    @Test
+    fun checkVersion() {
+        expectedEx.expect(IllegalStateException::class.java)
+        expectedEx.expectMessage("Wrong version: expected: 1, got: 2")
+        withTempFile("foo", ".tar") { path ->
+            path.bufferedWriter().use {
+                it.write("""{
+  "build": "to1",
+  "data": [],
+  "labels": [],
+  "fragment": null,
+  "bin_size": 200,
+  "chromosomes_sizes": {},
+  "version": 2
+}""")
+            }
+            SpanFitInformation.load(path)
+        }
+    }
 
     @Test
     fun checkIndices() {
