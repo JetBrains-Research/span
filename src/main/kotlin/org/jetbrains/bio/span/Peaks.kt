@@ -25,11 +25,11 @@ data class Peak(val chromosome: Chromosome,
                 val mlogpvalue: Double,
                 val mlogqvalue: Double,
                 var value: Double = 0.0,
-                val score: Int) : Comparable<Peak> {
+                val score: Int) : Comparable<Peak>, LocationAware {
     val range: Range
         get() = Range(startOffset, endOffset)
 
-    val location: Location
+    override val location: Location
         get() = Location(startOffset, endOffset, chromosome, Strand.PLUS)
 
     override fun compareTo(other: Peak) = ComparisonChain.start()
