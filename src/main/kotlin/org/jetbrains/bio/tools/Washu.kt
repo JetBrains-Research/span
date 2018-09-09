@@ -366,7 +366,7 @@ fun DataConfig.fillData(basePath: Path,
                                                       addFailedTracks: Boolean = false): List<Path> {
     val files = ArrayList<Path>()
     for ((key, section) in tracksMap) {
-        for ((replicate, contents) in section.filter { addFailedTracks || !it.second.failed_track }) {
+        for ((replicate, contents) in section.filter { addFailedTracks || !it.second.failedTrack }) {
             val isInput = ChipSeqTarget.isInput(key.dataType)
             val addTrack = if (isInput) addInput else (modification == null || modification == key.dataType)
             if (addTrack) {

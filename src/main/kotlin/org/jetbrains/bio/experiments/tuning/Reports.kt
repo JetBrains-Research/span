@@ -58,7 +58,7 @@ internal fun PeakCallerTuning.computeFripAndReport(report: DataFrameBuilder,
 
     val toolName = tool.id
     val failed = configuration.tracksMap.filter { it.key.dataType == target }
-            .flatMap { it.value.filter { it.second.failed_track }.map { it.first } }.toSet()
+            .flatMap { it.value.filter { it.second.failedTrack }.map { it.first } }.toSet()
     findPeaks(folder).forEach { path ->
         PeakCallerTuning.LOG.info("$target $toolName $procedure $path")
         val donor = donor(path)

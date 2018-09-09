@@ -44,7 +44,7 @@ fun DataConfig.extractLabelledTracks(target: String): List<LabelledTrack> {
                 val customLabelPath = data.second[org.jetbrains.bio.experiments.tuning.LABELS_KEY]
                 val testLabelPath = data.second[org.jetbrains.bio.experiments.tuning.TEST_LABELS_KEY] ?: this[target, org.jetbrains.bio.experiments.tuning.TEST_LABELS_KEY]
                 org.jetbrains.bio.experiments.tuning.LabelledTrack(key.cellId, data.first, data.second.path,
-                        customLabelPath ?: auxLabelPath!!, data.second.failed_track, testLabelPath)
+                        customLabelPath ?: auxLabelPath!!, data.second.failedTrack, testLabelPath)
             }
 }
 
