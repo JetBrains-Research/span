@@ -3,7 +3,7 @@ package org.jetbrains.bio.experiments.fit
 import com.google.gson.GsonBuilder
 import kotlinx.support.jdk7.use
 import org.apache.log4j.Logger
-import org.jetbrains.bio.coverage.GenomeScoresQuery
+import org.jetbrains.bio.coverage.CoverageScoresQuery
 import org.jetbrains.bio.coverage.scoresDataFrame
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
@@ -304,7 +304,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
                                     fragment: Int?,
                                     binSize: Int): Query<Chromosome, DataFrame> {
             return object : CachingQuery<Chromosome, DataFrame>() {
-                val scores = paths.map { GenomeScoresQuery(genomeQuery, it.first, it.second, fragment, binSize) }
+                val scores = paths.map { CoverageScoresQuery(genomeQuery, it.first, it.second, fragment, binSize) }
 
                 override fun getUncached(input: Chromosome): DataFrame {
                     return scores.scoresDataFrame(input, labels.toTypedArray())
