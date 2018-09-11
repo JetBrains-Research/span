@@ -291,8 +291,6 @@ LABELS, FDR, GAP options are ignored.
                     // Genome Coverage test
                     assertEquals(1, (Configuration.experimentsPath / "cache").glob("coverage_${path.stemGz}_unique#*.npz").size)
                     assertEquals(1, (Configuration.experimentsPath / "cache").glob("coverage_${control.stemGz}_unique#*.npz").size)
-                    // Genome Scores test
-                    assertTrue((Configuration.experimentsPath / "cache").glob("${path.stemGz}_${control.stemGz}_200#*.bw").isNotEmpty())
                     // Model test
                     assertTrue((Configuration.experimentsPath / "fit").exists)
                     assertEquals(1, (Configuration.experimentsPath / "fit").glob("${path.stemGz}_${control.stemGz}_200#*.span").size)
