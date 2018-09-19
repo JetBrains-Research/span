@@ -46,7 +46,7 @@ object Macs2Broad : Tool2Tune<Double>() {
     }
 
     override fun fileName(cellId: CellId, replicate: String, target: String, parameter: Double): String {
-        return "${cellId}_${replicate}_${target}_fdr${parameter}_peaks.broadPeak"
+        return "${cellId}_${replicate}_${target}_broad${parameter}_peaks.broadPeak"
     }
 
     override fun defaultParams(uli: Boolean) = if (uli) DEFAULT_ULI_FDR else DEFAULT_FDR
