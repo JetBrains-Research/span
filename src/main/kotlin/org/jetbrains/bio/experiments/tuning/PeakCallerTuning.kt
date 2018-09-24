@@ -37,10 +37,10 @@ class PeakCallerTuning(configuration: DataConfig,
         targets.forEach { target ->
             LOG.info("Processing target $target")
             tools.forEach { t ->
-                if (ChipSeqTarget.isWide(target) && t == MACS2) {
-                    LOG.info("${MACS2.id} doesn't support wide modification $target")
-                } else if (!ChipSeqTarget.isWide(target) && t == SICER) {
-                    LOG.info("${SICER.id} doesn't support narrow modification $target")
+                if (ChipSeqTarget.isWide(target) && t == Macs2) {
+                    LOG.info("${Macs2.id} doesn't support wide modification $target")
+                } else if (!ChipSeqTarget.isWide(target) && t == Sicer) {
+                    LOG.info("${Sicer.id} doesn't support narrow modification $target")
                 } else {
                     t.tune(configuration, experimentPath, target, useInput, true)
                     if (computeTestError) {
@@ -63,10 +63,10 @@ class PeakCallerTuning(configuration: DataConfig,
             LOG.info("Processing target $target")
             tools.forEach { t ->
                 try {
-                    if (ChipSeqTarget.isWide(target) && t == MACS2) {
-                        LOG.info("${MACS2.id} doesn't support wide modification $target")
-                    } else if (!ChipSeqTarget.isWide(target) && t == SICER) {
-                        LOG.info("${SICER.id} doesn't support narrow modification $target")
+                    if (ChipSeqTarget.isWide(target) && t == Macs2) {
+                        LOG.info("${Macs2.id} doesn't support wide modification $target")
+                    } else if (!ChipSeqTarget.isWide(target) && t == Sicer) {
+                        LOG.info("${Sicer.id} doesn't support narrow modification $target")
                     } else {
                         computeFripAndReport(report, target, t,
                                              t.folder(experimentPath, target, useInput), "tuned", washu)
@@ -153,20 +153,20 @@ class PeakCallerTuning(configuration: DataConfig,
 
             val tools = arrayListOf<Tool2Tune<*>>()
             if (options.has("p")) {
-                tools.add(SPAN)
+                tools.add(Span)
             }
             if (options.has("r")) {
-                tools.add(SPAN_REPLICATED)
+                tools.add(SpanReplicated)
             }
 
             if (options.has("n")) {
-                tools.add(MACS2)
+                tools.add(Macs2)
             }
             if (options.has("b")) {
-                tools.add(MACS2_BROAD)
+                tools.add(Macs2Broad)
             }
             if (options.has("s")) {
-                tools.add(SICER)
+                tools.add(Sicer)
             }
 
             val input = !options.has("i")

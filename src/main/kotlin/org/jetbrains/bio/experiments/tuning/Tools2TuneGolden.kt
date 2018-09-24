@@ -6,13 +6,16 @@ import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.tools.Washu
 import java.nio.file.Path
 
-object MACS2 : Tool2Tune<Double>() {
+object Macs2 : Tool2Tune<Double>() {
     override val id = "macs_narrow"
     override val suffix = ".narrowPeak"
-    const val DEFAULT_FDR = 0.05
-    const val DEFAULT_ULI_FDR = 1E-4
-    val FDRS = arrayListOf(1E-2, DEFAULT_FDR, DEFAULT_ULI_FDR, 1E-6, 1E-8, 1E-10)
-    override val parameters = FDRS
+
+    private const val DEFAULT_FDR = 0.05
+    private const val DEFAULT_ULI_FDR = 1E-4
+    private val FDRS = doubleArrayOf(1E-2, DEFAULT_FDR, DEFAULT_ULI_FDR, 1E-6, 1E-8, 1E-10)
+
+    override val parameters = FDRS.sorted()
+
     override val transform = Double::toString
 
     override fun callPeaks(configuration: DataConfig, p: Path, parameter: Double) {
@@ -26,14 +29,16 @@ object MACS2 : Tool2Tune<Double>() {
     override fun defaultParams(uli: Boolean) = if (uli) DEFAULT_ULI_FDR else DEFAULT_FDR
 }
 
-object MACS2_BROAD : Tool2Tune<Double>() {
+object Macs2Broad : Tool2Tune<Double>() {
     override val id = "macs_broad"
     override val suffix = ".broadPeak"
 
-    const val DEFAULT_FDR = 0.1
-    const val DEFAULT_ULI_FDR = 1E-4
-    val FDRS = arrayListOf(DEFAULT_FDR, 1E-2, DEFAULT_ULI_FDR, 1E-6, 1E-8, 1E-10)
-    override val parameters = FDRS
+    private const val DEFAULT_FDR = 0.1
+    private const val DEFAULT_ULI_FDR = 1E-4
+    private val FDRS = doubleArrayOf(DEFAULT_FDR, 1E-2, DEFAULT_ULI_FDR, 1E-6, 1E-8, 1E-10)
+
+    override val parameters = FDRS.sorted()
+
     override val transform = Double::toString
 
     override fun callPeaks(configuration: DataConfig, p: Path, parameter: Double) {
@@ -48,16 +53,18 @@ object MACS2_BROAD : Tool2Tune<Double>() {
 }
 
 
-object SICER : Tool2Tune<Pair<Double, Int>>() {
+object Sicer : Tool2Tune<Pair<Double, Int>>() {
     override val id = "sicer"
     override val suffix = "-island.bed"
 
-    const val DEFAULT_FDR = 1E-2
-    const val DEFAULT_ULI_FDR = 1E-6
-    val FDRS = arrayListOf(DEFAULT_FDR, 1E-4, DEFAULT_ULI_FDR, 1E-8)
-    const val DEFAULT_GAP = 600
-    val GAPS = arrayListOf(0, 200, DEFAULT_GAP, 1200)
-    override val parameters = FDRS.flatMap { fdr -> GAPS.map { gap -> fdr to gap } }
+    private const val DEFAULT_FDR = 1E-2
+    private const val DEFAULT_ULI_FDR = 1E-6
+    private val FDRS = doubleArrayOf(DEFAULT_FDR, 1E-4, DEFAULT_ULI_FDR, 1E-8)
+
+    private const val DEFAULT_GAP = 600
+    private val GAPS = intArrayOf(0, 200, DEFAULT_GAP, 1200)
+
+    override val parameters = FDRS.sorted().flatMap { fdr -> GAPS.sortedDescending().map { gap -> fdr to gap } }
     override val transform: (Pair<Double, Int>) -> String = { (fdr, gap) -> "${fdr}_$gap" }
 
     override fun callPeaks(configuration: DataConfig, p: Path, parameter: Pair<Double, Int>) {

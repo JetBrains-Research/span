@@ -1,13 +1,13 @@
 package org.jetbrains.bio.experiments.fit
 
 import org.apache.log4j.Logger
-import org.jetbrains.bio.experiments.tuning.SPAN
+import org.jetbrains.bio.experiments.tuning.Span
 import org.jetbrains.bio.statistics.NegBinEmissionScheme
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 
 
-private val LOG = Logger.getLogger(SPAN::class.java)
+private val LOG = Logger.getLogger(Span::class.java)
 
 internal fun MLFreeNBHMM.probabilityFlip(state1: Int, state2: Int) {
     for (i in 0..2) {

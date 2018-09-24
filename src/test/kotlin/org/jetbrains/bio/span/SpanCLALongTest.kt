@@ -259,8 +259,8 @@ LABELS, FDR, GAP options are ignored.
                         "-t", path.toString(),
                         "--threads", THREADS.toString()))
                 val out = String(stream.toByteArray())
-                assertIn("WARN SPAN] After fitting the model, emission's parameter p in LOW state", out)
-                assertIn("WARN SPAN] This is generally harmless, but could indicate low quality of data.", out)
+                assertIn("WARN Span] After fitting the model, emission's parameter p in LOW state", out)
+                assertIn("WARN Span] This is generally harmless, but could indicate low quality of data.", out)
             }
         }
     }

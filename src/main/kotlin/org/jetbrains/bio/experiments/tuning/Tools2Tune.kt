@@ -13,8 +13,15 @@ import java.nio.file.StandardOpenOption
 
 abstract class Tool2Tune<T> {
     abstract val id: String
+
     abstract val suffix: String
+
+    /**
+     * In case of equal tuning error, first parameter will be chosen,
+     * so that each tool has it's own order of parameters.
+     */
     abstract val parameters: List<T>
+
     abstract val transform: (T) -> String
 
     abstract fun callPeaks(configuration: DataConfig, p: Path, parameter: T)
@@ -32,7 +39,7 @@ abstract class Tool2Tune<T> {
      */
     internal fun folder(path: Path, target: String, useInput: Boolean) =
             (path / target /
-                    (if (this == SPAN)
+                    (if (this == Span)
                         "$id${if (!useInput) "_noinput" else ""}"
                     else
                         id)).apply {
@@ -146,9 +153,8 @@ abstract class Tool2Tune<T> {
             }
 
             val minTotalError = labelErrorsGrid.map { it.error() }.min()!!
-            // Take something in the middle to get not that extreme settings
-            val optimalIndex = parameters.indices
-                    .filter { labelErrorsGrid[it].error() == minTotalError }.let { it[it.size / 2] }
+            // parameters should return desired order for each tool
+            val optimalIndex = parameters.indices.first { labelErrorsGrid[it].error() == minTotalError }
             val optimalParameter = parameters[optimalIndex]
             labelErrors.combine(labelErrorsGrid[optimalIndex])
             cleanup(folder, cellId, replicate)
@@ -210,6 +216,6 @@ abstract class ReplicatedTool2Tune<T> : Tool2Tune<T>() {
 
 }
 
-val INDIVIDUAL_TOOLS = listOf(MACS2_BROAD, MACS2, SICER, SPAN)
-val REPLICATED_TOOLS = listOf(SPAN_REPLICATED)
+val INDIVIDUAL_TOOLS = listOf(Macs2Broad, Macs2, Sicer, Span)
+val REPLICATED_TOOLS = listOf(SpanReplicated)
 

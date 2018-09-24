@@ -1,6 +1,5 @@
 package org.jetbrains.bio.experiments.tuning
 
-import com.google.common.collect.ComparisonChain
 import com.google.common.primitives.Shorts
 import kotlinx.support.jdk7.use
 import org.jetbrains.bio.datasets.CellId
@@ -20,20 +19,23 @@ import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.util.*
 import java.nio.file.Path
 
-object SPAN : Tool2Tune<Pair<Double, Int>>() {
+object Span : Tool2Tune<Pair<Double, Int>>() {
 
     override val id = "span"
     override val suffix = "_peaks.bed"
     const val DEFAULT_BIN = 200
-    const val DEFAULT_FDR = 1E-6
 
-    val FDRS = doubleArrayOf(1E-1, 1E-2, 1E-4, DEFAULT_FDR, 1E-8, 1E-10, 1E-12)
+    const val DEFAULT_FDR = 1E-6
+    private val FDRS = doubleArrayOf(1E-1, 1E-2, 1E-4, DEFAULT_FDR, 1E-8, 1E-10, 1E-12)
+
     const val DEFAULT_GAP = 5
     val GAPS = intArrayOf(2, DEFAULT_GAP, 10, 20, 40, 60, 80, 100, 120)
+
     override val parameters =
-            FDRS.flatMap { fdr ->
-                GAPS.map { gap -> fdr to gap }
+            FDRS.sorted().flatMap { fdr ->
+                GAPS.sortedDescending().map { gap -> fdr to gap }
             }
+
     override val transform: (Pair<Double, Int>) -> String = { (fdr, gap) -> "${fdr}_${gap}" }
 
     override fun callPeaks(configuration: DataConfig, p: Path, parameter: Pair<Double, Int>) {
@@ -138,33 +140,30 @@ object SPAN : Tool2Tune<Pair<Double, Int>>() {
             "Discrepancy in errors size and parameters size: $labelErrorsGrid vs $parameters"
         }
         val minTotalError = labelErrorsGrid.map { it.error() }.min()!!
-        return labelErrorsGrid to parameters.indices
-                .filter { labelErrorsGrid[it].error() == minTotalError }
-                .sortedWith(Comparator { i1, i2 ->
-                    // In case of tie errors prefer smallest FDR and biggest GAP
-                    ComparisonChain.start()
-                            .compare(parameters[i1].first, parameters[i2].first)
-                            .compare(parameters[i2].second, parameters[i1].second).result()
-                }).first()
+        // Parameters should return desired order for each tool
+        return labelErrorsGrid to parameters.indices.first { labelErrorsGrid[it].error() == minTotalError }
     }
 
 }
 
-object SPAN_REPLICATED : ReplicatedTool2Tune<Pair<Double, Int>>() {
+object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
 
     override val id = "span_replicated"
-    override val suffix = SPAN.suffix
-    const val DEFAULT_BIN = SPAN.DEFAULT_BIN
-    val DEFAULT_FDR = 1E-60
-    val FDRS = doubleArrayOf(DEFAULT_FDR, 1E-80, 1E-100, 1E-120, 1E-140, 1E-160)
-    val GAPS = SPAN.GAPS
-    override val transform = SPAN.transform
+    override val suffix = Span.suffix
+    const val DEFAULT_BIN = Span.DEFAULT_BIN
+
+    private const val DEFAULT_FDR = 1E-60
+    private val FDRS = doubleArrayOf(DEFAULT_FDR, 1E-80, 1E-100, 1E-120, 1E-140, 1E-160)
+    private val GAPS = Span.GAPS
+
+    override val transform = Span.transform
+
     override val parameters =
-            FDRS.flatMap { fdr ->
-                GAPS.map { gap -> fdr to gap }
+            FDRS.sorted().flatMap { fdr ->
+                GAPS.sortedDescending().map { gap -> fdr to gap }
             }
 
-    override fun defaultParams(uli: Boolean) = DEFAULT_FDR to SPAN.DEFAULT_GAP
+    override fun defaultParams(uli: Boolean) = DEFAULT_FDR to Span.DEFAULT_GAP
 
     fun fileName(target: String, parameter: Pair<Double, Int>) =
             "${target}_${DEFAULT_BIN}_${parameter.first}_${parameter.second}_peaks.bed"
@@ -249,7 +248,7 @@ object SPAN_REPLICATED : ReplicatedTool2Tune<Pair<Double, Int>>() {
         PeakCallerTuning.LOG.info("Tuning $id peaks $target")
         val labelsPath = labelledTracks.first().labelPath
         val labels = PeakAnnotation.loadLabels(labelsPath, configuration.genome)
-        val (labelErrorsGrid, index) = SPAN.tune(replicatedPeakCallingExperiment, labels, target, parameters)
+        val (labelErrorsGrid, index) = Span.tune(replicatedPeakCallingExperiment, labels, target, parameters)
 
         PeakCallerTuning.LOG.info("Saving $target optimal $id peaks to $folder")
         savePeaks(replicatedPeakCallingExperiment.results.getPeaks(configuration.genomeQuery,

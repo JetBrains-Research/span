@@ -13,7 +13,7 @@ import org.jetbrains.bio.experiments.fit.SpanDifferentialPeakCallingExperiment
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.experiments.histones.PeaksInfo
 import org.jetbrains.bio.experiments.tuning.PeakAnnotation
-import org.jetbrains.bio.experiments.tuning.SPAN
+import org.jetbrains.bio.experiments.tuning.Span
 import org.jetbrains.bio.experiments.tuning.TuningResults
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.query.ReadsQuery
@@ -197,11 +197,11 @@ compare                         Differential peak calling mode, experimental
                     } else {
                         val results = TuningResults()
                         val labels = PeakAnnotation.loadLabels(labelsPath, genomeQuery.build)
-                        val (labelErrorsGrid, index) = SPAN.tune(peakCallingExperiment, labels, "", SPAN.parameters)
-                        val (optimalFDR, optimalGap) = SPAN.parameters[index]
+                        val (labelErrorsGrid, index) = Span.tune(peakCallingExperiment, labels, "", Span.parameters)
+                        val (optimalFDR, optimalGap) = Span.parameters[index]
                         labelErrorsGrid.forEachIndexed { i, error ->
                             results.addRecord("result",
-                                    SPAN.transform(SPAN.parameters[i]),
+                                    Span.transform(Span.parameters[i]),
                                     error,
                                     i == index)
                         }
@@ -415,19 +415,19 @@ compare                         Differential peak calling mode, experimental
                 acceptsAll(listOf("b", "bin"), "Bin size")
                         .withRequiredArg()
                         .ofType(Int::class.java)
-                        .defaultsTo(SPAN.DEFAULT_BIN)
+                        .defaultsTo(Span.DEFAULT_BIN)
             }
             if (fdr) {
                 acceptsAll(listOf("f", "fdr"), "Fdr value")
                         .withRequiredArg()
                         .ofType(Double::class.java)
-                        .defaultsTo(SPAN.DEFAULT_FDR)
+                        .defaultsTo(Span.DEFAULT_FDR)
             }
             if (gap) {
                 acceptsAll(listOf("g", "gap"), "Gap size to merge peaks")
                         .withRequiredArg()
                         .ofType(Int::class.java)
-                        .defaultsTo(SPAN.DEFAULT_GAP)
+                        .defaultsTo(Span.DEFAULT_GAP)
             }
             acceptsAll(listOf("w", "workdir"), "Path to the working dir")
                     .withRequiredArg().withValuesConvertedBy(PathConverter.exists())
