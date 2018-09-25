@@ -12,12 +12,12 @@ import org.jetbrains.bio.span.CoverageScoresQuery
 import org.jetbrains.bio.span.scoresDataFrame
 import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.Fitter
-import org.jetbrains.bio.statistics.NullHypothesis
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.data.DataFrame
 import org.jetbrains.bio.statistics.gson.GSONUtil
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
+import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.statistics.state.ZLHID
 import org.jetbrains.bio.util.*
