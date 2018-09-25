@@ -2,11 +2,7 @@ package org.jetbrains.bio.experiments.tuning
 
 import com.google.common.primitives.Shorts
 import kotlinx.support.jdk7.use
-import org.jetbrains.bio.datasets.CellId
-import org.jetbrains.bio.datasets.ChipSeqTarget
-import org.jetbrains.bio.datasets.DataType
-import org.jetbrains.bio.datasets.toDataType
-import org.jetbrains.bio.experiments.DataConfig
+import org.jetbrains.bio.dataset.*
 import org.jetbrains.bio.experiments.fit.SpanFitResults
 import org.jetbrains.bio.experiments.fit.SpanModelFitExperiment
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment

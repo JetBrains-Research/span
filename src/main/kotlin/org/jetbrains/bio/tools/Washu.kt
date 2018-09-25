@@ -1,8 +1,8 @@
 package org.jetbrains.bio.tools
 
 import org.apache.log4j.Logger
-import org.jetbrains.bio.datasets.ChipSeqTarget
-import org.jetbrains.bio.experiments.DataConfig
+import org.jetbrains.bio.dataset.ChipSeqTarget
+import org.jetbrains.bio.dataset.DataConfig
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.util.*
 import java.io.BufferedReader
@@ -361,9 +361,9 @@ fun checkPythonVersion() {
  * Creates symbolic links in the [basePath] given Chip-Seq [modification]
  */
 fun DataConfig.fillData(basePath: Path,
-                        modification: String?,
-                        addInput: Boolean = true,
-                        addFailedTracks: Boolean = false): List<Path> {
+                                                   modification: String?,
+                                                   addInput: Boolean = true,
+                                                   addFailedTracks: Boolean = false): List<Path> {
     val files = ArrayList<Path>()
     for ((key, section) in tracksMap) {
         for ((replicate, contents) in section.filter { addFailedTracks || !it.second.failedTrack }) {
@@ -393,9 +393,9 @@ fun DataConfig.fillData(basePath: Path,
  * Creates symbolic links using [fillData] and launches [body] code.
  */
 fun DataConfig.runBatch(path: Path, mark: String?,
-                        addInput: Boolean = true,
-                        addFailedTracks: Boolean = false,
-                        body: (Path) -> Unit) {
+                                                   addInput: Boolean = true,
+                                                   addFailedTracks: Boolean = false,
+                                                   body: (Path) -> Unit) {
     path.checkOrRecalculate(isDirectory = true) {
         val basePath = it.path
         val files = fillData(basePath, mark, addInput = addInput, addFailedTracks = addFailedTracks)

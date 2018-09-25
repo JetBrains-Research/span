@@ -1,8 +1,8 @@
 package org.jetbrains.bio.experiments.tuning
 
 import org.apache.log4j.Logger
+import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.containers.LocationsMergingList
-import org.jetbrains.bio.statistics.data.DataFrame
 import java.nio.file.Path
 import java.util.*
 

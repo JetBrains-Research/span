@@ -3,6 +3,7 @@ package org.jetbrains.bio.experiments.fit
 import com.google.gson.GsonBuilder
 import kotlinx.support.jdk7.use
 import org.apache.log4j.Logger
+import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.query.CachingQuery
@@ -13,7 +14,6 @@ import org.jetbrains.bio.span.scoresDataFrame
 import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.statistics.Preprocessed
-import org.jetbrains.bio.statistics.data.DataFrame
 import org.jetbrains.bio.statistics.gson.GSONUtil
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM

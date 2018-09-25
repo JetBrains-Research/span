@@ -3,7 +3,8 @@ package org.jetbrains.bio.experiments
 import org.apache.log4j.Level
 import org.apache.log4j.Logger
 import org.jetbrains.bio.Logs
-import org.jetbrains.bio.datasets.DataSet
+import org.jetbrains.bio.dataset.DataConfig
+import org.jetbrains.bio.dataset.DataSet
 import org.jetbrains.bio.util.*
 import java.nio.file.Path
 

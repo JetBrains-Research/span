@@ -1,8 +1,8 @@
 package org.jetbrains.bio.experiments.fit
 
-import org.jetbrains.bio.statistics.data.DataFrame
-import org.jetbrains.bio.statistics.data.DoubleColumn
-import org.jetbrains.bio.statistics.data.FloatColumn
+import org.jetbrains.bio.dataframe.DataFrame
+import org.jetbrains.bio.dataframe.DoubleColumn
+import org.jetbrains.bio.dataframe.FloatColumn
 import org.jetbrains.bio.viktor.F64Array
 import org.jetbrains.bio.viktor.asF64Array
 

@@ -5,10 +5,10 @@ import org.apache.log4j.Level
 import org.apache.log4j.Logger
 import org.jetbrains.bio.Configuration
 import org.jetbrains.bio.Logs
-import org.jetbrains.bio.datasets.ChipSeqTarget
-import org.jetbrains.bio.datasets.DataType
-import org.jetbrains.bio.datasets.toDataType
-import org.jetbrains.bio.experiments.DataConfig
+import org.jetbrains.bio.dataset.ChipSeqTarget
+import org.jetbrains.bio.dataset.DataConfig
+import org.jetbrains.bio.dataset.DataType
+import org.jetbrains.bio.dataset.toDataType
 import org.jetbrains.bio.experiments.DataConfigExperiment
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.tools.Washu

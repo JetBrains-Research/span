@@ -1,8 +1,8 @@
 package org.jetbrains.bio.experiments.tuning
 
-import org.jetbrains.bio.experiments.DataConfig
-import org.jetbrains.bio.statistics.data.DataFrameBuilder
-import org.jetbrains.bio.statistics.data.DataFrameSpec
+import org.jetbrains.bio.dataframe.DataFrameBuilder
+import org.jetbrains.bio.dataframe.DataFrameSpec
+import org.jetbrains.bio.dataset.DataConfig
 import org.jetbrains.bio.tools.Picard
 import org.jetbrains.bio.tools.Washu
 import org.jetbrains.bio.util.*

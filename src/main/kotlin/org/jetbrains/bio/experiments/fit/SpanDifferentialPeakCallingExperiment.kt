@@ -1,5 +1,6 @@
 package org.jetbrains.bio.experiments.fit
 
+import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.query.reduceIds
@@ -10,7 +11,6 @@ import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.statistics.MultiLabels
 import org.jetbrains.bio.statistics.Preprocessed
-import org.jetbrains.bio.statistics.data.DataFrame
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.state.ZLHID

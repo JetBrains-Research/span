@@ -1,9 +1,9 @@
 package org.jetbrains.bio.experiments.tuning
 
 import org.jetbrains.bio.big.ExtendedBedEntry
-import org.jetbrains.bio.datasets.CellId
-import org.jetbrains.bio.experiments.DataConfig
-import org.jetbrains.bio.experiments.ReplicateDataKey
+import org.jetbrains.bio.dataset.CellId
+import org.jetbrains.bio.dataset.DataConfig
+import org.jetbrains.bio.dataset.ReplicateDataKey
 import org.jetbrains.bio.genome.Location
 import org.jetbrains.bio.genome.LocationAware
 import org.jetbrains.bio.genome.containers.LocationsMergingList

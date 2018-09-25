@@ -3,11 +3,11 @@ package org.jetbrains.bio.span
 import com.google.common.collect.ComparisonChain
 import org.apache.commons.csv.CSVFormat
 import org.apache.log4j.Logger
+import org.jetbrains.bio.dataframe.BitterSet
+import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.fit.*
 import org.jetbrains.bio.genome.*
 import org.jetbrains.bio.genome.containers.genomeMap
-import org.jetbrains.bio.statistics.data.BitterSet
-import org.jetbrains.bio.statistics.data.DataFrame
 import org.jetbrains.bio.statistics.hypothesis.Fdr
 import org.jetbrains.bio.util.bufferedWriter
 import org.jetbrains.bio.viktor.F64Array

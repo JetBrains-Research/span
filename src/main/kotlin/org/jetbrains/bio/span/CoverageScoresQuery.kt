@@ -1,6 +1,7 @@
 package org.jetbrains.bio.span
 
 import org.jetbrains.bio.coverage.Coverage
+import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.Strand
@@ -10,7 +11,6 @@ import org.jetbrains.bio.query.CachingQuery
 import org.jetbrains.bio.query.ReadsQuery
 import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.query.stemGz
-import org.jetbrains.bio.statistics.data.DataFrame
 import java.nio.file.Path
 
 class CoverageScoresQuery(val genomeQuery: GenomeQuery,

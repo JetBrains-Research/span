@@ -2,13 +2,13 @@ package org.jetbrains.bio.experiments.fit
 
 import com.google.common.base.Joiner
 import org.apache.log4j.Logger
+import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.Experiment
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.query.Query
 import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.Fitter
-import org.jetbrains.bio.statistics.data.DataFrame
 import org.jetbrains.bio.viktor.F64Array
 
 /**

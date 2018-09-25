@@ -1,7 +1,7 @@
 package org.jetbrains.bio.experiments.tuning
 
-import org.jetbrains.bio.datasets.CellId
-import org.jetbrains.bio.experiments.DataConfig
+import org.jetbrains.bio.dataset.CellId
+import org.jetbrains.bio.dataset.DataConfig
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.tools.Washu
 import java.nio.file.Path

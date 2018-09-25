@@ -1,7 +1,7 @@
 package org.jetbrains.bio.statistics.hmm
 
+import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.statistics.*
-import org.jetbrains.bio.statistics.data.DataFrame
 import org.jetbrains.bio.statistics.distribution.NegativeBinomialDistribution
 import org.jetbrains.bio.statistics.emission.ConstantIntegerEmissionScheme
 import org.jetbrains.bio.statistics.emission.IntegerEmissionScheme
