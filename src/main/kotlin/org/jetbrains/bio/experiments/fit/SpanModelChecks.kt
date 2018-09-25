@@ -2,7 +2,7 @@ package org.jetbrains.bio.experiments.fit
 
 import org.apache.log4j.Logger
 import org.jetbrains.bio.experiments.tuning.Span
-import org.jetbrains.bio.statistics.NegBinEmissionScheme
+import org.jetbrains.bio.statistics.emission.NegBinEmissionScheme
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 

@@ -3,6 +3,9 @@ package org.jetbrains.bio.statistics.hmm
 import org.jetbrains.bio.statistics.*
 import org.jetbrains.bio.statistics.data.DataFrame
 import org.jetbrains.bio.statistics.distribution.NegativeBinomialDistribution
+import org.jetbrains.bio.statistics.emission.ConstantIntegerEmissionScheme
+import org.jetbrains.bio.statistics.emission.IntegerEmissionScheme
+import org.jetbrains.bio.statistics.emission.NegBinEmissionScheme
 import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.statistics.state.ZLHID
 import org.jetbrains.bio.viktor.F64Array

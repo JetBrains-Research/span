@@ -1,7 +1,7 @@
 package org.jetbrains.bio.statistics.state
 
-import org.jetbrains.bio.statistics.ConstantIntegerEmissionScheme
-import org.jetbrains.bio.statistics.NegBinEmissionScheme
+import org.jetbrains.bio.statistics.emission.ConstantIntegerEmissionScheme
+import org.jetbrains.bio.statistics.emission.NegBinEmissionScheme
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.junit.Assert.assertArrayEquals
