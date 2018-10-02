@@ -74,10 +74,13 @@ object PeaksInfo {
                 val coverages = readQueries.map { it.get() }
                 val frip = frip(genomeQuery, peaks, coverages)
                 signalBlock += "FRIP: $frip\n"
-                val signalToNoise = signalToNoise(genomeQuery, peaks, coverages)
-                if (signalToNoise != null) {
-                    signalBlock += "Signal to noise: $signalToNoise\n"
-                }
+
+                // XXX Temporary disabled due to https://github.com/JetBrains-Research/epigenome/issues/1310
+                // Span "signal-to-noise" is very unstable, values differs 2x times for same data
+                // val signalToNoise = signalToNoise(genomeQuery, peaks, coverages)
+                // if (signalToNoise != null) {
+                //     signalBlock += "Signal to noise: $signalToNoise\n"
+                // }
             }
         }
         return srcBlock + peaksLengthsBlock + signalBlock
