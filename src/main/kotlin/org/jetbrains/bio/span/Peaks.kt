@@ -9,9 +9,13 @@ import org.jetbrains.bio.experiments.fit.*
 import org.jetbrains.bio.genome.*
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.statistics.hypothesis.Fdr
+import org.jetbrains.bio.tools.PeaksInfo
 import org.jetbrains.bio.util.bufferedWriter
+import org.jetbrains.bio.util.toPath
 import org.jetbrains.bio.viktor.F64Array
+import java.net.URI
 import java.nio.file.Path
+import java.util.stream.Stream
 
 /**
  * @param value Foldchange or coverage
@@ -150,6 +154,12 @@ chromosome, start, end, name, score, strand, coverage/foldchange, -log(pvalue), 
         }
     }
 }
+
+fun PeaksInfo.compute(genomeQuery: GenomeQuery, peaksStream: Stream<Location>, src: URI?,
+                      fitInformation: SpanFitInformation): String {
+    return compute(genomeQuery, peaksStream, src, fitInformation.data.map { it.path.toPath() })
+}
+
 
 fun List<Double>.median(): Double {
     if (isEmpty()) throw IllegalStateException("Can't compute median for an empty list.")
