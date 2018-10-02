@@ -325,6 +325,7 @@ LABELS, FDR, GAP options are ignored.
                 assertFalse("""NO output path given, process model fitting only.
     LABELS, FDR, GAP options are ignored.
     """ in out)
+                assertIn("100.00% (", out)
                 assertIn("Track source: $peaksPath", out)
                 assertIn("Peaks Statistics:\n", out)
                 assertIn("FRIP: ", out)
