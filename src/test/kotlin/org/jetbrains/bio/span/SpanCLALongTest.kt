@@ -284,7 +284,11 @@ LABELS, FDR, GAP options are ignored.
                             "--threads", THREADS.toString()))
 
                     // Check that log file was created correctly
-                    assertTrue((dir / "logs" / "${path.stemGz}_${control.stemGz}_200.log").exists)
+                    assertTrue(
+                        (dir / "logs" / "${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}.log")
+                            .exists,
+                        "Log file not found"
+                    )
 
                     assertTrue((Configuration.experimentsPath / "cache").exists)
 
@@ -375,7 +379,10 @@ LABELS, FDR, GAP options are ignored.
                 // Check created bed file
                 assertTrue(Location(1100 * BIN, 1900 * BIN, TO.get().first()) in LocationsMergingList.load(TO, bedPath))
                 // Check correct log file name
-                assertTrue((it / "logs" / "${bedPath.stem}.log").exists)
+                assertTrue(
+                    (it / "logs" / "${bedPath.stem}.log").exists,
+                    "Log file not found"
+                )
             }
         }
     }
@@ -414,8 +421,10 @@ LABELS, FDR, GAP options are ignored.
                 val err = String(errStream.toByteArray())
 
                 // Check correct log file name
-                val logPath = it / "logs" / "${reduceIds(listOf(path.stemGz))}_${BIN}.log"
-                assertTrue(logPath.exists)
+                val logPath = it / "logs" / "${reduceIds(listOf(path.stemGz, BIN.toString()))}.log"
+                assertTrue(
+                    logPath.exists,
+                    "Log file not found")
                 val log = FileReader(logPath.toFile()).use { it.readText() }
                 val errorMessage = "Model can't be trained on empty coverage, exiting."
                 assertIn(errorMessage, log)
