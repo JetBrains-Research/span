@@ -297,7 +297,11 @@ LABELS, FDR, GAP options are ignored.
                     assertEquals(1, (Configuration.experimentsPath / "cache").glob("coverage_${control.stemGz}_unique#*.npz").size)
                     // Model test
                     assertTrue((Configuration.experimentsPath / "fit").exists)
-                    assertEquals(1, (Configuration.experimentsPath / "fit").glob("${path.stemGz}_${control.stemGz}_200#*.span").size)
+                    assertEquals(
+                        1,
+                        (Configuration.experimentsPath / "fit")
+                                .glob("${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}#*.span").size
+                    )
                 }
             }
         }
