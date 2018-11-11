@@ -10,6 +10,7 @@ import org.jetbrains.bio.genome.*
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.statistics.hypothesis.Fdr
 import org.jetbrains.bio.tools.PeaksInfo
+import org.jetbrains.bio.util.CancellableState
 import org.jetbrains.bio.util.bufferedWriter
 import org.jetbrains.bio.util.toPath
 import org.jetbrains.bio.viktor.F64Array
@@ -117,19 +118,27 @@ internal fun getChromosomePeaks(logNullMemberships: F64Array,
     }
 }
 
-fun SpanFitResults.getChromosomePeaks(chromosome: Chromosome,
-                                      fdr: Double,
-                                      gap: Int,
-                                      coverageDataFrame: DataFrame? = null): List<Peak> =
-        getChromosomePeaks(logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL),
+fun SpanFitResults.getChromosomePeaks(
+        chromosome: Chromosome,
+        fdr: Double,
+        gap: Int,
+        coverageDataFrame: DataFrame? = null
+): List<Peak> =
+        getChromosomePeaks(
+                logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL),
                 fitInfo.offsets(chromosome),
                 chromosome, fdr, gap,
-                coverageDataFrame)
+                coverageDataFrame
+        )
 
-fun SpanFitResults.getPeaks(genomeQuery: GenomeQuery,
-                            fdr: Double,
-                            gap: Int): List<Peak> {
+fun SpanFitResults.getPeaks(
+        genomeQuery: GenomeQuery,
+        fdr: Double,
+        gap: Int,
+        cancellableState: CancellableState? = null
+): List<Peak> {
     val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
+        cancellableState?.checkCanceled()
         getChromosomePeaks(chromosome, fdr, gap)
     }
     return genomeQuery.get().flatMap { map[it] }
