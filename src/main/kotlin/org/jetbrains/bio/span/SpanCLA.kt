@@ -117,9 +117,8 @@ compare                         Differential peak calling mode, experimental
                 configureLogging("quiet" in options, "debug" in options)
 
                 val workingDir = options.valueOf("workdir") as Path
-                // We would like to reuse as much caching as possible, resolve all the symbolic links
-                val treatmentPaths = (options.valuesOf("treatment") as List<Path>).map { it.toRealPath() }
-                val controlPaths = (options.valuesOf("control") as List<Path>?)?.map { it.toRealPath() }
+                val treatmentPaths = (options.valuesOf("treatment") as List<Path>)
+                val controlPaths = (options.valuesOf("control") as List<Path>?)
                 val peaksPath = options.valueOf("peaks") as Path?
                 val labelsPath = options.valueOf("labels") as Path?
                 val chromSizesPath = options.valueOf("chrom.sizes") as Path
