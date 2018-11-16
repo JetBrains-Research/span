@@ -382,16 +382,22 @@ compare                         Differential peak calling mode, experimental
         outputPath.createDirectories()
         Configuration.experimentsPath = outputPath
         Configuration.genomesPath = chromSizesPath.parent
-        // See [Genome#chromSizesPath] for details
+        /** See [Genome.chromSizesPath] for details */
         System.getProperties().setProperty("chrom.sizes", chromSizesPath.toString())
     }
 
-    private fun createGenomeQuery(chromSizesPath: Path): GenomeQuery {
+
+    @VisibleForTesting
+    internal fun createGenomeQuery(chromSizesPath: Path): GenomeQuery {
         val fileName = chromSizesPath.fileName.toString()
-        check(fileName.endsWith(".chrom.sizes")) {
-            "ERROR: Unexpected reference name, please use the name of form <build>.chrom.sizes."
+        if (!fileName.endsWith(".chrom.sizes")) {
+            val build = fileName.substringBefore(".")
+            LOG.warn("Unexpected chrom sizes file name: $fileName, expected <build>.chrom.sizes. Detected build: $build")
+            return GenomeQuery(build)
         }
-        return GenomeQuery(fileName.substringBeforeLast(".chrom.sizes"))
+        val build = fileName.substringBeforeLast(".chrom.sizes")
+        LOG.warn("Chrom sizes name: $fileName. Detected build: $build")
+        return GenomeQuery(build)
     }
 
 
@@ -439,7 +445,8 @@ compare                         Differential peak calling mode, experimental
         }
     }
 
-    private fun configureLogging(quiet: Boolean, debug: Boolean) {
+    @VisibleForTesting
+    internal fun configureLogging(quiet: Boolean, debug: Boolean) {
         if (quiet) {
             (LogManager.getCurrentLoggers().toList() + listOf(LogManager.getRootLogger())).forEach {
                 (it as Logger).level = Level.OFF

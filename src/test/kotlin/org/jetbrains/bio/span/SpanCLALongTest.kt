@@ -285,9 +285,9 @@ LABELS, FDR, GAP options are ignored.
 
                     // Check that log file was created correctly
                     assertTrue(
-                        (dir / "logs" / "${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}.log")
-                            .exists,
-                        "Log file not found"
+                            (dir / "logs" / "${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}.log")
+                                    .exists,
+                            "Log file not found"
                     )
 
                     assertTrue((Configuration.experimentsPath / "cache").exists)
@@ -298,9 +298,9 @@ LABELS, FDR, GAP options are ignored.
                     // Model test
                     assertTrue((Configuration.experimentsPath / "fit").exists)
                     assertEquals(
-                        1,
-                        (Configuration.experimentsPath / "fit")
-                                .glob("${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}#*.span").size
+                            1,
+                            (Configuration.experimentsPath / "fit")
+                                    .glob("${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}#*.span").size
                     )
                 }
             }
@@ -383,10 +383,7 @@ LABELS, FDR, GAP options are ignored.
                 // Check created bed file
                 assertTrue(Location(1100 * BIN, 1900 * BIN, TO.get().first()) in LocationsMergingList.load(TO, bedPath))
                 // Check correct log file name
-                assertTrue(
-                    (it / "logs" / "${bedPath.stem}.log").exists,
-                    "Log file not found"
-                )
+                assertTrue((it / "logs" / "${bedPath.stem}.log").exists, "Log file not found")
             }
         }
     }
@@ -426,9 +423,7 @@ LABELS, FDR, GAP options are ignored.
 
                 // Check correct log file name
                 val logPath = it / "logs" / "${reduceIds(listOf(path.stemGz, BIN.toString()))}.log"
-                assertTrue(
-                    logPath.exists,
-                    "Log file not found")
+                assertTrue(logPath.exists, "Log file not found")
                 val log = FileReader(logPath.toFile()).use { it.readText() }
                 val errorMessage = "Model can't be trained on empty coverage, exiting."
                 assertIn(errorMessage, log)
@@ -436,6 +431,34 @@ LABELS, FDR, GAP options are ignored.
                 assertIn(errorMessage, err)
             }
         }
+    }
+
+    @Test
+    fun testCreateGenomeQuery() {
+        withTempFile("foo", ".chrom.sizes") { path ->
+            val outStream = ByteArrayOutputStream()
+            System.setOut(PrintStream(outStream))
+            // Update with changed System.out
+            Logs.addConsoleAppender(Level.INFO)
+            SpanCLA.configureLogging(false, false)
+            val genomeQuery = SpanCLA.createGenomeQuery(path)
+            val build = path.fileName.toString().substringBefore(".chrom.sizes")
+            assertEquals(genomeQuery.build, build)
+            assertIn("Chrom sizes name: ${path.fileName}. Detected build: $build", String(outStream.toByteArray()))
+        }
+        withTempFile("foo", ".galaxy.dat") { path ->
+            val outStream = ByteArrayOutputStream()
+            System.setOut(PrintStream(outStream))
+            // Update with changed System.out
+            Logs.addConsoleAppender(Level.INFO)
+            SpanCLA.configureLogging(false, false)
+            val genomeQuery = SpanCLA.createGenomeQuery(path)
+            val build = path.fileName.toString().substringBefore(".")
+            assertEquals(genomeQuery.build, build)
+            assertIn("Unexpected chrom sizes file name: ${path.fileName}, expected <build>.chrom.sizes. Detected build: $build",
+                    String(outStream.toByteArray()))
+        }
+
     }
 
     companion object {
