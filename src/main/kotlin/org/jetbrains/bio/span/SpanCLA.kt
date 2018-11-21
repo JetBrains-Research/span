@@ -155,7 +155,9 @@ compare                         Differential peak calling mode, experimental
                 } else {
                     LOG.info("CONTROL: none")
                 }
-                val genomeQuery = createGenomeQuery(chromSizesPath)
+                // Configuration initialization should be configured before any access
+                configurePaths(workingDir, chromSizesPath)
+                val genomeQuery = GenomeQuery(chromSizesPath)
                 LOG.info("CHROM.SIZES: $chromSizesPath")
                 LOG.info("GENOME: ${genomeQuery.id}")
                 LOG.info("FRAGMENT: $fragment")
@@ -180,7 +182,6 @@ compare                         Differential peak calling mode, experimental
 
                 checkMemory()
 
-                configurePaths(workingDir, chromSizesPath)
                 val paths = matchTreatmentAndControls(treatmentPaths, controlPaths)
                 val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(genomeQuery, paths, bin, fragment)
                 if (peaksPath != null) {
@@ -311,7 +312,9 @@ compare                         Differential peak calling mode, experimental
                     LOG.info("CONTROL2: none")
                 }
                 LOG.info("CHROM.SIZES: $chromSizesPath")
-                val genomeQuery = createGenomeQuery(chromSizesPath)
+                // Configuration initialization should be configured before any access
+                configurePaths(workingDir, chromSizesPath)
+                val genomeQuery = GenomeQuery(chromSizesPath)
                 LOG.info("GENOME: ${genomeQuery.id}")
                 LOG.info("FRAGMENT: $fragment")
                 LOG.info("BIN: $bin")
@@ -329,7 +332,6 @@ compare                         Differential peak calling mode, experimental
 
                 checkMemory()
 
-                configurePaths(workingDir, chromSizesPath)
 
                 val paths1 = matchTreatmentAndControls(treatmentPaths1, controlPaths1)
                 val coverages1 = treatmentPaths1.map { ReadsQuery(genomeQuery, it, fragment = fragment) }
@@ -381,22 +383,6 @@ compare                         Differential peak calling mode, experimental
         outputPath.createDirectories()
         Configuration.experimentsPath = outputPath
         Configuration.genomesPath = chromSizesPath.parent
-        /** See [Genome.chromSizesPath] for details */
-        System.getProperties().setProperty("chrom.sizes", chromSizesPath.toString())
-    }
-
-
-    @VisibleForTesting
-    internal fun createGenomeQuery(chromSizesPath: Path): GenomeQuery {
-        val fileName = chromSizesPath.fileName.toString()
-        if (!fileName.endsWith(".chrom.sizes")) {
-            val build = fileName.substringBefore(".")
-            LOG.warn("Unexpected chrom sizes file name: $fileName, expected <build>.chrom.sizes. Detected build: $build")
-            return GenomeQuery(build)
-        }
-        val build = fileName.substringBeforeLast(".chrom.sizes")
-        LOG.warn("Chrom sizes name: $fileName. Detected build: $build")
-        return GenomeQuery(build)
     }
 
 

@@ -25,10 +25,10 @@ class SpanFitInformationTest {
 
 
     @Test
-    fun checkBuild() {
+    fun checkWrongBuild() {
         expectedEx.expect(IllegalStateException::class.java)
-        expectedEx.expectMessage("Wrong genome build, expected: hg19, got: to2")
-        SpanFitInformation("hg19", emptyList(), emptyList(), 100, 200, LinkedHashMap(), 1).checkGenomeQuery(GenomeQuery("to2"))
+        expectedEx.expectMessage("Wrong genome build, expected: hg19, got: to1")
+        SpanFitInformation("hg19", emptyList(), emptyList(), 100, 200, LinkedHashMap(), 1).checkGenomeQuery(GenomeQuery("to1"))
     }
 
     @Test
@@ -88,10 +88,10 @@ class SpanFitInformationTest {
 
     @Test
     fun checkLoad() {
-            val info = SpanFitInformation(gq, listOf("path_to_file".toPath() to null), listOf("treatment_control"), null, 200)
-            withTempFile("foo", ".tar") { path ->
-                path.bufferedWriter().use {
-                    it.write("""{
+        val info = SpanFitInformation(gq, listOf("path_to_file".toPath() to null), listOf("treatment_control"), null, 200)
+        withTempFile("foo", ".tar") { path ->
+            path.bufferedWriter().use {
+                it.write("""{
   "build": "to1",
   "data": [
     {
@@ -111,9 +111,9 @@ class SpanFitInformationTest {
   },
   "version": 1
 }""")
-                }
-                assertEquals(info, SpanFitInformation.load(path))
             }
+            assertEquals(info, SpanFitInformation.load(path))
+        }
     }
 
     @Test

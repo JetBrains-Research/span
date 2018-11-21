@@ -433,33 +433,6 @@ LABELS, FDR, GAP options are ignored.
         }
     }
 
-    @Test
-    fun testCreateGenomeQuery() {
-        withTempFile("foo", ".chrom.sizes") { path ->
-            val outStream = ByteArrayOutputStream()
-            System.setOut(PrintStream(outStream))
-            // Update with changed System.out
-            Logs.addConsoleAppender(Level.INFO)
-            SpanCLA.configureLogging(false, false)
-            val genomeQuery = SpanCLA.createGenomeQuery(path)
-            val build = path.fileName.toString().substringBefore(".chrom.sizes")
-            assertEquals(genomeQuery.build, build)
-            assertIn("Chrom sizes name: ${path.fileName}. Detected build: $build", String(outStream.toByteArray()))
-        }
-        withTempFile("foo", ".galaxy.dat") { path ->
-            val outStream = ByteArrayOutputStream()
-            System.setOut(PrintStream(outStream))
-            // Update with changed System.out
-            Logs.addConsoleAppender(Level.INFO)
-            SpanCLA.configureLogging(false, false)
-            val genomeQuery = SpanCLA.createGenomeQuery(path)
-            val build = path.fileName.toString().substringBefore(".")
-            assertEquals(genomeQuery.build, build)
-            assertIn("Unexpected chrom sizes file name: ${path.fileName}, expected <build>.chrom.sizes. Detected build: $build",
-                    String(outStream.toByteArray()))
-        }
-
-    }
 
     companion object {
         private val TO = GenomeQuery("to1")
