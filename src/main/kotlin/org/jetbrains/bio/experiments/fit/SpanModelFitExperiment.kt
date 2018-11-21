@@ -2,7 +2,6 @@ package org.jetbrains.bio.experiments.fit
 
 import com.google.gson.GsonBuilder
 import kotlinx.support.jdk7.use
-import org.apache.log4j.Logger
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
@@ -31,7 +30,6 @@ import kotlin.collections.LinkedHashMap
  *
  * See [getChromosomesIndices] and [offsets] for details.
  */
-
 data class SpanFitInformation(val build: String,
                               val data: List<TC>,
                               val labels: List<String>,
@@ -109,7 +107,7 @@ data class SpanFitInformation(val build: String,
         check(index != null) {
             "Failed to find chromosome ${chromosome.name} in $sortedChromosomes"
         }
-        return offsets[index!!] to offsets[index + 1]
+        return offsets[index] to offsets[index + 1]
     }
 
     fun save(path: Path) {
@@ -127,9 +125,12 @@ data class SpanFitInformation(val build: String,
 
     companion object {
         const val VERSION: Int = 1
-        private val LOG = Logger.getLogger("SPAN")
 
+        /**
+         * Using Treatment and Control class instead of [Pair] here for nice GSON serialization
+         */
         data class TC(val path: String, val control: String?)
+
 
         private val GSON = GsonBuilder()
                 .setPrettyPrinting()
@@ -142,7 +143,7 @@ data class SpanFitInformation(val build: String,
                 checkNotNull(info) {
                     "Failed to load info from $path"
                 }
-                check (VERSION == info.version) {
+                check(VERSION == info.version) {
                     "Wrong version: expected: $VERSION, got: ${info.version}"
                 }
                 return@use info
@@ -205,7 +206,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
     }
 
     // XXX It is important to use get() here, because id is overridden in superclasses
-     val tarPath: Path
+    private val modelPath: Path
         get() = experimentPath / "$id.span"
 
     private fun calculateModel(): Model {
@@ -248,8 +249,8 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
      */
     private fun getOrLoadResults(): SpanFitResults {
         var computedResults: SpanFitResults? = null
-        tarPath.checkOrRecalculate("Model fit") { (p) ->
-            withTempDirectory(tarPath.stem) { dir ->
+        modelPath.checkOrRecalculate("Model fit") { (p) ->
+            withTempDirectory(modelPath.stem) { dir ->
                 val modelPath = dir / MODEL_JSON
                 val model = calculateModel()
                 model.save(modelPath)
@@ -280,10 +281,10 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
             }
         }
         return if (computedResults != null) {
-            LOG.info("Model saved: $tarPath")
+            LOG.info("Model saved: $modelPath")
             computedResults!!
         } else {
-            loadResults(genomeQuery, tarPath).apply {
+            loadResults(genomeQuery, modelPath).apply {
                 check(this.fitInfo.binSize == binSize) {
                     "Wrong bin size: expected $binSize, but got ${this.fitInfo.binSize}"
                 }
