@@ -1,7 +1,7 @@
 package org.jetbrains.bio.span
 
 import org.apache.commons.math3.util.Precision
-import org.jetbrains.bio.coverage.Coverage
+import org.jetbrains.bio.coverage.SingleEndCoverage
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.Location
@@ -16,11 +16,11 @@ class CoverageScoresQueryTest {
 
     @Test
     fun testScoresWithControl() {
-        val cond = Coverage.builder(genomeQuery, 0)
+        val cond = SingleEndCoverage.builder(genomeQuery, 0)
                 .putAll(chromosome1, Strand.PLUS, 1, 2, 3, 4, 5, 10, 11, 15)
                 .build(unique = false)
 
-        val control = Coverage.builder(genomeQuery, 0)
+        val control = SingleEndCoverage.builder(genomeQuery, 0)
                 .putAll(chromosome1, Strand.PLUS, 0, 2, 4, 6, 10, 12, 14, 20, 21, 22, 25)
                 .build(unique = false)
 
@@ -53,7 +53,7 @@ class CoverageScoresQueryTest {
         val bin = 200
 
 
-        val treatmentBuilder = Coverage.builder(genomeQuery, 0)
+        val treatmentBuilder = SingleEndCoverage.builder(genomeQuery, 0)
         treatmentPlus.forEachIndexed { index, v ->
             (0.until(v)).forEach { x ->
                 treatmentBuilder.process(Location(index * bin + x, index * bin + x + 1, chromosome1, Strand.PLUS))
@@ -64,7 +64,7 @@ class CoverageScoresQueryTest {
                 treatmentBuilder.process(Location(index * bin + x, index * bin + x + 1, chromosome1, Strand.MINUS))
             }
         }
-        val controlBuilder = Coverage.builder(genomeQuery, 0)
+        val controlBuilder = SingleEndCoverage.builder(genomeQuery, 0)
         controlPlus.forEachIndexed { index, v ->
             (0.until(v)).forEach { x ->
                 controlBuilder.process(Location(index * bin + x, index * bin + x + 1, chromosome1, Strand.PLUS))
@@ -85,11 +85,11 @@ class CoverageScoresQueryTest {
 
     @Test
     fun testControlMin0() {
-        val cond = Coverage.builder(genomeQuery, 0)
+        val cond = SingleEndCoverage.builder(genomeQuery, 0)
                 .putAll(chromosome1, Strand.PLUS, 1, 2, 4, 5, 10, 11, 15)
                 .build(unique = false)
 
-        val control = Coverage.builder(genomeQuery, 0)
+        val control = SingleEndCoverage.builder(genomeQuery, 0)
                 .putAll(chromosome1, Strand.PLUS, 1, 2, 3, 4, 5, 11, 15)
                 .build(unique = false)
         assertEquals(listOf(0, 0, 1, 0),
@@ -97,9 +97,9 @@ class CoverageScoresQueryTest {
     }
 }
 
-private fun Coverage.Builder.putAll(chromosome: Chromosome,
+private fun SingleEndCoverage.Builder.putAll(chromosome: Chromosome,
                                     strand: Strand,
-                                    vararg offsets: Int): Coverage.Builder {
+                                    vararg offsets: Int): SingleEndCoverage.Builder {
     data[chromosome, strand].addAll(offsets)
     return this
 }

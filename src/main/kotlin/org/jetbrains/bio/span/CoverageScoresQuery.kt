@@ -1,6 +1,6 @@
 package org.jetbrains.bio.span
 
-import org.jetbrains.bio.coverage.Coverage
+import org.jetbrains.bio.coverage.SingleEndCoverage
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
@@ -50,8 +50,8 @@ class CoverageScoresQuery(val genomeQuery: GenomeQuery,
     companion object {
 
         internal fun computeScale(genomeQuery: GenomeQuery,
-                                  treatmentCoverage: Coverage,
-                                  controlCoverage: Coverage): Double {
+                                  treatmentCoverage: SingleEndCoverage,
+                                  controlCoverage: SingleEndCoverage): Double {
             val conditionSize = genomeQuery.get().map {
                 treatmentCoverage.getCoverage(it.range.on(it).on(Strand.PLUS)).toLong() +
                         treatmentCoverage.getCoverage(it.range.on(it).on(Strand.MINUS)).toLong()
@@ -65,11 +65,11 @@ class CoverageScoresQuery(val genomeQuery: GenomeQuery,
 
         /**
          * Returns the scores of a given [chromosome] sliced into binSizes with [binSize] width.
-         * Score is precisely [Coverage] within bins if no control given, or DiffBind-like score.
+         * Score is precisely [SingleEndCoverage] within bins if no control given, or DiffBind-like score.
          */
         internal fun computeScores(chromosome: Chromosome,
-                                   treatmentCoverage: Coverage,
-                                   controlCoverage: Coverage?,
+                                   treatmentCoverage: SingleEndCoverage,
+                                   controlCoverage: SingleEndCoverage?,
                                    binSize: Int,
                                    scale: Double): IntArray {
             return chromosome.range.slice(binSize).mapToInt { b ->
