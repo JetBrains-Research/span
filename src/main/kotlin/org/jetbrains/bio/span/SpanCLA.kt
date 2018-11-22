@@ -159,7 +159,7 @@ compare                         Differential peak calling mode, experimental
                 configurePaths(workingDir, chromSizesPath)
                 val genomeQuery = GenomeQuery(chromSizesPath)
                 LOG.info("CHROM.SIZES: $chromSizesPath")
-                LOG.info("GENOME: ${genomeQuery.id}")
+                LOG.info("GENOME: ${genomeQuery.genome.build}")
                 LOG.info("FRAGMENT: $fragment")
                 if (peaksPath != null) {
                     if (labelsPath != null) {
@@ -315,7 +315,7 @@ compare                         Differential peak calling mode, experimental
                 // Configuration initialization should be configured before any access
                 configurePaths(workingDir, chromSizesPath)
                 val genomeQuery = GenomeQuery(chromSizesPath)
-                LOG.info("GENOME: ${genomeQuery.id}")
+                LOG.info("GENOME: ${genomeQuery.genome.build}")
                 LOG.info("FRAGMENT: $fragment")
                 LOG.info("BIN: $bin")
                 LOG.info("FDR: $fdr")

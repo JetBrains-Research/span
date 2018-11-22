@@ -1,12 +1,16 @@
 package org.jetbrains.bio.experiments.fit
 
+import com.google.common.annotations.VisibleForTesting
+import com.google.common.math.IntMath
 import com.google.gson.GsonBuilder
 import kotlinx.support.jdk7.use
 import org.jetbrains.bio.dataframe.DataFrame
+import org.jetbrains.bio.experiments.fit.SpanModelFitExperiment.Companion.createEffectiveQueries
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.query.CachingQuery
 import org.jetbrains.bio.query.Query
+import org.jetbrains.bio.query.ReadsQuery
 import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.span.CoverageScoresQuery
 import org.jetbrains.bio.span.scoresDataFrame
@@ -20,6 +24,7 @@ import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.statistics.state.ZLHID
 import org.jetbrains.bio.util.*
+import java.math.RoundingMode
 import java.nio.file.Path
 import java.util.*
 import kotlin.collections.LinkedHashMap
@@ -51,19 +56,10 @@ data class SpanFitInformation(val build: String,
                     },
                     VERSION)
 
-    private fun checkBuild(build: String) {
+    internal fun checkBuild(build: String) {
         check(this.build == build) {
             "Wrong genome build, expected: ${this.build}, got: $build"
         }
-    }
-
-    fun checkGenomeQuery(genomeQuery: GenomeQuery) {
-        checkBuild(genomeQuery.build)
-        val names = genomeQuery.get().map { it.name }.sorted()
-        check(chromosomesSizes.keys.toList() == names) {
-            "Wrong chromosomes, expected: ${chromosomesSizes.keys.toList()}, got: $names"
-        }
-        genomeQuery.get().forEach { checkChromosome(it) }
     }
 
     private fun checkChromosome(chromosome: Chromosome) {
@@ -75,10 +71,13 @@ data class SpanFitInformation(val build: String,
         }
     }
 
-    fun sortedChromosomes(genomeQuery: GenomeQuery): List<Chromosome> {
-        checkGenomeQuery(genomeQuery)
-        return genomeQuery.get().sortedBy { it.name }
-    }
+    private fun offsetsMap(): IntArray =
+            (listOf(0) + chromosomesSizes.keys.sorted().map {
+                IntMath.divide(chromosomesSizes[it]!!, binSize, RoundingMode.CEILING)
+            }).toIntArray().let {
+                Arrays.parallelPrefix(it) { a, b -> a + b }; it
+            }
+
 
     /**
      * Creates binned offsets for [chromosome] using [binSize]
@@ -92,35 +91,32 @@ data class SpanFitInformation(val build: String,
     /**
      * Since all chromosomes are squashed into a single data frame for [SpanModelFitExperiment]
      * This method computes indices of data frame, for given [chromosome]
+     * See also: [merge] and [split]
      */
-    internal fun getChromosomesIndices(genomeQuery: GenomeQuery, chromosome: Chromosome): Pair<Int, Int> {
-        checkGenomeQuery(genomeQuery)
-        val offsets = (listOf(0) + sortedChromosomes(genomeQuery).map { offsets(it).size })
-                .toIntArray().let {
-                    Arrays.parallelPrefix(it) { a, b -> a + b }; it
-                }
-        checkGenomeQuery(genomeQuery)
-        val sortedChromosomes = sortedChromosomes(genomeQuery)
-        val index = (0 until sortedChromosomes.size).find {
-            sortedChromosomes[it] == chromosome
-        }
-        check(index != null) {
-            "Failed to find chromosome ${chromosome.name} in $sortedChromosomes"
-        }
-        return offsets[index] to offsets[index + 1]
+    internal fun getChromosomesIndices(chromosome: Chromosome): Pair<Int, Int> {
+        checkChromosome(chromosome)
+        val offsetsMap = offsetsMap()
+        val index = chromosomesSizes.keys.sorted().indexOf(chromosome.name)
+        return offsetsMap[index] to offsetsMap[index + 1]
     }
 
-    fun save(path: Path) {
+    internal fun save(path: Path) {
         path.parent.createDirectories()
         path.bufferedWriter().use { GSON.toJson(this, it) }
     }
 
-    fun dataFrameToMap(dataFrame: DataFrame, genomeQuery: GenomeQuery): Map<String, DataFrame> {
-        checkGenomeQuery(genomeQuery)
-        return genomeQuery.get().map { chromosome ->
-            val (start, end) = getChromosomesIndices(genomeQuery, chromosome)
-            chromosome.name to dataFrame.iloc[start until end]
-        }.toMap()
+    internal fun merge(statesDataFrame: Map<String, DataFrame>): DataFrame {
+        return DataFrame.rowBind(chromosomesSizes.keys.sorted().map { statesDataFrame[it]!! }.toTypedArray())
+    }
+
+    internal fun split(dataFrame: DataFrame, genomeQuery: GenomeQuery): Map<String, DataFrame> {
+        checkBuild(genomeQuery.build)
+        return genomeQuery.get()
+                .filter { it.name in chromosomesSizes }
+                .map { chromosome ->
+                    val (start, end) = getChromosomesIndices(chromosome)
+                    chromosome.name to dataFrame.iloc[start until end]
+                }.toMap()
     }
 
     companion object {
@@ -173,7 +169,8 @@ data class SpanFitResults(val fitInfo: SpanFitInformation,
  * - Any number of replicates: [MLConstrainedNBHMM]
  */
 abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : Any>(
-        genomeQuery: GenomeQuery,
+        /** XXX may contain chromosomes without reads, use [genomeQuery] instead. Details: [createEffectiveQueries] */
+        externalGenomeQuery: GenomeQuery,
         paths: List<Pair<Path, Path?>>,
         labels: List<String>,
         fragment: Int?,
@@ -183,8 +180,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
         availableStates: Array<State>,
         private val nullHypothesis: NullHypothesis<State>)
     : ModelFitExperiment<Model, State>(
-        genomeQuery,
-        createDataQuery(genomeQuery, paths, labels, fragment, binSize),
+        createEffectiveQueries(externalGenomeQuery, paths, labels, fragment, binSize),
         modelFitter, modelClass, availableStates) {
 
     val results: SpanFitResults by lazy {
@@ -200,7 +196,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
     val fitInformation = SpanFitInformation(genomeQuery, paths, labels, fragment, binSize)
 
     private val preprocessedData: List<Preprocessed<DataFrame>> by lazy {
-        fitInformation.sortedChromosomes(genomeQuery).map {
+        genomeQuery.get().sortedBy { it.name }.map {
             Preprocessed.of(dataQuery.apply(it))
         }
     }
@@ -236,7 +232,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
     }
 
     private fun sliceStatesDataFrame(statesDataFrame: DataFrame, chromosome: Chromosome): DataFrame {
-        val (start, end) = fitInformation.getChromosomesIndices(genomeQuery, chromosome)
+        val (start, end) = fitInformation.getChromosomesIndices(chromosome)
         return statesDataFrame.iloc[start until end]
     }
 
@@ -259,23 +255,21 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
                 fitInformation.save(informationPath)
 
                 val statesDataFrame = calculateStatesDataFrame(model)
-
+                val chromosomeToDataFrameMap = genomeQuery.get().associate {
+                    val logMemberships = getLogMemberships(sliceStatesDataFrame(statesDataFrame, it))
+                    val logNullMemberships = nullHypothesis.apply(logMemberships)
+                    // Convert [Double] to [Float] to save space, see #1163
+                    it.name to DataFrame().with(NULL, logNullMemberships.toFloatArray())
+                }
+                val logNullMembershipsDF = fitInformation.merge(chromosomeToDataFrameMap)
                 val nullHypothesisPath = dir / NULL_NPZ
-                val logNullMembershipsDF = DataFrame.rowBind(
-                        fitInformation.sortedChromosomes(genomeQuery).map { chromosome ->
-                            val logMemberships = getLogMemberships(sliceStatesDataFrame(statesDataFrame, chromosome))
-                            val logNullMemberships = nullHypothesis.apply(logMemberships)
-                            // Convert [Double] to [Float] to save space, see #1163
-                            DataFrame().with(NULL, logNullMemberships.toFloatArray())
-                        }.toTypedArray()
-                )
                 logNullMembershipsDF.save(nullHypothesisPath)
 
                 // Sanity check: model load
                 ClassificationModel.load<Model>(modelPath)
                 // Sanity check: information load
                 SpanFitInformation.load(informationPath)
-                val logNullMembershipsMap = fitInformation.dataFrameToMap(logNullMembershipsDF, genomeQuery)
+                val logNullMembershipsMap = fitInformation.split(logNullMembershipsDF, genomeQuery)
                 computedResults = SpanFitResults(fitInformation, model, logNullMembershipsMap)
                 Tar.compress(p, modelPath.toFile(), informationPath.toFile(), nullHypothesisPath.toFile())
             }
@@ -299,13 +293,29 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
         const val NULL = "null"
 
 
-        private fun createDataQuery(genomeQuery: GenomeQuery,
-                                    paths: List<Pair<Path, Path?>>,
-                                    labels: List<String>,
-                                    fragment: Int?,
-                                    binSize: Int): Query<Chromosome, DataFrame> {
-            return object : CachingQuery<Chromosome, DataFrame>() {
-                val scores = paths.map { CoverageScoresQuery(genomeQuery, it.first, it.second, fragment, binSize) }
+        @VisibleForTesting
+        /**
+         * Create pair of
+         * 1. Effective genomeQuery, i.e. only chromosomes with some reads on them
+         * 2. Data query required for [ModelFitExperiment]
+         */
+        internal fun createEffectiveQueries(genomeQuery: GenomeQuery,
+                                            paths: List<Pair<Path, Path?>>,
+                                            labels: List<String>,
+                                            fragment: Int?,
+                                            binSize: Int): Pair<GenomeQuery, Query<Chromosome, DataFrame>> {
+            val chromosomes = genomeQuery.get()
+            val nonEmptyChromosomes = hashSetOf<Chromosome>()
+            paths.forEach { (t, _) ->
+                val coverage = ReadsQuery(genomeQuery, t, true, fragment).get()
+                nonEmptyChromosomes.addAll(chromosomes.filter { coverage.getBothStrandsCoverage(it.range.on(it)) > 0 })
+            }
+            chromosomes.filter { it !in nonEmptyChromosomes }.forEach {
+                LOG.info("${it.name}: no reads detected, ignoring.")
+            }
+            val effectiveGenomeQuery = genomeQuery.only(nonEmptyChromosomes.toList().map { it.name }.sorted())
+            return effectiveGenomeQuery to object : CachingQuery<Chromosome, DataFrame>() {
+                val scores = paths.map { CoverageScoresQuery(effectiveGenomeQuery, it.first, it.second, fragment, binSize) }
 
                 override fun getUncached(input: Chromosome): DataFrame {
                     return scores.scoresDataFrame(input, labels.toTypedArray())
@@ -326,10 +336,10 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
                 LOG.debug("Completed model file decompress and started loading: $tarPath")
                 val info = SpanFitInformation.load(dir / SpanModelFitExperiment.INFORMATION_JSON)
                 // Sanity check
-                info.checkGenomeQuery(genomeQuery)
+                info.checkBuild(genomeQuery.build)
                 val model = ClassificationModel.load<ClassificationModel>(dir / MODEL_JSON)
                 val logNullMembershipsDF = DataFrame.load(dir / SpanModelFitExperiment.NULL_NPZ)
-                val logNullMembershipsMap = info.dataFrameToMap(logNullMembershipsDF, genomeQuery)
+                val logNullMembershipsMap = info.split(logNullMembershipsDF, genomeQuery)
 
                 LOG.info("Completed loading model: $tarPath")
                 return@withTempDirectory SpanFitResults(info, model, logNullMembershipsMap)

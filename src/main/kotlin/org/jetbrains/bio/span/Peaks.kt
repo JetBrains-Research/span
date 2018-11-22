@@ -118,18 +118,25 @@ internal fun getChromosomePeaks(logNullMemberships: F64Array,
     }
 }
 
+private val LOG = Logger.getLogger(SpanFitResults::class.java)
+
 fun SpanFitResults.getChromosomePeaks(
         chromosome: Chromosome,
         fdr: Double,
         gap: Int,
         coverageDataFrame: DataFrame? = null
 ): List<Peak> =
-        getChromosomePeaks(
-                logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL),
-                fitInfo.offsets(chromosome),
-                chromosome, fdr, gap,
-                coverageDataFrame
-        )
+        // Process missing fit information
+        if (chromosome.name in fitInfo.chromosomesSizes) {
+            getChromosomePeaks(
+                    logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL),
+                    fitInfo.offsets(chromosome),
+                    chromosome, fdr, gap,
+                    coverageDataFrame)
+        } else {
+            LOG.info("NO peaks information for chromosome: ${chromosome.name} in fitInfo ${fitInfo.build}")
+            emptyList()
+        }
 
 fun SpanFitResults.getPeaks(
         genomeQuery: GenomeQuery,

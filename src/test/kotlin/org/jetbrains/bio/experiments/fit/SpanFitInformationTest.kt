@@ -5,11 +5,12 @@ import org.jetbrains.bio.util.bufferedReader
 import org.jetbrains.bio.util.bufferedWriter
 import org.jetbrains.bio.util.toPath
 import org.jetbrains.bio.util.withTempFile
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.ExpectedException
+import java.util.*
 import java.util.stream.Collectors
-import kotlin.test.assertEquals
 
 /**
  * @author Oleg Shpynov
@@ -28,20 +29,13 @@ class SpanFitInformationTest {
     fun checkWrongBuild() {
         expectedEx.expect(IllegalStateException::class.java)
         expectedEx.expectMessage("Wrong genome build, expected: hg19, got: to1")
-        SpanFitInformation("hg19", emptyList(), emptyList(), 100, 200, LinkedHashMap(), 1).checkGenomeQuery(GenomeQuery("to1"))
-    }
-
-    @Test
-    fun checkGenomeQuery() {
-        expectedEx.expect(IllegalStateException::class.java)
-        expectedEx.expectMessage("Wrong chromosomes, expected: [chr1, chr2, chr3, chrX], got: [chr1]")
-        SpanFitInformation(gq, emptyList(), emptyList(), 100, 200).checkGenomeQuery(GenomeQuery("to1", "chr1"))
+        SpanFitInformation("hg19", emptyList(), emptyList(), 100, 200, LinkedHashMap(), 1).checkBuild(GenomeQuery("to1").build)
     }
 
     @Test
     fun checkGenomeQueryOrder() {
         SpanFitInformation(GenomeQuery("to1", "chr1", "chr2"), emptyList(), emptyList(), 100, 200)
-                .checkGenomeQuery(GenomeQuery("to1", "chr2", "chr1"))
+                .checkBuild(GenomeQuery("to1", "chr2", "chr1").build)
     }
 
 
@@ -139,7 +133,7 @@ class SpanFitInformationTest {
     @Test
     fun checkIndices() {
         val info = SpanFitInformation(gq, emptyList(), emptyList(), 100, 200)
-        assertEquals(50000 to 55000, info.getChromosomesIndices(gq, chr2))
+        assertEquals(50000 to 55000, info.getChromosomesIndices(chr2))
     }
 
     @Test
