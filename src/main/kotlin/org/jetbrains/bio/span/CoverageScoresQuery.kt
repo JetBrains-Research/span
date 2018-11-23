@@ -13,29 +13,39 @@ import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.query.stemGz
 import java.nio.file.Path
 
-class CoverageScoresQuery(val genomeQuery: GenomeQuery,
-                          private val treatmentPath: Path,
-                          private val controlPath: Path?,
-                          val fragment: Int?,
-                          val binSize: Int) : CachingQuery<Chromosome, IntArray>() {
+class CoverageScoresQuery(
+        val genomeQuery: GenomeQuery,
+        private val treatmentPath: Path,
+        private val controlPath: Path?,
+        val fragment: Int?,
+        val binSize: Int,
+        val paired: Boolean = false
+): CachingQuery<Chromosome, IntArray>() {
 
 
     override val id: String
-        get() = reduceIds(listOfNotNull(treatmentPath.stemGz, controlPath?.stemGz, fragment, binSize).map {
-            it.toString()
-        })
+        get() = reduceIds(
+            listOfNotNull(
+                treatmentPath.stemGz, controlPath?.stemGz, if (paired) paired else fragment, binSize
+            ).map { it.toString() }
+        )
 
     override val description: String
-        get() = "Treatment: $treatmentPath, Control: $controlPath, Fragment: $fragment, Bin: $binSize"
+        get() = "Treatment: $treatmentPath, Control: $controlPath, " +
+                "${if (paired) "Paired: true" else "Fragment: $fragment"}, Bin: $binSize"
 
     override fun getUncached(input: Chromosome): IntArray {
         return scores[input]
     }
 
     val scores: GenomeMap<IntArray> by lazy {
-        val treatmentCoverage = ReadsQuery(genomeQuery, treatmentPath, unique = true, fragment = fragment).get()
+        val treatmentCoverage = ReadsQuery(
+            genomeQuery, treatmentPath, unique = true, fragment = fragment, paired = paired
+        ).get()
         val controlCoverage = if (controlPath != null)
-            ReadsQuery(genomeQuery, controlPath, unique = true, fragment = fragment).get()
+            ReadsQuery(
+                genomeQuery, controlPath, unique = true, fragment = fragment, paired = paired
+            ).get()
         else
             null
         val scale: Double = if (controlCoverage != null)
