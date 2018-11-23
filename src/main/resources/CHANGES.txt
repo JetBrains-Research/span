@@ -3,6 +3,18 @@ SPAN Changelog
 
 Here you can see the full list of changes between each release.
 
+Version 0.8.0.4533
+-------------
+
+Released on Nov 22, 2018
+
+- SPAN is available on Galaxy, see: https://github.com/JetBrains-Research/galaxy-applications
+- Ignore empty chromosomes while fitting models
+- Lightweight models can be opened in JBR Genome Browser
+- Improved support for custom chrom.sizes path
+- Windows, Mac OS supported in Viktor (https://github.com/JetBrains-Research/viktor) enabling SS2, AVX instructions set
+- Various bugfixes
+
 Version 0.7.0
 -------------
 
