@@ -56,8 +56,10 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
     )
 
     override val id: String =
-            reduceIds(paths.flatMap { listOfNotNull(it.first, it.second) }.map { it.stemGz } +
-                    listOfNotNull(fragment, binSize).map { it.toString() }) + super.id.sha
+            reduceIds(
+                paths.flatMap { listOfNotNull(it.first, it.second) }.map { it.stemGz } +
+                        listOfNotNull(if (paired) "paired" else fragment, binSize).map { it.toString() }
+            ) + super.id.sha
 
 
     companion object {
