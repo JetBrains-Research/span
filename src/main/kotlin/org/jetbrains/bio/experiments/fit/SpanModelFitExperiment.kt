@@ -178,7 +178,8 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
         modelFitter: Fitter<Model>,
         modelClass: Class<Model>,
         availableStates: Array<State>,
-        private val nullHypothesis: NullHypothesis<State>)
+        private val nullHypothesis: NullHypothesis<State>,
+        paired: Boolean = false)
     : ModelFitExperiment<Model, State>(
         createEffectiveQueries(externalGenomeQuery, paths, labels, fragment, binSize),
         modelFitter, modelClass, availableStates) {

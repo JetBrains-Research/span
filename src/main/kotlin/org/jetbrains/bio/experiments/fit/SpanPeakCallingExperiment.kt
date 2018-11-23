@@ -28,20 +28,32 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
         modelFitter: Fitter<Model>,
         modelClass: Class<Model>,
         states: Array<State>,
-        nullHypothesis: NullHypothesis<State>) : SpanModelFitExperiment<Model, State>(genomeQuery,
-        paths, MultiLabels.generate(TRACK_PREFIX, paths.size).toList(),
-        fragment, binSize,
-        modelFitter, modelClass, states, nullHypothesis) {
+        nullHypothesis: NullHypothesis<State>,
+        paired: Boolean = false
+) : SpanModelFitExperiment<Model, State>(
+    genomeQuery,
+    paths, MultiLabels.generate(TRACK_PREFIX, paths.size).toList(),
+    fragment, binSize,
+    modelFitter, modelClass, states, nullHypothesis,
+    paired
+) {
 
-    constructor(genomeQuery: GenomeQuery,
-                paths: Pair<Path, Path?>,
-                modelFitter: Fitter<Model>,
-                modelClass: Class<Model>,
-                fragment: Int?,
-                binSize: Int,
-                states: Array<State>,
-                nullHypothesis: NullHypothesis<State>) :
-            this(genomeQuery, listOf(paths), fragment, binSize, modelFitter, modelClass, states, nullHypothesis)
+    constructor(
+            genomeQuery: GenomeQuery,
+            paths: Pair<Path, Path?>,
+            modelFitter: Fitter<Model>,
+            modelClass: Class<Model>,
+            fragment: Int?,
+            binSize: Int,
+            states: Array<State>,
+            nullHypothesis: NullHypothesis<State>,
+            paired: Boolean = false
+    ): this(
+        genomeQuery, listOf(paths),
+        fragment, binSize,
+        modelFitter, modelClass, states, nullHypothesis,
+        paired
+    )
 
     override val id: String =
             reduceIds(paths.flatMap { listOfNotNull(it.first, it.second) }.map { it.stemGz } +
@@ -58,24 +70,33 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
          *
          * @return experiment [SpanPeakCallingExperiment]
          */
-        fun getExperiment(genomeQuery: GenomeQuery,
-                          paths: List<Pair<Path, Path?>>,
-                          bin: Int,
-                          fragment: Int? = null):
-                SpanPeakCallingExperiment<out MLAbstractHMM, ZLH> {
+        fun getExperiment(
+                genomeQuery: GenomeQuery,
+                paths: List<Pair<Path, Path?>>,
+                bin: Int,
+                fragment: Int? = null,
+                paired: Boolean = false
+        ): SpanPeakCallingExperiment<out MLAbstractHMM, ZLH> {
             check(paths.isNotEmpty()) { "No data" }
             return if (paths.size == 1) {
-                SpanPeakCallingExperiment(genomeQuery, paths.first(),
-                        semanticCheck(MLFreeNBHMM.fitter()),
-                        MLFreeNBHMM::class.java,
-                        fragment, bin,
-                        ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L))
+                SpanPeakCallingExperiment(
+                    genomeQuery, paths.first(),
+                    semanticCheck(MLFreeNBHMM.fitter()),
+                    MLFreeNBHMM::class.java,
+                    fragment, bin,
+                    ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
+                    paired
+                )
             } else {
-                SpanPeakCallingExperiment(genomeQuery, paths,
-                        fragment,
-                        bin,
-                        semanticCheck(MLConstrainedNBHMM.fitter(paths.size), paths.size), MLConstrainedNBHMM::class.java,
-                        ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L))
+                SpanPeakCallingExperiment(
+                    genomeQuery, paths,
+                    fragment,
+                    bin,
+                    semanticCheck(MLConstrainedNBHMM.fitter(paths.size), paths.size),
+                    MLConstrainedNBHMM::class.java,
+                    ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
+                    paired
+                )
             }
         }
 

@@ -127,19 +127,25 @@ compare                         Differential peak calling mode, experimental
                 val gap = options.valueOf("gap") as Int
                 val fdr = options.valueOf("fdr") as Double
                 val threads = options.valueOf("threads") as Int?
+                val paired = "paired" in options
 
                 // Configure logs path
                 val logPath: Path
                 if (peaksPath != null) {
                     logPath = workingDir / "logs" / "${peaksPath.stemGz}.log"
                 } else {
-                    var ids = listOfNotNull(treatmentPaths, controlPaths).flatMap { paths -> paths.map { it.stemGz } }
+                    var ids = listOfNotNull(treatmentPaths, controlPaths).flatMap { paths ->
+                        paths.map { it.stemGz }
+                    }
                     ids += bin.toString()
                     if (fragment != null) {
                         ids += fragment.toString()
                     }
                     if (labelsPath != null) {
                         ids += labelsPath.stemGz
+                    }
+                    if (paired) {
+                        ids += "paired"
                     }
                     logPath = workingDir / "logs" / "${reduceIds(ids)}.log"
                 }
@@ -160,7 +166,11 @@ compare                         Differential peak calling mode, experimental
                 val genomeQuery = GenomeQuery(chromSizesPath)
                 LOG.info("CHROM.SIZES: $chromSizesPath")
                 LOG.info("GENOME: ${genomeQuery.genome.build}")
-                LOG.info("FRAGMENT: $fragment")
+                if (paired) {
+                    LOG.info("PAIRED: true")
+                } else {
+                    LOG.info("FRAGMENT: $fragment")
+                }
                 if (peaksPath != null) {
                     if (labelsPath != null) {
                         LOG.info("LABELS: $labelsPath")
@@ -183,7 +193,9 @@ compare                         Differential peak calling mode, experimental
                 checkMemory()
 
                 val paths = matchTreatmentAndControls(treatmentPaths, controlPaths)
-                val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(genomeQuery, paths, bin, fragment)
+                val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(
+                    genomeQuery, paths, bin, fragment, paired
+                )
                 if (peaksPath != null) {
                     if (labelsPath == null) {
                         val peaks = peakCallingExperiment.results.getPeaks(genomeQuery, fdr, gap)
@@ -279,6 +291,7 @@ compare                         Differential peak calling mode, experimental
                 val fdr = options.valueOf("fdr") as Double
                 val peaksPath = options.valueOf("peaks") as Path?
                 val threads = options.valueOf("threads") as Int?
+                val paired = "paired" in options
 
                 // Configure logs path
                 val logPath: Path
@@ -290,6 +303,9 @@ compare                         Differential peak calling mode, experimental
                     ids += bin.toString()
                     if (fragment != null) {
                         ids += fragment.toString()
+                    }
+                    if (paired) {
+                        ids += "paired"
                     }
                     logPath = workingDir / "logs" / "${reduceIds(ids)}.log"
                 }
@@ -316,7 +332,11 @@ compare                         Differential peak calling mode, experimental
                 configurePaths(workingDir, chromSizesPath)
                 val genomeQuery = GenomeQuery(chromSizesPath)
                 LOG.info("GENOME: ${genomeQuery.genome.build}")
-                LOG.info("FRAGMENT: $fragment")
+                if (paired) {
+                    LOG.info("PAIRED: true")
+                } else {
+                    LOG.info("FRAGMENT: $fragment")
+                }
                 LOG.info("BIN: $bin")
                 LOG.info("FDR: $fdr")
                 LOG.info("GAP: $gap")
@@ -337,7 +357,7 @@ compare                         Differential peak calling mode, experimental
                 val coverages1 = treatmentPaths1.map { ReadsQuery(genomeQuery, it, fragment = fragment) }
                 val paths2 = matchTreatmentAndControls(treatmentPaths2, controlPaths2)
                 val coverages2 = treatmentPaths1.map { ReadsQuery(genomeQuery, it, fragment = fragment) }
-                val experiment = SpanDifferentialPeakCallingExperiment.getExperiment(genomeQuery, paths1, paths2, bin, fragment)
+                val experiment = SpanDifferentialPeakCallingExperiment.getExperiment(genomeQuery, paths1, paths2, bin, fragment, paired)
                 if (peaksPath != null) {
                     val peaks = experiment.results.getPeaks(experiment.genomeQuery, fdr, gap)
                     peaks.forEach { peak ->
@@ -402,6 +422,7 @@ compare                         Differential peak calling mode, experimental
             acceptsAll(listOf("fragment"), "Fragment size, read length if not given")
                     .withRequiredArg()
                     .ofType(Int::class.java)
+            acceptsAll(listOf("paired"), "Treat provided BAM file(s) as containing paired-end reads")
             if (bin) {
                 acceptsAll(listOf("b", "bin"), "Bin size")
                         .withRequiredArg()
