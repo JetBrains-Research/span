@@ -63,8 +63,9 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
 
         labelledTracks.forEach { (cellId, replicate, trackPath, labelsPath) ->
             val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(configuration.genomeQuery,
-                    listOf(trackPath to inputPath),
-                    DEFAULT_BIN, null)
+                listOf(trackPath to inputPath),
+                DEFAULT_BIN, null
+            )
 
             if (saveAllPeaks) {
                 val progress = Progress {
@@ -230,8 +231,8 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
                 .flatMap { it.value }.map { it.second.path }.firstOrNull()
 
         val replicatedPeakCallingExperiment = SpanPeakCallingExperiment.getExperiment(configuration.genomeQuery,
-                labelledTracks.map(LabelledTrack::trackPath).map { it to inputPath },
-                DEFAULT_BIN, null)
+            labelledTracks.map(LabelledTrack::trackPath).map { it to inputPath },
+            DEFAULT_BIN, null)
 
         if (saveAllPeaks) {
             PeakCallerTuning.LOG.info("Saving all $id peaks $target")

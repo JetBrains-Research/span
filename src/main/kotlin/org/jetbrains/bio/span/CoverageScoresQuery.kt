@@ -18,21 +18,20 @@ class CoverageScoresQuery(
         private val treatmentPath: Path,
         private val controlPath: Path?,
         val fragment: Int?,
-        val binSize: Int,
-        val paired: Boolean = false
+        val binSize: Int
 ): CachingQuery<Chromosome, IntArray>() {
 
 
     override val id: String
         get() = reduceIds(
             listOfNotNull(
-                treatmentPath.stemGz, controlPath?.stemGz, if (paired) paired else fragment, binSize
+                treatmentPath.stemGz, controlPath?.stemGz, fragment, binSize
             ).map { it.toString() }
         )
 
     override val description: String
         get() = "Treatment: $treatmentPath, Control: $controlPath, " +
-                "${if (paired) "Paired: true" else "Fragment: $fragment"}, Bin: $binSize"
+                "Fragment: $fragment, Bin: $binSize"
 
     override fun getUncached(input: Chromosome): IntArray {
         return scores[input]
@@ -40,11 +39,11 @@ class CoverageScoresQuery(
 
     val scores: GenomeMap<IntArray> by lazy {
         val treatmentCoverage = ReadsQuery(
-            genomeQuery, treatmentPath, unique = true, fragment = fragment, paired = paired
+            genomeQuery, treatmentPath, unique = true, fragment = fragment
         ).get()
         val controlCoverage = if (controlPath != null)
             ReadsQuery(
-                genomeQuery, controlPath, unique = true, fragment = fragment, paired = paired
+                genomeQuery, controlPath, unique = true, fragment = fragment
             ).get()
         else
             null

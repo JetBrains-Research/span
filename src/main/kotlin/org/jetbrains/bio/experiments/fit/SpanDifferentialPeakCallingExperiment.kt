@@ -30,14 +30,13 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
         modelFitter: Fitter<Model>,
         modelClass: Class<Model>,
         states: Array<State>,
-        nullHypothesis: NullHypothesis<State>,
-        paired: Boolean = false
+        nullHypothesis: NullHypothesis<State>
 ): SpanModelFitExperiment<Model, State>(
     genomeQuery,
     paths1 + paths2,
     MultiLabels.generate(TRACK1_PREFIX, paths1.size).toList() +
             MultiLabels.generate(TRACK2_PREFIX, paths2.size).toList(),
-    fragment, binSize, modelFitter, modelClass, states, nullHypothesis, paired
+    fragment, binSize, modelFitter, modelClass, states, nullHypothesis
 ) {
 
     constructor(
@@ -47,13 +46,11 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
             fragment: Int?, binSize: Int,
             modelFitter: Fitter<Model>,
             modelClass: Class<Model>,
-            states: Array<State>, nullHypothesis: NullHypothesis<State>,
-            paired: Boolean = false
+            states: Array<State>, nullHypothesis: NullHypothesis<State>
     ): this(
         genomeQuery, listOf(paths1), listOf(paths2),
         fragment, binSize,
-        modelFitter, modelClass, states, nullHypothesis,
-        paired
+        modelFitter, modelClass, states, nullHypothesis
     )
 
     override val id: String =
@@ -101,8 +98,7 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
                 paths1: List<Pair<Path, Path?>>,
                 paths2: List<Pair<Path, Path?>>,
                 bin: Int,
-                fragment: Int? = null,
-                paired: Boolean = false
+                fragment: Int? = null
         ): SpanDifferentialPeakCallingExperiment<MLConstrainedNBHMM, ZLHID> {
             check(paths1.isNotEmpty() && paths2.isNotEmpty()) { "No data" }
             return if (paths1.size == 1 && paths2.size == 1) {
@@ -111,8 +107,7 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
                     fragment, bin,
                     semanticCheck(MLConstrainedNBHMM.fitter(1, 1), 1, 1),
                     MLConstrainedNBHMM::class.java,
-                    ZLHID.values(), NullHypothesis.of(ZLHID.same()),
-                    paired
+                    ZLHID.values(), NullHypothesis.of(ZLHID.same())
                 )
             } else {
                 SpanDifferentialPeakCallingExperiment(
@@ -120,8 +115,7 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
                     fragment, bin,
                     semanticCheck(MLConstrainedNBHMM.fitter(paths1.size, paths2.size), paths1.size, paths2.size),
                     MLConstrainedNBHMM::class.java,
-                    ZLHID.values(), NullHypothesis.of(ZLHID.same()),
-                    paired
+                    ZLHID.values(), NullHypothesis.of(ZLHID.same())
                 )
             }
         }
