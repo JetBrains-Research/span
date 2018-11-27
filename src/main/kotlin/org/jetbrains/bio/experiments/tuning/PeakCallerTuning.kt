@@ -37,21 +37,15 @@ class PeakCallerTuning(configuration: DataConfig,
         targets.forEach { target ->
             LOG.info("Processing target $target")
             tools.forEach { t ->
-                if (ChipSeqTarget.isWide(target) && t == Macs2) {
-                    LOG.info("${Macs2.id} doesn't support wide modification $target")
-                } else if (!ChipSeqTarget.isWide(target) && t == Sicer) {
-                    LOG.info("${Sicer.id} doesn't support narrow modification $target")
+                t.tune(configuration, experimentPath, target, useInput, true)
+                if (computeTestError) {
+                    computeTestError(target, t)
+                }
+                generateConsensus(target, t)
+                if (t is ReplicatedTool2Tune) {
+                    generateReplicatedLabelErrors(target, t)
                 } else {
-                    t.tune(configuration, experimentPath, target, useInput, true)
-                    if (computeTestError) {
-                        computeTestError(target, t)
-                    }
-                    generateConsensus(target, t)
-                    if (t is ReplicatedTool2Tune) {
-                        generateReplicatedLabelErrors(target, t)
-                    } else {
-                        generateLabelErrors(target, t)
-                    }
+                    generateLabelErrors(target, t)
                 }
             }
         }
@@ -63,23 +57,17 @@ class PeakCallerTuning(configuration: DataConfig,
             LOG.info("Processing target $target")
             tools.forEach { t ->
                 try {
-                    if (ChipSeqTarget.isWide(target) && t == Macs2) {
-                        LOG.info("${Macs2.id} doesn't support wide modification $target")
-                    } else if (!ChipSeqTarget.isWide(target) && t == Sicer) {
-                        LOG.info("${Sicer.id} doesn't support narrow modification $target")
-                    } else {
-                        computeFripAndReport(report, target, t,
-                                             t.folder(experimentPath, target, useInput), "tuned", washu)
-                        computeFripAndReport(report, target, t,
-                                             t.defaultsFolder(experimentPath, target, useInput, false),
-                                             "default", washu)
+                    computeFripAndReport(report, target, t,
+                            t.folder(experimentPath, target, useInput), "tuned", washu)
+                    computeFripAndReport(report, target, t,
+                            t.defaultsFolder(experimentPath, target, useInput, false),
+                            "default", washu)
 
-                        computeFripAndReport(uliReport, target, t,
-                                             t.folder(experimentPath, target, useInput), "tuned", washu)
-                        computeFripAndReport(uliReport, target, t,
-                                             t.defaultsFolder(experimentPath, target, useInput, true),
-                                             "default", washu)
-                    }
+                    computeFripAndReport(uliReport, target, t,
+                            t.folder(experimentPath, target, useInput), "tuned", washu)
+                    computeFripAndReport(uliReport, target, t,
+                            t.defaultsFolder(experimentPath, target, useInput, true),
+                            "default", washu)
                 } catch (e: Throwable) {
                     LOG.error("Couldn't process $t for $target", e)
                 }
