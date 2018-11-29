@@ -8,6 +8,8 @@ import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.query.stemGz
 import org.jetbrains.bio.span.SpanCLALongTest
 import org.jetbrains.bio.span.getPeaks
+import org.jetbrains.bio.util.Retry
+import org.jetbrains.bio.util.RetryRule
 import org.jetbrains.bio.util.withTempFile
 import org.junit.Test
 import java.io.ByteArrayOutputStream
@@ -21,6 +23,8 @@ import kotlin.test.assertTrue
  * @date 22/11/2018
  */
 class SpanModelFitExperimentTest {
+    @get:org.junit.Rule
+    var rule = RetryRule(3)
 
     @Test
     fun testDataQuery() {
@@ -39,6 +43,10 @@ class SpanModelFitExperimentTest {
     }
 
 
+    /**
+     * Retry added to avoid failing sampling to single chromosome
+     */
+    @Retry
     @Test
     fun testEffectiveGenomeQuery() {
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
