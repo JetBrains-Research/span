@@ -4,6 +4,8 @@ import kotlinx.support.jdk7.use
 import org.jetbrains.bio.dataset.CellId
 import org.jetbrains.bio.dataset.DataConfig
 import org.jetbrains.bio.genome.containers.LocationsMergingList
+import org.jetbrains.bio.tools.Picard
+import org.jetbrains.bio.tools.Washu
 import org.jetbrains.bio.tools.runBatch
 import org.jetbrains.bio.util.*
 import java.nio.file.Path
@@ -142,7 +144,7 @@ abstract class Tool2Tune<T> {
             title = "Tuning procedure $target"
         }.bounded(labelledTracks.size.toLong() * parameters.size)
         val labelErrors = LabelErrors()
-        for ((cellId, replicate, _, labelsPath) in labelledTracks) {
+        for ((cellId, replicate, trackPath, labelsPath) in labelledTracks) {
             val labels = PeakAnnotation.loadLabels(labelsPath, configuration.genome)
             val labelErrorsGrid = parameters.map { parameter ->
                 val peaksPath = folder / transform(parameter) /
@@ -159,10 +161,14 @@ abstract class Tool2Tune<T> {
             labelErrors.combine(labelErrorsGrid[optimalIndex])
             cleanup(folder, cellId, replicate)
             // Copy optimal parameters path to folder
+            val optimalPeaksFileName = fileName(cellId, replicate, target, optimalParameter)
             val optimalPeaksPath = folder / transform(optimalParameter) /
-                    fileName(cellId, replicate, target, optimalParameter)
+                    optimalPeaksFileName
             optimalPeaksPath.copy(folder, StandardCopyOption.REPLACE_EXISTING)
-            (optimalPeaksPath.toString() + "_rip.csv").toPath().copy(folder, StandardCopyOption.REPLACE_EXISTING)
+
+            // Compute _rip.sh file
+            Washu().runRip(Picard.removeDuplicates(trackPath), folder / optimalPeaksFileName)
+            check((folder / "${optimalPeaksFileName}_rip.csv").exists)
 
             labelErrorsGrid.forEachIndexed { i, error ->
                 results.addRecord(replicate,

@@ -12,6 +12,8 @@ import org.jetbrains.bio.io.BedFormat
 import org.jetbrains.bio.span.getPeaks
 import org.jetbrains.bio.span.savePeaks
 import org.jetbrains.bio.statistics.ClassificationModel
+import org.jetbrains.bio.tools.Picard
+import org.jetbrains.bio.tools.Washu
 import org.jetbrains.bio.util.*
 import java.nio.file.Path
 
@@ -59,9 +61,9 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
                 .flatMap { it.value }.map { it.second.path }.firstOrNull() else null
         val labelledTracks = configuration.extractLabelledTracks(target)
 
-        labelledTracks.forEach { (cellId, replicate, signalPath, labelsPath) ->
+        labelledTracks.forEach { (cellId, replicate, trackPath, labelsPath) ->
             val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(configuration.genomeQuery,
-                    listOf(signalPath to inputPath),
+                    listOf(trackPath to inputPath),
                     DEFAULT_BIN, null)
 
             if (saveAllPeaks) {
@@ -92,6 +94,11 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
             savePeaks(peakCallingExperiment.results.getPeaks(configuration.genomeQuery,
                     optimalParameters.first, optimalParameters.second),
                     optimalPeaksPath)
+
+            // Compute _rip.sh file
+            Washu().runRip(Picard.removeDuplicates(trackPath), optimalPeaksPath)
+            check("${optimalPeaksPath}_rip.csv".toPath().exists)
+
             labelErrorsGrid.forEachIndexed { i, error ->
                 results.addRecord(replicate, transform(parameters[i]), error, i == index)
             }
@@ -221,7 +228,7 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
                 .flatMap { it.value }.map { it.second.path }.firstOrNull()
 
         val replicatedPeakCallingExperiment = SpanPeakCallingExperiment.getExperiment(configuration.genomeQuery,
-                labelledTracks.map(LabelledTrack::signalPath).map { it to inputPath },
+                labelledTracks.map(LabelledTrack::trackPath).map { it to inputPath },
                 DEFAULT_BIN, null)
 
         if (saveAllPeaks) {

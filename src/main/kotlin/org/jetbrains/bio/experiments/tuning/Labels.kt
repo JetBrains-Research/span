@@ -15,7 +15,7 @@ import java.nio.file.Path
 
 data class LabelledTrack(val cellId: CellId,
                          val name: String,
-                         val signalPath: Path,
+                         val trackPath: Path,
                          val labelPath: Path,
                          val failed: Boolean,
                          val testLabelPath: Path? = null)
@@ -35,15 +35,15 @@ private val TEST_LABELS_KEY = ReplicateDataKey("test_labels") {
  * In absence of both, the track is discarded.
  */
 fun DataConfig.extractLabelledTracks(target: String): List<LabelledTrack> {
-    val auxLabelPath = this[target, org.jetbrains.bio.experiments.tuning.LABELS_KEY]
+    val auxLabelPath = this[target, LABELS_KEY]
     return tracksMap.entries
             .filter { it.key.dataType == target }
             .flatMap { entry -> entry.value.map { it to entry.key } }
-            .filter { auxLabelPath != null || it.first.second[org.jetbrains.bio.experiments.tuning.LABELS_KEY] != null }
+            .filter { auxLabelPath != null || it.first.second[LABELS_KEY] != null }
             .map { (data, key) ->
-                val customLabelPath = data.second[org.jetbrains.bio.experiments.tuning.LABELS_KEY]
-                val testLabelPath = data.second[org.jetbrains.bio.experiments.tuning.TEST_LABELS_KEY] ?: this[target, org.jetbrains.bio.experiments.tuning.TEST_LABELS_KEY]
-                org.jetbrains.bio.experiments.tuning.LabelledTrack(key.cellId, data.first, data.second.path,
+                val customLabelPath = data.second[LABELS_KEY]
+                val testLabelPath = data.second[TEST_LABELS_KEY] ?: this[target, TEST_LABELS_KEY]
+                LabelledTrack(key.cellId, data.first, data.second.path,
                         customLabelPath ?: auxLabelPath!!, data.second.failedTrack, testLabelPath)
             }
 }

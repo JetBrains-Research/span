@@ -38,7 +38,8 @@ private fun PeakCallerTuning.medianConsensus(target: String, cell: CellId? = nul
             "${target}_${tool}${if (cell != null) "_${cell.name}" else ""}_median_consensus.bed"
     val goodTracks = configuration.extractLabelledTracks(target)
             .filter { !it.failed && (cell == null || it.cellId == cell) }.map { it.cellId to it.name }
-    val peaks = tool.tunedPeaks(configuration, experimentPath, target, useInput).filter { it.key in goodTracks }.map { it.value }
+    val peaks = tool.tunedPeaks(configuration, experimentPath, target, useInput)
+            .filter { it.key in goodTracks }.map { it.value }
     if (!consensusFile.exists && goodTracks.size != peaks.size) {
         PeakCallerTuning.LOG.warn("Couldn't find or generate median consensus for $target $tool, missing peak files.")
         return null
@@ -56,7 +57,8 @@ private fun PeakCallerTuning.weakConsensus(target: String, cell: CellId? = null,
             "${target}_${tool}${if (cell != null) "_${cell.name}" else ""}_weak_consensus.bed"
     val goodTracks = configuration.extractLabelledTracks(target)
             .filter { !it.failed && (cell == null || it.cellId == cell) }.map { it.cellId to it.name }
-    val peaks = tool.tunedPeaks(configuration, experimentPath, target, useInput).filter { it.key in goodTracks }.map { it.value }
+    val peaks = tool.tunedPeaks(configuration, experimentPath, target, useInput)
+            .filter { it.key in goodTracks }.map { it.value }
     if (!consensusFile.exists && goodTracks.size != peaks.size) {
         PeakCallerTuning.LOG.warn("Couldn't find or generate weak consensus for $target $tool, missing peak files.")
         return null
