@@ -135,7 +135,9 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
             cancellableState.checkCanceled()
             val peaksOnLabeledGenomeQuery = results.getPeaks(labeledGenomeQuery, fdr, gap)
             val errors = computeErrors(labels,
-                    LocationsMergingList.create(labeledGenomeQuery, peaksOnLabeledGenomeQuery.map { it.location }))
+                    LocationsMergingList.create(
+                            labeledGenomeQuery, peaksOnLabeledGenomeQuery.stream().map { it.location }.iterator())
+            )
             MultitaskProgress.reportTask(id)
             errors
         }
