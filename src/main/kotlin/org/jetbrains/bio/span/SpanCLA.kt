@@ -162,7 +162,9 @@ compare                         Differential peak calling mode, experimental
                 val genomeQuery = GenomeQuery(chromSizesPath)
                 LOG.info("CHROM.SIZES: $chromSizesPath")
                 LOG.info("GENOME: ${genomeQuery.genome.build}")
-                LOG.info("FRAGMENT: $fragment")
+                if (fragment != null) {
+                    LOG.info("FRAGMENT: $fragment")
+                }
                 if (peaksPath != null) {
                     if (labelsPath != null) {
                         LOG.info("LABELS: $labelsPath")
