@@ -10,6 +10,7 @@ import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.io.BedField
 import org.jetbrains.bio.io.BedFormat
 import org.jetbrains.bio.io.toLocation
+import org.jetbrains.bio.io.unpackRegularFields
 import org.jetbrains.bio.util.toPath
 import java.nio.file.Path
 
@@ -77,7 +78,7 @@ data class PeakAnnotation(override val location: Location,
         fun loadLabels(labelPath: Path, build: String): List<PeakAnnotation> {
             val format = BedFormat(BedField.NAME)
             return format.parse(labelPath) { it.toList() }.map {
-                val e = it.unpack(fieldsNumber = format.fieldsNumber)
+                val e = it.unpackRegularFields(format)
                 val type = PeakAnnotationType.from(e.name)
                 requireNotNull("Unknown type: $type")
                 PeakAnnotation(e.toLocation(build), type!!)
