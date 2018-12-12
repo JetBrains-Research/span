@@ -152,7 +152,7 @@ abstract class Tool2Tune<T> {
                 val errors = if (peaksPath.exists)
                     computeErrors(labels, LocationsMergingList.load(configuration.genomeQuery, peaksPath))
                 else {
-                    PeakCallerTuning.LOG.warn("Peaks path not found: $peaksPath")
+                    PeakCallerTuning.LOG.error("Peaks path not found: $peaksPath")
                     computeErrors(labels, LocationsMergingList.create(configuration.genomeQuery, emptyList()))
                 }
                 progress.report()
