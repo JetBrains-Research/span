@@ -149,9 +149,14 @@ abstract class Tool2Tune<T> {
             val labelErrorsGrid = parameters.map { parameter ->
                 val peaksPath = folder / transform(parameter) /
                         fileName(cellId, replicate, target, parameter)
-                val errors = computeErrors(labels, LocationsMergingList.load(configuration.genomeQuery, peaksPath))
+                val errors = if (peaksPath.exists)
+                    computeErrors(labels, LocationsMergingList.load(configuration.genomeQuery, peaksPath))
+                else {
+                    PeakCallerTuning.LOG.warn("Peaks path not found: $peaksPath")
+                    computeErrors(labels, LocationsMergingList.create(configuration.genomeQuery, emptyList()))
+                }
                 progress.report()
-                errors
+                return@map errors
             }
 
             val minTotalError = labelErrorsGrid.map { it.error() }.min()!!
