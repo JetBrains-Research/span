@@ -309,7 +309,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
             paths.forEach { (t, _) ->
                 val coverage = ReadsQuery(
                     genomeQuery, t,
-                    unique = false, fragment = fragment, logFragmentSize = false
+                    unique = true, fragment = fragment, logFragmentSize = false
                 ).get()
                 nonEmptyChromosomes.addAll(chromosomes.filter { coverage.getBothStrandsCoverage(it.range.on(it)) > 0 })
             }
