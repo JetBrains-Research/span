@@ -44,11 +44,13 @@ class Washu(private val washuPath: Path = PATH) {
         return path.toAbsolutePath().toString()
     }
 
-    fun runMACS2(genome: Genome,
-                 output: Path,
-                 fdr: Double,
-                 broadPeaks: Boolean = false,
-                 extParams: List<String> = listOf()) {
+    fun runMACS2(
+            genome: Genome,
+            output: Path,
+            fdr: Double,
+            broadPeaks: Boolean = false,
+            extParams: List<String> = listOf()
+    ) {
         LOG.info("Working directory: $output")
 
         val suffix = (if (broadPeaks) {
@@ -88,10 +90,12 @@ class Washu(private val washuPath: Path = PATH) {
     }
 
 
-    fun runSicer(genome: Genome,
-                 output: Path,
-                 fdr: Double,
-                 extParams: List<String> = listOf()) {
+    fun runSicer(
+            genome: Genome,
+            output: Path,
+            fdr: Double,
+            extParams: List<String> = listOf()
+    ) {
         LOG.info("Working directory: $output")
 
         var args = listOf(output.toString(),
@@ -113,8 +117,7 @@ class Washu(private val washuPath: Path = PATH) {
         }
     }
 
-    fun runRSeg(genome: Genome,
-                output: Path) {
+    fun runRSeg(genome: Genome, output: Path) {
         LOG.info("Working directory: $output")
 
         val args = listOf(output.toString(),
@@ -134,11 +137,13 @@ class Washu(private val washuPath: Path = PATH) {
         }
     }
 
-    fun runManorm(genome: Genome,
-                  readsPath: Path,
-                  peaksPath: Path,
-                  output: Path,
-                  name: String) {
+    fun runManorm(
+            genome: Genome,
+            readsPath: Path,
+            peaksPath: Path,
+            output: Path,
+            name: String
+    ) {
         val chromSize = genome.chromSizesPath.toString()
         val csvConfig = createDiffBindConfig(readsPath, peaksPath, output, name)
         val scriptPath = output / "run_manorm_diff.sh"
@@ -153,11 +158,13 @@ class Washu(private val washuPath: Path = PATH) {
         }
     }
 
-    fun runDiffReps(genome: Genome,
-                    readsPath: Path,
-                    output: Path,
-                    name: String,
-                    broadPeaks: Boolean) {
+    fun runDiffReps(
+            genome: Genome,
+            readsPath: Path,
+            output: Path,
+            name: String,
+            broadPeaks: Boolean
+    ) {
         val chromSize = genome.chromSizesPath.toString()
         val scriptPath = output / "run_diffreps.sh"
 
@@ -174,9 +181,11 @@ class Washu(private val washuPath: Path = PATH) {
         }
     }
 
-    fun runDiffBind(output: Path,
-                    name: String,
-                    csvConfig: Path) {
+    fun runDiffBind(
+            output: Path,
+            name: String,
+            csvConfig: Path
+    ) {
         val scriptPath = output / "run_diffbind_diff.sh"
         scriptPath.bufferedWriter().use { writer ->
             writer.write("export WASHU_ROOT=$washuPath")
@@ -360,10 +369,12 @@ fun checkPythonVersion() {
 /**
  * Creates symbolic links in the [basePath] given Chip-Seq [modification]
  */
-fun DataConfig.fillData(basePath: Path,
-                        modification: String?,
-                        addInput: Boolean = true,
-                        addFailedTracks: Boolean = false): List<Path> {
+fun DataConfig.fillData(
+        basePath: Path,
+        modification: String?,
+        addInput: Boolean = true,
+        addFailedTracks: Boolean = false
+): List<Path> {
     val files = ArrayList<Path>()
     for ((key, section) in tracksMap) {
         for ((replicate, contents) in section.filter { addFailedTracks || !it.second.failedTrack }) {
@@ -392,10 +403,12 @@ fun DataConfig.fillData(basePath: Path,
 /**
  * Creates symbolic links using [fillData] and launches [body] code.
  */
-fun DataConfig.runBatch(path: Path, mark: String?,
-                        addInput: Boolean = true,
-                        addFailedTracks: Boolean = false,
-                        body: (Path) -> Unit) {
+fun DataConfig.runBatch(
+        path: Path, mark: String?,
+        addInput: Boolean = true,
+        addFailedTracks: Boolean = false,
+        body: (Path) -> Unit
+) {
     path.checkOrRecalculate(isDirectory = true) {
         val basePath = it.path
         val files = fillData(basePath, mark, addInput = addInput, addFailedTracks = addFailedTracks)
@@ -407,8 +420,10 @@ fun DataConfig.runBatch(path: Path, mark: String?,
 /**
  * Depends on the data layout in [fillData]
  */
-fun createDiffBindConfig(readsPath: Path, peaksPath: Path, output: Path,
-                         name: String, tissue: String = "CD14", factor: String = "Age"): Path {
+fun createDiffBindConfig(
+        readsPath: Path, peaksPath: Path, output: Path,
+        name: String, tissue: String = "CD14", factor: String = "Age"
+): Path {
 
     return createDiffBindConfig(readsPath, output, name, tissue, factor) { replicate, read_path ->
         val peaks = (peaksPath.glob("*$replicate*.bed") +
@@ -427,9 +442,11 @@ fun createDiffBindConfig(readsPath: Path, peaksPath: Path, output: Path,
 }
 
 
-fun createDiffBindConfig(readsPath: Path, output: Path,
-                         name: String, tissue: String = "CD14", factor: String = "Age",
-                         peaksProvider: (String, Path) -> Path): Path {
+fun createDiffBindConfig(
+        readsPath: Path, output: Path,
+        name: String, tissue: String = "CD14", factor: String = "Age",
+        peaksProvider: (String, Path) -> Path
+): Path {
     val csvConfig = output / "$name.csv"
     csvConfig.bufferedWriter().use {
         it.write("SampleID,Tissue,Factor,Condition,Replicate,bamReads,ControlID,bamControl,Peaks,PeakCaller")
