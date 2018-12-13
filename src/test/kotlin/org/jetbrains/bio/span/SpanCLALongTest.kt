@@ -471,6 +471,7 @@ LABELS, FDR, GAP options are ignored.
                     else
                         "yd6_k27ac_failed_model.json") { modelPath ->
                 val model = ClassificationModel.load<MLFreeNBHMM>(modelPath)
+                model.logPriorProbabilities[0] = Double.NEGATIVE_INFINITY
                 BedFormat().print(path).use {
                     genomeQuery.get().forEach { chr ->
                         val bins = chr.length / bin
