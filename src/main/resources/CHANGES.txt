@@ -3,6 +3,14 @@ SPAN Changelog
 
 Here you can see the full list of changes between each release.
 
+Version 0.9.1.4601
+-------------
+
+Released on Dec 14, 2018
+
+- Fixed a bug with SPAN reading a BAM file twice and creating two caches
+
+
 Version 0.9.0
 -------------
 
@@ -12,7 +20,7 @@ Released on Dec 7, 2018
 - Estimate fragment size for single-end libraries using maximum cross-correlation approach
     by Kharchenko et al., 2008 (https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2597701/)
 
-Version 0.8.0.4533
+Version 0.8.0
 -------------
 
 Released on Nov 22, 2018
