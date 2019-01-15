@@ -4,14 +4,14 @@ import joptsimple.OptionParser
 import org.apache.log4j.Level
 import org.apache.log4j.Logger
 import org.jetbrains.bio.Configuration
-import org.jetbrains.bio.Logs
 import org.jetbrains.bio.dataset.ChipSeqTarget
 import org.jetbrains.bio.dataset.DataConfig
 import org.jetbrains.bio.dataset.DataType
 import org.jetbrains.bio.dataset.toDataType
-import org.jetbrains.bio.experiments.DataConfigExperiment
+import org.jetbrains.bio.experiment.DataConfigExperiment
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.tools.Washu
+import org.jetbrains.bio.util.Logs
 import org.jetbrains.bio.util.PathConverter
 import org.jetbrains.bio.util.contains
 import org.jetbrains.bio.util.div

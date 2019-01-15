@@ -8,7 +8,6 @@ import org.apache.log4j.Level
 import org.apache.log4j.LogManager
 import org.apache.log4j.Logger
 import org.jetbrains.bio.Configuration
-import org.jetbrains.bio.Logs
 import org.jetbrains.bio.experiments.fit.SpanDifferentialPeakCallingExperiment
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.experiments.tuning.PeakAnnotation

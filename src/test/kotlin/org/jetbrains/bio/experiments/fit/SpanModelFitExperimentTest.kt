@@ -1,7 +1,6 @@
 package org.jetbrains.bio.experiments.fit
 
 import org.apache.log4j.Level
-import org.jetbrains.bio.Logs
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
@@ -9,6 +8,7 @@ import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.query.stemGz
 import org.jetbrains.bio.span.SpanCLALongTest
 import org.jetbrains.bio.span.getPeaks
+import org.jetbrains.bio.util.Logs
 import org.jetbrains.bio.util.Retry
 import org.jetbrains.bio.util.RetryRule
 import org.jetbrains.bio.util.withTempFile

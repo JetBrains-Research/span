@@ -5,7 +5,6 @@ import org.apache.log4j.Level
 import org.apache.log4j.LogManager
 import org.apache.log4j.Logger
 import org.jetbrains.bio.Configuration
-import org.jetbrains.bio.Logs
 import org.jetbrains.bio.big.BedEntry
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery

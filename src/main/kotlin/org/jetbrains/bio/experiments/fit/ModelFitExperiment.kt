@@ -3,7 +3,7 @@ package org.jetbrains.bio.experiments.fit
 import com.google.common.base.Joiner
 import org.apache.log4j.Logger
 import org.jetbrains.bio.dataframe.DataFrame
-import org.jetbrains.bio.experiments.Experiment
+import org.jetbrains.bio.experiment.Experiment
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.query.Query
