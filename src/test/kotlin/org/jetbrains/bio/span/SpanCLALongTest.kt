@@ -2,8 +2,6 @@ package org.jetbrains.bio.span
 
 import kotlinx.support.jdk7.use
 import org.apache.log4j.Level
-import org.apache.log4j.LogManager
-import org.apache.log4j.Logger
 import org.jetbrains.bio.Configuration
 import org.jetbrains.bio.big.BedEntry
 import org.jetbrains.bio.genome.Genome
@@ -35,9 +33,6 @@ class SpanCLALongTest {
 
     @Before
     fun setUp() {
-        (LogManager.getCurrentLoggers().toList() + listOf(LogManager.getRootLogger())).forEach {
-            (it as Logger).level = Level.INFO
-        }
         SpanCLA.ignoreConfigurePaths = true
         Sampling.RANDOM_DATA_GENERATOR.randomGenerator.setSeed(1234L)
     }
@@ -47,6 +42,7 @@ class SpanCLALongTest {
         SpanCLA.ignoreConfigurePaths = false
         System.setOut(OUT)
         System.setErr(ERR)
+        Logs.addConsoleAppender(Level.INFO)
         // we might have unfinished tracked tasks which will never be complete, let's drop them
         MultitaskProgress.clear()
     }
@@ -258,8 +254,8 @@ LABELS, FDR, GAP options are ignored.
                         "-t", path.toString(),
                         "--threads", THREADS.toString()))
                 val out = String(stream.toByteArray())
-                assertIn("WARN Span] After fitting the model, emission's parameter p in LOW state", out)
-                assertIn("WARN Span] This is generally harmless, but could indicate low quality of data.", out)
+                assertIn("WARN Span After fitting the model, emission's parameter p in LOW state", out)
+                assertIn("WARN Span This is generally harmless, but could indicate low quality of data.", out)
             }
         }
     }
