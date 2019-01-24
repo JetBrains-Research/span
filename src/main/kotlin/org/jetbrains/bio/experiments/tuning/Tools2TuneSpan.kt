@@ -31,7 +31,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
 
     override val parameters =
             FDRS.sorted().flatMap { fdr ->
-                GAPS.sortedDescending().map { gap -> fdr to gap }
+                GAPS.sorted().map { gap -> fdr to gap }
             }
 
     override val transform: (Pair<Double, Int>) -> String = { (fdr, gap) -> "${fdr}_${gap}" }
@@ -166,7 +166,7 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
 
     override val parameters =
             FDRS.sorted().flatMap { fdr ->
-                GAPS.sortedDescending().map { gap -> fdr to gap }
+                GAPS.sorted().map { gap -> fdr to gap }
             }
 
     override fun defaultParams(uli: Boolean) = DEFAULT_FDR to Span.DEFAULT_GAP
