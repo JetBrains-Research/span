@@ -1,7 +1,6 @@
 package org.jetbrains.bio.span
 
 import kotlinx.support.jdk7.use
-import org.apache.log4j.Level
 import org.jetbrains.bio.Configuration
 import org.jetbrains.bio.big.BedEntry
 import org.jetbrains.bio.genome.Genome
@@ -17,16 +16,17 @@ import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.util.*
+import org.jetbrains.bio.util.LogsTest.Companion.assertIn
+import org.jetbrains.bio.util.LogsTest.Companion.captureLoggingOutput
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import java.io.ByteArrayOutputStream
 import java.io.FileReader
-import java.io.PrintStream
 import java.nio.file.Path
 import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class SpanCLALongTest {
@@ -40,18 +40,15 @@ class SpanCLALongTest {
     @After
     fun tearDown() {
         SpanCLA.ignoreConfigurePaths = false
-        System.setOut(OUT)
-        System.setErr(ERR)
-        Logs.addConsoleAppender(Level.INFO)
         // we might have unfinished tracked tasks which will never be complete, let's drop them
         MultitaskProgress.clear()
     }
 
     @Test
     fun emptyArgs() {
-        val stream = ByteArrayOutputStream()
-        System.setErr(PrintStream(stream))
-        SpanCLA.main(arrayOf())
+        val (_, err) = captureLoggingOutput {
+            SpanCLA.main(arrayOf())
+        }
         assertLinesEqual("""
 ERROR: No command given; analyze or compare expected.
 
@@ -61,14 +58,14 @@ Option                          Description
 -v, --version                   Show version
 analyze                         Peak calling mode
 compare                         Differential peak calling mode, experimental
-""".trim(), String(stream.toByteArray()).trim())
+""".trim(), err.trim())
     }
 
     @Test
     fun illegalArgs() {
-        val stream = ByteArrayOutputStream()
-        System.setErr(PrintStream(stream))
-        SpanCLA.main(arrayOf("foobar"))
+        val (_, err) = captureLoggingOutput {
+            SpanCLA.main(arrayOf("foobar"))
+        }
         assertLinesEqual("""
 ERROR: Unknown command: foobar; analyze or compare expected.
 
@@ -78,14 +75,14 @@ Option                          Description
 -v, --version                   Show version
 analyze                         Peak calling mode
 compare                         Differential peak calling mode, experimental
-""".trim(), String(stream.toByteArray()).trim())
+""".trim(), err.trim())
     }
 
     @Test
     fun quietError() {
-        val stream = ByteArrayOutputStream()
-        System.setErr(PrintStream(stream))
-        SpanCLA.main(arrayOf("foobar", "quiet"))
+        val (_, err) = captureLoggingOutput {
+            SpanCLA.main(arrayOf("foobar", "quiet"))
+        }
         assertLinesEqual("""
 ERROR: Unknown command: foobar; analyze or compare expected.
 
@@ -95,14 +92,14 @@ Option                          Description
 -v, --version                   Show version
 analyze                         Peak calling mode
 compare                         Differential peak calling mode, experimental
-        """.trim(), String(stream.toByteArray()).trim())
+        """.trim(), err.trim())
     }
 
     @Test
     fun checkHelp() {
-        val stream = ByteArrayOutputStream()
-        System.setOut(PrintStream(stream))
-        SpanCLA.main(arrayOf("--help"))
+        val (out, _) = captureLoggingOutput {
+            SpanCLA.main(arrayOf("--help"))
+        }
         assertLinesEqual("""
 Option                          Description
 ---------------------           -----------
@@ -110,16 +107,16 @@ Option                          Description
 -v, --version                   Show version
 analyze                         Peak calling mode
 compare                         Differential peak calling mode, experimental
-""".trim(), String(stream.toByteArray()).trim())
+""".trim(), out.trim())
     }
 
 
     @Test
     fun checkVersion() {
-        val stream = ByteArrayOutputStream()
-        System.setOut(PrintStream(stream))
-        SpanCLA.main(arrayOf("--version"))
-        assertEquals("@VERSION@.@BUILD@ built on @DATE@", String(stream.toByteArray()).trim())
+        val (out, _) = captureLoggingOutput {
+            SpanCLA.main(arrayOf("--version"))
+        }
+        assertEquals("@VERSION@.@BUILD@ built on @DATE@", out.trim())
     }
 
 
@@ -133,13 +130,9 @@ compare                         Differential peak calling mode, experimental
 
             withTempDirectory("work") {
                 val peaksPath = it / "peaks.bed"
-                val stream = ByteArrayOutputStream()
-                System.setOut(PrintStream(stream))
-                // Update with changed System.out
-                Logs.addConsoleAppender(Level.INFO)
-
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
-                SpanCLA.main(arrayOf("compare",
+                val (out, _) = captureLoggingOutput {
+                    SpanCLA.main(arrayOf("compare",
                         "-cs", chromsizes,
                         "--workdir", it.toString(),
                         "-t1", path.toString(),
@@ -148,10 +141,13 @@ compare                         Differential peak calling mode, experimental
                         "--fdr", FDR.toString(),
                         "--gap", GAP.toString(),
                         "--threads", THREADS.toString()))
+                }
 
-                assertTrue(peaksPath.size.isEmpty(), "Found differential peaks in identical signals.")
+                assertTrue(
+                    peaksPath.size.isEmpty(),
+                    "Found differential peaks in identical signals."
+                )
 
-                val out = String(stream.toByteArray())
                 assertIn("""SPAN
 COMMAND:
 LOG:
@@ -186,17 +182,17 @@ PEAKS: $peaksPath
             withTempDirectory("work") {
                 val bedPath = it / "peaks.bed"
                 SpanCLA.main(arrayOf("compare",
-                        "-cs", Genome["to1"].chromSizesPath.toString(),
-                        "-w", it.toString(),
-                        "-b", BIN.toString(),
-                        "-g", GAP.toString(),
-                        "-fragment", FRAGMENT.toString(),
-                        "-t1", "$path,$path",
-                        "-t2", "$path,$path,$path",
-                        "--peaks", bedPath.toString(),
-                        "--fdr", FDR.toString()))
+                    "-cs", Genome["to1"].chromSizesPath.toString(),
+                    "-w", it.toString(),
+                    "-b", BIN.toString(),
+                    "-g", GAP.toString(),
+                    "-fragment", FRAGMENT.toString(),
+                    "-t1", "$path,$path",
+                    "-t2", "$path,$path,$path",
+                    "--peaks", bedPath.toString(),
+                    "--fdr", FDR.toString()))
                 assertTrue(bedPath.size.isEmpty(),
-                        "Found differential peaks in identical signals.")
+                    "Found differential peaks in identical signals.")
             }
         }
     }
@@ -210,18 +206,16 @@ PEAKS: $peaksPath
             print("Saved sampled track file: $path")
 
             withTempDirectory("work") {
-                val stream = ByteArrayOutputStream()
-                System.setOut(PrintStream(stream))
-                // Update with changed System.out
-                Logs.addConsoleAppender(Level.INFO)
-
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
-                SpanCLA.main(arrayOf("analyze",
+                val (out, _) = captureLoggingOutput {
+                    SpanCLA.main(arrayOf(
+                        "analyze",
                         "-cs", chromsizes,
                         "--workdir", it.toString(),
                         "-t", path.toString(),
-                        "--threads", THREADS.toString()))
-                val out = String(stream.toByteArray())
+                        "--threads", THREADS.toString()
+                    ))
+                }
                 assertIn("""NO output path given, process model fitting only.
 LABELS, FDR, GAP options are ignored.
 """, out)
@@ -242,20 +236,58 @@ LABELS, FDR, GAP options are ignored.
             print("Saved sampled track file: $path")
 
             withTempDirectory("work") {
-                val stream = ByteArrayOutputStream()
-                System.setOut(PrintStream(stream))
-                // Update with changed System.out
-                Logs.addConsoleAppender(Level.INFO)
-
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
-                SpanCLA.main(arrayOf("analyze",
+                val (out, _) = captureLoggingOutput {
+                    SpanCLA.main(arrayOf(
+                        "analyze",
                         "-cs", chromsizes,
                         "--workdir", it.toString(),
                         "-t", path.toString(),
-                        "--threads", THREADS.toString()))
-                val out = String(stream.toByteArray())
-                assertIn("WARN Span After fitting the model, emission's parameter p in LOW state", out)
-                assertIn("WARN Span This is generally harmless, but could indicate low quality of data.", out)
+                        "--threads", THREADS.toString()
+                    ))
+                }
+                assertIn(
+                    "] WARN Span After fitting the model, emission's parameter p in LOW state", out
+                )
+                assertIn(
+                    "] WARN Span This is generally harmless, but could indicate low quality of data.", out
+                )
+            }
+        }
+    }
+
+    @Test
+    fun testQuietMode() {
+        withTempFile("track", ".bed.gz") { path ->
+
+            sampleCoverage(path, TO, BIN, goodQuality = false)
+            print("Saved sampled track file: $path")
+
+            withTempDirectory("work") { dir ->
+                val chromsizes = Genome["to1"].chromSizesPath.toString()
+                /* We can't test the stdout, because the Span quiet mode redefines the JVM [System.out].
+                 * But we can restore the System.out to the original value using [captureLoggingOutput].
+                 */
+                captureLoggingOutput {
+                    val oldSystemOut = System.out
+                    SpanCLA.main(arrayOf(
+                        "analyze",
+                        "-cs", chromsizes,
+                        "--workdir", dir.toString(),
+                        "-t", path.toString(),
+                        "--threads", THREADS.toString(),
+                        "-q"
+                    ))
+                    /* the best we can do is to check whether any redirection took place */
+                    assertNotEquals(
+                        oldSystemOut, System.out,
+                        "Span quiet mode didn't redirect System.out"
+                    )
+                }
+                /* we also check that logging was performed normally */
+                val logPath = dir / "logs" / "${reduceIds(listOf(path.stemGz, BIN.toString()))}.log"
+                assertTrue(logPath.exists, "Log file not found")
+                assertTrue(logPath.size.isNotEmpty(), "Log file is empty")
             }
         }
     }
@@ -271,31 +303,40 @@ LABELS, FDR, GAP options are ignored.
                     sampleCoverage(control, TO, BIN, goodQuality = false)
 
                     val chromsizes = Genome["to1"].chromSizesPath.toString()
-                    SpanCLA.main(arrayOf("analyze",
-                            "-cs", chromsizes,
-                            "--workdir", dir.toString(),
-                            "-t", path.toString(),
-                            "-c", control.toString(),
-                            "--threads", THREADS.toString()))
+                    SpanCLA.main(arrayOf(
+                        "analyze",
+                        "-cs", chromsizes,
+                        "--workdir", dir.toString(),
+                        "-t", path.toString(),
+                        "-c", control.toString(),
+                        "--threads", THREADS.toString()
+                    ))
 
                     // Check that log file was created correctly
                     assertTrue(
-                            (dir / "logs" / "${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}.log")
-                                    .exists,
-                            "Log file not found"
+                        (dir / "logs" / "${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}.log")
+                                .exists,
+                        "Log file not found"
                     )
 
                     assertTrue((Configuration.experimentsPath / "cache").exists)
 
                     // Genome Coverage test
-                    assertEquals(1, (Configuration.experimentsPath / "cache").glob("coverage_${path.stemGz}_unique#*.npz").size)
-                    assertEquals(1, (Configuration.experimentsPath / "cache").glob("coverage_${control.stemGz}_unique#*.npz").size)
+                    assertEquals(
+                        1,
+                        (Configuration.experimentsPath / "cache")
+                                .glob("coverage_${path.stemGz}_unique#*.npz").size
+                    )
+                    assertEquals(
+                        1,
+                        (Configuration.experimentsPath / "cache")
+                                .glob("coverage_${control.stemGz}_unique#*.npz").size)
                     // Model test
                     assertTrue((Configuration.experimentsPath / "fit").exists)
                     assertEquals(
-                            1,
-                            (Configuration.experimentsPath / "fit")
-                                    .glob("${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}#*.span").size
+                        1,
+                        (Configuration.experimentsPath / "fit")
+                                .glob("${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}#*.span").size
                     )
                 }
             }
@@ -312,19 +353,15 @@ LABELS, FDR, GAP options are ignored.
             println("Saved sampled track file: $path")
 
             withTempDirectory("work") {
-                val stream = ByteArrayOutputStream()
-                System.setOut(PrintStream(stream))
-                // Update with changed System.out
-                Logs.addConsoleAppender(Level.INFO)
-
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 val peaksPath = path.parent / "${path.stem}.peak"
-                SpanCLA.main(arrayOf("analyze", "-cs", chromsizes,
+                val (out, _) = captureLoggingOutput {
+                    SpanCLA.main(arrayOf("analyze", "-cs", chromsizes,
                         "--workdir", it.toString(),
                         "-t", path.toString(),
                         "--threads", THREADS.toString(),
                         "--peaks", peaksPath.toString()))
-                val out = String(stream.toByteArray())
+                }
                 assertFalse("""NO output path given, process model fitting only.
     LABELS, FDR, GAP options are ignored.
     """ in out)
@@ -363,20 +400,28 @@ LABELS, FDR, GAP options are ignored.
             println("Saved sampled track file: $path")
             withTempDirectory("work") {
                 val bedPath = it / "result.bed"
-                SpanCLA.main(arrayOf("analyze",
-                        "-cs", Genome["to1"].chromSizesPath.toString(),
-                        "-w", it.toString(),
-                        "--peaks", bedPath.toString(),
-                        "-fdr", FDR.toString(),
-                        "-t", path.toString()))
-                SpanCLA.main(arrayOf("analyze",
-                        "-cs", Genome["to1"].chromSizesPath.toString(),
-                        "-w", it.toString(),
-                        "--peaks", bedPath.toString(),
-                        "-fdr", FDR.toString(),
-                        "-t", path.toString()))
+                SpanCLA.main(arrayOf(
+                    "analyze",
+                    "-cs", Genome["to1"].chromSizesPath.toString(),
+                    "-w", it.toString(),
+                    "--peaks", bedPath.toString(),
+                    "-fdr", FDR.toString(),
+                    "-t", path.toString()
+                ))
+                SpanCLA.main(arrayOf(
+                    "analyze",
+                    "-cs", Genome["to1"].chromSizesPath.toString(),
+                    "-w", it.toString(),
+                    "--peaks", bedPath.toString(),
+                    "-fdr", FDR.toString(),
+                    "-t", path.toString()
+                ))
                 // Check created bed file
-                assertTrue(Location(1100 * BIN, 1900 * BIN, TO.get().first()) in LocationsMergingList.load(TO, bedPath))
+                assertTrue(
+                    Location(1100 * BIN, 1900 * BIN, TO.get().first())
+                            in LocationsMergingList.load(TO, bedPath),
+                    "Expected location not found in called peaks"
+                )
                 // Check correct log file name
                 assertTrue((it / "logs" / "${bedPath.stem}.log").exists, "Log file not found")
             }
@@ -394,27 +439,21 @@ LABELS, FDR, GAP options are ignored.
                 zeroes
             }
 
-            val outStream = ByteArrayOutputStream()
-            val errStream = ByteArrayOutputStream()
-            System.setOut(PrintStream(outStream))
-            System.setErr(PrintStream(errStream))
-            // Update with changed System.out
-            Logs.addConsoleAppender(Level.INFO)
+
 
             sampleCoverage(path, TO, BIN, enrichedRegions, zeroRegions, goodQuality = true)
             println("Saved sampled track file: $path")
 
             withTempDirectory("work") {
                 /* Turn suppressExit on, otherwise Span would call System.exit */
-                withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
-                    SpanCLA.main(arrayOf("analyze",
+                val (out, err) = captureLoggingOutput {
+                    withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
+                        SpanCLA.main(arrayOf("analyze",
                             "-cs", Genome["to1"].chromSizesPath.toString(),
                             "-w", it.toString(),
                             "-t", path.toString()))
+                    }
                 }
-
-                val out = String(outStream.toByteArray())
-                val err = String(errStream.toByteArray())
 
                 // Check correct log file name
                 val logPath = it / "logs" / "${reduceIds(listOf(path.stemGz, BIN.toString()))}.log"
@@ -428,7 +467,6 @@ LABELS, FDR, GAP options are ignored.
         }
     }
 
-
     companion object {
         private val TO = GenomeQuery("to1")
         private const val BIN = 200
@@ -436,35 +474,30 @@ LABELS, FDR, GAP options are ignored.
         private const val GAP = 10
         private const val THREADS = 1
         private const val FRAGMENT = 150
-        private val OUT = System.out
-        private val ERR = System.err
 
-        fun assertLinesEqual(expected: String, actual: String) = assertEquals(expected.lines(), actual.lines())
-
-        fun assertIn(substring: String, fullString: String) {
-            // Process Windows with different line separators correctly.
-            for (s in substring.lines()) {
-                assertTrue(s in fullString, "Expected <$s> to be in <$fullString>.")
-            }
-        }
-
+        fun assertLinesEqual(expected: String, actual: String) =
+                assertEquals(expected.lines(), actual.lines())
 
         fun sampleCoverage(path: Path, genomeQuery: GenomeQuery, bin: Int, goodQuality: Boolean) =
-                sampleCoverage(path,
-                        genomeQuery, bin,
-                        genomeMap(genomeQuery) { BitSet() },
-                        genomeMap(genomeQuery) { BitSet() },
-                        goodQuality)
+                sampleCoverage(
+                    path,
+                    genomeQuery, bin,
+                    genomeMap(genomeQuery) { BitSet() },
+                    genomeMap(genomeQuery) { BitSet() },
+                    goodQuality
+                )
 
-        fun sampleCoverage(path: Path,
-                           genomeQuery: GenomeQuery, bin: Int,
-                           fulls: GenomeMap<BitSet>, zeroes: GenomeMap<BitSet>,
-                           goodQuality: Boolean) {
+        fun sampleCoverage(
+                path: Path,
+                genomeQuery: GenomeQuery, bin: Int,
+                fulls: GenomeMap<BitSet>, zeroes: GenomeMap<BitSet>,
+                goodQuality: Boolean
+        ) {
             withResource(SpanCLALongTest::class.java,
-                    if (goodQuality)
-                        "GSM646345_H1_H3K4me3_rep1_hg19_model.json"
-                    else
-                        "yd6_k27ac_failed_model.json") { modelPath ->
+                if (goodQuality)
+                    "GSM646345_H1_H3K4me3_rep1_hg19_model.json"
+                else
+                    "yd6_k27ac_failed_model.json") { modelPath ->
                 val model = ClassificationModel.load<MLFreeNBHMM>(modelPath)
                 model.logPriorProbabilities[0] = Double.NEGATIVE_INFINITY
                 BedFormat().print(path).use {

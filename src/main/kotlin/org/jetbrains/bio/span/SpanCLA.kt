@@ -1,11 +1,9 @@
 package org.jetbrains.bio.span
 
 import com.google.common.annotations.VisibleForTesting
-import com.google.common.io.ByteStreams
 import joptsimple.BuiltinHelpFormatter
 import joptsimple.OptionParser
 import org.apache.log4j.Level
-import org.apache.log4j.LogManager
 import org.apache.log4j.Logger
 import org.jetbrains.bio.Configuration
 import org.jetbrains.bio.experiments.fit.SpanDifferentialPeakCallingExperiment
@@ -20,6 +18,7 @@ import org.jetbrains.bio.query.stemGz
 import org.jetbrains.bio.tools.PeaksInfo
 import org.jetbrains.bio.util.*
 import org.jetbrains.bio.util.FileSize.Companion.GB
+import java.io.OutputStream
 import java.io.PrintStream
 import java.nio.file.Path
 
@@ -113,7 +112,6 @@ compare                         Differential peak calling mode, experimental
                     .withValuesConvertedBy(PathConverter.exists())
 
             parse(params) { options ->
-                configureLogging("quiet" in options, "debug" in options)
 
                 val workingDir = options.valueOf("workdir") as Path
                 val treatmentPaths = (options.valuesOf("treatment") as List<Path>)
@@ -127,10 +125,9 @@ compare                         Differential peak calling mode, experimental
                 val fdr = options.valueOf("fdr") as Double
                 val threads = options.valueOf("threads") as Int?
 
-                // Configure logs path
-                val logPath: Path
-                if (peaksPath != null) {
-                    logPath = workingDir / "logs" / "${peaksPath.stemGz}.log"
+                // Configure logging
+                val id = if (peaksPath != null) {
+                    peaksPath.stemGz
                 } else {
                     var ids = listOfNotNull(treatmentPaths, controlPaths).flatMap { paths ->
                         paths.map { it.stemGz }
@@ -142,9 +139,11 @@ compare                         Differential peak calling mode, experimental
                     if (labelsPath != null) {
                         ids += labelsPath.stemGz
                     }
-                    logPath = workingDir / "logs" / "${reduceIds(ids)}.log"
+                    reduceIds(ids)
                 }
-                Logs.addLoggingToFile(logPath)
+                val logPath = configureLogging(
+                    "quiet" in options, "debug" in options, id, workingDir
+                )
 
                 LOG.info("SPAN ${version()}")
                 LOG.info("COMMAND:\nanalyze ${params.joinToString(" ")}")
@@ -270,7 +269,6 @@ compare                         Differential peak calling mode, experimental
                     .withValuesConvertedBy(PathConverter.exists())
 
             parse(params) { options ->
-                configureLogging("quiet" in options, "debug" in options)
 
                 val workingDir = options.valueOf("workdir") as Path
                 val chromSizesPath = options.valueOf("chrom.sizes") as Path
@@ -285,10 +283,9 @@ compare                         Differential peak calling mode, experimental
                 val peaksPath = options.valueOf("peaks") as Path?
                 val threads = options.valueOf("threads") as Int?
 
-                // Configure logs path
-                val logPath: Path
-                if (peaksPath != null) {
-                    logPath = workingDir / "logs" / "${peaksPath.stemGz}.log"
+                // Configure logging
+                val id = if (peaksPath != null) {
+                    peaksPath.stemGz
                 } else {
                     var ids = listOfNotNull(treatmentPaths1, controlPaths1, treatmentPaths2, controlPaths2)
                             .flatMap { paths -> paths.map { it.stemGz } }
@@ -296,9 +293,12 @@ compare                         Differential peak calling mode, experimental
                     if (fragment != null) {
                         ids += fragment.toString()
                     }
-                    logPath = workingDir / "logs" / "${reduceIds(ids)}.log"
+                    reduceIds(ids)
                 }
-                Logs.addLoggingToFile(logPath)
+                val logPath = configureLogging(
+                    "quiet" in options, "debug" in options, id, workingDir
+                )
+
 
                 LOG.info("SPAN ${version()}")
                 LOG.info("COMMAND:\ncompare ${params.joinToString(" ")}")
@@ -364,8 +364,10 @@ compare                         Differential peak calling mode, experimental
     }
 
 
-    private fun matchTreatmentAndControls(treatmentPaths: List<Path>,
-                                          controlPaths: List<Path>?): List<Pair<Path, Path?>> {
+    private fun matchTreatmentAndControls(
+            treatmentPaths: List<Path>,
+            controlPaths: List<Path>?
+    ): List<Pair<Path, Path?>> {
         if (controlPaths != null && controlPaths.isNotEmpty()) {
             if (controlPaths.size != 1 && controlPaths.size != treatmentPaths.size) {
                 System.err.println("ERROR: required single control file or separate file for each treatment.")
@@ -391,9 +393,11 @@ compare                         Differential peak calling mode, experimental
     }
 
 
-    private fun getOptionParser(bin: Boolean = true,
-                                fdr: Boolean = true,
-                                gap: Boolean = true): OptionParser = object : OptionParser() {
+    private fun getOptionParser(
+            bin: Boolean = true,
+            fdr: Boolean = true,
+            gap: Boolean = true
+    ): OptionParser = object : OptionParser() {
         init {
             acceptsAll(listOf("d", "debug"), "Print all the debug information, used for troubleshooting.")
             acceptsAll(listOf("q", "quiet"), "Turn off output")
@@ -435,21 +439,22 @@ compare                         Differential peak calling mode, experimental
         }
     }
 
+    /**
+     * Returns path to log file.
+     */
     @VisibleForTesting
-    internal fun configureLogging(quiet: Boolean, debug: Boolean) {
+    internal fun configureLogging(quiet: Boolean, debug: Boolean, id: String, workingDir: Path): Path {
         if (quiet) {
-            (LogManager.getCurrentLoggers().toList() + listOf(LogManager.getRootLogger())).forEach {
-                (it as Logger).level = Level.OFF
-            }
-
-            val nullPrintStream = PrintStream(ByteStreams.nullOutputStream())
+            val nullPrintStream = PrintStream(object : OutputStream() {
+                override fun write(b: Int) {}
+            })
             System.setOut(nullPrintStream)
             System.setErr(nullPrintStream)
+            Logs.replaceConsoleAppender(Level.INFO)
         }
-        if (debug) {
-            with(Logger.getRootLogger()) {
-                level = Level.DEBUG
-            }
-        }
+        Logs.addConsoleAppender(if (debug) Level.DEBUG else Level.INFO)
+        val logPath = workingDir / "logs" / "$id.log"
+        Logs.addLoggingToFile(logPath)
+        return logPath
     }
 }

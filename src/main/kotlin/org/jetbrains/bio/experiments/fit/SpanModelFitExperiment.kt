@@ -299,11 +299,13 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
          * 1. Effective genomeQuery, i.e. only chromosomes with some reads on them
          * 2. Data query required for [ModelFitExperiment]
          */
-        internal fun createEffectiveQueries(genomeQuery: GenomeQuery,
-                                            paths: List<Pair<Path, Path?>>,
-                                            labels: List<String>,
-                                            fragment: Int?,
-                                            binSize: Int): Pair<GenomeQuery, Query<Chromosome, DataFrame>> {
+        internal fun createEffectiveQueries(
+                genomeQuery: GenomeQuery,
+                paths: List<Pair<Path, Path?>>,
+                labels: List<String>,
+                fragment: Int?,
+                binSize: Int
+        ): Pair<GenomeQuery, Query<Chromosome, DataFrame>> {
             val chromosomes = genomeQuery.get()
             val nonEmptyChromosomes = hashSetOf<Chromosome>()
             paths.forEach { (t, _) ->
