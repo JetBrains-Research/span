@@ -1,5 +1,6 @@
 package org.jetbrains.bio.statistics.state
 
+import org.jetbrains.bio.Tests.assertIs
 import org.jetbrains.bio.statistics.emission.ConstantIntegerEmissionScheme
 import org.jetbrains.bio.statistics.emission.NegBinEmissionScheme
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
@@ -8,7 +9,6 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 /**
  * Created by Aleksei Dievskii on 04.07.2018.
@@ -91,11 +91,6 @@ class ChipSeqTest {
             assertFalse(array.isEmpty(), "$message (array is empty)")
             val item = array.first()
             assertFalse(array.all { item == it }, "$message (all elements are equal to $item)")
-        }
-
-        fun assertIs(actual: Any, expected: Class<out Any>) {
-            assertTrue(expected.isInstance(actual),
-                       "Expected ${expected.simpleName}, got ${actual::class.java.simpleName}.")
         }
     }
 }

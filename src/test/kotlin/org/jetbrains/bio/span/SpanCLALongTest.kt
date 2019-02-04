@@ -2,6 +2,7 @@ package org.jetbrains.bio.span
 
 import kotlinx.support.jdk7.use
 import org.jetbrains.bio.Configuration
+import org.jetbrains.bio.Tests.assertIn
 import org.jetbrains.bio.big.BedEntry
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
@@ -16,7 +17,6 @@ import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.util.*
-import org.jetbrains.bio.util.LogsTest.Companion.assertIn
 import org.jetbrains.bio.util.LogsTest.Companion.captureLoggingOutput
 import org.junit.After
 import org.junit.Before

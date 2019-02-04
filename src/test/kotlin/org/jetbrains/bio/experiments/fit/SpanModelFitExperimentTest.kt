@@ -1,5 +1,6 @@
 package org.jetbrains.bio.experiments.fit
 
+import org.jetbrains.bio.Tests.assertIn
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
@@ -7,7 +8,6 @@ import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.query.stemGz
 import org.jetbrains.bio.span.SpanCLALongTest
 import org.jetbrains.bio.span.getPeaks
-import org.jetbrains.bio.util.LogsTest.Companion.assertIn
 import org.jetbrains.bio.util.LogsTest.Companion.captureLoggingOutput
 import org.jetbrains.bio.util.Retry
 import org.jetbrains.bio.util.RetryRule
