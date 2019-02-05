@@ -27,7 +27,7 @@ internal data class ErrorRate(var total: Int = 0, var correct: Int = 0) {
 /**
  * Merging map based error [PeakAnnotation] -> [ErrorRate]
  */
-class LabelErrors internal constructor(val map: MutableMap<PeakAnnotation, ErrorRate> = TreeMap())
+class LabelErrors internal constructor(internal val map: MutableMap<PeakAnnotation, ErrorRate> = TreeMap())
     : MutableMap<PeakAnnotation, ErrorRate> by map {
 
     fun error(type: PeakAnnotationType? = null) = 1.0 - correct(type) * 1.0 / total(type)
