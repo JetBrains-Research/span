@@ -16,6 +16,7 @@ import org.jetbrains.bio.tools.Picard
 import org.jetbrains.bio.tools.Washu
 import org.jetbrains.bio.util.*
 import java.nio.file.Path
+import java.util.stream.Collectors
 
 object Span : Tool2Tune<Pair<Double, Int>>() {
 
@@ -132,7 +133,11 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
              cancellableState: CancellableState = CancellableState.current())
             : Pair<List<LabelErrors>, Int> {
         val labeledGenomeQuery = genomeQuery.only(labels.map { it.location.chromosome.name }.distinct())
-        val labelErrorsGrid = parameters.map { (fdr, gap) ->
+        // Parallelism is OK here:
+        // 1. getPeaks creates BitterSet per each parameters combination of size
+        // ~ 3*10^9 / 200bp / 8 / 1024 / 1024 ~ 2MB for human genome
+        // 2. List.parallelStream()....collect(Collectors.toList()) guarantees the same order as in original list.
+        val labelErrorsGrid = parameters.parallelStream().map { (fdr, gap) ->
             cancellableState.checkCanceled()
             val peaksOnLabeledGenomeQuery = results.getPeaks(labeledGenomeQuery, fdr, gap)
             val errors = computeErrors(labels,
@@ -141,7 +146,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
             )
             MultitaskProgress.reportTask(id)
             errors
-        }
+        }.collect(Collectors.toList())
         check(labelErrorsGrid.size == parameters.size) {
             "Discrepancy in errors size and parameters size: $labelErrorsGrid vs $parameters"
         }
