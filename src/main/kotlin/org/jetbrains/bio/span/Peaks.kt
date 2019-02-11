@@ -127,9 +127,9 @@ internal fun getChromosomePeaks(
  * So Q-values estimation is superfluous for each parameters combination.
  * Use cache with weak values to avoid memory overflow.
  */
-private val SpanFitResults.f64QValuesCache: Cache<Chromosome, F64Array> by lazy {
-    return@lazy CacheBuilder.newBuilder().weakValues().build<Chromosome, F64Array>()
-}
+private val f64QValuesCache: Cache<Pair<SpanFitResults, Chromosome>, F64Array> =
+    CacheBuilder.newBuilder().weakValues().build()
+
 
 fun SpanFitResults.getChromosomePeaks(
         chromosome: Chromosome,
@@ -141,7 +141,7 @@ fun SpanFitResults.getChromosomePeaks(
         if (chromosome.name in fitInfo.chromosomesSizes) {
             val f64LogNullMemberships =
                     logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL)
-            val f64QValues = f64QValuesCache.get(chromosome) {
+            val f64QValues = f64QValuesCache.get(this to chromosome) {
                 Fdr.qvalidate(f64LogNullMemberships)
             }
             getChromosomePeaks(
