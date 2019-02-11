@@ -197,7 +197,7 @@ compare                         Differential peak calling mode, experimental
                         LOG.info("\n" + PeaksInfo.compute(genomeQuery,
                                 peaks.map { it.location }.stream(),
                                 peaksPath.toUri(),
-                                peakCallingExperiment.fitInformation))
+                                peakCallingExperiment.fitInformation).map { (k, v) -> "$k: $v" }.joinToString("\n"))
                     } else {
                         val results = TuningResults()
                         val labels = PeakAnnotation.loadLabels(labelsPath, genomeQuery.build)

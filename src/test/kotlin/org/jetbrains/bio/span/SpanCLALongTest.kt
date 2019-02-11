@@ -367,7 +367,6 @@ LABELS, FDR, GAP options are ignored.
     """ in out)
                 assertIn("100.00% (", out)
                 assertIn("Track source: $peaksPath", out)
-                assertIn("Peaks Statistics:\n", out)
                 assertIn("FRIP: ", out)
 
                 // XXX Temporary disabled due to https://github.com/JetBrains-Research/epigenome/issues/1310

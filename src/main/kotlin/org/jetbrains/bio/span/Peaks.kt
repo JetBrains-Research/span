@@ -172,7 +172,7 @@ chromosome, start, end, name, score, strand, coverage/foldchange, -log(pvalue), 
 }
 
 fun PeaksInfo.compute(genomeQuery: GenomeQuery, peaksStream: Stream<Location>, src: URI?,
-                      fitInformation: SpanFitInformation): String {
+                      fitInformation: SpanFitInformation): Map<String, String> {
     return compute(genomeQuery, peaksStream, src, fitInformation.data.map { it.path.toPath() })
 }
 
