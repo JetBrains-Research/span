@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting
 import com.google.common.math.IntMath
 import com.google.gson.GsonBuilder
 import kotlinx.support.jdk7.use
+import org.apache.log4j.Logger
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.fit.SpanModelFitExperiment.Companion.createEffectiveQueries
 import org.jetbrains.bio.genome.Chromosome
@@ -150,7 +151,11 @@ data class SpanFitInformation(val build: String,
 
 data class SpanFitResults(val fitInfo: SpanFitInformation,
                           val model: ClassificationModel,
-                          val logNullMemberships: Map<String, DataFrame>)
+                          val logNullMemberships: Map<String, DataFrame>) {
+    companion object {
+        internal val LOG = Logger.getLogger(SpanFitResults::class.java)
+    }
+}
 
 
 /**

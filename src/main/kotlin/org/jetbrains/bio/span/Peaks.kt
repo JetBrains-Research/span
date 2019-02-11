@@ -1,5 +1,7 @@
 package org.jetbrains.bio.span
 
+import com.google.common.cache.Cache
+import com.google.common.cache.CacheBuilder
 import com.google.common.collect.ComparisonChain
 import org.apache.commons.csv.CSVFormat
 import org.apache.log4j.Logger
@@ -58,23 +60,23 @@ internal fun DataFrame.partialMean(from: Int, to: Int, labelArray: List<String> 
 /**
  * The peaks are called in three steps.
  *
- * 1. Firstly, an FDR threshold [fdr] is applied to the posterior state
- *    probabilities.
- * 2. Consecutive observations corresponding to H_0 rejections are then
- *    merged into ranges using [gap].
+ * 1. Firstly, an FDR threshold is applied to the posterior state probabilities.
+ * 2. Consecutive observations corresponding to H_0 rejections are then merged into ranges.
  * 3. Finally, each range is assigned a qvalue score - median qvalue.
- *    Silly? Maybe.
  *
- * [coverageDataFrame] is used to compute either coverage or log fold change.
+ * @param offsets All the data is binarized, so offsets stores positions in base pair.
+ * @param fdr is used to limit False Discovery Rate at given level.
+ * @param gap enriched bins yielded after FDR control are merged if distance is less or equal than gap.
+ * @param coverageDataFrame is used to compute either coverage or log fold change.
  */
-internal fun getChromosomePeaks(logNullMemberships: F64Array,
-                                offsets: IntArray,
-                                chromosome: Chromosome,
-                                fdr: Double,
-                                gap: Int,
-                                coverageDataFrame: DataFrame? = null): List<Peak> {
-    // Filter by qvalues
-    val qvalues = Fdr.qvalidate(logNullMemberships)
+internal fun getChromosomePeaks(
+        logNullMemberships: F64Array,
+        qvalues: F64Array,
+        offsets: IntArray,
+        chromosome: Chromosome,
+        fdr: Double,
+        gap: Int,
+        coverageDataFrame: DataFrame? = null): List<Peak> {
     val enrichedBins = BitterSet(logNullMemberships.size)
     0.until(enrichedBins.size()).filter { qvalues[it] < fdr }.forEach(enrichedBins::set)
 
@@ -118,7 +120,16 @@ internal fun getChromosomePeaks(logNullMemberships: F64Array,
     }
 }
 
-private val LOG = Logger.getLogger(SpanFitResults::class.java)
+
+
+/**
+ * During SPAN models optimizations we iterate over different FDR and GAPs parameters,
+ * So Q-values estimation is superfluous for each parameters combination.
+ * Use cache with weak values to avoid memory overflow.
+ */
+private val SpanFitResults.f64QValuesCache: Cache<Chromosome, F64Array> by lazy {
+    return@lazy CacheBuilder.newBuilder().weakValues().build<Chromosome, F64Array>()
+}
 
 fun SpanFitResults.getChromosomePeaks(
         chromosome: Chromosome,
@@ -126,15 +137,22 @@ fun SpanFitResults.getChromosomePeaks(
         gap: Int,
         coverageDataFrame: DataFrame? = null
 ): List<Peak> =
-        // Process missing fit information
+        // Check that we have information for requested chromosome
         if (chromosome.name in fitInfo.chromosomesSizes) {
+            val f64LogNullMemberships =
+                    logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL)
+            val f64QValues = f64QValuesCache.get(chromosome) {
+                Fdr.qvalidate(f64LogNullMemberships)
+            }
             getChromosomePeaks(
-                    logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL),
+                    f64LogNullMemberships,
+                    f64QValues,
                     fitInfo.offsets(chromosome),
                     chromosome, fdr, gap,
                     coverageDataFrame)
         } else {
-            LOG.info("NO peaks information for chromosome: ${chromosome.name} in fitInfo ${fitInfo.build}")
+            SpanFitResults.LOG.info(
+                    "NO peaks information for chromosome: ${chromosome.name} in fitInfo ${fitInfo.build}")
             emptyList()
         }
 
