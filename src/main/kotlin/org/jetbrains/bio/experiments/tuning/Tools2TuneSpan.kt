@@ -2,6 +2,7 @@ package org.jetbrains.bio.experiments.tuning
 
 import com.google.common.primitives.Shorts
 import kotlinx.support.jdk7.use
+import org.jetbrains.bio.coverage.removeDuplicates
 import org.jetbrains.bio.dataset.*
 import org.jetbrains.bio.experiments.fit.SpanFitResults
 import org.jetbrains.bio.experiments.fit.SpanModelFitExperiment
@@ -12,7 +13,6 @@ import org.jetbrains.bio.io.BedFormat
 import org.jetbrains.bio.span.getPeaks
 import org.jetbrains.bio.span.savePeaks
 import org.jetbrains.bio.statistics.ClassificationModel
-import org.jetbrains.bio.tools.Picard
 import org.jetbrains.bio.tools.Washu
 import org.jetbrains.bio.util.*
 import java.nio.file.Path
@@ -98,7 +98,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
                     optimalPeaksPath)
 
             // Compute _rip.sh file
-            Washu().runRip(Picard.removeDuplicates(trackPath), optimalPeaksPath)
+            Washu().runRip(removeDuplicates(trackPath), optimalPeaksPath)
             check("${optimalPeaksPath}_rip.csv".toPath().exists)
 
             labelErrorsGrid.forEachIndexed { i, error ->

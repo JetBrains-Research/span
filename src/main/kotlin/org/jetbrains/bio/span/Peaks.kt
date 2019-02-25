@@ -11,7 +11,6 @@ import org.jetbrains.bio.experiments.fit.*
 import org.jetbrains.bio.genome.*
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.statistics.hypothesis.Fdr
-import org.jetbrains.bio.tools.PeaksInfo
 import org.jetbrains.bio.util.CancellableState
 import org.jetbrains.bio.util.bufferedWriter
 import org.jetbrains.bio.util.toPath
@@ -190,7 +189,7 @@ chromosome, start, end, name, score, strand, coverage/foldchange, -log(pvalue), 
 }
 
 fun PeaksInfo.compute(genomeQuery: GenomeQuery, peaksStream: Stream<Location>, src: URI?,
-                      fitInformation: SpanFitInformation): Map<String, String> {
+                                               fitInformation: SpanFitInformation): Map<String, String> {
     return compute(genomeQuery, peaksStream, src, fitInformation.data.map { it.path.toPath() })
 }
 

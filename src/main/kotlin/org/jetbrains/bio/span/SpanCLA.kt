@@ -12,10 +12,10 @@ import org.jetbrains.bio.experiments.tuning.PeakAnnotation
 import org.jetbrains.bio.experiments.tuning.Span
 import org.jetbrains.bio.experiments.tuning.TuningResults
 import org.jetbrains.bio.genome.GenomeQuery
+import org.jetbrains.bio.genome.PeaksInfo
 import org.jetbrains.bio.query.ReadsQuery
 import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.query.stemGz
-import org.jetbrains.bio.tools.PeaksInfo
 import org.jetbrains.bio.util.*
 import org.jetbrains.bio.util.FileSize.Companion.GB
 import java.io.OutputStream

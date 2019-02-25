@@ -1,9 +1,9 @@
 package org.jetbrains.bio.experiments.tuning
 
+import org.jetbrains.bio.coverage.removeDuplicates
 import org.jetbrains.bio.dataframe.DataFrameBuilder
 import org.jetbrains.bio.dataframe.DataFrameSpec
 import org.jetbrains.bio.dataset.DataConfig
-import org.jetbrains.bio.tools.Picard
 import org.jetbrains.bio.tools.Washu
 import org.jetbrains.bio.util.*
 import java.nio.file.Path
@@ -35,7 +35,7 @@ private fun computeFRIP(configuration: DataConfig, target: String, folder: Path,
     configuration.tracksMap.entries
             .filter { it.key.dataType == target }
             .flatMap { entry -> entry.value }.forEach { (_, replicateData) ->
-                val uniqueBamPath = Picard.removeDuplicates(replicateData.path)
+                val uniqueBamPath = removeDuplicates(replicateData.path)
                 val donor = "GSM\\d+|[YO]D\\d+".toRegex().find(replicateData.path.toString())!!.value
                 val peaks = folderPeaks.filter { "${donor}_" in it.stem }
                 check(peaks.isNotEmpty()) {
