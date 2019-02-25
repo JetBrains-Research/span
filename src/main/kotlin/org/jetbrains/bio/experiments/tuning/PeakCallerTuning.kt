@@ -11,7 +11,6 @@ import org.jetbrains.bio.dataset.toDataType
 import org.jetbrains.bio.experiment.DataConfigExperiment
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.tools.Washu
-import org.jetbrains.bio.util.Logs
 import org.jetbrains.bio.util.PathConverter
 import org.jetbrains.bio.util.contains
 import org.jetbrains.bio.util.div
@@ -105,7 +104,6 @@ class PeakCallerTuning(configuration: DataConfig,
 
         @JvmStatic
         fun main(args: Array<String>) {
-            Logs.addConsoleAppender(Level.INFO)
             val options = OptionParser().apply {
                 nonOptions("config file")
                 accepts("washu", "Washu scripts path")

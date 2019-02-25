@@ -18,8 +18,6 @@ import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.query.stemGz
 import org.jetbrains.bio.util.*
 import org.jetbrains.bio.util.FileSize.Companion.GB
-import java.io.OutputStream
-import java.io.PrintStream
 import java.nio.file.Path
 
 /**
@@ -31,7 +29,7 @@ import java.nio.file.Path
  */
 @Suppress("UNCHECKED_CAST")
 object SpanCLA {
-    private val LOG: Logger
+    private val LOG: Logger = Logger.getLogger(SpanCLA::class.java)
 
     /**
      * Shpynov:
@@ -43,10 +41,6 @@ object SpanCLA {
     var ignoreConfigurePaths: Boolean = false
 
     init {
-        // Add appender before initializing logger to avoid Log4j warnings
-        Logs.addConsoleAppender(Level.INFO)
-        LOG = Logger.getLogger(SpanCLA::class.java)
-
         // Load build properties
         val resource = SpanCLA::class.java.getResource("/span.properties")
         if (resource != null) {
@@ -445,13 +439,9 @@ compare                         Differential peak calling mode, experimental
     @VisibleForTesting
     internal fun configureLogging(quiet: Boolean, debug: Boolean, id: String, workingDir: Path): Path {
         if (quiet) {
-            val nullPrintStream = PrintStream(object : OutputStream() {
-                override fun write(b: Int) {}
-            })
-            System.setOut(nullPrintStream)
-            System.setErr(nullPrintStream)
-            Logs.replaceConsoleAppender(Level.INFO)
+            Logs.quiet()
         }
+        // Anyway we configure logging to file.
         Logs.addConsoleAppender(if (debug) Level.DEBUG else Level.INFO)
         val logPath = workingDir / "logs" / "$id.log"
         Logs.addLoggingToFile(logPath)
