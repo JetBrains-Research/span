@@ -30,6 +30,10 @@ shadowJar {
     baseName = 'span'
     version = "${version}.${project.buildCounter}"
     classifier = ''
+    minimize {
+        // Fix log4j:ERROR Could not instantiate class [org.apache.log4j.xml.DOMConfigurator]
+        exclude(dependency('log4j:log4j:*'))
+    }
 }
 
 jar {
