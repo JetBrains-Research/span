@@ -4,7 +4,6 @@ import org.jetbrains.bio.Tests.assertIn
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
-import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.query.stemGz
 import org.jetbrains.bio.span.SpanCLALongTest
 import org.jetbrains.bio.span.getPeaks
@@ -36,7 +35,7 @@ class SpanModelFitExperimentTest {
                 listOf("foo"), null, 200
             )
 
-            assertEquals(reduceIds(listOf(path.stemGz, "200" , "foo")), dataQuery.id)
+            assertTrue(dataQuery.id.startsWith("${path.stemGz}_200_foo#"))
             val df = dataQuery.apply(Chromosome("to1", "chr1"))
             assertEquals("[foo]", df.labels.toList().toString())
         }
