@@ -183,9 +183,10 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
         modelFitter: Fitter<Model>,
         modelClass: Class<Model>,
         availableStates: Array<State>,
-        private val nullHypothesis: NullHypothesis<State>
+        private val nullHypothesis: NullHypothesis<State>,
+        unique: Boolean = true
 ): ModelFitExperiment<Model, State>(
-        createEffectiveQueries(externalGenomeQuery, paths, labels, fragment, binSize),
+        createEffectiveQueries(externalGenomeQuery, paths, labels, fragment, binSize, unique),
         modelFitter, modelClass, availableStates) {
 
     val results: SpanFitResults by lazy {
@@ -309,14 +310,15 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
                 paths: List<Pair<Path, Path?>>,
                 labels: List<String>,
                 fragment: Int?,
-                binSize: Int
+                binSize: Int,
+                unique: Boolean = true
         ): Pair<GenomeQuery, Query<Chromosome, DataFrame>> {
             val chromosomes = genomeQuery.get()
             val nonEmptyChromosomes = hashSetOf<Chromosome>()
             paths.forEach { (t, _) ->
                 val coverage = ReadsQuery(
                     genomeQuery, t,
-                    unique = true, fragment = fragment, logFragmentSize = false
+                    unique = unique, fragment = fragment, logFragmentSize = false
                 ).get()
                 nonEmptyChromosomes.addAll(chromosomes.filter { coverage.getBothStrandsCoverage(it.range.on(it)) > 0 })
             }
@@ -325,7 +327,9 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
             }
             val effectiveGenomeQuery = genomeQuery.only(nonEmptyChromosomes.toList().map { it.name }.sorted())
             return effectiveGenomeQuery to object : CachingQuery<Chromosome, DataFrame>() {
-                val scores = paths.map { CoverageScoresQuery(effectiveGenomeQuery, it.first, it.second, fragment, binSize) }
+                val scores = paths.map {
+                    CoverageScoresQuery(effectiveGenomeQuery, it.first, it.second, fragment, binSize, unique)
+                }
 
                 override fun getUncached(input: Chromosome): DataFrame {
                     return scores.scoresDataFrame(input, labels.toTypedArray())

@@ -18,20 +18,22 @@ class CoverageScoresQuery(
         private val treatmentPath: Path,
         private val controlPath: Path?,
         val fragment: Int?,
-        val binSize: Int
+        val binSize: Int,
+        val unique: Boolean = true
 ): CachingQuery<Chromosome, IntArray>() {
 
 
     override val id: String
         get() = reduceIds(
             listOfNotNull(
-                treatmentPath.stemGz, controlPath?.stemGz, fragment, binSize
+                treatmentPath.stemGz, controlPath?.stemGz, fragment, binSize,
+                if (!unique) "keepdup" else null
             ).map { it.toString() }
         )
 
     override val description: String
         get() = "Treatment: $treatmentPath, Control: $controlPath, " +
-                "Fragment: $fragment, Bin: $binSize"
+                "Fragment: $fragment, Bin: $binSize, Keep-dup: ${!unique}"
 
     override fun getUncached(input: Chromosome): IntArray {
         return scores[input]
@@ -39,11 +41,11 @@ class CoverageScoresQuery(
 
     val scores: GenomeMap<IntArray> by lazy {
         val treatmentCoverage = ReadsQuery(
-            genomeQuery, treatmentPath, unique = true, fragment = fragment
+            genomeQuery, treatmentPath, unique = unique, fragment = fragment
         ).get()
         val controlCoverage = if (controlPath != null)
             ReadsQuery(
-                genomeQuery, controlPath, unique = true, fragment = fragment
+                genomeQuery, controlPath, unique = unique, fragment = fragment
             ).get()
         else
             null

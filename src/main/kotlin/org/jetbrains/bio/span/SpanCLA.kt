@@ -118,20 +118,21 @@ compare                         Differential peak calling mode, experimental
                 val gap = options.valueOf("gap") as Int
                 val fdr = options.valueOf("fdr") as Double
                 val threads = options.valueOf("threads") as Int?
+                val unique = "keep-dup" !in options
 
                 // Configure logging
                 val id = if (peaksPath != null) {
                     peaksPath.stemGz
                 } else {
-                    var ids = listOfNotNull(treatmentPaths, controlPaths).flatMap { paths ->
+                    val ids = listOfNotNull(treatmentPaths, controlPaths).flatMap { paths ->
                         paths.map { it.stemGz }
-                    }
-                    ids += bin.toString()
+                    }.toMutableList()
+                    ids.add(bin.toString())
                     if (fragment != null) {
-                        ids += fragment.toString()
+                        ids.add(fragment.toString())
                     }
                     if (labelsPath != null) {
-                        ids += labelsPath.stemGz
+                        ids.add(labelsPath.stemGz)
                     }
                     reduceIds(ids)
                 }
@@ -157,6 +158,9 @@ compare                         Differential peak calling mode, experimental
                 if (fragment != null) {
                     LOG.info("FRAGMENT: $fragment")
                 }
+                if (!unique) {
+                    LOG.info("KEEP DUPLICATES: true")
+                }
                 if (peaksPath != null) {
                     if (labelsPath != null) {
                         LOG.info("LABELS: $labelsPath")
@@ -180,7 +184,7 @@ compare                         Differential peak calling mode, experimental
 
                 val paths = matchTreatmentAndControls(treatmentPaths, controlPaths)
                 val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(
-                    genomeQuery, paths, bin, fragment
+                    genomeQuery, paths, bin, fragment, unique
                 )
                 if (peaksPath != null) {
                     if (labelsPath == null) {
@@ -281,11 +285,11 @@ compare                         Differential peak calling mode, experimental
                 val id = if (peaksPath != null) {
                     peaksPath.stemGz
                 } else {
-                    var ids = listOfNotNull(treatmentPaths1, controlPaths1, treatmentPaths2, controlPaths2)
-                            .flatMap { paths -> paths.map { it.stemGz } }
-                    ids += bin.toString()
+                    val ids = listOfNotNull(treatmentPaths1, controlPaths1, treatmentPaths2, controlPaths2)
+                            .flatMap { paths -> paths.map { it.stemGz } }.toMutableList()
+                    ids.add(bin.toString())
                     if (fragment != null) {
-                        ids += fragment.toString()
+                        ids.add(fragment.toString())
                     }
                     reduceIds(ids)
                 }
@@ -395,16 +399,19 @@ compare                         Differential peak calling mode, experimental
         init {
             acceptsAll(listOf("d", "debug"), "Print all the debug information, used for troubleshooting.")
             acceptsAll(listOf("q", "quiet"), "Turn off output")
-            acceptsAll(listOf("cs", "chrom.sizes"), "Chromosome sizes path, can be downloaded at\n" +
-                    "http://hgdownload.cse.ucsc.edu/goldenPath/<build>/bigZips/<build>.chrom.sizes")
-                    .withRequiredArg().required()
-                    .withValuesConvertedBy(PathConverter.exists())
-            acceptsAll(listOf("p", "peaks"), "Path to result peaks file in ENCODE broadPeak (BED 6+3) format")
-                    .withRequiredArg()
-                    .withValuesConvertedBy(PathConverter.noCheck())
-            acceptsAll(listOf("fragment"), "Fragment size, read length if not given")
-                    .withRequiredArg()
-                    .ofType(Int::class.java)
+            acceptsAll(
+                listOf("cs", "chrom.sizes"),
+                "Chromosome sizes path, can be downloaded at\n" +
+                    "http://hgdownload.cse.ucsc.edu/goldenPath/<build>/bigZips/<build>.chrom.sizes"
+            ).withRequiredArg().required().withValuesConvertedBy(PathConverter.exists())
+            acceptsAll(
+                listOf("p", "peaks"), "Path to result peaks file in ENCODE broadPeak (BED 6+3) format"
+            ).withRequiredArg().withValuesConvertedBy(PathConverter.noCheck())
+            acceptsAll(
+                listOf("fragment"),
+                "Fragment size. If provided, reads are shifted appropriately.\n" +
+                        "If not provided, the shift is estimated from the data."
+            ).withRequiredArg().ofType(Int::class.java)
             if (bin) {
                 acceptsAll(listOf("b", "bin"), "Bin size")
                         .withRequiredArg()
@@ -429,6 +436,7 @@ compare                         Differential peak calling mode, experimental
             acceptsAll(listOf("threads"), "Parallelism level")
                     .withRequiredArg()
                     .ofType(Int::class.java)
+            acceptsAll(listOf("k", "keep-dup"), "Keep duplicates")
             formatHelpWith(BuiltinHelpFormatter(200, 2))
         }
     }
