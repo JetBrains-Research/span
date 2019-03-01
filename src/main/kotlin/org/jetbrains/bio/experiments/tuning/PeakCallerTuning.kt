@@ -13,6 +13,7 @@ import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.tools.Washu
 import org.jetbrains.bio.util.PathConverter
 import org.jetbrains.bio.util.contains
+import org.jetbrains.bio.util.createDirectories
 import org.jetbrains.bio.util.div
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -159,7 +160,8 @@ class PeakCallerTuning(configuration: DataConfig,
             val test = options.has("t")
 
             // Configuration
-            Configuration.setExperimentWorkingDir(options.valueOf("dir") as Path)
+            val workDir = options.valueOf("dir") as Path
+            configurePaths(workDir)
 
             LOG.info("CONFIG:\t$config")
             LOG.info("WASHU PATH:\t$washuPath")
@@ -175,6 +177,18 @@ class PeakCallerTuning(configuration: DataConfig,
                         tools = tools,
                         useInput = input,
                         computeTestError = test).run()
+            }
+        }
+
+        private fun configurePaths(workDir: Path) {
+            workDir.createDirectories()
+            Configuration.experimentsPath = workDir
+            val properties = System.getProperties()
+            if (!properties.containsKey(Configuration.GENOME_PATHS_PROPERTY)) {
+                Configuration.genomesPath = workDir
+            }
+            if (properties.containsKey(Configuration.RAW_DATA_PATH_PROPERTY)) {
+                Configuration.rawDataPath = workDir
             }
         }
     }
