@@ -2,7 +2,6 @@ package org.jetbrains.bio.span
 
 import kotlinx.support.jdk7.use
 import org.jetbrains.bio.Configuration
-import org.jetbrains.bio.Tests.assertIn
 import org.jetbrains.bio.big.BedEntry
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
@@ -17,7 +16,6 @@ import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.util.*
-import org.jetbrains.bio.util.LogsTest.Companion.captureLoggingOutput
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -46,7 +44,7 @@ class SpanCLALongTest {
 
     @Test
     fun emptyArgs() {
-        val (_, err) = captureLoggingOutput {
+        val (_, err) = Logs.captureLoggingOutput {
             SpanCLA.main(arrayOf())
         }
         assertLinesEqual("""
@@ -63,7 +61,7 @@ compare                         Differential peak calling mode, experimental
 
     @Test
     fun illegalArgs() {
-        val (_, err) = captureLoggingOutput {
+        val (_, err) = Logs.captureLoggingOutput {
             SpanCLA.main(arrayOf("foobar"))
         }
         assertLinesEqual("""
@@ -80,7 +78,7 @@ compare                         Differential peak calling mode, experimental
 
     @Test
     fun quietError() {
-        val (_, err) = captureLoggingOutput {
+        val (_, err) = Logs.captureLoggingOutput {
             SpanCLA.main(arrayOf("foobar", "quiet"))
         }
         assertLinesEqual("""
@@ -97,7 +95,7 @@ compare                         Differential peak calling mode, experimental
 
     @Test
     fun checkHelp() {
-        val (out, _) = captureLoggingOutput {
+        val (out, _) = Logs.captureLoggingOutput {
             SpanCLA.main(arrayOf("--help"))
         }
         assertLinesEqual("""
@@ -113,7 +111,7 @@ compare                         Differential peak calling mode, experimental
 
     @Test
     fun checkVersion() {
-        val (out, _) = captureLoggingOutput {
+        val (out, _) = Logs.captureLoggingOutput {
             SpanCLA.main(arrayOf("--version"))
         }
         assertEquals("@VERSION@.@BUILD@ built on @DATE@", out.trim())
@@ -131,7 +129,7 @@ compare                         Differential peak calling mode, experimental
             withTempDirectory("work") {
                 val peaksPath = it / "peaks.bed"
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
-                val (out, _) = captureLoggingOutput {
+                val (out, _) = Logs.captureLoggingOutput {
                     SpanCLA.main(arrayOf("compare",
                         "-cs", chromsizes,
                         "--workdir", it.toString(),
@@ -207,7 +205,7 @@ PEAKS: $peaksPath
 
             withTempDirectory("work") {
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
-                val (out, _) = captureLoggingOutput {
+                val (out, _) = Logs.captureLoggingOutput {
                     SpanCLA.main(arrayOf(
                         "analyze",
                         "-cs", chromsizes,
@@ -237,7 +235,7 @@ LABELS, FDR, GAP options are ignored.
 
             withTempDirectory("work") {
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
-                val (out, _) = captureLoggingOutput {
+                val (out, _) = Logs.captureLoggingOutput {
                     SpanCLA.main(arrayOf(
                         "analyze",
                         "-cs", chromsizes,
@@ -268,7 +266,7 @@ LABELS, FDR, GAP options are ignored.
                 /* We can't test the stdout, because the Span quiet mode redefines the JVM [System.out].
                  * But we can restore the System.out to the original value using [captureLoggingOutput].
                  */
-                captureLoggingOutput {
+                Logs.captureLoggingOutput {
                     val oldSystemOut = System.out
                     SpanCLA.main(arrayOf(
                         "analyze",
@@ -355,7 +353,7 @@ LABELS, FDR, GAP options are ignored.
             withTempDirectory("work") {
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 val peaksPath = path.parent / "${path.stem}.peak"
-                val (out, _) = captureLoggingOutput {
+                val (out, _) = Logs.captureLoggingOutput {
                     SpanCLA.main(arrayOf("analyze", "-cs", chromsizes,
                         "--workdir", it.toString(),
                         "-t", path.toString(),
@@ -445,7 +443,7 @@ LABELS, FDR, GAP options are ignored.
 
             withTempDirectory("work") {
                 /* Turn suppressExit on, otherwise Span would call System.exit */
-                val (out, err) = captureLoggingOutput {
+                val (out, err) = Logs.captureLoggingOutput {
                     withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
                         SpanCLA.main(arrayOf("analyze",
                             "-cs", Genome["to1"].chromSizesPath.toString(),
@@ -533,4 +531,12 @@ LABELS, FDR, GAP options are ignored.
             }
         }
     }
+
+    private fun assertIn(substring: String, fullString: String) {
+        // Process Windows with different line separators correctly.
+        substring.lines().forEach { s ->
+            assertTrue(s in fullString, "Expected <$s> to be in <$fullString>.")
+        }
+    }
+
 }
