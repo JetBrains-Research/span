@@ -13,7 +13,7 @@ import org.jetbrains.bio.io.BedFormat
 import org.jetbrains.bio.span.getPeaks
 import org.jetbrains.bio.span.savePeaks
 import org.jetbrains.bio.statistics.ClassificationModel
-import org.jetbrains.bio.tools.Washu
+import org.jetbrains.bio.tools.ToolsChipSeqWashu
 import org.jetbrains.bio.util.*
 import java.nio.file.Path
 import java.util.stream.Collectors
@@ -98,7 +98,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
                     optimalPeaksPath)
 
             // Compute _rip.sh file
-            Washu().runRip(removeDuplicates(trackPath), optimalPeaksPath)
+            ToolsChipSeqWashu().runRip(removeDuplicates(trackPath), optimalPeaksPath)
             check("${optimalPeaksPath}_rip.csv".toPath().exists)
 
             labelErrorsGrid.forEachIndexed { i, error ->

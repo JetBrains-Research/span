@@ -4,7 +4,7 @@ import org.jetbrains.bio.coverage.removeDuplicates
 import org.jetbrains.bio.dataframe.DataFrameBuilder
 import org.jetbrains.bio.dataframe.DataFrameSpec
 import org.jetbrains.bio.dataset.DataConfig
-import org.jetbrains.bio.tools.Washu
+import org.jetbrains.bio.tools.ToolsChipSeqWashu
 import org.jetbrains.bio.util.*
 import java.nio.file.Path
 
@@ -29,7 +29,7 @@ private fun findPeaks(peaksPath: Path): List<Path> {
             peaksPath.glob("*.narrowPeak"))
 }
 
-private fun computeFRIP(configuration: DataConfig, target: String, folder: Path, washu: Washu) {
+private fun computeFRIP(configuration: DataConfig, target: String, folder: Path, toolsChipSeqWashu: ToolsChipSeqWashu) {
     val folderPeaks = findPeaks(folder)
 
     configuration.tracksMap.entries
@@ -42,9 +42,9 @@ private fun computeFRIP(configuration: DataConfig, target: String, folder: Path,
                     "No peak files found for $donor in $folder"
                 }
                 check(peaks.size == 1) {
-                    Washu.LOG.warn("More than 1 peak file found for $donor in $folder\n$peaks")
+                    "More than 1 peak file found for $donor in $folder\n$peaks"
                 }
-                washu.runRip(uniqueBamPath, peaks.first())
+                toolsChipSeqWashu.runRip(uniqueBamPath, peaks.first())
             }
 }
 
@@ -53,8 +53,8 @@ internal fun PeakCallerTuning.computeFripAndReport(report: DataFrameBuilder,
                                                    tool: Tool2Tune<*>,
                                                    folder: Path,
                                                    procedure: String,
-                                                   washu: Washu) {
-    computeFRIP(configuration, target, folder, washu)
+                                                   toolsChipSeqWashu: ToolsChipSeqWashu) {
+    computeFRIP(configuration, target, folder, toolsChipSeqWashu)
 
     val toolName = tool.id
     val failed = configuration.tracksMap.filter { it.key.dataType == target }

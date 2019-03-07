@@ -54,10 +54,6 @@ there is no difference in **enrichment** for the two biological conditions.
 
 `span` supports BED reads and BAM as input.
 
-#### Where is `span` source code?
-
-We are working on open sourcing complete `span` source code. At the moment only the JAR is available.
-
 #### Where did you get this lovely span?
 
 From [ascii.co.uk](http://ascii.co.uk/art/bridges), it seems the original author goes by the name `jgs`.

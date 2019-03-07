@@ -45,7 +45,7 @@ private fun PeakCallerTuning.medianConsensus(target: String, cell: CellId? = nul
         return null
     }
     consensusFile.checkOrRecalculate(ignoreEmptyFile = true) { output ->
-        washu.medianNucleotideConsensus(output.path, peaks)
+        toolsWashu.medianNucleotideConsensus(output.path, peaks)
     }
     return consensusFile
 }
@@ -64,7 +64,7 @@ private fun PeakCallerTuning.weakConsensus(target: String, cell: CellId? = null,
         return null
     }
     consensusFile.checkOrRecalculate(ignoreEmptyFile = true) { output ->
-        washu.weakNucleotideConsensus(output.path, peaks)
+        toolsWashu.weakNucleotideConsensus(output.path, peaks)
     }
     return consensusFile
 }

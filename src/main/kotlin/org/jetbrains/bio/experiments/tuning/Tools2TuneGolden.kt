@@ -3,7 +3,7 @@ package org.jetbrains.bio.experiments.tuning
 import org.jetbrains.bio.dataset.CellId
 import org.jetbrains.bio.dataset.DataConfig
 import org.jetbrains.bio.genome.Genome
-import org.jetbrains.bio.tools.Washu
+import org.jetbrains.bio.tools.ToolsChipSeqWashu
 import java.nio.file.Path
 
 object Macs2 : Tool2Tune<Double>() {
@@ -19,7 +19,7 @@ object Macs2 : Tool2Tune<Double>() {
     override val transform = Double::toString
 
     override fun callPeaks(configuration: DataConfig, p: Path, parameter: Double) {
-        Washu().runMACS2(Genome[configuration.genome], p, parameter, false)
+        ToolsChipSeqWashu().runMACS2(Genome[configuration.genome], p, parameter, false)
     }
 
     override fun fileName(cellId: CellId, replicate: String, target: String, parameter: Double): String {
@@ -42,7 +42,7 @@ object Macs2Broad : Tool2Tune<Double>() {
     override val transform = Double::toString
 
     override fun callPeaks(configuration: DataConfig, p: Path, parameter: Double) {
-        Washu().runMACS2(Genome[configuration.genome], p, parameter, true)
+        ToolsChipSeqWashu().runMACS2(Genome[configuration.genome], p, parameter, true)
     }
 
     override fun fileName(cellId: CellId, replicate: String, target: String, parameter: Double): String {
@@ -68,7 +68,7 @@ object Sicer : Tool2Tune<Pair<Double, Int>>() {
     override val transform: (Pair<Double, Int>) -> String = { (fdr, gap) -> "${fdr}_$gap" }
 
     override fun callPeaks(configuration: DataConfig, p: Path, parameter: Pair<Double, Int>) {
-        Washu().runSicer(Genome[configuration.genome], p, parameter.first, listOf("200", "150", parameter.second.toString()))
+        ToolsChipSeqWashu().runSicer(Genome[configuration.genome], p, parameter.first, listOf("200", "150", parameter.second.toString()))
     }
 
     override fun fileName(cellId: CellId, replicate: String, target: String, parameter: Pair<Double, Int>): String {

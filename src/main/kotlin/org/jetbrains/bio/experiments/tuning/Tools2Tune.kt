@@ -5,8 +5,7 @@ import org.jetbrains.bio.coverage.removeDuplicates
 import org.jetbrains.bio.dataset.CellId
 import org.jetbrains.bio.dataset.DataConfig
 import org.jetbrains.bio.genome.containers.LocationsMergingList
-import org.jetbrains.bio.tools.Washu
-import org.jetbrains.bio.tools.runBatch
+import org.jetbrains.bio.tools.ToolsChipSeqWashu
 import org.jetbrains.bio.util.*
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
@@ -172,7 +171,7 @@ abstract class Tool2Tune<T> {
             optimalPeaksPath.copy(folder, StandardCopyOption.REPLACE_EXISTING)
 
             // Compute _rip.sh file
-            Washu().runRip(removeDuplicates(trackPath), folder / optimalPeaksFileName)
+            ToolsChipSeqWashu().runRip(removeDuplicates(trackPath), folder / optimalPeaksFileName)
             check((folder / "${optimalPeaksFileName}_rip.csv").exists)
 
             labelErrorsGrid.forEachIndexed { i, error ->

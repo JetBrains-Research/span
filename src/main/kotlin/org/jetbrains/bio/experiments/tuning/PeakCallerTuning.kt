@@ -10,7 +10,7 @@ import org.jetbrains.bio.dataset.DataType
 import org.jetbrains.bio.dataset.toDataType
 import org.jetbrains.bio.experiment.DataConfigExperiment
 import org.jetbrains.bio.genome.containers.LocationsMergingList
-import org.jetbrains.bio.tools.Washu
+import org.jetbrains.bio.tools.ToolsChipSeqWashu
 import org.jetbrains.bio.util.PathConverter
 import org.jetbrains.bio.util.contains
 import org.jetbrains.bio.util.createDirectories
@@ -23,12 +23,12 @@ import java.nio.file.Paths
  */
 
 class PeakCallerTuning(configuration: DataConfig,
-                       washuPath: Path = Washu.PATH,
+                       toolsWashuPath: Path = ToolsChipSeqWashu.DEFAULT_PATH,
                        val tools: List<Tool2Tune<*>>,
                        val useInput: Boolean = true,
                        private val computeTestError: Boolean = false) : DataConfigExperiment("benchmark", configuration) {
 
-    val washu = Washu(washuPath)
+    val toolsWashu = ToolsChipSeqWashu(toolsWashuPath)
 
     override fun doCalculations() {
         LOG.info("Processing peak caller tuning")
@@ -58,16 +58,16 @@ class PeakCallerTuning(configuration: DataConfig,
             tools.forEach { t ->
                 try {
                     computeFripAndReport(report, target, t,
-                            t.folder(experimentPath, target, useInput), "tuned", washu)
+                            t.folder(experimentPath, target, useInput), "tuned", toolsWashu)
                     computeFripAndReport(report, target, t,
                             t.defaultsFolder(experimentPath, target, useInput, false),
-                            "default", washu)
+                            "default", toolsWashu)
 
                     computeFripAndReport(uliReport, target, t,
-                            t.folder(experimentPath, target, useInput), "tuned", washu)
+                            t.folder(experimentPath, target, useInput), "tuned", toolsWashu)
                     computeFripAndReport(uliReport, target, t,
                             t.defaultsFolder(experimentPath, target, useInput, true),
-                            "default", washu)
+                            "default", toolsWashu)
                 } catch (e: Throwable) {
                     LOG.error("Couldn't process $t for $target", e)
                 }
@@ -107,8 +107,8 @@ class PeakCallerTuning(configuration: DataConfig,
         fun main(args: Array<String>) {
             val options = OptionParser().apply {
                 nonOptions("config file")
-                accepts("washu", "Washu scripts path")
-                        .withRequiredArg().defaultsTo(Washu.PATH.toString())
+                accepts("toolsWashu", "Washu scripts path")
+                        .withRequiredArg().defaultsTo(ToolsChipSeqWashu.DEFAULT_PATH.toString())
                         .withValuesConvertedBy(PathConverter.exists())
                 accepts("dir", "Working dir").withRequiredArg()
                         .defaultsTo(Paths.get(".").toAbsolutePath().toString()) // curr dir
@@ -133,10 +133,10 @@ class PeakCallerTuning(configuration: DataConfig,
                 return
             }
             val config = options.nonOptionArguments()[0] as String
-            val washuPath = if (options.has("washu"))
-                options.valueOf("washu") as Path
+            val washuPath = if (options.has("toolsWashu"))
+                options.valueOf("toolsWashu") as Path
             else
-                Washu.PATH
+                ToolsChipSeqWashu.DEFAULT_PATH
 
             val tools = arrayListOf<Tool2Tune<*>>()
             if (options.has("p")) {
