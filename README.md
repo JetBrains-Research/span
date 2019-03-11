@@ -28,7 +28,7 @@ To analyze a single (possibly replicated) biological condition use `analyze` com
 $ java -jar span.jar analyze --help
 ```
 
-The `<output.bed>` file will contain predicted and FDR-controlled peaks in the ENCODE [broadPeak](https://genome.ucsc.edu/FAQ/FAQformat.html#format13) (BED 6+3) format(like [MACS2](https://github.com/taoliu/MACS)):
+The `<output.bed>` file will contain predicted and FDR-controlled peaks in the ENCODE [broadPeak](https://genome.ucsc.edu/FAQ/FAQformat.html#format13) (BED 6+3) format (like [MACS2](https://github.com/taoliu/MACS)):
 ```
 <chromosome> <peak start offset> <peak end offset> <peak_name> <score> . <coverage or fold/change> <-log p-value> <-log Q-value>
 ```
