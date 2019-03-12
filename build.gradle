@@ -27,6 +27,7 @@ compileKotlin { kotlinOptions.jvmTarget = sourceCompatibility }
 compileTestKotlin { kotlinOptions.jvmTarget = sourceCompatibility }
 
 repositories {
+    maven { url "https://dl.bintray.com/jetbrains-research/maven" }
     jcenter()
 }
 
@@ -52,9 +53,7 @@ dependencies {
     compile 'org.jetbrains.bio:big:0.8.4'
     compile 'org.jetbrains.bio:npy:0.3.3'
     compile 'org.jetbrains.bio:viktor:0.5.3'
-
-    // This dependency will be updated once we have bintray configured
-    compile files("$rootDir/lib/bioinf-commons-0.0.1.jar")
+    compile 'org.jetbrains.bio:bioinf-commons:0.0.1'
 
     testCompile 'org.jetbrains.bio:npy:0.3.3'
 
