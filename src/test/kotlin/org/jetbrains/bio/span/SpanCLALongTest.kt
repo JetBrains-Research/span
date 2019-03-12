@@ -334,7 +334,7 @@ LABELS, FDR, GAP options are ignored.
                     assertEquals(
                         1,
                         (Configuration.experimentsPath / "fit")
-                                .glob("${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}#*.span").size
+                                .glob("${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}.span").size
                     )
                 }
             }

@@ -13,7 +13,6 @@ import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.state.ZLH
-import org.jetbrains.bio.util.sha
 import java.nio.file.Path
 
 /**
@@ -56,8 +55,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
     override val id: String =
             reduceIds(
                 paths.flatMap { listOfNotNull(it.first, it.second) }.map { it.stemGz } +
-                        listOfNotNull(fragment, binSize).map { it.toString() }
-            ) + super.id.sha
+                        listOfNotNull(fragment, binSize).map { it.toString() })
 
 
     companion object {

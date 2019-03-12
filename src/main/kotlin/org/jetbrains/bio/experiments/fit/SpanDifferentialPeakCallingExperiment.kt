@@ -14,7 +14,6 @@ import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.state.ZLHID
-import org.jetbrains.bio.util.sha
 import java.nio.file.Path
 
 /**
@@ -57,8 +56,7 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
             reduceIds(paths1.flatMap { listOfNotNull(it.first, it.second) }.map { it.stemGz } +
                     listOf("vs") +
                     paths2.flatMap { listOfNotNull(it.first, it.second) }.map { it.stemGz }
-                    + listOfNotNull(fragment, binSize).map { it.toString() }) +
-                    super.id.sha
+                    + listOfNotNull(fragment, binSize).map { it.toString() })
 
 
     fun computeDirectedDifferencePeaks(fdr: Double,

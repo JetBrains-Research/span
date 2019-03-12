@@ -1,12 +1,12 @@
 package org.jetbrains.bio.experiments.fit
 
-import com.google.common.base.Joiner
 import org.apache.log4j.Logger
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiment.Experiment
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.query.Query
+import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.viktor.F64Array
@@ -31,7 +31,7 @@ abstract class ModelFitExperiment<out Model : ClassificationModel, State : Any>(
             queries: Pair<GenomeQuery, Query<Chromosome, DataFrame>>,
             modelFitter: Fitter<Model>,
             modelClass: Class<out Model>,
-            availableStates: Array<State>): this(queries.first, queries.second, modelFitter, modelClass, availableStates)
+            availableStates: Array<State>) : this(queries.first, queries.second, modelFitter, modelClass, availableStates)
 
 
     open val id: String
@@ -39,11 +39,7 @@ abstract class ModelFitExperiment<out Model : ClassificationModel, State : Any>(
             val model = modelClass.simpleName.replace(Regex("[^A-Z0-9]"), "").toLowerCase()
             require(availableStates.isNotEmpty())
             val states = availableStates[0].javaClass.simpleName.replace(Regex("[^A-Z0-9]"), "").toLowerCase()
-            return Joiner.on('_').join(
-                    genomeQuery.id,
-                    model,
-                    states,
-                    dataQuery.id)
+            return reduceIds(listOf(genomeQuery.id, model, states, dataQuery.id))
         }
 
 
