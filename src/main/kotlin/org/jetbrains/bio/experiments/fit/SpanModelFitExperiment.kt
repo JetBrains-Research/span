@@ -155,6 +155,24 @@ data class SpanFitResults(val fitInfo: SpanFitInformation,
     companion object {
         internal val LOG = Logger.getLogger(SpanFitResults::class.java)
     }
+
+    /**
+     * @return Information about fit results including model and other parameters
+     */
+    fun about(): Map<String, String> {
+        return when (model) {
+            is MLFreeNBHMM -> {
+                val signalMean = model.means[1]
+                val noiseMean = model.means[0]
+                mapOf(
+                        "Signal mean" to signalMean.toString(),
+                        "Noise mean" to noiseMean.toString(),
+                        "Signal to noise" to ((signalMean + 1e-10) / (noiseMean + 1e-10)).toString()
+                )
+            }
+            else -> emptyMap()
+        }
+    }
 }
 
 
@@ -185,7 +203,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
         availableStates: Array<State>,
         private val nullHypothesis: NullHypothesis<State>,
         unique: Boolean = true
-): ModelFitExperiment<Model, State>(
+) : ModelFitExperiment<Model, State>(
         createEffectiveQueries(externalGenomeQuery, paths, labels, fragment, binSize, unique),
         modelFitter, modelClass, availableStates) {
 
@@ -317,8 +335,8 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
             val nonEmptyChromosomes = hashSetOf<Chromosome>()
             paths.forEach { (t, _) ->
                 val coverage = ReadsQuery(
-                    genomeQuery, t,
-                    unique = unique, fragment = fragment, logFragmentSize = false
+                        genomeQuery, t,
+                        unique = unique, fragment = fragment, logFragmentSize = false
                 ).get()
                 nonEmptyChromosomes.addAll(chromosomes.filter { coverage.getBothStrandsCoverage(it.range.on(it)) > 0 })
             }

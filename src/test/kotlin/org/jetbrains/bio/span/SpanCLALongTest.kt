@@ -420,7 +420,17 @@ LABELS, FDR, GAP options are ignored.
                     "Expected location not found in called peaks"
                 )
                 // Check correct log file name
-                assertTrue((it / "logs" / "${bedPath.stem}.log").exists, "Log file not found")
+                val logPath = it / "logs" / "${bedPath.stem}.log"
+                assertTrue(logPath.exists, "Log file not found")
+                val log = FileReader(logPath.toFile()).use { it.readText() }
+                assertIn("Signal mean:", log)
+                assertIn("Noise mean:", log)
+                assertIn("Signal to noise:", log)
+                /** In sampling producer model - signal to noise ratio ~ 30
+                 * "mean": 0.36580807929296383, // noise
+                 * "mean": 9.113896687733767,   // signal
+                 */
+                assertTrue(log.substringAfter("Signal to noise:").substringBefore("\n").trim().toDouble() > 10)
             }
         }
     }

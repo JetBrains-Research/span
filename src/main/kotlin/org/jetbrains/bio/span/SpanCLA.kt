@@ -12,7 +12,7 @@ import org.jetbrains.bio.experiments.tuning.PeakAnnotation
 import org.jetbrains.bio.experiments.tuning.Span
 import org.jetbrains.bio.experiments.tuning.TuningResults
 import org.jetbrains.bio.genome.GenomeQuery
-import org.jetbrains.bio.genome.PeaksInfo
+import org.jetbrains.bio.genome.PeaksInfo.compute
 import org.jetbrains.bio.query.ReadsQuery
 import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.query.stemGz
@@ -192,10 +192,12 @@ compare                         Differential peak calling mode, experimental
                         savePeaks(peaks, peaksPath,
                                 "peak${if (fragment != null) "_$fragment" else ""}_${bin}_${fdr}_${gap}")
                         LOG.info("Saved result to $peaksPath")
-                        LOG.info("\n" + PeaksInfo.compute(genomeQuery,
+                        val aboutPeaks = compute(genomeQuery,
                                 peaks.map { it.location }.stream(),
                                 peaksPath.toUri(),
-                                peakCallingExperiment.fitInformation).map { (k, v) -> "$k: $v" }.joinToString("\n"))
+                                peakCallingExperiment.fitInformation.data.map { it.path.toPath() })
+                        val aboutModel = peakCallingExperiment.results.about()
+                        LOG.info("\n" + (aboutPeaks + aboutModel).map { (k, v) -> "$k: $v" }.joinToString("\n"))
                     } else {
                         val results = TuningResults()
                         val labels = PeakAnnotation.loadLabels(labelsPath, genomeQuery.build)

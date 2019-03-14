@@ -13,11 +13,8 @@ import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.statistics.hypothesis.Fdr
 import org.jetbrains.bio.util.CancellableState
 import org.jetbrains.bio.util.bufferedWriter
-import org.jetbrains.bio.util.toPath
 import org.jetbrains.bio.viktor.F64Array
-import java.net.URI
 import java.nio.file.Path
-import java.util.stream.Stream
 
 /**
  * @param value Foldchange or coverage
@@ -150,7 +147,7 @@ fun SpanFitResults.getChromosomePeaks(
                     chromosome, fdr, gap,
                     coverageDataFrame)
         } else {
-            SpanFitResults.LOG.info(
+            SpanFitResults.LOG.debug(
                     "NO peaks information for chromosome: ${chromosome.name} in fitInfo ${fitInfo.build}")
             emptyList()
         }
@@ -186,11 +183,6 @@ chromosome, start, end, name, score, strand, coverage/foldchange, -log(pvalue), 
                     peak.mlogqvalue.toString())
         }
     }
-}
-
-fun PeaksInfo.compute(genomeQuery: GenomeQuery, peaksStream: Stream<Location>, src: URI?,
-                                               fitInformation: SpanFitInformation): Map<String, String> {
-    return compute(genomeQuery, peaksStream, src, fitInformation.data.map { it.path.toPath() })
 }
 
 
