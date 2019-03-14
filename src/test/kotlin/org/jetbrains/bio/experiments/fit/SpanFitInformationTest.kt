@@ -42,7 +42,7 @@ class SpanFitInformationTest {
     @Test
     fun checkOf() {
         val of = SpanFitInformation(gq, emptyList(), emptyList(), 100, 200)
-        assertEquals(listOf("chr1", "chr2", "chr3", "chrX"), of.chromosomesSizes.keys.toList())
+        assertEquals(listOf("chr1", "chr2", "chr3", "chrM", "chrX"), of.chromosomesSizes.keys.toList())
     }
 
     @Test
@@ -70,12 +70,13 @@ class SpanFitInformationTest {
     "chr1": 10000000,
     "chr2": 1000000,
     "chr3": 1000000,
+    "chrM": 1000000,
     "chrX": 1000000
   },
   "version": 1
 }""".trim().lines(), path.bufferedReader().lines().collect(Collectors.toList()))
                 }
-                assertEquals(listOf("chr1", "chr2", "chr3", "chrX"), info.chromosomesSizes.keys.toList())
+                assertEquals(listOf("chr1", "chr2", "chr3", "chrM", "chrX"), info.chromosomesSizes.keys.toList())
             }
         }
     }
@@ -101,6 +102,7 @@ class SpanFitInformationTest {
     "chr1": 10000000,
     "chr2": 1000000,
     "chr3": 1000000,
+    "chrM": 1000000,
     "chrX": 1000000
   },
   "version": 1

@@ -325,6 +325,11 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
             chromosomes.filter { it !in nonEmptyChromosomes }.forEach {
                 LOG.info("${it.name}: no reads detected, ignoring.")
             }
+            if (nonEmptyChromosomes.isEmpty()) {
+                val errMessage = "Model can't be trained on empty coverage, exiting."
+                LOG.error(errMessage)
+                throw IllegalStateException(errMessage)
+            }
             val effectiveGenomeQuery = genomeQuery.only(nonEmptyChromosomes.toList().map { it.name }.sorted())
             return effectiveGenomeQuery to object : CachingQuery<Chromosome, DataFrame>() {
                 val scores = paths.map {

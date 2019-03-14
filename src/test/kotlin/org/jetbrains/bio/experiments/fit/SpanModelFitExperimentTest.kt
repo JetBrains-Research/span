@@ -37,26 +37,6 @@ class SpanModelFitExperimentTest {
     }
 
 
-    /**
-     * Retry added to avoid failing sampling to single chromosome
-     */
-    @Test
-    fun testEffectiveGenomeQuery() {
-        // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
-        withTempFile("track", ".bed.gz") { path ->
-            SpanCLALongTest.sampleCoverage(path, GenomeQuery("to1"), 200, goodQuality = true)
-            println("Saved sampled track file: $path")
-            val (effectiveGenomeQuery, _) = SpanModelFitExperiment.createEffectiveQueries(
-                    GenomeQuery("to1"), listOf(path to null),
-                    listOf("foo"), null, 200
-            )
-            assertEquals(
-                    "[chr1, chr2, chr3, chrX]",
-                    effectiveGenomeQuery.get().map { it.name }.toString()
-            )
-        }
-    }
-
     @Test
     fun testEffectiveGenomeQueryEmptyChromosomes() {
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
