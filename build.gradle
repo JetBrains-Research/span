@@ -37,7 +37,7 @@ dependencies {
     compile 'org.jetbrains.kotlinx:kotlinx-support-jdk8:0.1'
     compile 'log4j:log4j:1.2.17'
 
-    compile 'org.jetbrains.bio:bioinf-commons:0.0.1'
+    compile 'org.jetbrains.bio:bioinf-commons:0.0.2'
 
     testCompile 'junit:junit:4.12'
     testCompile "org.jetbrains.kotlin:kotlin-test:$kotlin_version"
@@ -86,7 +86,7 @@ test {
 }
 
 // Major application version
-version = "0.9.3"
+version = "0.10.0"
 mainClassName = "org.jetbrains.bio.span.SpanCLA"
 
 task processBuildProperties(type: Copy) {
