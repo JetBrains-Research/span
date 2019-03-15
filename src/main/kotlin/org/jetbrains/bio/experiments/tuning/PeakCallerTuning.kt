@@ -107,7 +107,7 @@ class PeakCallerTuning(configuration: DataConfig,
         fun main(args: Array<String>) {
             val options = OptionParser().apply {
                 nonOptions("config file")
-                accepts("toolsWashu", "Washu scripts path")
+                accepts("washu", "Washu scripts path")
                         .withRequiredArg().defaultsTo(ToolsChipSeqWashu.DEFAULT_PATH.toString())
                         .withValuesConvertedBy(PathConverter.exists())
                 accepts("dir", "Working dir").withRequiredArg()
@@ -133,8 +133,8 @@ class PeakCallerTuning(configuration: DataConfig,
                 return
             }
             val config = options.nonOptionArguments()[0] as String
-            val washuPath = if (options.has("toolsWashu"))
-                options.valueOf("toolsWashu") as Path
+            val washuPath = if (options.has("washu"))
+                options.valueOf("washu") as Path
             else
                 ToolsChipSeqWashu.DEFAULT_PATH
 
