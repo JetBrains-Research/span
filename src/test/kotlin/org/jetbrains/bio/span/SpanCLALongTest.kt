@@ -365,16 +365,6 @@ LABELS, FDR, GAP options are ignored.
                     val modelPath = Configuration.experimentsPath / "custom" / "path" / "model.span"
                     assertTrue(modelPath.exists, "Model was not created at $modelPath")
                     assertTrue(modelPath.size.isNotEmpty(), "Model file $modelPath is empty")
-                    // Model reloading test
-                    SpanCLA.main(arrayOf(
-                        "analyze",
-                        "-cs", chromsizes,
-                        "--workdir", dir.toString(),
-                        "-t", path.toString(),
-                        "-c", control.toString(),
-                        "--threads", THREADS.toString(),
-                        "--model", "custom/path/model.span"
-                    ))
                 }
             }
         }
