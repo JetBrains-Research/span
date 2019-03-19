@@ -1,6 +1,7 @@
 package org.jetbrains.bio.experiments.fit
 
 import org.jetbrains.bio.genome.Chromosome
+import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.query.stemGz
@@ -23,15 +24,15 @@ class SpanModelFitExperimentTest {
     fun testDataQuery() {
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
         withTempFile("track", ".bed.gz") { path ->
-            SpanCLALongTest.sampleCoverage(path, GenomeQuery("to1"), 200, goodQuality = true)
+            SpanCLALongTest.sampleCoverage(path, GenomeQuery(Genome["to1"]), 200, goodQuality = true)
             println("Saved sampled track file: $path")
             val (_, dataQuery) = SpanModelFitExperiment.createEffectiveQueries(
-                    GenomeQuery("to1"), listOf(path to null),
+                    GenomeQuery(Genome["to1"]), listOf(path to null),
                     listOf("foo"), null, 200
             )
 
             assertTrue(dataQuery.id.startsWith("${path.stemGz}_200_foo#"))
-            val df = dataQuery.apply(Chromosome("to1", "chr1"))
+            val df = dataQuery.apply(Chromosome(Genome["to1"], "chr1"))
             assertEquals("[foo]", df.labels.toList().toString())
         }
     }
@@ -42,12 +43,12 @@ class SpanModelFitExperimentTest {
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
         withTempFile("track", ".bed.gz") { path ->
             SpanCLALongTest.sampleCoverage(
-                    path, GenomeQuery("to1", "chr1"), 200, goodQuality = true
+                    path, GenomeQuery(Genome["to1"], "chr1"), 200, goodQuality = true
             )
             println("Saved sampled track file: $path")
             val (out, _) = Logs.captureLoggingOutput {
                 val (effectiveGenomeQuery, _) =
-                        SpanModelFitExperiment.createEffectiveQueries(GenomeQuery("to1"),
+                        SpanModelFitExperiment.createEffectiveQueries(GenomeQuery(Genome["to1"]),
                                 listOf(path to null), listOf("foo"), null, 200)
                 assertEquals("[chr1]", effectiveGenomeQuery.get().map { it.name }.toString())
             }
@@ -59,8 +60,8 @@ class SpanModelFitExperimentTest {
 
     @Test
     fun analyzeExtendedChromosomePeaksLoaded() {
-        val effectiveGenomeQuery = GenomeQuery("to1", "chr1")
-        val fullGenomeQuery = GenomeQuery("to1")
+        val effectiveGenomeQuery = GenomeQuery(Genome["to1"], "chr1")
+        val fullGenomeQuery = GenomeQuery(Genome["to1"])
         val emptyMaps = genomeMap(effectiveGenomeQuery) { BitSet() }
         withTempFile("track", ".bed.gz") { path ->
             SpanCLALongTest.sampleCoverage(

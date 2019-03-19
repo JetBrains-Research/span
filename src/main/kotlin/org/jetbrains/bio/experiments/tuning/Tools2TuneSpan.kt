@@ -84,7 +84,9 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
             }
 
             PeakCallerTuning.LOG.info("Tuning $id $target $cellId $replicate peaks")
-            val labels = PeakAnnotation.loadLabels(labelsPath, configuration.genomeQuery.build)
+            val labels = PeakAnnotation.loadLabels(
+                    labelsPath, configuration.genomeQuery.genome
+            )
             val (labelErrorsGrid, index) =
                     tune(peakCallingExperiment, labels, "$id $target $cellId $replicate", parameters)
 
@@ -258,7 +260,7 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
 
         PeakCallerTuning.LOG.info("Tuning $id peaks $target")
         val labelsPath = labelledTracks.first().labelPath
-        val labels = PeakAnnotation.loadLabels(labelsPath, configuration.genome)
+        val labels = PeakAnnotation.loadLabels(labelsPath, configuration.genomeQuery.genome)
         val (labelErrorsGrid, index) = Span.tune(replicatedPeakCallingExperiment, labels, target, parameters)
 
         PeakCallerTuning.LOG.info("Saving $target optimal $id peaks to $folder")

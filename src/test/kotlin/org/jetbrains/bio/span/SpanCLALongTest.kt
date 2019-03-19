@@ -475,7 +475,7 @@ LABELS, FDR, GAP options are ignored.
     }
 
     companion object {
-        private val TO = GenomeQuery("to1")
+        private val TO = GenomeQuery(Genome["to1"])
         private const val BIN = 200
         private const val FDR = 1E-10
         private const val GAP = 10

@@ -1,10 +1,7 @@
 package org.jetbrains.bio.experiments.tuning
 
 import org.jetbrains.bio.big.ExtendedBedEntry
-import org.jetbrains.bio.genome.Chromosome
-import org.jetbrains.bio.genome.GenomeQuery
-import org.jetbrains.bio.genome.Location
-import org.jetbrains.bio.genome.Strand
+import org.jetbrains.bio.genome.*
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.junit.Test
 import java.util.*
@@ -59,7 +56,7 @@ class PeakCallerTuningTest {
     }
 
     @Test fun testLabelErrorsBasic() {
-        val chr1 = Chromosome("to1", "chr1")
+        val chr1 = Chromosome(Genome["to1"], "chr1")
         val labelErrors = LabelErrors()
         val label1 = PeakAnnotation(Location(10, 20, chr1), PeakAnnotationType.NO_PEAKS)
         val label2 = PeakAnnotation(Location(30, 40, chr1), PeakAnnotationType.PEAKS)
@@ -71,7 +68,7 @@ class PeakCallerTuningTest {
     }
 
     @Test fun testLabelErrorsCommutative() {
-        val chr1 = Chromosome("to1", "chr1")
+        val chr1 = Chromosome(Genome["to1"], "chr1")
         val labelErrors = LabelErrors()
         val labelErrorsShuffled = LabelErrors()
         val label1 = PeakAnnotation(Location(10, 20, chr1), PeakAnnotationType.NO_PEAKS)
@@ -87,7 +84,7 @@ class PeakCallerTuningTest {
     }
 
     @Test fun testLabelErrorsAssociative() {
-        val chr1 = Chromosome("to1", "chr1")
+        val chr1 = Chromosome(Genome["to1"], "chr1")
         val labelErrors1 = LabelErrors()
         val labelErrors2 = LabelErrors()
         val labelErrors3 = LabelErrors()
@@ -110,9 +107,9 @@ class PeakCallerTuningTest {
     }
 
     @Test fun testLabelBasic() {
-        val chr1 = Chromosome("to1", "chr1")
-        val chrX = Chromosome("to1", "chrX")
-        val genomeQuery = GenomeQuery("to1")
+        val chr1 = Chromosome(Genome["to1"], "chr1")
+        val chrX = Chromosome(Genome["to1"], "chrX")
+        val genomeQuery = GenomeQuery(Genome["to1"])
 
         val labelN = PeakAnnotation(Location(10, 20, chr1), PeakAnnotationType.NO_PEAKS)
         val labelP = PeakAnnotation(Location(30, 40, chr1), PeakAnnotationType.PEAKS)
@@ -146,7 +143,7 @@ class PeakCallerTuningTest {
     }
 
     @Test fun testLabelToBedEntry() {
-        val chr1 = Chromosome("to1", "chr1")
+        val chr1 = Chromosome(Genome["to1"], "chr1")
         val annotationType = PeakAnnotationType.NO_PEAKS
 
         val labelN = PeakAnnotation(Location(10, 20, chr1), annotationType)

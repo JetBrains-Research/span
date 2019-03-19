@@ -1,5 +1,6 @@
 package org.jetbrains.bio.experiments.fit
 
+import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.util.bufferedReader
 import org.jetbrains.bio.util.bufferedWriter
@@ -21,7 +22,7 @@ class SpanFitInformationTest {
     @get:Rule
     var expectedEx = ExpectedException.none()
 
-    val gq = GenomeQuery("to1")
+    val gq = GenomeQuery(Genome["to1"])
     val chr2 = gq.get()[1]
 
 
@@ -29,13 +30,13 @@ class SpanFitInformationTest {
     fun checkWrongBuild() {
         expectedEx.expect(IllegalStateException::class.java)
         expectedEx.expectMessage("Wrong genome build, expected: hg19, got: to1")
-        SpanFitInformation("hg19", emptyList(), emptyList(), 100, 200, LinkedHashMap(), 1).checkBuild(GenomeQuery("to1").build)
+        SpanFitInformation("hg19", emptyList(), emptyList(), 100, 200, LinkedHashMap(), 1).checkGenome(Genome["to1"])
     }
 
     @Test
     fun checkGenomeQueryOrder() {
-        SpanFitInformation(GenomeQuery("to1", "chr1", "chr2"), emptyList(), emptyList(), 100, 200)
-                .checkBuild(GenomeQuery("to1", "chr2", "chr1").build)
+        SpanFitInformation(GenomeQuery(Genome["to1"], "chr1", "chr2"), emptyList(), emptyList(), 100, 200)
+                .checkGenome(Genome["to1"])
     }
 
 

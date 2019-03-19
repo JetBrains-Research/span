@@ -144,7 +144,7 @@ abstract class Tool2Tune<T> {
         }.bounded(labelledTracks.size.toLong() * parameters.size)
         val labelErrors = LabelErrors()
         for ((cellId, replicate, trackPath, labelsPath) in labelledTracks) {
-            val labels = PeakAnnotation.loadLabels(labelsPath, configuration.genome)
+            val labels = PeakAnnotation.loadLabels(labelsPath, configuration.genomeQuery.genome)
             val labelErrorsGrid = parameters.map { parameter ->
                 val peaksPath = folder / transform(parameter) /
                         fileName(cellId, replicate, target, parameter)

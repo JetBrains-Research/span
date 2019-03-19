@@ -93,7 +93,7 @@ class PeakCallerTuning(configuration: DataConfig,
                 return@forEach
             }
             resultTable.addRecord(track.name, "test",
-                    computeErrors(PeakAnnotation.loadLabels(track.testLabelPath!!, configuration.genome),
+                    computeErrors(PeakAnnotation.loadLabels(track.testLabelPath!!, configuration.genomeQuery.genome),
                             LocationsMergingList.load(configuration.genomeQuery, peakPath)))
         }
         resultTable.print(tool.folder(experimentPath, target, useInput) / "${target}_${tool}_test_error.tsv")
@@ -173,7 +173,16 @@ class PeakCallerTuning(configuration: DataConfig,
             if (tools.isEmpty()) {
                 LOG.info("No peak callers selected, nothing to run.")
             } else {
-                PeakCallerTuning(loadDataConfig(config), washuPath,
+                val configuration = loadDataConfig(config)
+
+                // XXX: this experiment configures genome using defaults paths
+                // XXX  from genomes folder, e.g. ~/.epigenome/genomes
+                // XXX  If you decide to support custom chom.size paths
+                // XXX  you need to fix somehow genome parsing in configuration file
+                // XXX  and propagate you custom paths there
+                // assert(configuration.genomeQuery.genome.chromSizesPath == myCustomPath
+
+                PeakCallerTuning(configuration, washuPath,
                         tools = tools,
                         useInput = input,
                         computeTestError = test).run()

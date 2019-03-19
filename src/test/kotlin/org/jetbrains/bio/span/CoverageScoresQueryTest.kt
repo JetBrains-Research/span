@@ -2,16 +2,13 @@ package org.jetbrains.bio.span
 
 import org.apache.commons.math3.util.Precision
 import org.jetbrains.bio.coverage.SingleEndCoverage
-import org.jetbrains.bio.genome.Chromosome
-import org.jetbrains.bio.genome.GenomeQuery
-import org.jetbrains.bio.genome.Location
-import org.jetbrains.bio.genome.Strand
+import org.jetbrains.bio.genome.*
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class CoverageScoresQueryTest {
-    private var genomeQuery: GenomeQuery = GenomeQuery("to1")
+    private var genomeQuery: GenomeQuery = GenomeQuery(Genome["to1"])
     private var chromosome1: Chromosome = genomeQuery.get()[0]
 
     @Test

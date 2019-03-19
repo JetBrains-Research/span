@@ -4,6 +4,7 @@ import org.jetbrains.bio.big.ExtendedBedEntry
 import org.jetbrains.bio.dataset.CellId
 import org.jetbrains.bio.dataset.DataConfig
 import org.jetbrains.bio.dataset.ReplicateDataKey
+import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.Location
 import org.jetbrains.bio.genome.LocationAware
 import org.jetbrains.bio.genome.containers.LocationsMergingList
@@ -75,13 +76,13 @@ data class PeakAnnotation(override val location: Location,
                                         type.id, itemRgb = type.color.rgb)
 
     companion object {
-        fun loadLabels(labelPath: Path, build: String): List<PeakAnnotation> {
+        fun loadLabels(labelPath: Path, genome: Genome): List<PeakAnnotation> {
             val format = BedFormat(BedField.NAME)
             return format.parse(labelPath) { it.toList() }.map {
                 val e = it.unpackRegularFields(format)
                 val type = PeakAnnotationType.from(e.name)
                 requireNotNull("Unknown type: $type")
-                PeakAnnotation(e.toLocation(build), type!!)
+                PeakAnnotation(e.toLocation(genome), type!!)
             }
         }
     }

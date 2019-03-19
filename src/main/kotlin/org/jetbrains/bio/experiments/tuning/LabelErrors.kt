@@ -19,7 +19,7 @@ internal fun PeakCallerTuning.generateLabelErrors(target: String, tool: Tool2Tun
         val labelledTracks = configuration.extractLabelledTracks(target)
         val labelErrors = LabelErrors()
         labelledTracks.forEach { track ->
-            val labels = PeakAnnotation.loadLabels(track.labelPath, configuration.genome)
+            val labels = PeakAnnotation.loadLabels(track.labelPath, configuration.genomeQuery.genome)
             val peaksPath = tunedPeaks[track.cellId to track.name]
             if (peaksPath == null) {
                 LOG.warn("No tuned peaks for $target, $tool, ${track.cellId} and ${track.name}, " +
@@ -52,7 +52,7 @@ internal fun PeakCallerTuning.generateReplicatedLabelErrors(target: String, tool
             null
         }
         val labels = PeakAnnotation.loadLabels(configuration.extractLabelledTracks(target).first().labelPath,
-                configuration.genome)
+                configuration.genomeQuery.genome)
         if (peaksPath == null) {
             LOG.warn("No tuned replicated peak file for $target and $tool, can't generate label errors")
             return@checkOrRecalculate

@@ -8,6 +8,7 @@ import org.apache.log4j.Logger
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.fit.SpanModelFitExperiment.Companion.createEffectiveQueries
 import org.jetbrains.bio.genome.Chromosome
+import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.query.CachingQuery
 import org.jetbrains.bio.query.Query
@@ -57,9 +58,9 @@ data class SpanFitInformation(val build: String,
                     },
                     VERSION)
 
-    internal fun checkBuild(build: String) {
-        check(this.build == build) {
-            "Wrong genome build, expected: ${this.build}, got: $build"
+    internal fun checkGenome(genome: Genome) {
+        check(this.build == genome.build) {
+            "Wrong genome build, expected: ${this.build}, got: ${genome.build}"
         }
     }
 
@@ -84,7 +85,7 @@ data class SpanFitInformation(val build: String,
      * Creates binned offsets for [chromosome] using [binSize]
      */
     fun offsets(chromosome: Chromosome): IntArray {
-        checkBuild(chromosome.genome.build)
+        checkGenome(chromosome.genome)
         checkChromosome(chromosome)
         return chromosome.range.slice(binSize).mapToInt { it.startOffset }.toArray()
     }
@@ -111,7 +112,7 @@ data class SpanFitInformation(val build: String,
     }
 
     internal fun split(dataFrame: DataFrame, genomeQuery: GenomeQuery): Map<String, DataFrame> {
-        checkBuild(genomeQuery.build)
+        checkGenome(genomeQuery.genome)
         return genomeQuery.get()
                 .filter { it.name in chromosomesSizes }
                 .map { chromosome ->
@@ -373,7 +374,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
                 LOG.debug("Completed model file decompress and started loading: $tarPath")
                 val info = SpanFitInformation.load(dir / SpanModelFitExperiment.INFORMATION_JSON)
                 // Sanity check
-                info.checkBuild(genomeQuery.build)
+                info.checkGenome(genomeQuery.genome)
                 val model = ClassificationModel.load<ClassificationModel>(dir / MODEL_JSON)
                 val logNullMembershipsDF = DataFrame.load(dir / SpanModelFitExperiment.NULL_NPZ)
                 val logNullMembershipsMap = info.split(logNullMembershipsDF, genomeQuery)
