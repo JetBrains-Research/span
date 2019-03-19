@@ -351,6 +351,7 @@ LABELS, FDR, GAP options are ignored.
                     sampleCoverage(control, TO, BIN, goodQuality = false)
 
                     val chromsizes = Genome["to1"].chromSizesPath.toString()
+                    val modelPath = dir / "custom" / "path" / "model.span"
                     SpanCLA.main(arrayOf(
                         "analyze",
                         "-cs", chromsizes,
@@ -358,11 +359,8 @@ LABELS, FDR, GAP options are ignored.
                         "-t", path.toString(),
                         "-c", control.toString(),
                         "--threads", THREADS.toString(),
-                        "--model", "custom/path/model.span"
+                        "--model", modelPath.toString()
                     ))
-                    // Model test
-                    assertTrue((Configuration.experimentsPath / "custom" / "path").exists)
-                    val modelPath = Configuration.experimentsPath / "custom" / "path" / "model.span"
                     assertTrue(modelPath.exists, "Model was not created at $modelPath")
                     assertTrue(modelPath.size.isNotEmpty(), "Model file $modelPath is empty")
                 }
