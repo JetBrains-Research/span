@@ -341,6 +341,45 @@ LABELS, FDR, GAP options are ignored.
         }
     }
 
+    @Test
+    fun testCustomModelPath() {
+        withTempDirectory("work") { dir ->
+            withTempFile("track", ".bed.gz", dir) { path ->
+                withTempFile("control", ".bed.gz", dir) { control ->
+                    // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
+                    sampleCoverage(path, TO, BIN, goodQuality = true)
+                    sampleCoverage(control, TO, BIN, goodQuality = false)
+
+                    val chromsizes = Genome["to1"].chromSizesPath.toString()
+                    SpanCLA.main(arrayOf(
+                        "analyze",
+                        "-cs", chromsizes,
+                        "--workdir", dir.toString(),
+                        "-t", path.toString(),
+                        "-c", control.toString(),
+                        "--threads", THREADS.toString(),
+                        "--model", "custom/path/model.span"
+                    ))
+                    // Model test
+                    assertTrue((Configuration.experimentsPath / "custom" / "path").exists)
+                    val modelPath = Configuration.experimentsPath / "custom" / "path" / "model.span"
+                    assertTrue(modelPath.exists, "Model was not created at $modelPath")
+                    assertTrue(modelPath.size.isNotEmpty(), "Model file $modelPath is empty")
+                    // Model reloading test
+                    SpanCLA.main(arrayOf(
+                        "analyze",
+                        "-cs", chromsizes,
+                        "--workdir", dir.toString(),
+                        "-t", path.toString(),
+                        "-c", control.toString(),
+                        "--threads", THREADS.toString(),
+                        "--model", "custom/path/model.span"
+                    ))
+                }
+            }
+        }
+    }
+
 
     @Test
     fun testPeaksStats() {
