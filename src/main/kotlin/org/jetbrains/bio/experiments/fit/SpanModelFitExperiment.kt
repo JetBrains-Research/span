@@ -37,26 +37,31 @@ import kotlin.collections.LinkedHashMap
  *
  * See [getChromosomesIndices] and [offsets] for details.
  */
-data class SpanFitInformation(val build: String,
-                              val data: List<TC>,
-                              val labels: List<String>,
-                              val fragment: Int?,
-                              val binSize: Int,
-                              val chromosomesSizes: LinkedHashMap<String, Int>,
-                              val version: Int) {
+data class SpanFitInformation(
+        val build: String,
+        val data: List<TC>,
+        val labels: List<String>,
+        val fragment: Int?,
+        val binSize: Int,
+        val chromosomesSizes: LinkedHashMap<String, Int>,
+        val version: Int
+) {
 
-    constructor(genomeQuery: GenomeQuery,
-                paths: List<Pair<Path, Path?>>,
-                labels: List<String>,
-                fragment: Int?,
-                binSize: Int) :
-            this(genomeQuery.build,
-                    paths.map { TC(it.first.toString(), it.second?.toString()) },
-                    labels, fragment, binSize,
-                    LinkedHashMap<String, Int>().apply {
-                        genomeQuery.get().sortedBy { it.name }.forEach { this[it.name] = it.length }
-                    },
-                    VERSION)
+    constructor(
+            genomeQuery: GenomeQuery,
+            paths: List<Pair<Path, Path?>>,
+            labels: List<String>,
+            fragment: Int?,
+            binSize: Int
+    ): this(
+        genomeQuery.build,
+        paths.map { TC(it.first.toString(), it.second?.toString()) },
+        labels, fragment, binSize,
+        LinkedHashMap<String, Int>().apply {
+            genomeQuery.get().sortedBy { it.name }.forEach { this[it.name] = it.length }
+        },
+        VERSION
+    )
 
     internal fun checkGenome(genome: Genome) {
         check(this.build == genome.build) {
@@ -150,9 +155,11 @@ data class SpanFitInformation(val build: String,
     }
 }
 
-data class SpanFitResults(val fitInfo: SpanFitInformation,
-                          val model: ClassificationModel,
-                          val logNullMemberships: Map<String, DataFrame>) {
+data class SpanFitResults(
+        val fitInfo: SpanFitInformation,
+        val model: ClassificationModel,
+        val logNullMemberships: Map<String, DataFrame>
+) {
     companion object {
         internal val LOG = Logger.getLogger(SpanFitResults::class.java)
     }
@@ -166,9 +173,9 @@ data class SpanFitResults(val fitInfo: SpanFitInformation,
                 val signalMean = model.means[1]
                 val noiseMean = model.means[0]
                 mapOf(
-                        "Signal mean" to signalMean.toString(),
-                        "Noise mean" to noiseMean.toString(),
-                        "Signal to noise" to ((signalMean + 1e-10) / (noiseMean + 1e-10)).toString()
+                    "Signal mean" to signalMean.toString(),
+                    "Noise mean" to noiseMean.toString(),
+                    "Signal to noise" to ((signalMean + 1e-10) / (noiseMean + 1e-10)).toString()
                 )
             }
             else -> emptyMap()
@@ -203,10 +210,11 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
         modelClass: Class<Model>,
         availableStates: Array<State>,
         private val nullHypothesis: NullHypothesis<State>,
-        unique: Boolean = true
+        unique: Boolean = true,
+        private val fixedModelPath: Path? = null
 ) : ModelFitExperiment<Model, State>(
-        createEffectiveQueries(externalGenomeQuery, paths, labels, fragment, binSize, unique),
-        modelFitter, modelClass, availableStates) {
+    createEffectiveQueries(externalGenomeQuery, paths, labels, fragment, binSize, unique),
+    modelFitter, modelClass, availableStates) {
 
     val results: SpanFitResults by lazy {
         getOrLoadResults()
@@ -228,7 +236,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
 
     // XXX It is important to use get() here, because id is overridden in superclasses
     private val modelPath: Path
-        get() = experimentPath / "$id.span"
+        get() = fixedModelPath ?: experimentPath / "$id.span"
 
     private fun calculateModel(): Model {
         MultitaskProgress.addTask(dataQuery.id, (Fitter.MAX_ITERATIONS / 4).toLong())
@@ -238,18 +246,18 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
     }
 
     private fun calculateStatesDataFrame(model: Model): DataFrame = DataFrame.rowBind(
-            preprocessedData.map { preprocessed ->
-                val logMemberships = model.evaluate(preprocessed)
-                var df = DataFrame()
-                availableStates.forEachIndexed { j, state ->
-                    val f64Array = logMemberships.V[j]
-                    // Convert [Double] to [Float] to save space, see #1163
-                    df = df.with(state.toString(), f64Array.toFloatArray())
-                }
-                df = df.with("state", model.predict(preprocessed)
-                        .map { availableStates[it].toString() }.toTypedArray())
-                df
-            }.toTypedArray())
+        preprocessedData.map { preprocessed ->
+            val logMemberships = model.evaluate(preprocessed)
+            var df = DataFrame()
+            availableStates.forEachIndexed { j, state ->
+                val f64Array = logMemberships.V[j]
+                // Convert [Double] to [Float] to save space, see #1163
+                df = df.with(state.toString(), f64Array.toFloatArray())
+            }
+            df = df.with("state", model.predict(preprocessed)
+                    .map { availableStates[it].toString() }.toTypedArray())
+            df
+        }.toTypedArray())
 
     private val statesDataFrame: DataFrame by lazy {
         @Suppress("UNCHECKED_CAST")
@@ -304,8 +312,8 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
             computedResults!!
         } else {
             loadResults(genomeQuery, modelPath).apply {
-                check(this.fitInfo.binSize == binSize) {
-                    "Wrong bin size: expected $binSize, but got ${this.fitInfo.binSize}"
+                check(fitInfo == fitInformation) {
+                    "Wrong model information: expected $fitInformation, but got $fitInfo"
                 }
             }
         }
@@ -336,8 +344,8 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
             val nonEmptyChromosomes = hashSetOf<Chromosome>()
             paths.forEach { (t, _) ->
                 val coverage = ReadsQuery(
-                        genomeQuery, t,
-                        unique = unique, fragment = fragment, logFragmentSize = false
+                    genomeQuery, t,
+                    unique = unique, fragment = fragment, logFragmentSize = false
                 ).get()
                 nonEmptyChromosomes.addAll(chromosomes.filter { coverage.getBothStrandsCoverage(it.range.on(it)) > 0 })
             }

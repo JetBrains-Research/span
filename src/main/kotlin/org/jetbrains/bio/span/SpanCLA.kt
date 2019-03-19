@@ -119,6 +119,7 @@ compare                         Differential peak calling mode, experimental
                 val fdr = options.valueOf("fdr") as Double
                 val threads = options.valueOf("threads") as Int?
                 val unique = "keep-dup" !in options
+                val modelPath = if ("model" in options) options.valueOf("model") as Path else null
 
                 // Configure logging
                 val id = if (peaksPath != null) {
@@ -155,6 +156,9 @@ compare                         Differential peak calling mode, experimental
                 val genomeQuery = GenomeQuery(chromSizesPath)
                 LOG.info("CHROM.SIZES: $chromSizesPath")
                 LOG.info("GENOME: ${genomeQuery.genome.build}")
+                if (modelPath != null) {
+                    LOG.info("MODEL: $modelPath")
+                }
                 if (fragment != null) {
                     LOG.info("FRAGMENT: $fragment")
                 }
@@ -184,7 +188,7 @@ compare                         Differential peak calling mode, experimental
 
                 val paths = matchTreatmentAndControls(treatmentPaths, controlPaths)
                 val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(
-                    genomeQuery, paths, bin, fragment, unique
+                    genomeQuery, paths, bin, fragment, unique, modelPath
                 )
                 if (peaksPath != null) {
                     if (labelsPath == null) {
@@ -421,7 +425,7 @@ compare                         Differential peak calling mode, experimental
                         .defaultsTo(Span.DEFAULT_BIN)
             }
             if (fdr) {
-                acceptsAll(listOf("f", "fdr"), "Fdr value")
+                acceptsAll(listOf("f", "fdr"), "FDR value")
                         .withRequiredArg()
                         .ofType(Double::class.java)
                         .defaultsTo(Span.DEFAULT_FDR)
@@ -439,6 +443,8 @@ compare                         Differential peak calling mode, experimental
                     .withRequiredArg()
                     .ofType(Int::class.java)
             acceptsAll(listOf("k", "keep-dup"), "Keep duplicates")
+            acceptsAll(listOf("m", "model"), "Path to model file")
+                    .withRequiredArg().withValuesConvertedBy(PathConverter.noCheck())
             formatHelpWith(BuiltinHelpFormatter(200, 2))
         }
     }
