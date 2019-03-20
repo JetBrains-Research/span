@@ -11,6 +11,7 @@ import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.experiments.tuning.PeakAnnotation
 import org.jetbrains.bio.experiments.tuning.Span
 import org.jetbrains.bio.experiments.tuning.TuningResults
+import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.PeaksInfo.compute
 import org.jetbrains.bio.query.ReadsQuery
@@ -153,9 +154,9 @@ compare                         Differential peak calling mode, experimental
                 }
                 // Configuration initialization should be configured before any access
                 configurePaths(workingDir, chromSizesPath)
-                val genomeQuery = GenomeQuery(chromSizesPath)
+                val genome = Genome[chromSizesPath]
                 LOG.info("CHROM.SIZES: $chromSizesPath")
-                LOG.info("GENOME: ${genomeQuery.genome.build}")
+                LOG.info("GENOME: ${genome.build}")
                 if (modelPath != null) {
                     LOG.info("MODEL: $modelPath")
                 }
@@ -186,17 +187,18 @@ compare                         Differential peak calling mode, experimental
 
                 checkMemory()
 
+                val gq = GenomeQuery(genome)
                 val paths = matchTreatmentAndControls(treatmentPaths, controlPaths)
                 val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(
-                    genomeQuery, paths, bin, fragment, unique, modelPath
+                    gq, paths, bin, fragment, unique, modelPath
                 )
                 if (peaksPath != null) {
                     if (labelsPath == null) {
-                        val peaks = peakCallingExperiment.results.getPeaks(genomeQuery, fdr, gap)
+                        val peaks = peakCallingExperiment.results.getPeaks(gq, fdr, gap)
                         savePeaks(peaks, peaksPath,
                                 "peak${if (fragment != null) "_$fragment" else ""}_${bin}_${fdr}_${gap}")
                         LOG.info("Saved result to $peaksPath")
-                        val aboutPeaks = compute(genomeQuery,
+                        val aboutPeaks = compute(gq,
                                 peaks.map { it.location }.stream(),
                                 peaksPath.toUri(),
                                 peakCallingExperiment.fitInformation.data.map { it.path.toPath() })
@@ -204,7 +206,7 @@ compare                         Differential peak calling mode, experimental
                         LOG.info("\n" + (aboutPeaks + aboutModel).map { (k, v) -> "$k: $v" }.joinToString("\n"))
                     } else {
                         val results = TuningResults()
-                        val labels = PeakAnnotation.loadLabels(labelsPath, genomeQuery.genome)
+                        val labels = PeakAnnotation.loadLabels(labelsPath, gq.genome)
                         val (labelErrorsGrid, index) = Span.tune(peakCallingExperiment, labels, "", Span.parameters)
                         val (optimalFDR, optimalGap) = Span.parameters[index]
                         labelErrorsGrid.forEachIndexed { i, error ->
@@ -216,7 +218,7 @@ compare                         Differential peak calling mode, experimental
                         results.saveTuningErrors(peaksPath.parent / "${peaksPath.fileName.stem}_errors.csv")
                         results.saveOptimalResults(peaksPath.parent
                                 / "${peaksPath.fileName.stem}_parameters.csv")
-                        val peaks = peakCallingExperiment.results.getPeaks(genomeQuery, optimalFDR, optimalGap)
+                        val peaks = peakCallingExperiment.results.getPeaks(gq, optimalFDR, optimalGap)
                         savePeaks(peaks, peaksPath, "peak${if (fragment != null) "_$fragment" else ""}_" +
                                 "${bin}_${optimalFDR}_$optimalGap")
                         LOG.info("Saved result to $peaksPath")
@@ -323,8 +325,8 @@ compare                         Differential peak calling mode, experimental
                 LOG.info("CHROM.SIZES: $chromSizesPath")
                 // Configuration initialization should be configured before any access
                 configurePaths(workingDir, chromSizesPath)
-                val genomeQuery = GenomeQuery(chromSizesPath)
-                LOG.info("GENOME: ${genomeQuery.genome.build}")
+                val genome = Genome[chromSizesPath]
+                LOG.info("GENOME: ${genome.build}")
                 LOG.info("FRAGMENT: $fragment")
                 LOG.info("BIN: $bin")
                 LOG.info("FDR: $fdr")
@@ -342,11 +344,15 @@ compare                         Differential peak calling mode, experimental
                 checkMemory()
 
 
+                val gq = GenomeQuery(genome)
                 val paths1 = matchTreatmentAndControls(treatmentPaths1, controlPaths1)
-                val coverages1 = treatmentPaths1.map { ReadsQuery(genomeQuery, it, fragment = fragment) }
+                val coverages1 = treatmentPaths1.map { ReadsQuery(gq, it, fragment = fragment) }
                 val paths2 = matchTreatmentAndControls(treatmentPaths2, controlPaths2)
-                val coverages2 = treatmentPaths1.map { ReadsQuery(genomeQuery, it, fragment = fragment) }
-                val experiment = SpanDifferentialPeakCallingExperiment.getExperiment(genomeQuery, paths1, paths2, bin, fragment)
+                val coverages2 = treatmentPaths1.map { ReadsQuery(gq, it, fragment = fragment) }
+                val experiment = SpanDifferentialPeakCallingExperiment.getExperiment(
+                        gq, paths1, paths2, bin, fragment
+                )
+
                 if (peaksPath != null) {
                     val peaks = experiment.results.getPeaks(experiment.genomeQuery, fdr, gap)
                     peaks.forEach { peak ->
