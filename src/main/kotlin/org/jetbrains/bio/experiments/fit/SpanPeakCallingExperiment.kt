@@ -28,12 +28,13 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
         modelClass: Class<Model>,
         states: Array<State>,
         nullHypothesis: NullHypothesis<State>,
-        unique: Boolean = true
+        unique: Boolean = true,
+        fixedModelPath: Path? = null
 ) : SpanModelFitExperiment<Model, State>(
     genomeQuery,
     paths, MultiLabels.generate(TRACK_PREFIX, paths.size).toList(),
     fragment, binSize,
-    modelFitter, modelClass, states, nullHypothesis, unique
+    modelFitter, modelClass, states, nullHypothesis, unique, fixedModelPath
 ) {
 
     constructor(
@@ -45,11 +46,12 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
             binSize: Int,
             states: Array<State>,
             nullHypothesis: NullHypothesis<State>,
-            unique: Boolean = true
+            unique: Boolean = true,
+            fixedModelPath: Path? = null
     ): this(
         genomeQuery, listOf(paths),
         fragment, binSize,
-        modelFitter, modelClass, states, nullHypothesis, unique
+        modelFitter, modelClass, states, nullHypothesis, unique, fixedModelPath
     )
 
     override val id: String =
@@ -73,7 +75,8 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
                 paths: List<Pair<Path, Path?>>,
                 bin: Int,
                 fragment: Int? = null,
-                unique: Boolean = true
+                unique: Boolean = true,
+                fixedModelPath: Path? = null
         ): SpanPeakCallingExperiment<out MLAbstractHMM, ZLH> {
             check(paths.isNotEmpty()) { "No data" }
             return if (paths.size == 1) {
@@ -83,7 +86,8 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
                     MLFreeNBHMM::class.java,
                     fragment, bin,
                     ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
-                    unique
+                    unique,
+                    fixedModelPath
                 )
             } else {
                 SpanPeakCallingExperiment(
@@ -93,7 +97,8 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
                     semanticCheck(MLConstrainedNBHMM.fitter(paths.size), paths.size),
                     MLConstrainedNBHMM::class.java,
                     ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
-                    unique
+                    unique,
+                    fixedModelPath
                 )
             }
         }
