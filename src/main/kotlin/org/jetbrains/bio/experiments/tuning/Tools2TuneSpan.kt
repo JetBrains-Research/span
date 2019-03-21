@@ -134,7 +134,11 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
              parameters: List<Pair<Double, Int>>,
              cancellableState: CancellableState = CancellableState.current())
             : Pair<List<LabelErrors>, Int> {
-        val labeledGenomeQuery = genomeQuery.only(labels.map { it.location.chromosome.name }.distinct())
+
+        val labeledGenomeQuery = GenomeQuery(
+                genomeQuery.genome,
+                *labels.map { it.location.chromosome.name }.distinct().toTypedArray()
+        )
         // Parallelism is OK here:
         // 1. getPeaks creates BitterSet per each parameters combination of size
         // ~ 3*10^9 / 200bp / 8 / 1024 / 1024 ~ 2MB for human genome

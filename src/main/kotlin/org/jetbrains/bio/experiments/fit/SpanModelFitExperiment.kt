@@ -357,7 +357,10 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
                 LOG.error(errMessage)
                 throw IllegalStateException(errMessage)
             }
-            val effectiveGenomeQuery = genomeQuery.only(nonEmptyChromosomes.toList().map { it.name }.sorted())
+            val effectiveGenomeQuery = GenomeQuery(
+                    genomeQuery.genome,
+                    *nonEmptyChromosomes.map { it.name }.toTypedArray()
+            )
             return effectiveGenomeQuery to object : CachingQuery<Chromosome, DataFrame>() {
                 val scores = paths.map {
                     CoverageScoresQuery(effectiveGenomeQuery, it.first, it.second, fragment, binSize, unique)
