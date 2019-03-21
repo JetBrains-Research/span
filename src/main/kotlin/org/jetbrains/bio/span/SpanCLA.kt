@@ -1,7 +1,6 @@
 package org.jetbrains.bio.span
 
 import com.google.common.annotations.VisibleForTesting
-import joptsimple.BuiltinHelpFormatter
 import joptsimple.OptionParser
 import org.apache.log4j.Level
 import org.apache.log4j.Logger
@@ -451,7 +450,6 @@ compare                         Differential peak calling mode, experimental
             acceptsAll(listOf("k", "keep-dup"), "Keep duplicates")
             acceptsAll(listOf("m", "model"), "Path to model file")
                     .withRequiredArg().withValuesConvertedBy(PathConverter.noCheck())
-            formatHelpWith(BuiltinHelpFormatter(200, 2))
         }
     }
 
