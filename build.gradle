@@ -29,6 +29,8 @@ compileTestKotlin { kotlinOptions.jvmTarget = sourceCompatibility }
 repositories {
     maven { url "https://dl.bintray.com/jetbrains-research/maven" }
     jcenter()
+    // Uncomment to depend on bioinf-commons SNAPSHOT
+    // maven { url 'https://jitpack.io' }
 }
 
 dependencies {
@@ -37,6 +39,7 @@ dependencies {
     compile 'org.jetbrains.kotlinx:kotlinx-support-jdk8:0.1'
     compile 'log4j:log4j:1.2.17'
 
+    // implementation 'com.github.JetBrains-Research:bioinf-commons:master-SNAPSHOT'
     compile 'org.jetbrains.bio:bioinf-commons:0.0.2'
 
     testCompile 'junit:junit:4.12'
