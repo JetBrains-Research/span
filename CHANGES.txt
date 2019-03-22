@@ -3,17 +3,17 @@ SPAN Changelog
 
 Here you can see the full list of changes between each release.
 
-Version 0.10.0.XXXX
+Version 0.10.0
 -------------
 
-Released on XXXXX
+Released on March 22, 2019
 
 - ATAC-Seq support -  `--fragment 0` option works correctly in paired end reads case
 - Single Cell ATAC-Seq supported - `--keep-dup` options allows duplicated alignments in same position
 - SPAN model name can be configured explicitly by `--model`, default name is more user friendly
 - SPAN doesn't ignore contigs (alternative, random) chromosomes in peak calling anymore
 
-Version 0.9.2.4618
+Version 0.9.2
 -------------
 
 Released on Jan 16, 2019
