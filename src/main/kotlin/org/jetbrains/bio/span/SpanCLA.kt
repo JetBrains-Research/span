@@ -165,18 +165,17 @@ compare                         Differential peak calling mode, experimental
                 if (!unique) {
                     LOG.info("KEEP DUPLICATES: true")
                 }
+                LOG.info("BIN: $bin")
                 if (peaksPath != null) {
                     if (labelsPath != null) {
                         LOG.info("LABELS: $labelsPath")
-                        LOG.info("BIN, FDR, GAP options are ignored.")
+                        LOG.info("FDR, GAP options are ignored.")
                     } else {
-                        LOG.info("BIN: $bin")
                         LOG.info("FDR: $fdr")
                         LOG.info("GAP: $gap")
                     }
                     LOG.info("PEAKS: $peaksPath")
                 } else {
-                    LOG.info("BIN: $bin")
                     LOG.info("NO output path given, process model fitting only.")
                     LOG.info("LABELS, FDR, GAP options are ignored.")
                 }
@@ -194,13 +193,17 @@ compare                         Differential peak calling mode, experimental
                 if (peaksPath != null) {
                     if (labelsPath == null) {
                         val peaks = peakCallingExperiment.results.getPeaks(gq, fdr, gap)
-                        savePeaks(peaks, peaksPath,
-                                "peak${if (fragment != null) "_$fragment" else ""}_${bin}_${fdr}_${gap}")
+                        savePeaks(
+                            peaks, peaksPath,
+                            "peak${if (fragment != null) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
+                        )
                         LOG.info("Saved result to $peaksPath")
-                        val aboutPeaks = compute(gq,
+                        val aboutPeaks = compute(
+                            gq,
                                 peaks.map { it.location }.stream(),
                                 peaksPath.toUri(),
-                                peakCallingExperiment.fitInformation.data.map { it.path.toPath() })
+                                peakCallingExperiment.fitInformation.data.map { it.path.toPath() }
+                        )
                         val aboutModel = peakCallingExperiment.results.about()
                         LOG.info("\n" + (aboutPeaks + aboutModel).map { (k, v) -> "$k: $v" }.joinToString("\n"))
                     } else {
@@ -209,17 +212,22 @@ compare                         Differential peak calling mode, experimental
                         val (labelErrorsGrid, index) = Span.tune(peakCallingExperiment, labels, "", Span.parameters)
                         val (optimalFDR, optimalGap) = Span.parameters[index]
                         labelErrorsGrid.forEachIndexed { i, error ->
-                            results.addRecord("result",
+                            results.addRecord(
+                                "result",
                                     Span.transform(Span.parameters[i]),
                                     error,
-                                    i == index)
+                                    i == index
+                            )
                         }
                         results.saveTuningErrors(peaksPath.parent / "${peaksPath.fileName.stem}_errors.csv")
                         results.saveOptimalResults(peaksPath.parent
                                 / "${peaksPath.fileName.stem}_parameters.csv")
                         val peaks = peakCallingExperiment.results.getPeaks(gq, optimalFDR, optimalGap)
-                        savePeaks(peaks, peaksPath, "peak${if (fragment != null) "_$fragment" else ""}_" +
-                                "${bin}_${optimalFDR}_$optimalGap")
+                        savePeaks(
+                            peaks, peaksPath,
+                            "peak${if (fragment != null) "_$fragment" else ""}_" +
+                                "${bin}_${optimalFDR}_$optimalGap"
+                        )
                         LOG.info("Saved result to $peaksPath")
                     }
                 } else {
