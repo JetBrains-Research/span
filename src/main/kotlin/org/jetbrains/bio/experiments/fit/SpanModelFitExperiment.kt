@@ -36,6 +36,8 @@ import kotlin.collections.LinkedHashMap
  * this class is used to access chromosomes information from that model.
  *
  * See [getChromosomesIndices] and [offsets] for details.
+ *
+ * [labels] refer to the coverage dataframe column labels, not to the supervised learning annotations.
  */
 data class SpanFitInformation(
         val build: String,
