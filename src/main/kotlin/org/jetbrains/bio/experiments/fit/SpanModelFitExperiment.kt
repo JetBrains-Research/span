@@ -2,7 +2,9 @@ package org.jetbrains.bio.experiments.fit
 
 import com.google.common.annotations.VisibleForTesting
 import com.google.common.math.IntMath
-import com.google.gson.GsonBuilder
+import com.google.gson.*
+import com.google.gson.reflect.TypeToken
+import joptsimple.ValueConversionException
 import kotlinx.support.jdk7.use
 import org.apache.log4j.Logger
 import org.jetbrains.bio.dataframe.DataFrame
@@ -10,10 +12,7 @@ import org.jetbrains.bio.experiments.fit.SpanModelFitExperiment.Companion.create
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
-import org.jetbrains.bio.query.CachingQuery
-import org.jetbrains.bio.query.Query
-import org.jetbrains.bio.query.ReadsQuery
-import org.jetbrains.bio.query.reduceIds
+import org.jetbrains.bio.query.*
 import org.jetbrains.bio.span.CoverageScoresQuery
 import org.jetbrains.bio.span.scoresDataFrame
 import org.jetbrains.bio.statistics.ClassificationModel
@@ -26,6 +25,7 @@ import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.statistics.state.ZLHID
 import org.jetbrains.bio.util.*
+import java.lang.reflect.Type
 import java.math.RoundingMode
 import java.nio.file.Path
 import java.util.*
@@ -129,15 +129,39 @@ data class SpanFitInformation(
     }
 
     companion object {
-        const val VERSION: Int = 1
+        const val VERSION: Int = 2
 
         /**
          * Using Treatment and Control class instead of [Pair] here for nice GSON serialization
          */
         data class TC(val path: String, val control: String?)
 
+        object FragmentTypeAdapter : JsonSerializer<Optional<Int>>, JsonDeserializer<Optional<Int>> {
+
+            override fun serialize(
+                    src: Optional<Int>, typeOfSrc: Type,
+                    context: JsonSerializationContext
+            ): JsonElement {
+                return context.serialize(src.fragmentToString())
+            }
+
+            override fun deserialize(
+                    json: JsonElement, typeOfT: Type,
+                    context: JsonDeserializationContext
+            ): Optional<Int> {
+                val str = context.deserialize<String>(json, object : TypeToken<String>() {}.type)
+                try {
+                    return OptionalIntConverter().convert(str)
+                } catch (e: ValueConversionException) {
+                    throw IllegalStateException("Failed to deserialize $str", e)
+                }
+
+            }
+        }
+
 
         private val GSON = GsonBuilder()
+                .registerTypeAdapter(object : TypeToken<Optional<Int>>() {}.type, FragmentTypeAdapter)
                 .setPrettyPrinting()
                 .setFieldNamingStrategy(GSONUtil.NO_MY_UNDESCORE_NAMING_STRATEGY)
                 .create()

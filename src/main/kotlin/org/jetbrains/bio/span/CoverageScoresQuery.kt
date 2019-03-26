@@ -24,7 +24,7 @@ class CoverageScoresQuery(
     override val id: String
         get() = reduceIds(
             listOfNotNull(
-                treatmentPath.stemGz, controlPath?.stemGz, fragment, binSize,
+                treatmentPath.stemGz, controlPath?.stemGz, fragment.orElse(null), binSize,
                 if (!unique) "keepdup" else null
             ).map { it.toString() }
         )

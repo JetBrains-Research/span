@@ -69,7 +69,7 @@ class SpanFitInformationTest {
   "labels": [
     "treatment_control"
   ],
-  "fragment": 100,
+  "fragment": "100",
   "bin_size": 200,
   "chromosomes_sizes": {
     "chr1": 10000000,
@@ -78,7 +78,7 @@ class SpanFitInformationTest {
     "chrM": 1000000,
     "chrX": 1000000
   },
-  "version": 1
+  "version": 2
 }""".trim().lines(), path.bufferedReader().lines().collect(Collectors.toList()))
                 }
                 assertEquals(listOf("chr1", "chr2", "chr3", "chrM", "chrX"), info.chromosomesSizes.keys.toList())
@@ -103,7 +103,7 @@ class SpanFitInformationTest {
   "labels": [
     "treatment_control"
   ],
-  "fragment": null,
+  "fragment": "auto",
   "bin_size": 200,
   "chromosomes_sizes": {
     "chr1": 10000000,
@@ -112,7 +112,7 @@ class SpanFitInformationTest {
     "chrM": 1000000,
     "chrX": 1000000
   },
-  "version": 1
+  "version": 2
 }""")
             }
             assertEquals(info, SpanFitInformation.load(path))
@@ -122,17 +122,17 @@ class SpanFitInformationTest {
     @Test
     fun checkVersion() {
         expectedEx.expect(IllegalStateException::class.java)
-        expectedEx.expectMessage("Wrong version: expected: 1, got: 2")
+        expectedEx.expectMessage("Wrong version: expected: 2, got: 3")
         withTempFile("foo", ".tar") { path ->
             path.bufferedWriter().use {
                 it.write("""{
   "build": "to1",
   "data": [],
   "labels": [],
-  "fragment": null,
+  "fragment": "auto",
   "bin_size": 200,
   "chromosomes_sizes": {},
-  "version": 2
+  "version": 3
 }""")
             }
             SpanFitInformation.load(path)
@@ -163,4 +163,4 @@ internal operator fun SpanFitInformation.Companion.invoke(
         labels: List<String>,
         fragment: Int,
         binSize: Int
-    ): SpanFitInformation = SpanFitInformation(genomeQuery, paths, labels, Optional.of(fragment), binSize)
+): SpanFitInformation = SpanFitInformation(genomeQuery, paths, labels, Optional.of(fragment), binSize)
