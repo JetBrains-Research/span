@@ -157,7 +157,7 @@ TREATMENT2: $path
 CONTROL2: none
 CHROM.SIZES: $chromsizes
 GENOME: to1
-FRAGMENT: null
+FRAGMENT: auto
 BIN: $BIN
 FDR: $FDR
 GAP: $GAP

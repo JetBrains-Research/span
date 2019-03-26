@@ -334,7 +334,7 @@ compare                         Differential peak calling mode, experimental
                 configurePaths(workingDir, chromSizesPath)
                 val genome = Genome[chromSizesPath]
                 LOG.info("GENOME: ${genome.build}")
-                LOG.info("FRAGMENT: $fragment")
+                LOG.info("FRAGMENT: ${fragment.fragmentToString()}")
                 LOG.info("BIN: $bin")
                 LOG.info("FDR: $fdr")
                 LOG.info("GAP: $gap")
