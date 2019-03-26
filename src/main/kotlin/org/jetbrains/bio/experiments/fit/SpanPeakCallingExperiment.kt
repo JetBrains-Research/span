@@ -14,6 +14,7 @@ import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.state.ZLH
 import java.nio.file.Path
+import java.util.*
 
 /**
  * @author Alexey Dievsky
@@ -22,7 +23,7 @@ import java.nio.file.Path
 class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
         genomeQuery: GenomeQuery,
         paths: List<Pair<Path, Path?>>,
-        fragment: Int?,
+        fragment: Optional<Int>,
         binSize: Int,
         modelFitter: Fitter<Model>,
         modelClass: Class<Model>,
@@ -42,7 +43,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
             paths: Pair<Path, Path?>,
             modelFitter: Fitter<Model>,
             modelClass: Class<Model>,
-            fragment: Int?,
+            fragment: Optional<Int>,
             binSize: Int,
             states: Array<State>,
             nullHypothesis: NullHypothesis<State>,
@@ -74,7 +75,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
                 genomeQuery: GenomeQuery,
                 paths: List<Pair<Path, Path?>>,
                 bin: Int,
-                fragment: Int? = null,
+                fragment: Optional<Int> = Optional.empty(),
                 unique: Boolean = true,
                 fixedModelPath: Path? = null
         ): SpanPeakCallingExperiment<out MLAbstractHMM, ZLH> {

@@ -10,6 +10,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.ExpectedException
+import java.nio.file.Path
 import java.util.*
 import java.util.stream.Collectors
 
@@ -30,13 +31,16 @@ class SpanFitInformationTest {
     fun checkWrongBuild() {
         expectedEx.expect(IllegalStateException::class.java)
         expectedEx.expectMessage("Wrong genome build, expected: hg19, got: to1")
-        SpanFitInformation("hg19", emptyList(), emptyList(), 100, 200, LinkedHashMap(), 1).checkGenome(Genome["to1"])
+        SpanFitInformation(
+            "hg19", emptyList(), emptyList(), Optional.of(100), 200, LinkedHashMap(), 1
+        ).checkGenome(Genome["to1"])
     }
 
     @Test
     fun checkGenomeQueryOrder() {
-        SpanFitInformation(GenomeQuery(Genome["to1"], "chr1", "chr2"), emptyList(), emptyList(), 100, 200)
-                .checkGenome(Genome["to1"])
+        SpanFitInformation(
+            GenomeQuery(Genome["to1"], "chr1", "chr2"), emptyList(), emptyList(), 100, 200
+        ).checkGenome(Genome["to1"])
     }
 
 
@@ -84,7 +88,9 @@ class SpanFitInformationTest {
 
     @Test
     fun checkLoad() {
-        val info = SpanFitInformation(gq, listOf("path_to_file".toPath() to null), listOf("treatment_control"), null, 200)
+        val info = SpanFitInformation(
+            gq, listOf("path_to_file".toPath() to null), listOf("treatment_control"), Optional.empty(), 200
+        )
         withTempFile("foo", ".tar") { path ->
             path.bufferedWriter().use {
                 it.write("""{
@@ -148,3 +154,13 @@ class SpanFitInformationTest {
     }
 }
 
+/**
+ * Simplified instance construction for tests.
+ */
+internal operator fun SpanFitInformation.Companion.invoke(
+        genomeQuery: GenomeQuery,
+        paths: List<Pair<Path, Path?>>,
+        labels: List<String>,
+        fragment: Int,
+        binSize: Int
+    ): SpanFitInformation = SpanFitInformation(genomeQuery, paths, labels, Optional.of(fragment), binSize)

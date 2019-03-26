@@ -15,6 +15,7 @@ import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.state.ZLHID
 import java.nio.file.Path
+import java.util.*
 
 /**
  * @author Alexey Dievsky
@@ -24,7 +25,7 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
         genomeQuery: GenomeQuery,
         paths1: List<Pair<Path, Path?>>,
         paths2: List<Pair<Path, Path?>>,
-        fragment: Int?,
+        fragment: Optional<Int>,
         binSize: Int,
         modelFitter: Fitter<Model>,
         modelClass: Class<Model>,
@@ -42,7 +43,7 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
             genomeQuery: GenomeQuery,
             paths1: Pair<Path, Path?>,
             paths2: Pair<Path, Path?>,
-            fragment: Int?, binSize: Int,
+            fragment: Optional<Int>, binSize: Int,
             modelFitter: Fitter<Model>,
             modelClass: Class<Model>,
             states: Array<State>, nullHypothesis: NullHypothesis<State>
@@ -96,7 +97,7 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
                 paths1: List<Pair<Path, Path?>>,
                 paths2: List<Pair<Path, Path?>>,
                 bin: Int,
-                fragment: Int? = null
+                fragment: Optional<Int> = Optional.empty()
         ): SpanDifferentialPeakCallingExperiment<MLConstrainedNBHMM, ZLHID> {
             check(paths1.isNotEmpty() && paths2.isNotEmpty()) { "No data" }
             return if (paths1.size == 1 && paths2.size == 1) {

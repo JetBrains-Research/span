@@ -43,7 +43,7 @@ data class SpanFitInformation(
         val build: String,
         val data: List<TC>,
         val labels: List<String>,
-        val fragment: Int?,
+        val fragment: Optional<Int>,
         val binSize: Int,
         val chromosomesSizes: LinkedHashMap<String, Int>,
         val version: Int
@@ -53,7 +53,7 @@ data class SpanFitInformation(
             genomeQuery: GenomeQuery,
             paths: List<Pair<Path, Path?>>,
             labels: List<String>,
-            fragment: Int?,
+            fragment: Optional<Int>,
             binSize: Int
     ): this(
         genomeQuery.build,
@@ -206,7 +206,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
         externalGenomeQuery: GenomeQuery,
         paths: List<Pair<Path, Path?>>,
         labels: List<String>,
-        fragment: Int?,
+        fragment: Optional<Int>,
         val binSize: Int,
         modelFitter: Fitter<Model>,
         modelClass: Class<Model>,
@@ -216,7 +216,8 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
         private val fixedModelPath: Path? = null
 ) : ModelFitExperiment<Model, State>(
     createEffectiveQueries(externalGenomeQuery, paths, labels, fragment, binSize, unique),
-    modelFitter, modelClass, availableStates) {
+    modelFitter, modelClass, availableStates
+) {
 
     val results: SpanFitResults by lazy {
         getOrLoadResults()
@@ -338,7 +339,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
                 genomeQuery: GenomeQuery,
                 paths: List<Pair<Path, Path?>>,
                 labels: List<String>,
-                fragment: Int?,
+                fragment: Optional<Int>,
                 binSize: Int,
                 unique: Boolean = true
         ): Pair<GenomeQuery, Query<Chromosome, DataFrame>> {
@@ -360,8 +361,8 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
                 throw IllegalStateException(errMessage)
             }
             val effectiveGenomeQuery = GenomeQuery(
-                    genomeQuery.genome,
-                    *nonEmptyChromosomes.map { it.name }.toTypedArray()
+                genomeQuery.genome,
+                *nonEmptyChromosomes.map { it.name }.toTypedArray()
             )
             return effectiveGenomeQuery to object : CachingQuery<Chromosome, DataFrame>() {
                 val scores = paths.map {

@@ -7,17 +7,15 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.Strand
 import org.jetbrains.bio.genome.containers.GenomeMap
 import org.jetbrains.bio.genome.containers.genomeMap
-import org.jetbrains.bio.query.CachingQuery
-import org.jetbrains.bio.query.ReadsQuery
-import org.jetbrains.bio.query.reduceIds
-import org.jetbrains.bio.query.stemGz
+import org.jetbrains.bio.query.*
 import java.nio.file.Path
+import java.util.*
 
 class CoverageScoresQuery(
         val genomeQuery: GenomeQuery,
         private val treatmentPath: Path,
         private val controlPath: Path?,
-        val fragment: Int?,
+        val fragment: Optional<Int>,
         val binSize: Int,
         val unique: Boolean = true
 ): CachingQuery<Chromosome, IntArray>() {
@@ -33,7 +31,7 @@ class CoverageScoresQuery(
 
     override val description: String
         get() = "Treatment: $treatmentPath, Control: $controlPath, " +
-                "Fragment: $fragment, Bin: $binSize, Keep-dup: ${!unique}"
+                "Fragment: ${fragment.fragmentToString()}, Bin: $binSize, Keep-dup: ${!unique}"
 
     override fun getUncached(input: Chromosome): IntArray {
         return scores[input]

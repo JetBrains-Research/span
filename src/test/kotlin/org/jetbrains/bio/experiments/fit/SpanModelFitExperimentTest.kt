@@ -27,8 +27,8 @@ class SpanModelFitExperimentTest {
             SpanCLALongTest.sampleCoverage(path, GenomeQuery(Genome["to1"]), 200, goodQuality = true)
             println("Saved sampled track file: $path")
             val (_, dataQuery) = SpanModelFitExperiment.createEffectiveQueries(
-                    GenomeQuery(Genome["to1"]), listOf(path to null),
-                    listOf("foo"), null, 200
+                GenomeQuery(Genome["to1"]), listOf(path to null),
+                listOf("foo"), Optional.empty(), 200
             )
 
             assertTrue(dataQuery.id.startsWith("${path.stemGz}_200_foo#"))
@@ -43,13 +43,15 @@ class SpanModelFitExperimentTest {
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
         withTempFile("track", ".bed.gz") { path ->
             SpanCLALongTest.sampleCoverage(
-                    path, GenomeQuery(Genome["to1"], "chr1"), 200, goodQuality = true
+                path, GenomeQuery(Genome["to1"], "chr1"), 200, goodQuality = true
             )
             println("Saved sampled track file: $path")
             val (out, _) = Logs.captureLoggingOutput {
                 val (effectiveGenomeQuery, _) =
-                        SpanModelFitExperiment.createEffectiveQueries(GenomeQuery(Genome["to1"]),
-                                listOf(path to null), listOf("foo"), null, 200)
+                        SpanModelFitExperiment.createEffectiveQueries(
+                            GenomeQuery(Genome["to1"]),
+                            listOf(path to null), listOf("foo"), Optional.empty(), 200
+                        )
                 assertEquals("[chr1]", effectiveGenomeQuery.get().map { it.name }.toString())
             }
             assertIn("chr2: no reads detected, ignoring", out)
@@ -65,15 +67,15 @@ class SpanModelFitExperimentTest {
         val emptyMaps = genomeMap(effectiveGenomeQuery) { BitSet() }
         withTempFile("track", ".bed.gz") { path ->
             SpanCLALongTest.sampleCoverage(
-                    path, effectiveGenomeQuery, 200, emptyMaps, emptyMaps, goodQuality = true
+                path, effectiveGenomeQuery, 200, emptyMaps, emptyMaps, goodQuality = true
             )
             println("Saved sampled track file: $path")
             val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(
-                    fullGenomeQuery, listOf(path to null), 200, null
+                fullGenomeQuery, listOf(path to null), 200, Optional.empty()
             )
             assertTrue(
-                    peakCallingExperiment.results.getPeaks(fullGenomeQuery, 0.05, 0).isNotEmpty(),
-                    "Expected peak set not to be empty.")
+                peakCallingExperiment.results.getPeaks(fullGenomeQuery, 0.05, 0).isNotEmpty(),
+                "Expected peak set not to be empty.")
         }
     }
 

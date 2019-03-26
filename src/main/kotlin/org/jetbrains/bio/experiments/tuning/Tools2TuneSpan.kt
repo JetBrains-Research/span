@@ -16,6 +16,7 @@ import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.tools.ToolsChipSeqWashu
 import org.jetbrains.bio.util.*
 import java.nio.file.Path
+import java.util.*
 import java.util.stream.Collectors
 
 object Span : Tool2Tune<Pair<Double, Int>>() {
@@ -65,7 +66,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
         labelledTracks.forEach { (cellId, replicate, trackPath, labelsPath) ->
             val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(configuration.genomeQuery,
                 listOf(trackPath to inputPath),
-                DEFAULT_BIN, null
+                DEFAULT_BIN, Optional.empty()
             )
 
             if (saveAllPeaks) {
@@ -241,9 +242,11 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
                 .filter { it.key.dataType.toDataType() == DataType.CHIP_SEQ && ChipSeqTarget.isInput(it.key.dataType) }
                 .flatMap { it.value }.map { it.second.path }.firstOrNull()
 
-        val replicatedPeakCallingExperiment = SpanPeakCallingExperiment.getExperiment(configuration.genomeQuery,
+        val replicatedPeakCallingExperiment = SpanPeakCallingExperiment.getExperiment(
+            configuration.genomeQuery,
             labelledTracks.map(LabelledTrack::trackPath).map { it to inputPath },
-            DEFAULT_BIN, null)
+            DEFAULT_BIN, Optional.empty()
+        )
 
         if (saveAllPeaks) {
             PeakCallerTuning.LOG.info("Saving all $id peaks $target")
