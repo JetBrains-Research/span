@@ -1,5 +1,7 @@
 package org.jetbrains.bio.experiments.fit
 
+import org.jetbrains.bio.coverage.AutoFragment
+import org.jetbrains.bio.coverage.Fragment
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
@@ -15,7 +17,6 @@ import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.state.ZLHID
 import java.nio.file.Path
-import java.util.*
 
 /**
  * @author Alexey Dievsky
@@ -25,7 +26,7 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
         genomeQuery: GenomeQuery,
         paths1: List<Pair<Path, Path?>>,
         paths2: List<Pair<Path, Path?>>,
-        fragment: Optional<Int>,
+        fragment: Fragment,
         binSize: Int,
         modelFitter: Fitter<Model>,
         modelClass: Class<Model>,
@@ -43,7 +44,7 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
             genomeQuery: GenomeQuery,
             paths1: Pair<Path, Path?>,
             paths2: Pair<Path, Path?>,
-            fragment: Optional<Int>, binSize: Int,
+            fragment: Fragment, binSize: Int,
             modelFitter: Fitter<Model>,
             modelClass: Class<Model>,
             states: Array<State>, nullHypothesis: NullHypothesis<State>
@@ -57,7 +58,7 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
             reduceIds(paths1.flatMap { listOfNotNull(it.first, it.second) }.map { it.stemGz } +
                     listOf("vs") +
                     paths2.flatMap { listOfNotNull(it.first, it.second) }.map { it.stemGz }
-                    + listOfNotNull(fragment.orElse(null), binSize).map { it.toString() })
+                    + listOfNotNull(fragment.nullableInt, binSize).map { it.toString() })
 
 
     fun computeDirectedDifferencePeaks(fdr: Double,
@@ -97,7 +98,7 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
                 paths1: List<Pair<Path, Path?>>,
                 paths2: List<Pair<Path, Path?>>,
                 bin: Int,
-                fragment: Optional<Int> = Optional.empty()
+                fragment: Fragment = AutoFragment
         ): SpanDifferentialPeakCallingExperiment<MLConstrainedNBHMM, ZLHID> {
             check(paths1.isNotEmpty() && paths2.isNotEmpty()) { "No data" }
             return if (paths1.size == 1 && paths2.size == 1) {

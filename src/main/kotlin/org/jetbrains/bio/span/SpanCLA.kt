@@ -5,6 +5,9 @@ import joptsimple.OptionParser
 import org.apache.log4j.Level
 import org.apache.log4j.Logger
 import org.jetbrains.bio.Configuration
+import org.jetbrains.bio.coverage.AutoFragment
+import org.jetbrains.bio.coverage.FixedFragment
+import org.jetbrains.bio.coverage.Fragment
 import org.jetbrains.bio.experiments.fit.SpanDifferentialPeakCallingExperiment
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.experiments.tuning.PeakAnnotation
@@ -14,13 +17,11 @@ import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.PeaksInfo.compute
 import org.jetbrains.bio.query.ReadsQuery
-import org.jetbrains.bio.query.fragmentToString
 import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.query.stemGz
 import org.jetbrains.bio.util.*
 import org.jetbrains.bio.util.FileSize.Companion.GB
 import java.nio.file.Path
-import java.util.*
 
 /**
  * Tool for analyzing and comparing ChIP-Seq data.
@@ -116,7 +117,7 @@ compare                         Differential peak calling mode, experimental
                 val labelsPath = options.valueOf("labels") as Path?
                 val chromSizesPath = options.valueOf("chrom.sizes") as Path
                 val bin = options.valueOf("bin") as Int
-                val fragment = options.valueOf("fragment") as Optional<Int>
+                val fragment = options.valueOf("fragment") as Fragment
                 val gap = options.valueOf("gap") as Int
                 val fdr = options.valueOf("fdr") as Double
                 val threads = options.valueOf("threads") as Int?
@@ -131,8 +132,8 @@ compare                         Differential peak calling mode, experimental
                         paths.map { it.stemGz }
                     }.toMutableList()
                     ids.add(bin.toString())
-                    if (fragment.isPresent) {
-                        ids.add(fragment.get().toString())
+                    if (fragment is FixedFragment) {
+                        ids.add(fragment.size.toString())
                     }
                     if (labelsPath != null) {
                         ids.add(labelsPath.stemGz)
@@ -161,7 +162,7 @@ compare                         Differential peak calling mode, experimental
                 if (modelPath != null) {
                     LOG.info("MODEL: $modelPath")
                 }
-                LOG.info("FRAGMENT: ${fragment.fragmentToString()}")
+                LOG.info("FRAGMENT: $fragment")
                 if (!unique) {
                     LOG.info("KEEP DUPLICATES: true")
                 }
@@ -195,7 +196,7 @@ compare                         Differential peak calling mode, experimental
                         val peaks = peakCallingExperiment.results.getPeaks(gq, fdr, gap)
                         savePeaks(
                             peaks, peaksPath,
-                            "peak${if (fragment.isPresent) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
+                            "peak${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
                         )
                         LOG.info("Saved result to $peaksPath")
                         val aboutPeaks = compute(
@@ -225,7 +226,7 @@ compare                         Differential peak calling mode, experimental
                         val peaks = peakCallingExperiment.results.getPeaks(gq, optimalFDR, optimalGap)
                         savePeaks(
                             peaks, peaksPath,
-                            "peak${if (fragment.isPresent) "_$fragment" else ""}_" +
+                            "peak${if (fragment is FixedFragment) "_$fragment" else ""}_" +
                                 "${bin}_${optimalFDR}_$optimalGap"
                         )
                         LOG.info("Saved result to $peaksPath")
@@ -289,7 +290,7 @@ compare                         Differential peak calling mode, experimental
                 val treatmentPaths2 = options.valuesOf("treatment2") as List<Path>
                 val controlPaths1 = options.valuesOf("control1") as List<Path>?
                 val controlPaths2 = options.valuesOf("control2") as List<Path>?
-                val fragment = options.valueOf("fragment") as Optional<Int>
+                val fragment = options.valueOf("fragment") as Fragment
                 val bin = options.valueOf("bin") as Int
                 val gap = options.valueOf("gap") as Int
                 val fdr = options.valueOf("fdr") as Double
@@ -303,8 +304,8 @@ compare                         Differential peak calling mode, experimental
                     val ids = listOfNotNull(treatmentPaths1, controlPaths1, treatmentPaths2, controlPaths2)
                             .flatMap { paths -> paths.map { it.stemGz } }.toMutableList()
                     ids.add(bin.toString())
-                    if (fragment.isPresent) {
-                        ids.add(fragment.get().toString())
+                    if (fragment is FixedFragment) {
+                        ids.add(fragment.toString())
                     }
                     reduceIds(ids)
                 }
@@ -334,7 +335,7 @@ compare                         Differential peak calling mode, experimental
                 configurePaths(workingDir, chromSizesPath)
                 val genome = Genome[chromSizesPath]
                 LOG.info("GENOME: ${genome.build}")
-                LOG.info("FRAGMENT: ${fragment.fragmentToString()}")
+                LOG.info("FRAGMENT: $fragment")
                 LOG.info("BIN: $bin")
                 LOG.info("FDR: $fdr")
                 LOG.info("GAP: $gap")
@@ -371,7 +372,10 @@ compare                         Differential peak calling mode, experimental
                                     it.get().getBothStrandsCoverage(peak.range.on(peak.chromosome))
                                 }.average())
                     }
-                    savePeaks(peaks, peaksPath, "diff${if (fragment.isPresent) "_${fragment.get()}" else ""}_${bin}_${fdr}_${gap}")
+                    savePeaks(
+                        peaks, peaksPath,
+                        "diff${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
+                    )
                     LOG.info("Saved result to $peaksPath")
                 } else {
                     experiment.run()
@@ -430,7 +434,7 @@ compare                         Differential peak calling mode, experimental
                 listOf("fragment"),
                 "Fragment size. If it's an integer, reads are shifted appropriately.\n" +
                         "If it's the string 'auto', the shift is estimated from the data."
-            ).withRequiredArg().withValuesConvertedBy(OptionalIntConverter()).defaultsTo(Optional.empty())
+            ).withRequiredArg().withValuesConvertedBy(FragmentConverter()).defaultsTo(AutoFragment)
             if (bin) {
                 acceptsAll(listOf("b", "bin"), "Bin size.")
                         .withRequiredArg()

@@ -1,21 +1,24 @@
 package org.jetbrains.bio.span
 
 import org.jetbrains.bio.coverage.Coverage
+import org.jetbrains.bio.coverage.Fragment
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.Strand
 import org.jetbrains.bio.genome.containers.GenomeMap
 import org.jetbrains.bio.genome.containers.genomeMap
-import org.jetbrains.bio.query.*
+import org.jetbrains.bio.query.CachingQuery
+import org.jetbrains.bio.query.ReadsQuery
+import org.jetbrains.bio.query.reduceIds
+import org.jetbrains.bio.query.stemGz
 import java.nio.file.Path
-import java.util.*
 
 class CoverageScoresQuery(
         val genomeQuery: GenomeQuery,
         private val treatmentPath: Path,
         private val controlPath: Path?,
-        val fragment: Optional<Int>,
+        val fragment: Fragment,
         val binSize: Int,
         val unique: Boolean = true
 ): CachingQuery<Chromosome, IntArray>() {
@@ -24,14 +27,14 @@ class CoverageScoresQuery(
     override val id: String
         get() = reduceIds(
             listOfNotNull(
-                treatmentPath.stemGz, controlPath?.stemGz, fragment.orElse(null), binSize,
-                if (!unique) "keepdup" else null
+                treatmentPath.stemGz, controlPath?.stemGz, fragment.nullableInt,
+                binSize, if (!unique) "keepdup" else null
             ).map { it.toString() }
         )
 
     override val description: String
         get() = "Treatment: $treatmentPath, Control: $controlPath, " +
-                "Fragment: ${fragment.fragmentToString()}, Bin: $binSize, Keep-dup: ${!unique}"
+                "Fragment: $fragment, Bin: $binSize, Keep-dup: ${!unique}"
 
     override fun getUncached(input: Chromosome): IntArray {
         return scores[input]

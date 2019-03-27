@@ -2,6 +2,7 @@ package org.jetbrains.bio.experiments.tuning
 
 import com.google.common.primitives.Shorts
 import kotlinx.support.jdk7.use
+import org.jetbrains.bio.coverage.AutoFragment
 import org.jetbrains.bio.coverage.removeDuplicates
 import org.jetbrains.bio.dataset.*
 import org.jetbrains.bio.experiments.fit.SpanFitResults
@@ -16,7 +17,6 @@ import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.tools.ToolsChipSeqWashu
 import org.jetbrains.bio.util.*
 import java.nio.file.Path
-import java.util.*
 import java.util.stream.Collectors
 
 object Span : Tool2Tune<Pair<Double, Int>>() {
@@ -66,7 +66,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
         labelledTracks.forEach { (cellId, replicate, trackPath, labelsPath) ->
             val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(configuration.genomeQuery,
                 listOf(trackPath to inputPath),
-                DEFAULT_BIN, Optional.empty()
+                DEFAULT_BIN, AutoFragment
             )
 
             if (saveAllPeaks) {
@@ -245,7 +245,7 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
         val replicatedPeakCallingExperiment = SpanPeakCallingExperiment.getExperiment(
             configuration.genomeQuery,
             labelledTracks.map(LabelledTrack::trackPath).map { it to inputPath },
-            DEFAULT_BIN, Optional.empty()
+            DEFAULT_BIN, AutoFragment
         )
 
         if (saveAllPeaks) {

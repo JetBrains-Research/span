@@ -4,15 +4,18 @@ import com.google.common.annotations.VisibleForTesting
 import com.google.common.math.IntMath
 import com.google.gson.*
 import com.google.gson.reflect.TypeToken
-import joptsimple.ValueConversionException
 import kotlinx.support.jdk7.use
 import org.apache.log4j.Logger
+import org.jetbrains.bio.coverage.Fragment
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.fit.SpanModelFitExperiment.Companion.createEffectiveQueries
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
-import org.jetbrains.bio.query.*
+import org.jetbrains.bio.query.CachingQuery
+import org.jetbrains.bio.query.Query
+import org.jetbrains.bio.query.ReadsQuery
+import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.span.CoverageScoresQuery
 import org.jetbrains.bio.span.scoresDataFrame
 import org.jetbrains.bio.statistics.ClassificationModel
@@ -43,7 +46,7 @@ data class SpanFitInformation(
         val build: String,
         val data: List<TC>,
         val labels: List<String>,
-        val fragment: Optional<Int>,
+        val fragment: Fragment,
         val binSize: Int,
         val chromosomesSizes: LinkedHashMap<String, Int>,
         val version: Int
@@ -53,7 +56,7 @@ data class SpanFitInformation(
             genomeQuery: GenomeQuery,
             paths: List<Pair<Path, Path?>>,
             labels: List<String>,
-            fragment: Optional<Int>,
+            fragment: Fragment,
             binSize: Int
     ): this(
         genomeQuery.build,
@@ -136,26 +139,23 @@ data class SpanFitInformation(
          */
         data class TC(val path: String, val control: String?)
 
-        object FragmentTypeAdapter : JsonSerializer<Optional<Int>>, JsonDeserializer<Optional<Int>> {
+        object FragmentTypeAdapter : JsonSerializer<Fragment>, JsonDeserializer<Fragment> {
 
             override fun serialize(
-                    src: Optional<Int>, typeOfSrc: Type,
+                    src: Fragment, typeOfSrc: Type,
                     context: JsonSerializationContext
-            ): JsonElement {
-                return context.serialize(src.fragmentToString())
-            }
+            ): JsonElement = context.serialize(src.toString())
 
             override fun deserialize(
                     json: JsonElement, typeOfT: Type,
                     context: JsonDeserializationContext
-            ): Optional<Int> {
+            ): Fragment {
                 val str = context.deserialize<String>(json, object : TypeToken<String>() {}.type)
                 try {
-                    return OptionalIntConverter().convert(str)
-                } catch (e: ValueConversionException) {
+                    return Fragment.fromString(str)
+                } catch (e: NumberFormatException) {
                     throw IllegalStateException("Failed to deserialize $str", e)
                 }
-
             }
         }
 
@@ -230,7 +230,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
         externalGenomeQuery: GenomeQuery,
         paths: List<Pair<Path, Path?>>,
         labels: List<String>,
-        fragment: Optional<Int>,
+        fragment: Fragment,
         val binSize: Int,
         modelFitter: Fitter<Model>,
         modelClass: Class<Model>,
@@ -363,7 +363,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
                 genomeQuery: GenomeQuery,
                 paths: List<Pair<Path, Path?>>,
                 labels: List<String>,
-                fragment: Optional<Int>,
+                fragment: Fragment,
                 binSize: Int,
                 unique: Boolean = true
         ): Pair<GenomeQuery, Query<Chromosome, DataFrame>> {

@@ -1,5 +1,7 @@
 package org.jetbrains.bio.experiments.fit
 
+import org.jetbrains.bio.coverage.AutoFragment
+import org.jetbrains.bio.coverage.FixedFragment
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.util.bufferedReader
@@ -32,7 +34,7 @@ class SpanFitInformationTest {
         expectedEx.expect(IllegalStateException::class.java)
         expectedEx.expectMessage("Wrong genome build, expected: hg19, got: to1")
         SpanFitInformation(
-            "hg19", emptyList(), emptyList(), Optional.of(100), 200, LinkedHashMap(), 1
+            "hg19", emptyList(), emptyList(), FixedFragment(100), 200, LinkedHashMap(), 1
         ).checkGenome(Genome["to1"])
     }
 
@@ -89,7 +91,7 @@ class SpanFitInformationTest {
     @Test
     fun checkLoad() {
         val info = SpanFitInformation(
-            gq, listOf("path_to_file".toPath() to null), listOf("treatment_control"), Optional.empty(), 200
+            gq, listOf("path_to_file".toPath() to null), listOf("treatment_control"), AutoFragment, 200
         )
         withTempFile("foo", ".tar") { path ->
             path.bufferedWriter().use {
@@ -163,4 +165,4 @@ internal operator fun SpanFitInformation.Companion.invoke(
         labels: List<String>,
         fragment: Int,
         binSize: Int
-): SpanFitInformation = SpanFitInformation(genomeQuery, paths, labels, Optional.of(fragment), binSize)
+): SpanFitInformation = SpanFitInformation(genomeQuery, paths, labels, FixedFragment(fragment), binSize)

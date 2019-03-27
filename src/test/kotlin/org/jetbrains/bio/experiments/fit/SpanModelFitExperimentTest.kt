@@ -1,5 +1,6 @@
 package org.jetbrains.bio.experiments.fit
 
+import org.jetbrains.bio.coverage.AutoFragment
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
@@ -28,7 +29,7 @@ class SpanModelFitExperimentTest {
             println("Saved sampled track file: $path")
             val (_, dataQuery) = SpanModelFitExperiment.createEffectiveQueries(
                 GenomeQuery(Genome["to1"]), listOf(path to null),
-                listOf("foo"), Optional.empty(), 200
+                listOf("foo"), AutoFragment, 200
             )
 
             assertTrue(dataQuery.id.startsWith("${path.stemGz}_200_foo#"))
@@ -50,7 +51,7 @@ class SpanModelFitExperimentTest {
                 val (effectiveGenomeQuery, _) =
                         SpanModelFitExperiment.createEffectiveQueries(
                             GenomeQuery(Genome["to1"]),
-                            listOf(path to null), listOf("foo"), Optional.empty(), 200
+                            listOf(path to null), listOf("foo"), AutoFragment, 200
                         )
                 assertEquals("[chr1]", effectiveGenomeQuery.get().map { it.name }.toString())
             }
@@ -71,7 +72,7 @@ class SpanModelFitExperimentTest {
             )
             println("Saved sampled track file: $path")
             val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(
-                fullGenomeQuery, listOf(path to null), 200, Optional.empty()
+                fullGenomeQuery, listOf(path to null), 200, AutoFragment
             )
             assertTrue(
                 peakCallingExperiment.results.getPeaks(fullGenomeQuery, 0.05, 0).isNotEmpty(),
