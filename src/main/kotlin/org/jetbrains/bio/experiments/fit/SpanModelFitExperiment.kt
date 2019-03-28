@@ -161,7 +161,7 @@ data class SpanFitInformation(
 
 
         private val GSON = GsonBuilder()
-                .registerTypeAdapter(object : TypeToken<Optional<Int>>() {}.type, FragmentTypeAdapter)
+                .registerTypeAdapter(object : TypeToken<Fragment>() {}.type, FragmentTypeAdapter)
                 .setPrettyPrinting()
                 .setFieldNamingStrategy(GSONUtil.NO_MY_UNDESCORE_NAMING_STRATEGY)
                 .create()
@@ -211,7 +211,7 @@ data class SpanFitResults(
 
 
 /**
- * A generic class for [SPAN] (Semi-supervised Peak Analyzer) - tool for analyzing and comparing ChIP-Seq data.
+ * A generic class for Span (Semi-supervised Peak Analyzer) - tool for analyzing and comparing ChIP-Seq data.
  * Both procedures rely on the Zero Inflated Negative Binomial Restricted Algorithm.
  *
  * It is implemented as [ModelFitExperiment] with different [ClassificationModel] models.
