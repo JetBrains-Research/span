@@ -12,8 +12,13 @@ SPAN Peak Analyzer
     ='=====|========|====='=
     ~_^~-^~~_~^-^~-~~^_~^~^~^
 ```
-[SPAN](https://artyomovlab.wustl.edu/aging/span.html) is a tool for analyzing ChIP-seq data.
+[SPAN](https://research.jetbrains.org/groups/biolabs/tools/span-peak-analyzer) is a tool for analyzing ChIP-seq data.
 Part of integrated [peak calling](https://artyomovlab.wustl.edu/aging/tools.html) solution.
+
+About
+-----
+
+Detailed description is available on JetBrains Research Biolabs SPAN [page](https://research.jetbrains.org/groups/biolabs/tools/span-peak-analyzer).
 
 ### Requirements
 
@@ -52,21 +57,10 @@ The structure of output produced by `compare` is similar to that of `analyze`.
 The null-hypotheses however are different. By default `compare` assumes that
 there is no difference in **enrichment** for the two biological conditions.
 
-### FAQ
-
-#### What file formats are supported?
-
-`span` supports BED reads and BAM as input.
-
-#### Where did you get this lovely span?
-
-From [ascii.co.uk](http://ascii.co.uk/art/bridges), it seems the original author goes by the name `jgs`.
-
-
 Authors
 -------
 
-* [JetBrains Research BioLabs](https://research.jetbrains.org/groups/biolabs)
+[JetBrains Research BioLabs](https://research.jetbrains.org/groups/biolabs)
 
 [java8]: http://www.java.com/en/download/
 [q]: http://en.wikipedia.org/wiki/False_discovery_rate#q-value
