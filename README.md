@@ -12,7 +12,7 @@ SPAN Peak Analyzer
     ='=====|========|====='=
     ~_^~-^~~_~^-^~-~~^_~^~^~^
 ```
-[SPAN](https://research.jetbrains.org/groups/biolabs/tools/span-peak-analyzer) is a tool for analyzing ChIP-seq data.
+**SPAN Peak Analyzer** is a tool for analyzing ChIP-seq data.
 Part of integrated [peak calling](https://artyomovlab.wustl.edu/aging/tools.html) solution.
 
 About
@@ -56,6 +56,11 @@ $ java -jar span.jar compare --help
 The structure of output produced by `compare` is similar to that of `analyze`.
 The null-hypotheses however are different. By default `compare` assumes that
 there is no difference in **enrichment** for the two biological conditions.
+
+Errors Reporting
+-----------------
+
+Use this [Issues Tracker](https://github.com/JetBrains-Research/span/issues) to suggest new features or report bugs.
 
 Authors
 -------
