@@ -365,7 +365,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
             )
             return effectiveGenomeQuery to object : CachingQuery<Chromosome, DataFrame>() {
                 val scores = paths.map {
-                    CoverageScoresQuery(effectiveGenomeQuery, it.first, it.second, fragment, binSize, unique)
+                    CoverageScoresQuery(genomeQuery, it.first, it.second, fragment, binSize, unique)
                 }
 
                 override fun getUncached(input: Chromosome): DataFrame {
