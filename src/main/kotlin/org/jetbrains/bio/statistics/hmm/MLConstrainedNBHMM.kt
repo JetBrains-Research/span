@@ -1,5 +1,6 @@
 package org.jetbrains.bio.statistics.hmm
 
+import org.apache.log4j.Logger
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.statistics.*
 import org.jetbrains.bio.statistics.distribution.NegativeBinomialDistribution
@@ -71,6 +72,8 @@ class MLConstrainedNBHMM(stateDimensionEmissionMap: Array<IntArray>,
         @JvmField
         val VERSION = 1
 
+        private val LOG = Logger.getLogger(MLConstrainedNBHMM::class.java)
+
         fun preprocessor() = Preprocessors.identity()
 
         /**
@@ -91,13 +94,18 @@ class MLConstrainedNBHMM(stateDimensionEmissionMap: Array<IntArray>,
                         check(values.isNotEmpty()) {
                             "Model can't be trained on empty coverage, exiting."
                         }
-                        meanCoverage[d] = values.average()
-                        means[d] = meanCoverage[d] / Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
-                        means[d + numReplicates] = meanCoverage[d] * Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
+                        val mean = values.average()
                         val sd = values.standardDeviation()
-                        failures[d] = NegativeBinomialDistribution
-                                .estimateFailuresUsingMoments(meanCoverage[d], sd * sd)
-                        failures[d + numReplicates] = failures[d]
+                        val meanLow = mean / Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
+                        val meanHigh = mean * Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
+                        val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, sd * sd)
+                        LOG.debug("Guess emissions mean $mean\tsd $sd")
+                        LOG.debug("Guess init meanLow $meanLow\tmeanHigh $meanHigh\tfailures $fs")
+                        meanCoverage[d] = mean
+                        means[d] = meanLow
+                        means[d + numReplicates] = meanHigh
+                        failures[d] = fs
+                        failures[d + numReplicates] = fs
                     }
 
                     return MLConstrainedNBHMM(ZLH.constraintMap(numReplicates),
@@ -129,13 +137,17 @@ class MLConstrainedNBHMM(stateDimensionEmissionMap: Array<IntArray>,
                             "Model can't be trained on empty coverage " +
                                     "(track $d1), exiting."
                         }
-                        val meanCoverage = values.average()
-                        means[d1] = meanCoverage / Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
-                        means[d1 + numReplicates1] = meanCoverage * Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
+                        val mean = values.average()
                         val sd = values.standardDeviation()
-                        failures[d1] = NegativeBinomialDistribution
-                                .estimateFailuresUsingMoments(meanCoverage, sd * sd)
-                        failures[d1 + numReplicates1] = failures[d1]
+                        val meanLow = mean / Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
+                        val meanHigh = mean * Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
+                        val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, sd * sd)
+                        LOG.debug("Guess1 emissions mean $mean\tsd $sd")
+                        LOG.debug("Guess1 init meanLow $meanLow\tmeanHigh $meanHigh\tfailures $fs")
+                        means[d1] = meanLow
+                        means[d1 + numReplicates1] = meanHigh
+                        failures[d1] = fs
+                        failures[d1 + numReplicates1] = fs
                     }
                     for (d2 in 0 until numReplicates2) {
                         // Filter out 0s, since they are covered by dedicated ZERO state
@@ -144,15 +156,17 @@ class MLConstrainedNBHMM(stateDimensionEmissionMap: Array<IntArray>,
                             "Model can't be trained on empty coverage " +
                                     "(track ${d2 + numReplicates1}), exiting."
                         }
-                        val meanCoverage = values.average()
-                        means[d2 + numReplicates1 * 2] =
-                                meanCoverage / Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
-                        means[d2 + numReplicates2 + numReplicates1 * 2] =
-                                meanCoverage * Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
+                        val mean = values.average()
                         val sd = values.standardDeviation()
-                        failures[d2 + numReplicates1 * 2] = NegativeBinomialDistribution
-                                .estimateFailuresUsingMoments(meanCoverage, sd * sd)
-                        failures[d2 + numReplicates2 + numReplicates1 * 2] = failures[d2]
+                        val meanLow = mean / Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
+                        val meanHigh = mean * Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
+                        val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, sd * sd)
+                        LOG.debug("Guess2 emissions mean $mean\tsd $sd")
+                        LOG.debug("Guess2 init meanLow $meanLow\tmeanHigh $meanHigh\tfailures $fs")
+                        means[d2 + numReplicates1 * 2] = meanLow
+                        means[d2 + numReplicates2 + numReplicates1 * 2] = meanHigh
+                        failures[d2 + numReplicates1 * 2] = fs
+                        failures[d2 + numReplicates2 + numReplicates1 * 2] = fs
                     }
                     return MLConstrainedNBHMM(
                             ZLHID.constraintMap(numReplicates1, numReplicates2),

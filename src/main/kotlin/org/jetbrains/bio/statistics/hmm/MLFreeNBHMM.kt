@@ -1,5 +1,6 @@
 package org.jetbrains.bio.statistics.hmm
 
+import org.apache.log4j.Logger
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.statistics.Preprocessed
@@ -56,6 +57,8 @@ class MLFreeNBHMM(meanLow: Double, meanHigh: Double, failures: Double) : MLFreeH
         @JvmField
         val VERSION: Int = 1
 
+        private val LOG = Logger.getLogger(MLFreeNBHMM::class.java)
+
         /**
          * This value is used to propose initial states for mean values of NOISE and SIGNAL states in the model.
          * Real life signal-to-noise ratio are generally in range 10-30.
@@ -76,12 +79,12 @@ class MLFreeNBHMM(meanLow: Double, meanHigh: Double, failures: Double) : MLFreeH
                 check(emissions.isNotEmpty()) { "Model can't be trained on empty coverage, exiting." }
                 val mean = emissions.average()
                 val sd = emissions.standardDeviation()
-                val failures = NegativeBinomialDistribution
-                        .estimateFailuresUsingMoments(mean, sd * sd)
-                // Extreme initial states configuration
-                return MLFreeNBHMM(
-                        mean / Math.sqrt(SIGNAL_TO_NOISE_RATIO),
-                        mean * Math.sqrt(SIGNAL_TO_NOISE_RATIO), failures)
+                val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, sd * sd)
+                val meanLow = mean / Math.sqrt(SIGNAL_TO_NOISE_RATIO)
+                val meanHigh = mean * Math.sqrt(SIGNAL_TO_NOISE_RATIO)
+                LOG.debug("Guess emissions mean $mean\tsd $sd")
+                LOG.debug("Guess init meanLow $meanLow\tmeanHigh $meanHigh\tfailures $fs")
+                return MLFreeNBHMM(meanLow, meanHigh, fs)
             }
         }
     }
