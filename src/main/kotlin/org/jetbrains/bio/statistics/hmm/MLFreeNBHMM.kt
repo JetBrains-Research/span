@@ -69,11 +69,12 @@ class MLFreeNBHMM(meanLow: Double, meanHigh: Double, failures: Double) : MLFreeH
 
             override fun guess(preprocessed: List<Preprocessed<DataFrame>>, title: String,
                                threshold: Double, maxIter: Int): MLFreeNBHMM {
+                // Filter out 0s, since they are covered by dedicated ZERO state
                 val emissions = preprocessed.flatMap {
                     it.get().let { df -> df.sliceAsInt(df.labels.first()).toList() }
-                }.toIntArray()
+                }.filter { it != 0 }.toIntArray()
+                check(emissions.isNotEmpty()) { "Model can't be trained on empty coverage, exiting." }
                 val mean = emissions.average()
-                check(mean != 0.0) { "Model can't be trained on empty coverage, exiting." }
                 val sd = emissions.standardDeviation()
                 val failures = NegativeBinomialDistribution
                         .estimateFailuresUsingMoments(mean, sd * sd)

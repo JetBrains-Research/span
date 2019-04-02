@@ -86,9 +86,12 @@ class MLConstrainedNBHMM(stateDimensionEmissionMap: Array<IntArray>,
                     val means = DoubleArray(numReplicates * 2)
                     val failures = DoubleArray(numReplicates * 2)
                     for (d in 0 until numReplicates) {
-                        val values = df.sliceAsInt(df.labels[d])
+                        // Filter out 0s, since they are covered by dedicated ZERO state
+                        val values = df.sliceAsInt(df.labels[d]).filter { it != 0 }.toIntArray()
+                        check(values.isNotEmpty()) {
+                            "Model can't be trained on empty coverage, exiting."
+                        }
                         meanCoverage[d] = values.average()
-                        // Extreme initial states configuration
                         means[d] = meanCoverage[d] / Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
                         means[d + numReplicates] = meanCoverage[d] * Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
                         val sd = values.standardDeviation()
@@ -120,13 +123,13 @@ class MLConstrainedNBHMM(stateDimensionEmissionMap: Array<IntArray>,
                     val means = DoubleArray((numReplicates1 + numReplicates2) * 2)
                     val failures = DoubleArray((numReplicates1 + numReplicates2) * 2)
                     for (d1 in 0 until numReplicates1) {
-                        val values = df.sliceAsInt(df.labels[d1])
-                        val meanCoverage = values.average()
-                        check(meanCoverage != 0.0) {
+                        // Filter out 0s, since they are covered by dedicated ZERO state
+                        val values = df.sliceAsInt(df.labels[d1]).filter { it != 0 }.toIntArray()
+                        check(values.isNotEmpty()) {
                             "Model can't be trained on empty coverage " +
                                     "(track $d1), exiting."
                         }
-                        // Extreme initial states configuration
+                        val meanCoverage = values.average()
                         means[d1] = meanCoverage / Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
                         means[d1 + numReplicates1] = meanCoverage * Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
                         val sd = values.standardDeviation()
@@ -135,12 +138,13 @@ class MLConstrainedNBHMM(stateDimensionEmissionMap: Array<IntArray>,
                         failures[d1 + numReplicates1] = failures[d1]
                     }
                     for (d2 in 0 until numReplicates2) {
-                        val values = df.sliceAsInt(df.labels[d2 + numReplicates1])
-                        val meanCoverage = values.average()
-                        check(meanCoverage != 0.0) {
+                        // Filter out 0s, since they are covered by dedicated ZERO state
+                        val values = df.sliceAsInt(df.labels[d2 + numReplicates1]).filter { it != 0 }.toIntArray()
+                        check(values.isNotEmpty()) {
                             "Model can't be trained on empty coverage " +
                                     "(track ${d2 + numReplicates1}), exiting."
                         }
+                        val meanCoverage = values.average()
                         means[d2 + numReplicates1 * 2] =
                                 meanCoverage / Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
                         means[d2 + numReplicates2 + numReplicates1 * 2] =
