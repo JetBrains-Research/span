@@ -88,8 +88,9 @@ class MLConstrainedNBHMM(stateDimensionEmissionMap: Array<IntArray>,
                     for (d in 0 until numReplicates) {
                         val values = df.sliceAsInt(df.labels[d])
                         meanCoverage[d] = values.average()
-                        means[d] = meanCoverage[d] * .5
-                        means[d + numReplicates] = meanCoverage[d] * 2
+                        // Extreme initial states configuration
+                        means[d] = meanCoverage[d] / Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
+                        means[d + numReplicates] = meanCoverage[d] * Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
                         val sd = values.standardDeviation()
                         failures[d] = NegativeBinomialDistribution
                                 .estimateFailuresUsingMoments(meanCoverage[d], sd * sd)
@@ -125,8 +126,9 @@ class MLConstrainedNBHMM(stateDimensionEmissionMap: Array<IntArray>,
                             "Model can't be trained on empty coverage " +
                                     "(track $d1), exiting."
                         }
-                        means[d1] = meanCoverage * .5
-                        means[d1 + numReplicates1] = meanCoverage * 2
+                        // Extreme initial states configuration
+                        means[d1] = meanCoverage / Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
+                        means[d1 + numReplicates1] = meanCoverage * Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
                         val sd = values.standardDeviation()
                         failures[d1] = NegativeBinomialDistribution
                                 .estimateFailuresUsingMoments(meanCoverage, sd * sd)
@@ -139,8 +141,10 @@ class MLConstrainedNBHMM(stateDimensionEmissionMap: Array<IntArray>,
                             "Model can't be trained on empty coverage " +
                                     "(track ${d2 + numReplicates1}), exiting."
                         }
-                        means[d2 + numReplicates1 * 2] = meanCoverage * .5
-                        means[d2 + numReplicates2 + numReplicates1 * 2] = meanCoverage * 2
+                        means[d2 + numReplicates1 * 2] =
+                                meanCoverage / Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
+                        means[d2 + numReplicates2 + numReplicates1 * 2] =
+                                meanCoverage * Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
                         val sd = values.standardDeviation()
                         failures[d2 + numReplicates1 * 2] = NegativeBinomialDistribution
                                 .estimateFailuresUsingMoments(meanCoverage, sd * sd)

@@ -56,6 +56,12 @@ class MLFreeNBHMM(meanLow: Double, meanHigh: Double, failures: Double) : MLFreeH
         @JvmField
         val VERSION: Int = 1
 
+        /**
+         * This value is used to propose initial states for mean values of NOISE and SIGNAL states in the model.
+         * Real life signal-to-noise ratio are generally in range 10-30.
+         */
+        const val SIGNAL_TO_NOISE_RATIO = 100.0
+
         fun fitter() = object : Fitter<MLFreeNBHMM> {
             override fun guess(preprocessed: Preprocessed<DataFrame>, title: String,
                                threshold: Double, maxIter: Int): MLFreeNBHMM =
@@ -71,7 +77,10 @@ class MLFreeNBHMM(meanLow: Double, meanHigh: Double, failures: Double) : MLFreeH
                 val sd = emissions.standardDeviation()
                 val failures = NegativeBinomialDistribution
                         .estimateFailuresUsingMoments(mean, sd * sd)
-                return MLFreeNBHMM(mean * .5, mean * 2.0, failures)
+                // Extreme initial states configuration
+                return MLFreeNBHMM(
+                        mean / Math.sqrt(SIGNAL_TO_NOISE_RATIO),
+                        mean * Math.sqrt(SIGNAL_TO_NOISE_RATIO), failures)
             }
         }
     }
