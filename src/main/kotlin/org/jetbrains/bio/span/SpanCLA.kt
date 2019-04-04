@@ -422,6 +422,9 @@ compare                         Differential peak calling mode, experimental
                     .withRequiredArg()
                     .ofType(Int::class.java)
             acceptsAll(listOf("k", "keep-dup"), "Keep duplicates")
+                    .withOptionalArg()
+                    .ofType(Boolean::class.java)
+                    .defaultsTo(true)
         }
     }
 
@@ -497,7 +500,7 @@ compare                         Differential peak calling mode, experimental
     }
 
     private fun getUnique(options: OptionSet, fitInformation: SpanFitInformation? = null, log: Boolean = false): Boolean {
-        val commandLineKeepDup = options.valueOf("keep-dup") as Boolean?
+        val commandLineKeepDup = if ("keep-dup" in options) options.valueOf("keep-dup") as Boolean else null
         check(fitInformation == null || commandLineKeepDup == null || commandLineKeepDup == !fitInformation.unique) {
             "Stored keep-dup flag ${!fitInformation!!.unique} differs from the command line argument $commandLineKeepDup"
         }
