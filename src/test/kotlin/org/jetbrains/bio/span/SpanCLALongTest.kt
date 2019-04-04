@@ -283,7 +283,7 @@ LABELS, FDR, GAP options are ignored.
                     )
                 }
                 /* we also check that logging was performed normally */
-                val logPath = dir / "logs" / "${reduceIds(listOf(path.stemGz, BIN.toString()))}.log"
+                val logPath = dir / "logs" / "${reduceIds(listOf(path.stemGz, BIN.toString(), "unique"))}.log"
                 assertTrue(logPath.exists, "Log file not found")
                 assertTrue(logPath.size.isNotEmpty(), "Log file is empty")
             }
@@ -312,7 +312,7 @@ LABELS, FDR, GAP options are ignored.
 
                     // Check that log file was created correctly
                     assertTrue(
-                        (dir / "logs" / "${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}.log")
+                        (dir / "logs" / "${reduceIds(listOf(path.stemGz, control.stemGz, "200", "unique"))}.log")
                                 .exists,
                         "Log file not found"
                     )
@@ -490,7 +490,7 @@ LABELS, FDR, GAP options are ignored.
                 }
 
                 // Check correct log file name
-                val logPath = it / "logs" / "${reduceIds(listOf(path.stemGz, BIN.toString()))}.log"
+                val logPath = it / "logs" / "${reduceIds(listOf(path.stemGz, BIN.toString(), "unique"))}.log"
                 assertTrue(logPath.exists, "Log file not found")
                 val log = FileReader(logPath.toFile()).use { it.readText() }
                 val errorMessage = "Model can't be trained on empty coverage, exiting."

@@ -56,7 +56,7 @@ class SpanFitInformationTest {
     fun checkSave() {
         withTempFile("treatment", ".bam") { t ->
             withTempFile("control", ".bam") { c ->
-                val info = SpanFitInformation(gq, listOf(t to c), listOf("treatment_control"), 100, true, 200)
+                val info = SpanFitInformation(gq, listOf(t to c), listOf("treatment_control"), 100, false, 200)
                 withTempFile("foo", ".tar") { path ->
                     info.save(path)
                     // Escape Windows separators here
@@ -72,6 +72,7 @@ class SpanFitInformationTest {
     "treatment_control"
   ],
   "fragment": "100",
+  "unique": false,
   "bin_size": 200,
   "chromosomes_sizes": {
     "chr1": 10000000,
@@ -91,7 +92,7 @@ class SpanFitInformationTest {
     @Test
     fun checkLoad() {
         val info = SpanFitInformation(
-            gq, listOf("path_to_file".toPath() to null), listOf("treatment_control"), AutoFragment, true, 200
+            gq, listOf("path_to_file".toPath() to null), listOf("treatment_control"), AutoFragment, false, 200
         )
         withTempFile("foo", ".tar") { path ->
             path.bufferedWriter().use {
@@ -106,6 +107,7 @@ class SpanFitInformationTest {
     "treatment_control"
   ],
   "fragment": "auto",
+  "unique": false,
   "bin_size": 200,
   "chromosomes_sizes": {
     "chr1": 10000000,
