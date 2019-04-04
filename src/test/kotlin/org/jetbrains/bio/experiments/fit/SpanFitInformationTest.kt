@@ -34,21 +34,21 @@ class SpanFitInformationTest {
         expectedEx.expect(IllegalStateException::class.java)
         expectedEx.expectMessage("Wrong genome build, expected: hg19, got: to1")
         SpanFitInformation(
-            "hg19", emptyList(), emptyList(), FixedFragment(100), 200, LinkedHashMap(), 1
+            "hg19", emptyList(), emptyList(), FixedFragment(100), true, 200, LinkedHashMap(), 1
         ).checkGenome(Genome["to1"])
     }
 
     @Test
     fun checkGenomeQueryOrder() {
         SpanFitInformation(
-            GenomeQuery(Genome["to1"], "chr1", "chr2"), emptyList(), emptyList(), 100, 200
+            GenomeQuery(Genome["to1"], "chr1", "chr2"), emptyList(), emptyList(), 100, true,  200
         ).checkGenome(Genome["to1"])
     }
 
 
     @Test
     fun checkOf() {
-        val of = SpanFitInformation(gq, emptyList(), emptyList(), 100, 200)
+        val of = SpanFitInformation(gq, emptyList(), emptyList(), 100, true, 200)
         assertEquals(listOf("chr1", "chr2", "chr3", "chrM", "chrX"), of.chromosomesSizes.keys.toList())
     }
 
@@ -56,7 +56,7 @@ class SpanFitInformationTest {
     fun checkSave() {
         withTempFile("treatment", ".bam") { t ->
             withTempFile("control", ".bam") { c ->
-                val info = SpanFitInformation(gq, listOf(t to c), listOf("treatment_control"), 100, 200)
+                val info = SpanFitInformation(gq, listOf(t to c), listOf("treatment_control"), 100, true, 200)
                 withTempFile("foo", ".tar") { path ->
                     info.save(path)
                     // Escape Windows separators here
@@ -91,7 +91,7 @@ class SpanFitInformationTest {
     @Test
     fun checkLoad() {
         val info = SpanFitInformation(
-            gq, listOf("path_to_file".toPath() to null), listOf("treatment_control"), AutoFragment, 200
+            gq, listOf("path_to_file".toPath() to null), listOf("treatment_control"), AutoFragment, true, 200
         )
         withTempFile("foo", ".tar") { path ->
             path.bufferedWriter().use {
@@ -143,13 +143,13 @@ class SpanFitInformationTest {
 
     @Test
     fun checkIndices() {
-        val info = SpanFitInformation(gq, emptyList(), emptyList(), 100, 200)
+        val info = SpanFitInformation(gq, emptyList(), emptyList(), 100, true, 200)
         assertEquals(50000 to 55000, info.getChromosomesIndices(chr2))
     }
 
     @Test
     fun checkOffsets() {
-        val info = SpanFitInformation(gq, emptyList(), emptyList(), 100, 200)
+        val info = SpanFitInformation(gq, emptyList(), emptyList(), 100, true, 200)
         assertEquals(listOf(0, 200, 400, 600, 800), info.offsets(chr2).take(5))
         assertEquals(5000, chr2.length / 200)
         assertEquals(5000, info.offsets(chr2).size)
@@ -164,5 +164,6 @@ internal operator fun SpanFitInformation.Companion.invoke(
         paths: List<Pair<Path, Path?>>,
         labels: List<String>,
         fragment: Int,
+        unique: Boolean,
         binSize: Int
-): SpanFitInformation = SpanFitInformation(genomeQuery, paths, labels, FixedFragment(fragment), binSize)
+): SpanFitInformation = SpanFitInformation(genomeQuery, paths, labels, FixedFragment(fragment), unique, binSize)
