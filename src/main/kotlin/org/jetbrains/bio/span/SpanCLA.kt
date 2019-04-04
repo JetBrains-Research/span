@@ -600,7 +600,9 @@ compare                         Differential peak calling mode, experimental
      * Creates the peak calling experiment using the supplied command line arguments.
      * Logs the progress.
      */
-    private fun constructPeakCallingExperiment(options: OptionSet): SpanPeakCallingExperiment<out MLAbstractHMM, ZLH> {
+    private fun constructPeakCallingExperiment(
+            options: OptionSet
+    ): Lazy<SpanPeakCallingExperiment<out MLAbstractHMM, ZLH>> {
         val (_, chromSizesPath) = getAndLogWorkDirAndChromSizes(options)
         // option parser guarantees that chrom.sizes are not null here
         val genomeQuery = GenomeQuery(Genome[chromSizesPath!!])
@@ -610,7 +612,7 @@ compare                         Differential peak calling mode, experimental
         val fragment = getFragment(options, log = true)
         val unique = getUnique(options, log = true)
         val modelPath = options.valueOf("model") as Path?
-        return SpanPeakCallingExperiment.getExperiment(genomeQuery, data, bin, fragment, unique, modelPath)
+        return lazy { SpanPeakCallingExperiment.getExperiment(genomeQuery, data, bin, fragment, unique, modelPath) }
     }
 
     /**
@@ -631,10 +633,10 @@ compare                         Differential peak calling mode, experimental
                 )
                 val results = SpanModelFitExperiment.loadResults(tarPath = modelPath)
                 checkFitInformation(options, results.fitInfo)
-                return lazy { results }
+                return lazyOf(results)
             }
         }
         val experiment = constructPeakCallingExperiment(options)
-        return lazy { experiment.results }
+        return lazy { experiment.value.results }
     }
 }
