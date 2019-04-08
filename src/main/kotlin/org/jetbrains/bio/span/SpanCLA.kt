@@ -393,13 +393,12 @@ compare                         Differential peak calling mode, experimental
             acceptsAll(
                 listOf("fragment"),
                 "Fragment size. If it's an integer, reads are shifted appropriately.\n" +
-                        "If it's the string 'auto', the shift is estimated from the data."
-            ).withRequiredArg().withValuesConvertedBy(FragmentConverter()).defaultsTo(AutoFragment)
+                        "If it's the string 'auto', the shift is estimated from the data. (default: auto)"
+            ).withRequiredArg().withValuesConvertedBy(FragmentConverter())
             if (bin) {
-                acceptsAll(listOf("b", "bin"), "Bin size.")
+                acceptsAll(listOf("b", "bin"), "Bin size. (default: ${Span.DEFAULT_BIN})")
                         .withRequiredArg()
                         .ofType(Int::class.java)
-                        .defaultsTo(Span.DEFAULT_BIN)
             }
             if (fdr) {
                 acceptsAll(listOf("f", "fdr"), "FDR value.")
@@ -499,35 +498,45 @@ compare                         Differential peak calling mode, experimental
         getUnique(options, fitInformation, log = true)
     }
 
-    private fun getUnique(options: OptionSet, fitInformation: SpanFitInformation? = null, log: Boolean = false): Boolean {
-        val commandLineKeepDup = if ("keep-dup" in options) options.valueOf("keep-dup") as Boolean else null
-        check(fitInformation == null || commandLineKeepDup == null || commandLineKeepDup == !fitInformation.unique) {
-            "Stored keep-dup flag ${!fitInformation!!.unique} differs from the command line argument $commandLineKeepDup"
+    /**
+     * Compare the command-line option (null if not given) and stored value (null if not present).
+     * Fail if these differ. Return default if both are null. Log the value if [log] is true.
+     */
+    private fun <T> getProperty(
+            commandLineValue: T?, fitInfoValue: T?, default: T, propertyName: String,
+            propertyId: String, log: Boolean
+    ): T {
+        check(fitInfoValue == null || commandLineValue == null || commandLineValue == fitInfoValue) {
+            "Stored $propertyName ($fitInfoValue) differs from the command line argument ($commandLineValue)"
         }
-        val unique = commandLineKeepDup?.not() ?: fitInformation?.unique ?: true
-        if (log) LOG.info("KEEP DUPLICATES: ${!unique}")
-        return unique
+        val property = commandLineValue ?: fitInfoValue ?: default
+        if (log) {
+            LOG.info("$propertyId: $property")
+        }
+        return property
     }
 
-    private fun getFragment(options: OptionSet, fitInformation: SpanFitInformation? = null, log: Boolean = false): Fragment {
-        val commandLineFragment = options.valueOf("fragment") as Fragment?
-        check(fitInformation == null || commandLineFragment == null || commandLineFragment == fitInformation.fragment) {
-            "Stored fragment size ${fitInformation!!.fragment} differs from the command line argument $commandLineFragment"
-        }
-        val fragment = commandLineFragment ?: fitInformation?.fragment ?: AutoFragment
-        if (log) LOG.info("FRAGMENT: $fragment")
-        return fragment
-    }
+    private fun getUnique(
+            options: OptionSet, fitInformation: SpanFitInformation? = null, log: Boolean = false
+    ) = !getProperty(
+        if ("keep-dup" in options) options.valueOf("keep-dup") as Boolean else null,
+        fitInformation?.unique?.not(), false,
+        "'keep duplicates' flag", "KEEP DUPLICATES", log
+    )
 
-    private fun getBin(options: OptionSet, fitInformation: SpanFitInformation? = null, log: Boolean = false): Int {
-        val commandLineBin = options.valueOf("bin") as Int?
-        check(fitInformation == null || commandLineBin == null || commandLineBin == fitInformation.binSize) {
-            "Stored bin size ${fitInformation!!.binSize} differs from the command line argument $commandLineBin"
-        }
-        val bin = commandLineBin ?: fitInformation?.binSize ?: Span.DEFAULT_BIN
-        if (log) LOG.info("BIN: $bin")
-        return bin
-    }
+    private fun getFragment(
+            options: OptionSet, fitInformation: SpanFitInformation? = null, log: Boolean = false
+    ) = getProperty(
+        options.valueOf("fragment") as Fragment?, fitInformation?.fragment, AutoFragment,
+        "fragment size", "FRAGMENT", log
+    )
+
+    private fun getBin(
+            options: OptionSet, fitInformation: SpanFitInformation? = null, log: Boolean = false
+    ) = getProperty(
+        options.valueOf("bin") as Int?, fitInformation?.binSize, Span.DEFAULT_BIN,
+        "bin size", "BIN", log
+    )
 
     private fun getAndLogWorkDirAndChromSizes(
             options: OptionSet, fitInformation: SpanFitInformation? = null
