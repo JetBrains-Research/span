@@ -70,7 +70,7 @@ data class SpanFitInformation(
         VERSION
     )
 
-    fun genomeQuery(): GenomeQuery = GenomeQuery(Genome[build], *chromosomesSizes.keys.toTypedArray())
+    fun genomeQuery(): GenomeQuery = GenomeQuery(Genome[build, chromosomesSizes], *chromosomesSizes.keys.toTypedArray())
 
     internal fun checkGenome(genome: Genome) {
         check(this.build == genome.build) {
