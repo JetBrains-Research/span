@@ -363,6 +363,28 @@ LABELS, FDR, GAP options are ignored.
                     ))
                     assertTrue(modelPath.exists, "Model was not created at $modelPath")
                     assertTrue(modelPath.size.isNotEmpty(), "Model file $modelPath is empty")
+                    val (reloadOut, reloadErr) = Logs.captureLoggingOutput {
+                        SpanCLA.main(arrayOf(
+                            "analyze",
+                            "--workdir", dir.toString(),
+                            "--threads", THREADS.toString(),
+                            "--model", modelPath.toString()
+                        ))
+                    }
+                    assertIn("Completed loading model: $modelPath", reloadOut)
+                    assertEquals("", reloadErr)
+
+                    val (_, invalidErr) = Logs.captureLoggingOutput {
+                        withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
+                            SpanCLA.main(arrayOf("analyze",
+                                "--workdir", dir.toString(),
+                                "--threads", THREADS.toString(),
+                                "--model", modelPath.toString(),
+                                "--bin", "137"
+                            ))
+                        }
+                    }
+                    assertIn("Stored bin size (200) differs from the command line argument (137)", invalidErr)
                 }
             }
         }
