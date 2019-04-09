@@ -19,7 +19,7 @@ class SpanTestErrorEvaluation(
 ) : Experiment("span-test-error") {
 
     private fun processModification(target: String): DataFrame {
-        val builder = DataFrameSpec()
+        val builder = DataFrameSpec(synchronized = true)
                 .strings("target", "cell")
                 .ints("k")
                 .doubles("train_error", "test_error")
