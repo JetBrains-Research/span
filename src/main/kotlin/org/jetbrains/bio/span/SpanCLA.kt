@@ -246,8 +246,8 @@ compare                         Differential peak calling mode, experimental
                 val treatmentPaths2 = options.valuesOf("treatment2") as List<Path>
                 val controlPaths1 = options.valuesOf("control1") as List<Path>?
                 val controlPaths2 = options.valuesOf("control2") as List<Path>?
-                val fragment = options.valueOf("fragment") as Fragment
-                val bin = options.valueOf("bin") as Int
+                val fragment = getFragment(options, null, log = false)
+                val bin = getBin(options, null, log = false)
                 val gap = options.valueOf("gap") as Int
                 val fdr = options.valueOf("fdr") as Double
                 val peaksPath = options.valueOf("peaks") as Path?
