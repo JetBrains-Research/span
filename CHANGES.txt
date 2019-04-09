@@ -8,6 +8,10 @@ Version 0.11.0
 
 Released on April XX, 2019
 
+- If the model file is present, Span can now call and tune peaks with no further options required
+- If the options are nevertheless provided, they're checked against those stored in the model file
+- Span recognizes explicit options `--fragment auto` and `--keep-dup false` (previously, the user had to
+omit the options to achieve this result)
 - Reduced statistical data model convergence time
 - Changed model initial point
 - Safeguards against NB parameters vanishing for small signal-to-noise ratio or insufficient number of reads
