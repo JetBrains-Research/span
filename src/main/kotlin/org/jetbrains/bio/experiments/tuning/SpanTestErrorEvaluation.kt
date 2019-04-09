@@ -25,7 +25,7 @@ class SpanTestErrorEvaluation(
                 .doubles("train_error", "test_error")
                 .builder()
         val tracks = dataConfig.extractLabelledTracks(target)
-        tracks.forEach {
+        tracks.parallelStream().forEach {
             val results = processTrack(target, it)
             ks.forEach { k ->
                 results[k]?.forEach { result ->
