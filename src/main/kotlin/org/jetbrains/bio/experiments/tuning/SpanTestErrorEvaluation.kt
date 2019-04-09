@@ -21,15 +21,15 @@ class SpanTestErrorEvaluation(
     private fun processModification(target: String): DataFrame {
         val builder = DataFrameSpec(synchronized = true)
                 .strings("target", "cell")
-                .ints("k")
+                .ints("k", "batch")
                 .doubles("train_error", "test_error")
                 .builder()
         val tracks = dataConfig.extractLabelledTracks(target)
         tracks.parallelStream().forEach {
             val results = processTrack(target, it)
             ks.forEach { k ->
-                results[k]?.forEach { result ->
-                    builder.add(target, it.cellId.toString(), k, result.first, result.second)
+                results[k]?.forEachIndexed { batch, result ->
+                    builder.add(target, it.cellId.toString(), k, batch, result.first, result.second)
                 }
             }
         }
@@ -37,7 +37,7 @@ class SpanTestErrorEvaluation(
     }
 
     private fun processTrack(target: String, track: LabelledTrack): Map<Int, List<Pair<Double, Double>>> {
-        val cellId = track.cellId
+        val name = track.name
         val labelPath = track.labelPath
         val labels = PeakAnnotation.loadLabels(labelPath, dataConfig.genomeQuery.genome)
         val trackPath = track.trackPath
@@ -52,9 +52,9 @@ class SpanTestErrorEvaluation(
         return ks.associateBy({it}) { k ->
             println("k: $k")
             val split = trainTestSplit(labels, k)
-            split.map { trainTest ->
+            split.mapIndexed { batch, trainTest ->
                 val (errors, optimal) = Span.tune(
-                    peakCallingExperiment, trainTest.train, "$target-$cellId-$k", Span.parameters
+                    peakCallingExperiment, trainTest.train, "$target-$name-$k-$batch", Span.parameters
                 )
                 val trainError = errors[optimal].error()
                 val (fdr, gap) = Span.parameters[optimal]
