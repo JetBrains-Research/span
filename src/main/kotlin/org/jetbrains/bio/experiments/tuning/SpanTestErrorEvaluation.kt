@@ -74,10 +74,13 @@ class SpanTestErrorEvaluation(
     }
 
     override fun doCalculations() {
-        val dataframes = dataConfig.dataTypes().filter {
+        val datatypes = dataConfig.dataTypes().filter {
             it.toDataType() == DataType.CHIP_SEQ && !ChipSeqTarget.isInput(it)
-        }.map { processModification(it) }.toTypedArray()
-        DataFrame.rowBind(dataframes).save(experimentPath / "result.tsv")
+        }
+        val dataframes = datatypes.map { processModification(it) }
+        dataframes.zip(datatypes).forEach { (dataframe, datatype) ->
+            dataframe.save(experimentPath / "$datatype.tsv")
+        }
     }
 
     data class TrainTest(val train: List<PeakAnnotation>, val test: List<PeakAnnotation>)
