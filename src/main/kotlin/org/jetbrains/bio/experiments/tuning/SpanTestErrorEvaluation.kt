@@ -13,6 +13,7 @@ import org.jetbrains.bio.span.getPeaks
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.util.div
 import org.jetbrains.bio.util.toPath
+import java.util.concurrent.ConcurrentHashMap
 
 class SpanTestErrorEvaluation(
         val dataConfig: DataConfig, val ks: IntArray
@@ -25,7 +26,8 @@ class SpanTestErrorEvaluation(
                 .doubles("train_error", "test_error")
                 .builder()
         val tracks = dataConfig.extractLabelledTracks(target)
-        tracks.parallelStream().forEach {
+        tracks.forEach {
+            println(it.name)
             val results = processTrack(target, it)
             ks.forEach { k ->
                 results[k]?.forEachIndexed { batch, result ->
@@ -49,10 +51,11 @@ class SpanTestErrorEvaluation(
             listOf(trackPath to inputPath),
             Span.DEFAULT_BIN, null
         )
-        return ks.associateBy({it}) { k ->
+        val res = ConcurrentHashMap<Int, List<Pair<Double, Double>>>()
+        ks.toList().parallelStream().forEach { k ->
             println("k: $k")
             val split = trainTestSplit(labels, k)
-            split.mapIndexed { batch, trainTest ->
+            val list = split.mapIndexed { batch, trainTest ->
                 val (errors, optimal) = Span.tune(
                     peakCallingExperiment, trainTest.train, "$target-$name-$k-$batch", Span.parameters
                 )
@@ -65,7 +68,9 @@ class SpanTestErrorEvaluation(
                 ).error()
                 trainError to testError
             }
+            res[k] = list
         }
+        return res
     }
 
     override fun doCalculations() {
