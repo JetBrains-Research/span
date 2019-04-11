@@ -2,9 +2,11 @@ package org.jetbrains.bio.experiments.fit
 
 import com.google.common.annotations.VisibleForTesting
 import com.google.common.math.IntMath
-import com.google.gson.GsonBuilder
+import com.google.gson.*
+import com.google.gson.reflect.TypeToken
 import kotlinx.support.jdk7.use
 import org.apache.log4j.Logger
+import org.jetbrains.bio.coverage.Fragment
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.fit.SpanModelFitExperiment.Companion.createEffectiveQueries
 import org.jetbrains.bio.genome.Chromosome
@@ -26,6 +28,7 @@ import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.statistics.state.ZLHID
 import org.jetbrains.bio.util.*
+import java.lang.reflect.Type
 import java.math.RoundingMode
 import java.nio.file.Path
 import java.util.*
@@ -43,7 +46,8 @@ data class SpanFitInformation(
         val build: String,
         val data: List<TC>,
         val labels: List<String>,
-        val fragment: Int?,
+        val fragment: Fragment,
+        val unique: Boolean,
         val binSize: Int,
         val chromosomesSizes: LinkedHashMap<String, Int>,
         val version: Int
@@ -53,17 +57,20 @@ data class SpanFitInformation(
             genomeQuery: GenomeQuery,
             paths: List<Pair<Path, Path?>>,
             labels: List<String>,
-            fragment: Int?,
+            fragment: Fragment,
+            unique: Boolean,
             binSize: Int
     ): this(
         genomeQuery.build,
         paths.map { TC(it.first.toString(), it.second?.toString()) },
-        labels, fragment, binSize,
+        labels, fragment, unique, binSize,
         LinkedHashMap<String, Int>().apply {
             genomeQuery.get().sortedBy { it.name }.forEach { this[it.name] = it.length }
         },
         VERSION
     )
+
+    fun genomeQuery(): GenomeQuery = GenomeQuery(Genome[build, chromosomesSizes], *chromosomesSizes.keys.toTypedArray())
 
     internal fun checkGenome(genome: Genome) {
         check(this.build == genome.build) {
@@ -109,6 +116,15 @@ data class SpanFitInformation(
         return offsetsMap[index] to offsetsMap[index + 1]
     }
 
+    internal fun getChromosomesIndices(chromosome: String): Pair<Int, Int> {
+        check(chromosome in chromosomesSizes) {
+            "Missing chromosome in ${chromosomesSizes.keys.toList()}: $chromosome"
+        }
+        val offsetsMap = offsetsMap()
+        val index = chromosomesSizes.keys.sorted().indexOf(chromosome)
+        return offsetsMap[index] to offsetsMap[index + 1]
+    }
+
     internal fun save(path: Path) {
         path.parent.createDirectories()
         path.bufferedWriter().use { GSON.toJson(this, it) }
@@ -118,26 +134,55 @@ data class SpanFitInformation(
         return DataFrame.rowBind(chromosomesSizes.keys.sorted().map { statesDataFrame[it]!! }.toTypedArray())
     }
 
-    internal fun split(dataFrame: DataFrame, genomeQuery: GenomeQuery): Map<String, DataFrame> {
-        checkGenome(genomeQuery.genome)
-        return genomeQuery.get()
-                .filter { it.name in chromosomesSizes }
-                .map { chromosome ->
-                    val (start, end) = getChromosomesIndices(chromosome)
-                    chromosome.name to dataFrame.iloc[start until end]
-                }.toMap()
+    internal fun split(dataFrame: DataFrame, genomeQuery: GenomeQuery?): Map<String, DataFrame> {
+        if (genomeQuery != null) {
+            checkGenome(genomeQuery.genome)
+            return genomeQuery.get()
+                    .filter { it.name in chromosomesSizes }
+                    .map { chromosome ->
+                        val (start, end) = getChromosomesIndices(chromosome)
+                        chromosome.name to dataFrame.iloc[start until end]
+                    }.toMap()
+        } else {
+            return chromosomesSizes.keys
+                    .map { chromosome ->
+                        val (start, end) = getChromosomesIndices(chromosome)
+                        chromosome to dataFrame.iloc[start until end]
+                    }.toMap()
+        }
     }
 
     companion object {
-        const val VERSION: Int = 1
+        const val VERSION: Int = 2
 
         /**
          * Using Treatment and Control class instead of [Pair] here for nice GSON serialization
          */
         data class TC(val path: String, val control: String?)
 
+        object FragmentTypeAdapter : JsonSerializer<Fragment>, JsonDeserializer<Fragment> {
+
+            override fun serialize(
+                    src: Fragment, typeOfSrc: Type,
+                    context: JsonSerializationContext
+            ): JsonElement = context.serialize(src.toString())
+
+            override fun deserialize(
+                    json: JsonElement, typeOfT: Type,
+                    context: JsonDeserializationContext
+            ): Fragment {
+                val str = context.deserialize<String>(json, object : TypeToken<String>() {}.type)
+                try {
+                    return Fragment.fromString(str)
+                } catch (e: NumberFormatException) {
+                    throw IllegalStateException("Failed to deserialize $str", e)
+                }
+            }
+        }
+
 
         private val GSON = GsonBuilder()
+                .registerTypeAdapter(object : TypeToken<Fragment>() {}.type, FragmentTypeAdapter)
                 .setPrettyPrinting()
                 .setFieldNamingStrategy(GSONUtil.NO_MY_UNDESCORE_NAMING_STRATEGY)
                 .create()
@@ -187,7 +232,7 @@ data class SpanFitResults(
 
 
 /**
- * A generic class for [SPAN] (Semi-supervised Peak Analyzer) - tool for analyzing and comparing ChIP-Seq data.
+ * A generic class for Span (Semi-supervised Peak Analyzer) - tool for analyzing and comparing ChIP-Seq data.
  * Both procedures rely on the Zero Inflated Negative Binomial Restricted Algorithm.
  *
  * It is implemented as [ModelFitExperiment] with different [ClassificationModel] models.
@@ -206,7 +251,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
         externalGenomeQuery: GenomeQuery,
         paths: List<Pair<Path, Path?>>,
         labels: List<String>,
-        fragment: Int?,
+        fragment: Fragment,
         val binSize: Int,
         modelFitter: Fitter<Model>,
         modelClass: Class<Model>,
@@ -216,7 +261,8 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
         private val fixedModelPath: Path? = null
 ) : ModelFitExperiment<Model, State>(
     createEffectiveQueries(externalGenomeQuery, paths, labels, fragment, binSize, unique),
-    modelFitter, modelClass, availableStates) {
+    modelFitter, modelClass, availableStates
+) {
 
     val results: SpanFitResults by lazy {
         getOrLoadResults()
@@ -228,7 +274,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
         results.logNullMemberships
     }
 
-    val fitInformation = SpanFitInformation(genomeQuery, paths, labels, fragment, binSize)
+    val fitInformation = SpanFitInformation(genomeQuery, paths, labels, fragment, unique, binSize)
 
     private val preprocessedData: List<Preprocessed<DataFrame>> by lazy {
         genomeQuery.get().sortedBy { it.name }.map {
@@ -338,7 +384,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
                 genomeQuery: GenomeQuery,
                 paths: List<Pair<Path, Path?>>,
                 labels: List<String>,
-                fragment: Int?,
+                fragment: Fragment,
                 binSize: Int,
                 unique: Boolean = true
         ): Pair<GenomeQuery, Query<Chromosome, DataFrame>> {
@@ -360,8 +406,8 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
                 throw IllegalStateException(errMessage)
             }
             val effectiveGenomeQuery = GenomeQuery(
-                    genomeQuery.genome,
-                    *nonEmptyChromosomes.map { it.name }.toTypedArray()
+                genomeQuery.genome,
+                *nonEmptyChromosomes.map { it.name }.toTypedArray()
             )
             return effectiveGenomeQuery to object : CachingQuery<Chromosome, DataFrame>() {
                 val scores = paths.map {
@@ -378,7 +424,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
         }
 
 
-        fun loadResults(genomeQuery: GenomeQuery, tarPath: Path): SpanFitResults {
+        fun loadResults(genomeQuery: GenomeQuery? = null, tarPath: Path): SpanFitResults {
             LOG.info("Loading model: $tarPath")
             return withTempDirectory(tarPath.stem) { dir ->
                 LOG.debug("Started model file decompress: $tarPath")
@@ -387,7 +433,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
                 LOG.debug("Completed model file decompress and started loading: $tarPath")
                 val info = SpanFitInformation.load(dir / SpanModelFitExperiment.INFORMATION_JSON)
                 // Sanity check
-                info.checkGenome(genomeQuery.genome)
+                genomeQuery?.let { info.checkGenome(it.genome) }
                 val model = ClassificationModel.load<ClassificationModel>(dir / MODEL_JSON)
                 val logNullMembershipsDF = DataFrame.load(dir / SpanModelFitExperiment.NULL_NPZ)
                 val logNullMembershipsMap = info.split(logNullMembershipsDF, genomeQuery)

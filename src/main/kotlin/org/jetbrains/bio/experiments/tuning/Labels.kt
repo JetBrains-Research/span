@@ -81,8 +81,8 @@ data class PeakAnnotation(override val location: Location,
             return format.parse(labelPath) { it.toList() }.map {
                 val e = it.unpackRegularFields(format)
                 val type = PeakAnnotationType.from(e.name)
-                requireNotNull("Unknown type: $type")
-                PeakAnnotation(e.toLocation(genome), type!!)
+                requireNotNull(type) { "Unknown type: ${e.name}" }
+                PeakAnnotation(e.toLocation(genome), type)
             }
         }
     }

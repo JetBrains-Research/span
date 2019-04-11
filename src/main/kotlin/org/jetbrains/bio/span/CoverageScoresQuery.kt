@@ -1,6 +1,7 @@
 package org.jetbrains.bio.span
 
 import org.jetbrains.bio.coverage.Coverage
+import org.jetbrains.bio.coverage.Fragment
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
@@ -17,7 +18,7 @@ class CoverageScoresQuery(
         val genomeQuery: GenomeQuery,
         private val treatmentPath: Path,
         private val controlPath: Path?,
-        val fragment: Int?,
+        val fragment: Fragment,
         val binSize: Int,
         val unique: Boolean = true
 ): CachingQuery<Chromosome, IntArray>() {
@@ -26,8 +27,8 @@ class CoverageScoresQuery(
     override val id: String
         get() = reduceIds(
             listOfNotNull(
-                treatmentPath.stemGz, controlPath?.stemGz, fragment, binSize,
-                if (!unique) "keepdup" else null
+                treatmentPath.stemGz, controlPath?.stemGz, fragment.nullableInt,
+                binSize, if (!unique) "keepdup" else null
             ).map { it.toString() }
         )
 

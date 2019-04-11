@@ -2,17 +2,16 @@ package org.jetbrains.bio.experiments.tuning
 
 import com.google.common.primitives.Shorts
 import kotlinx.support.jdk7.use
+import org.jetbrains.bio.coverage.AutoFragment
 import org.jetbrains.bio.coverage.removeDuplicates
 import org.jetbrains.bio.dataset.*
 import org.jetbrains.bio.experiments.fit.SpanFitResults
-import org.jetbrains.bio.experiments.fit.SpanModelFitExperiment
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.io.BedFormat
 import org.jetbrains.bio.span.getPeaks
 import org.jetbrains.bio.span.savePeaks
-import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.tools.ToolsChipSeqWashu
 import org.jetbrains.bio.util.*
 import java.nio.file.Path
@@ -48,10 +47,10 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
     override fun defaultParams(uli: Boolean) = DEFAULT_FDR to DEFAULT_GAP
 
     override fun tune(configuration: DataConfig,
-                      path: Path,
-                      target: String,
-                      useInput: Boolean,
-                      saveAllPeaks: Boolean) {
+            path: Path,
+            target: String,
+            useInput: Boolean,
+            saveAllPeaks: Boolean) {
         if (!checkTuningRequired(configuration, path, target, useInput)) {
             return
         }
@@ -65,7 +64,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
         labelledTracks.forEach { (cellId, replicate, trackPath, labelsPath) ->
             val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(configuration.genomeQuery,
                 listOf(trackPath to inputPath),
-                DEFAULT_BIN, null
+                DEFAULT_BIN, AutoFragment
             )
 
             if (saveAllPeaks) {
@@ -76,7 +75,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
                     val peaksPath = folder / transform(parameter) / fileName(cellId, replicate, target, parameter)
                     peaksPath.checkOrRecalculate(ignoreEmptyFile = true) { (path) ->
                         savePeaks(peakCallingExperiment.results.getPeaks(configuration.genomeQuery,
-                                parameter.first, parameter.second), path)
+                            parameter.first, parameter.second), path)
                     }
                     progress.report()
                 }
@@ -85,10 +84,10 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
 
             PeakCallerTuning.LOG.info("Tuning $id $target $cellId $replicate peaks")
             val labels = PeakAnnotation.loadLabels(
-                    labelsPath, configuration.genomeQuery.genome
+                labelsPath, configuration.genomeQuery.genome
             )
             val (labelErrorsGrid, index) =
-                    tune(peakCallingExperiment, labels, "$id $target $cellId $replicate", parameters)
+                    tune(peakCallingExperiment.results, labels, "$id $target $cellId $replicate", parameters)
 
 
             PeakCallerTuning.LOG.info("Saving $id $target $cellId $replicate optimal peaks to $folder")
@@ -96,8 +95,8 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
             val optimalParameters = parameters[index]
             val optimalPeaksPath = folder / fileName(cellId, replicate, target, optimalParameters)
             savePeaks(peakCallingExperiment.results.getPeaks(configuration.genomeQuery,
-                    optimalParameters.first, optimalParameters.second),
-                    optimalPeaksPath)
+                optimalParameters.first, optimalParameters.second),
+                optimalPeaksPath)
 
             // Compute _rip.sh file
             ToolsChipSeqWashu().runRip(removeDuplicates(trackPath), optimalPeaksPath)
@@ -113,31 +112,32 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
         saveGrid(path, target, useInput)
     }
 
-    fun <Model : ClassificationModel, State : Any>
-            tune(experiment: SpanModelFitExperiment<Model, State>,
-                 labels: List<PeakAnnotation>,
-                 id: String,
-                 parameters: List<Pair<Double, Int>>,
-                 cancellableState: CancellableState = CancellableState.current()): Pair<List<LabelErrors>, Int> {
-        val results = experiment.results
+    fun tune(
+            results: SpanFitResults,
+            labels: List<PeakAnnotation>,
+            id: String,
+            parameters: List<Pair<Double, Int>>,
+            cancellableState: CancellableState = CancellableState.current()
+    ): Pair<List<LabelErrors>, Int> {
         MultitaskProgress.addTask(id, parameters.size.toLong())
-        val tuneResults = tune(results, experiment.genomeQuery, labels, id, parameters, cancellableState)
+        val tuneResults = tune(results, results.fitInfo.genomeQuery(), labels, id, parameters, cancellableState)
         MultitaskProgress.finishTask(id)
         return tuneResults
     }
 
 
-    fun tune(results: SpanFitResults,
-             genomeQuery: GenomeQuery,
-             labels: List<PeakAnnotation>,
-             id: String,
-             parameters: List<Pair<Double, Int>>,
-             cancellableState: CancellableState = CancellableState.current())
-            : Pair<List<LabelErrors>, Int> {
+    fun tune(
+            results: SpanFitResults,
+            genomeQuery: GenomeQuery,
+            labels: List<PeakAnnotation>,
+            id: String,
+            parameters: List<Pair<Double, Int>>,
+            cancellableState: CancellableState = CancellableState.current()
+    ): Pair<List<LabelErrors>, Int> {
 
         val labeledGenomeQuery = GenomeQuery(
-                genomeQuery.genome,
-                *labels.map { it.location.chromosome.name }.distinct().toTypedArray()
+            genomeQuery.genome,
+            *labels.map { it.location.chromosome.name }.distinct().toTypedArray()
         )
         // Parallelism is OK here:
         // 1. getPeaks creates BitterSet per each parameters combination of size
@@ -147,8 +147,8 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
             cancellableState.checkCanceled()
             val peaksOnLabeledGenomeQuery = results.getPeaks(labeledGenomeQuery, fdr, gap)
             val errors = computeErrors(labels,
-                    LocationsMergingList.create(
-                            labeledGenomeQuery, peaksOnLabeledGenomeQuery.stream().map { it.location }.iterator())
+                LocationsMergingList.create(
+                    labeledGenomeQuery, peaksOnLabeledGenomeQuery.stream().map { it.location }.iterator())
             )
             MultitaskProgress.reportTask(id)
             errors
@@ -225,10 +225,10 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
     }
 
     override fun tune(configuration: DataConfig,
-                      path: Path,
-                      target: String,
-                      useInput: Boolean,
-                      saveAllPeaks: Boolean) {
+            path: Path,
+            target: String,
+            useInput: Boolean,
+            saveAllPeaks: Boolean) {
 
         if (!checkTuningReplicatedRequired(path, target, useInput)) {
             return
@@ -241,9 +241,11 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
                 .filter { it.key.dataType.toDataType() == DataType.CHIP_SEQ && ChipSeqTarget.isInput(it.key.dataType) }
                 .flatMap { it.value }.map { it.second.path }.firstOrNull()
 
-        val replicatedPeakCallingExperiment = SpanPeakCallingExperiment.getExperiment(configuration.genomeQuery,
+        val replicatedPeakCallingExperiment = SpanPeakCallingExperiment.getExperiment(
+            configuration.genomeQuery,
             labelledTracks.map(LabelledTrack::trackPath).map { it to inputPath },
-            DEFAULT_BIN, null)
+            DEFAULT_BIN, AutoFragment
+        )
 
         if (saveAllPeaks) {
             PeakCallerTuning.LOG.info("Saving all $id peaks $target")
@@ -254,8 +256,8 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
                 val peaksPath = folder / transform(parameter) / fileName(target, parameter)
                 peaksPath.checkOrRecalculate(ignoreEmptyFile = true) { (p) ->
                     savePeaks(replicatedPeakCallingExperiment.results.getPeaks(configuration.genomeQuery,
-                            parameter.first, parameter.second),
-                            p)
+                        parameter.first, parameter.second),
+                        p)
                 }
                 progress.report()
             }
@@ -265,12 +267,12 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
         PeakCallerTuning.LOG.info("Tuning $id peaks $target")
         val labelsPath = labelledTracks.first().labelPath
         val labels = PeakAnnotation.loadLabels(labelsPath, configuration.genomeQuery.genome)
-        val (labelErrorsGrid, index) = Span.tune(replicatedPeakCallingExperiment, labels, target, parameters)
+        val (labelErrorsGrid, index) = Span.tune(replicatedPeakCallingExperiment.results, labels, target, parameters)
 
         PeakCallerTuning.LOG.info("Saving $target optimal $id peaks to $folder")
         savePeaks(replicatedPeakCallingExperiment.results.getPeaks(configuration.genomeQuery,
-                parameters[index].first, parameters[index].second),
-                folder / fileName(target, parameters[index]))
+            parameters[index].first, parameters[index].second),
+            folder / fileName(target, parameters[index]))
 
         val results = TuningResults()
         labelErrorsGrid.forEachIndexed { i, error ->

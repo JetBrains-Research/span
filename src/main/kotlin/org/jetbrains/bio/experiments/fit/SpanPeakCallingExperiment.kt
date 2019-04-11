@@ -1,5 +1,7 @@
 package org.jetbrains.bio.experiments.fit
 
+import org.jetbrains.bio.coverage.AutoFragment
+import org.jetbrains.bio.coverage.Fragment
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.query.reduceIds
@@ -22,7 +24,7 @@ import java.nio.file.Path
 class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
         genomeQuery: GenomeQuery,
         paths: List<Pair<Path, Path?>>,
-        fragment: Int?,
+        fragment: Fragment,
         binSize: Int,
         modelFitter: Fitter<Model>,
         modelClass: Class<Model>,
@@ -42,7 +44,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
             paths: Pair<Path, Path?>,
             modelFitter: Fitter<Model>,
             modelClass: Class<Model>,
-            fragment: Int?,
+            fragment: Fragment,
             binSize: Int,
             states: Array<State>,
             nullHypothesis: NullHypothesis<State>,
@@ -57,7 +59,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
     override val id: String =
             reduceIds(
                 paths.flatMap { listOfNotNull(it.first, it.second) }.map { it.stemGz } +
-                        listOfNotNull(fragment, binSize).map { it.toString() })
+                        listOfNotNull(fragment.nullableInt, binSize).map { it.toString() })
 
 
     companion object {
@@ -74,7 +76,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
                 genomeQuery: GenomeQuery,
                 paths: List<Pair<Path, Path?>>,
                 bin: Int,
-                fragment: Int? = null,
+                fragment: Fragment = AutoFragment,
                 unique: Boolean = true,
                 fixedModelPath: Path? = null
         ): SpanPeakCallingExperiment<out MLAbstractHMM, ZLH> {

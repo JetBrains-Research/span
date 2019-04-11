@@ -157,7 +157,7 @@ TREATMENT2: $path
 CONTROL2: none
 CHROM.SIZES: $chromsizes
 GENOME: to1
-FRAGMENT: null
+FRAGMENT: auto
 BIN: $BIN
 FDR: $FDR
 GAP: $GAP
@@ -165,7 +165,7 @@ PEAKS: $peaksPath
 """, out)
                 assertIn("Saved result to $peaksPath", out)
                 // Check model fit has a progress
-                assertIn("] 0.00% (0/250), Elapsed time", out)
+                assertIn("] 0.00% (0/25), Elapsed time", out)
             }
         }
     }
@@ -283,7 +283,7 @@ LABELS, FDR, GAP options are ignored.
                     )
                 }
                 /* we also check that logging was performed normally */
-                val logPath = dir / "logs" / "${reduceIds(listOf(path.stemGz, BIN.toString()))}.log"
+                val logPath = dir / "logs" / "${reduceIds(listOf(path.stemGz, BIN.toString(), "unique"))}.log"
                 assertTrue(logPath.exists, "Log file not found")
                 assertTrue(logPath.size.isNotEmpty(), "Log file is empty")
             }
@@ -312,7 +312,7 @@ LABELS, FDR, GAP options are ignored.
 
                     // Check that log file was created correctly
                     assertTrue(
-                        (dir / "logs" / "${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}.log")
+                        (dir / "logs" / "${reduceIds(listOf(path.stemGz, control.stemGz, "200", "unique"))}.log")
                                 .exists,
                         "Log file not found"
                     )
@@ -363,6 +363,28 @@ LABELS, FDR, GAP options are ignored.
                     ))
                     assertTrue(modelPath.exists, "Model was not created at $modelPath")
                     assertTrue(modelPath.size.isNotEmpty(), "Model file $modelPath is empty")
+                    val (reloadOut, reloadErr) = Logs.captureLoggingOutput {
+                        SpanCLA.main(arrayOf(
+                            "analyze",
+                            "--workdir", dir.toString(),
+                            "--threads", THREADS.toString(),
+                            "--model", modelPath.toString()
+                        ))
+                    }
+                    assertIn("Completed loading model: $modelPath", reloadOut)
+                    assertEquals("", reloadErr)
+
+                    val (_, invalidErr) = Logs.captureLoggingOutput {
+                        withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
+                            SpanCLA.main(arrayOf("analyze",
+                                "--workdir", dir.toString(),
+                                "--threads", THREADS.toString(),
+                                "--model", modelPath.toString(),
+                                "--bin", "137"
+                            ))
+                        }
+                    }
+                    assertIn("Stored bin size (200) differs from the command line argument (137)", invalidErr)
                 }
             }
         }
@@ -490,7 +512,7 @@ LABELS, FDR, GAP options are ignored.
                 }
 
                 // Check correct log file name
-                val logPath = it / "logs" / "${reduceIds(listOf(path.stemGz, BIN.toString()))}.log"
+                val logPath = it / "logs" / "${reduceIds(listOf(path.stemGz, BIN.toString(), "unique"))}.log"
                 assertTrue(logPath.exists, "Log file not found")
                 val log = FileReader(logPath.toFile()).use { it.readText() }
                 val errorMessage = "Model can't be trained on empty coverage, exiting."
