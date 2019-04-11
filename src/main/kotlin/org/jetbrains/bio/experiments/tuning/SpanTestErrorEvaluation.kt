@@ -1,5 +1,6 @@
 package org.jetbrains.bio.experiments.tuning
 
+import org.jetbrains.bio.coverage.AutoFragment
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.dataframe.DataFrameSpec
 import org.jetbrains.bio.dataset.ChipSeqTarget
@@ -46,13 +47,12 @@ class SpanTestErrorEvaluation(
         val inputPath = dataConfig.tracksMap.entries
                 .filter { it.key.dataType.toDataType() == DataType.CHIP_SEQ && ChipSeqTarget.isInput(it.key.dataType) }
                 .flatMap { it.value }.map { it.second.path }.first()
-        val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(
+        val results = SpanPeakCallingExperiment.getExperiment(
             dataConfig.genomeQuery,
             listOf(trackPath to inputPath),
-            Span.DEFAULT_BIN, null
-        )
+            Span.DEFAULT_BIN, AutoFragment
+        ).results
         val res = ConcurrentHashMap<Int, List<Pair<Double, Double>>>()
-        val results = peakCallingExperiment.results
         ks.toList().parallelStream().forEach { k ->
             println("k: $k")
             val split = trainTestSplit(labels, k)
