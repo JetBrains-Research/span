@@ -55,7 +55,7 @@ class SpanTestErrorEvaluation(
         ks.toList().parallelStream().forEach { k ->
             println("k: $k")
             val split = trainTestSplit(labels, k)
-            val list = split.mapIndexed { batch, trainTest ->
+            val list = split.take(10).mapIndexed { batch, trainTest ->
                 val (errors, optimal) = Span.tune(
                     peakCallingExperiment, trainTest.train, "$target-$name-$k-$batch", Span.parameters
                 )
