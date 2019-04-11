@@ -52,16 +52,17 @@ class SpanTestErrorEvaluation(
             Span.DEFAULT_BIN, null
         )
         val res = ConcurrentHashMap<Int, List<Pair<Double, Double>>>()
+        val results = peakCallingExperiment.results
         ks.toList().parallelStream().forEach { k ->
             println("k: $k")
             val split = trainTestSplit(labels, k)
             val list = split.take(10).mapIndexed { batch, trainTest ->
                 val (errors, optimal) = Span.tune(
-                    peakCallingExperiment, trainTest.train, "$target-$name-$k-$batch", Span.parameters
+                    results, trainTest.train, "$target-$name-$k-$batch", Span.parameters
                 )
                 val trainError = errors[optimal].error()
                 val (fdr, gap) = Span.parameters[optimal]
-                val peaks = peakCallingExperiment.results.getPeaks(dataConfig.genomeQuery, fdr, gap)
+                val peaks = results.getPeaks(dataConfig.genomeQuery, fdr, gap)
                 val testError = computeErrors(
                     trainTest.test,
                     LocationsMergingList.create(dataConfig.genomeQuery, peaks.map { it.location })
