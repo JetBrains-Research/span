@@ -53,25 +53,20 @@ class MLFreeNBHMM(meanLow: Double, meanHigh: Double, failures: Double) : MLFreeH
             .toString()
 
     companion object {
+        @Suppress("MayBeConstant", "unused")
         @Transient
         @JvmField
         val VERSION: Int = 1
 
         private val LOG = Logger.getLogger(MLFreeNBHMM::class.java)
 
-        /**
-         * This value is used to propose initial states for mean values of NOISE and SIGNAL states in the model.
-         * Real life signal-to-noise ratio are generally in range 10-30.
-         */
-        const val SIGNAL_TO_NOISE_RATIO = 100.0
-
         fun fitter() = object : Fitter<MLFreeNBHMM> {
             override fun guess(preprocessed: Preprocessed<DataFrame>, title: String,
-                               threshold: Double, maxIter: Int): MLFreeNBHMM =
-                    guess(listOf(preprocessed), title, threshold, maxIter)
+                               threshold: Double, maxIter: Int, attempt: Int): MLFreeNBHMM =
+                    guess(listOf(preprocessed), title, threshold, maxIter, attempt)
 
             override fun guess(preprocessed: List<Preprocessed<DataFrame>>, title: String,
-                               threshold: Double, maxIter: Int): MLFreeNBHMM {
+                               threshold: Double, maxIter: Int, attempt: Int): MLFreeNBHMM {
                 // Filter out 0s, since they are covered by dedicated ZERO state
                 val emissions = preprocessed.flatMap {
                     it.get().let { df -> df.sliceAsInt(df.labels.first()).toList() }
@@ -80,12 +75,24 @@ class MLFreeNBHMM(meanLow: Double, meanHigh: Double, failures: Double) : MLFreeH
                 val mean = emissions.average()
                 val sd = emissions.standardDeviation()
                 val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, sd * sd)
-                val meanLow = mean / Math.sqrt(SIGNAL_TO_NOISE_RATIO)
-                val meanHigh = mean * Math.sqrt(SIGNAL_TO_NOISE_RATIO)
-                LOG.debug("Guess emissions mean $mean\tsd $sd")
-                LOG.debug("Guess init meanLow $meanLow\tmeanHigh $meanHigh\tfailures $fs")
+                val snr = signalToNoise(attempt)
+                val meanLow = mean / Math.sqrt(snr)
+                val meanHigh = mean * Math.sqrt(snr)
+                LOG.debug("Guess $attempt emissions mean $mean\tsd $sd")
+                LOG.debug("Guess $attempt init meanLow $meanLow\tmeanHigh $meanHigh\tfailures $fs")
                 return MLFreeNBHMM(meanLow, meanHigh, fs)
             }
         }
+
+        /**
+         *
+         * This value is used to propose initial states for mean values of LOW and HIGH states in the model.
+         * Good experiment signal-to-noise ratio is generally 10-30.
+         *
+         * Use multiplier sequence depending on attempt number 1, 2, 1/2, 4, 1/4, etc.
+         * Used for multistart
+         */
+        fun signalToNoise(attempt: Int) =
+                Math.max(1.1, 20 * Math.pow(2.0, ((attempt + 1) / 2) * (if (attempt % 2 == 1) 1.0 else -1.0)))
     }
 }

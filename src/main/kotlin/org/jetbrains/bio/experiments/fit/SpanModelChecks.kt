@@ -85,8 +85,8 @@ internal fun MLConstrainedNBHMM.flipStatesIfNecessary(tracks: Int) {
     val switchNotNeeded = (0 until tracks).filter { means[it] < means[it + tracks] || ps[it] < ps[it + tracks] }
     if (switchNeeded.isNotEmpty() && switchNotNeeded.isNotEmpty()) {
         LOG.error("Irrecoverable fitting error")
-        LOG.error("means: " + means.toString())
-        LOG.error("ps: " + ps.toString())
+        LOG.error("means: $means")
+        LOG.error("ps: $ps")
         LOG.error("track(s) " + switchNeeded.joinToString(transform = Int::toString)
                 + " contradict track(s) " + switchNotNeeded.joinToString(transform = Int::toString))
         throw IllegalStateException("Irrecoverable fitting error")
@@ -117,16 +117,16 @@ internal fun MLConstrainedNBHMM.flipStatesIfNecessary(tracks1: Int, tracks2: Int
             .filter { means[it] < means[it + tracks2] && ps[it] < ps[it + tracks2] }
     if (switchNeeded1.isNotEmpty() && switchNotNeeded1.isNotEmpty()) {
         LOG.error("Irrecoverable fitting error")
-        LOG.error("means: " + means.toString())
-        LOG.error("ps: " + ps.toString())
+        LOG.error("means: $means")
+        LOG.error("ps: $ps")
         LOG.error("track(s) " + switchNeeded1.joinToString(transform = Int::toString)
                 + " contradict track(s) " + switchNotNeeded1.joinToString(transform = Int::toString))
         throw IllegalStateException("Irrecoverable fitting error")
     }
     if (switchNeeded2.isNotEmpty() && switchNotNeeded2.isNotEmpty()) {
         LOG.error("Irrecoverable fitting error")
-        LOG.error("means: " + means.toString())
-        LOG.error("ps: " + ps.toString())
+        LOG.error("means: $means")
+        LOG.error("ps: $ps")
         LOG.error("track(s) " + switchNeeded2.joinToString(transform = Int::toString)
                 + " contradict track(s) " + switchNotNeeded2.joinToString(transform = Int::toString))
         throw IllegalStateException("Irrecoverable fitting error")

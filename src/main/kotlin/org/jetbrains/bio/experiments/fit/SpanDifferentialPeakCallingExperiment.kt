@@ -84,8 +84,8 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
 
 
     companion object {
-        const val TRACK1_PREFIX = "track1_"
-        const val TRACK2_PREFIX = "track2_"
+        const val TRACK1_PREFIX = "track1"
+        const val TRACK2_PREFIX = "track2"
 
         /**
          * Creates experiment for model-based comparison of binned coverage tracks for given queries.
@@ -125,16 +125,18 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
                 override fun fit(preprocessed: Preprocessed<DataFrame>,
                                  title: String,
                                  threshold: Double,
-                                 maxIter: Int): MLConstrainedNBHMM =
-                        fitter.fit(preprocessed, title, threshold, maxIter).apply {
+                                 maxIter: Int,
+                                 attempt: Int): MLConstrainedNBHMM =
+                        fitter.fit(preprocessed, title, threshold, maxIter, attempt).apply {
                             flipStatesIfNecessary(tracks1, tracks2)
                         }
 
                 override fun fit(preprocessed: List<Preprocessed<DataFrame>>,
                                  title: String,
                                  threshold: Double,
-                                 maxIter: Int): MLConstrainedNBHMM =
-                        fitter.fit(preprocessed, title, threshold, maxIter).apply {
+                                 maxIter: Int,
+                                 attempt: Int): MLConstrainedNBHMM =
+                        fitter.fit(preprocessed, title, threshold, maxIter, attempt).apply {
                             flipStatesIfNecessary(tracks1, tracks2)
                         }
             }

@@ -33,10 +33,10 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
         unique: Boolean = true,
         fixedModelPath: Path? = null
 ) : SpanModelFitExperiment<Model, State>(
-    genomeQuery,
-    paths, MultiLabels.generate(TRACK_PREFIX, paths.size).toList(),
-    fragment, binSize,
-    modelFitter, modelClass, states, nullHypothesis, unique, fixedModelPath
+        genomeQuery,
+        paths, MultiLabels.generate(TRACK_PREFIX, paths.size).toList(),
+        fragment, binSize,
+        modelFitter, modelClass, states, nullHypothesis, unique, fixedModelPath
 ) {
 
     constructor(
@@ -50,20 +50,20 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
             nullHypothesis: NullHypothesis<State>,
             unique: Boolean = true,
             fixedModelPath: Path? = null
-    ): this(
-        genomeQuery, listOf(paths),
-        fragment, binSize,
-        modelFitter, modelClass, states, nullHypothesis, unique, fixedModelPath
+    ) : this(
+            genomeQuery, listOf(paths),
+            fragment, binSize,
+            modelFitter, modelClass, states, nullHypothesis, unique, fixedModelPath
     )
 
     override val id: String =
             reduceIds(
-                paths.flatMap { listOfNotNull(it.first, it.second) }.map { it.stemGz } +
-                        listOfNotNull(fragment.nullableInt, binSize).map { it.toString() })
+                    paths.flatMap { listOfNotNull(it.first, it.second) }.map { it.stemGz } +
+                            listOfNotNull(fragment.nullableInt, binSize).map { it.toString() })
 
 
     companion object {
-        const val TRACK_PREFIX = "track_"
+        const val TRACK_PREFIX = "track"
 
         /**
          * Creates experiment for model-based enrichment of binned coverage tracks (e.g. ChIP-seq tracks)
@@ -83,24 +83,24 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
             check(paths.isNotEmpty()) { "No data" }
             return if (paths.size == 1) {
                 SpanPeakCallingExperiment(
-                    genomeQuery, paths.first(),
-                    semanticCheck(MLFreeNBHMM.fitter()),
-                    MLFreeNBHMM::class.java,
-                    fragment, bin,
-                    ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
-                    unique,
-                    fixedModelPath
+                        genomeQuery, paths.first(),
+                        semanticCheck(MLFreeNBHMM.fitter().multiStarted()),
+                        MLFreeNBHMM::class.java,
+                        fragment, bin,
+                        ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
+                        unique,
+                        fixedModelPath
                 )
             } else {
                 SpanPeakCallingExperiment(
-                    genomeQuery, paths,
-                    fragment,
-                    bin,
-                    semanticCheck(MLConstrainedNBHMM.fitter(paths.size), paths.size),
-                    MLConstrainedNBHMM::class.java,
-                    ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
-                    unique,
-                    fixedModelPath
+                        genomeQuery, paths,
+                        fragment,
+                        bin,
+                        semanticCheck(MLConstrainedNBHMM.fitter(paths.size), paths.size).multiStarted(),
+                        MLConstrainedNBHMM::class.java,
+                        ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
+                        unique,
+                        fixedModelPath
                 )
             }
         }
@@ -111,16 +111,18 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
                 override fun fit(preprocessed: Preprocessed<DataFrame>,
                                  title: String,
                                  threshold: Double,
-                                 maxIter: Int): MLFreeNBHMM =
-                        fitter.fit(preprocessed, title, threshold, maxIter).apply {
+                                 maxIter: Int,
+                                 attempt: Int): MLFreeNBHMM =
+                        fitter.fit(preprocessed, title, threshold, maxIter, attempt).apply {
                             flipStatesIfNecessary()
                         }
 
                 override fun fit(preprocessed: List<Preprocessed<DataFrame>>,
                                  title: String,
                                  threshold: Double,
-                                 maxIter: Int): MLFreeNBHMM =
-                        fitter.fit(preprocessed, title, threshold, maxIter).apply {
+                                 maxIter: Int,
+                                 attempt: Int): MLFreeNBHMM =
+                        fitter.fit(preprocessed, title, threshold, maxIter, attempt).apply {
                             flipStatesIfNecessary()
                         }
             }
@@ -133,16 +135,18 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
                 override fun fit(preprocessed: Preprocessed<DataFrame>,
                                  title: String,
                                  threshold: Double,
-                                 maxIter: Int): MLConstrainedNBHMM =
-                        fitter.fit(preprocessed, title, threshold, maxIter).apply {
+                                 maxIter: Int,
+                                 attempt: Int): MLConstrainedNBHMM =
+                        fitter.fit(preprocessed, title, threshold, maxIter, attempt).apply {
                             flipStatesIfNecessary(tracks)
                         }
 
                 override fun fit(preprocessed: List<Preprocessed<DataFrame>>,
                                  title: String,
                                  threshold: Double,
-                                 maxIter: Int): MLConstrainedNBHMM =
-                        fitter.fit(preprocessed, title, threshold, maxIter).apply {
+                                 maxIter: Int,
+                                 attempt: Int): MLConstrainedNBHMM =
+                        fitter.fit(preprocessed, title, threshold, maxIter, attempt).apply {
                             flipStatesIfNecessary(tracks)
                         }
             }

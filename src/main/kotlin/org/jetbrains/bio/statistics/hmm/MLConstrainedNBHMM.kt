@@ -2,13 +2,16 @@ package org.jetbrains.bio.statistics.hmm
 
 import org.apache.log4j.Logger
 import org.jetbrains.bio.dataframe.DataFrame
-import org.jetbrains.bio.statistics.*
+import org.jetbrains.bio.statistics.Fitter
+import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.distribution.NegativeBinomialDistribution
 import org.jetbrains.bio.statistics.emission.ConstantIntegerEmissionScheme
 import org.jetbrains.bio.statistics.emission.IntegerEmissionScheme
 import org.jetbrains.bio.statistics.emission.NegBinEmissionScheme
+import org.jetbrains.bio.statistics.standardDeviation
 import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.statistics.state.ZLHID
+import org.jetbrains.bio.statistics.stochastic
 import org.jetbrains.bio.viktor.F64Array
 
 /**
@@ -68,13 +71,12 @@ class MLConstrainedNBHMM(stateDimensionEmissionMap: Array<IntArray>,
             .toString()
 
     companion object {
+        @Suppress("unused", "MayBeConstant")
         @Transient
         @JvmField
         val VERSION = 1
 
         private val LOG = Logger.getLogger(MLConstrainedNBHMM::class.java)
-
-        fun preprocessor() = Preprocessors.identity()
 
         /**
          * The fitter for detecting the presence of ChIP-Seq enrichment based on one or several
@@ -83,7 +85,7 @@ class MLConstrainedNBHMM(stateDimensionEmissionMap: Array<IntArray>,
         fun fitter(numReplicates: Int): Fitter<MLConstrainedNBHMM> {
             return object : Fitter<MLConstrainedNBHMM> {
                 override fun guess(preprocessed: Preprocessed<DataFrame>, title: String,
-                                   threshold: Double, maxIter: Int): MLConstrainedNBHMM {
+                                   threshold: Double, maxIter: Int, attempt: Int): MLConstrainedNBHMM {
                     val df = preprocessed.get()
                     val meanCoverage = DoubleArray(numReplicates)
                     val means = DoubleArray(numReplicates * 2)
@@ -96,11 +98,12 @@ class MLConstrainedNBHMM(stateDimensionEmissionMap: Array<IntArray>,
                         }
                         val mean = values.average()
                         val sd = values.standardDeviation()
-                        val meanLow = mean / Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
-                        val meanHigh = mean * Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
+                        val snr = MLFreeNBHMM.signalToNoise(attempt)
+                        val meanLow = mean / Math.sqrt(snr)
+                        val meanHigh = mean * Math.sqrt(snr)
                         val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, sd * sd)
-                        LOG.debug("Guess emissions mean $mean\tsd $sd")
-                        LOG.debug("Guess init meanLow $meanLow\tmeanHigh $meanHigh\tfailures $fs")
+                        LOG.debug("Guess $attempt emissions mean $mean\tsd $sd")
+                        LOG.debug("Guess $attempt init meanLow $meanLow\tmeanHigh $meanHigh\tfailures $fs")
                         meanCoverage[d] = mean
                         means[d] = meanLow
                         means[d + numReplicates] = meanHigh
@@ -122,11 +125,11 @@ class MLConstrainedNBHMM(stateDimensionEmissionMap: Array<IntArray>,
         fun fitter(numReplicates1: Int, numReplicates2: Int): Fitter<MLConstrainedNBHMM> {
             return object : Fitter<MLConstrainedNBHMM> {
                 override fun guess(preprocessed: Preprocessed<DataFrame>, title: String,
-                                   threshold: Double, maxIter: Int): MLConstrainedNBHMM =
-                        guess(listOf(preprocessed), title, threshold, maxIter)
+                                   threshold: Double, maxIter: Int, attempt: Int): MLConstrainedNBHMM =
+                        guess(listOf(preprocessed), title, threshold, maxIter, attempt)
 
                 override fun guess(preprocessed: List<Preprocessed<DataFrame>>, title: String,
-                                   threshold: Double, maxIter: Int): MLConstrainedNBHMM {
+                                   threshold: Double, maxIter: Int, attempt: Int): MLConstrainedNBHMM {
                     val df = DataFrame.rowBind(preprocessed.map { it.get() }.toTypedArray())
                     val means = DoubleArray((numReplicates1 + numReplicates2) * 2)
                     val failures = DoubleArray((numReplicates1 + numReplicates2) * 2)
@@ -139,11 +142,12 @@ class MLConstrainedNBHMM(stateDimensionEmissionMap: Array<IntArray>,
                         }
                         val mean = values.average()
                         val sd = values.standardDeviation()
-                        val meanLow = mean / Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
-                        val meanHigh = mean * Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
+                        val snr = MLFreeNBHMM.signalToNoise(attempt)
+                        val meanLow = mean / Math.sqrt(snr)
+                        val meanHigh = mean * Math.sqrt(snr)
                         val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, sd * sd)
-                        LOG.debug("Guess1 emissions mean $mean\tsd $sd")
-                        LOG.debug("Guess1 init meanLow $meanLow\tmeanHigh $meanHigh\tfailures $fs")
+                        LOG.debug("Guess1 $attempt emissions mean $mean\tsd $sd")
+                        LOG.debug("Guess1 $attempt init meanLow $meanLow\tmeanHigh $meanHigh\tfailures $fs")
                         means[d1] = meanLow
                         means[d1 + numReplicates1] = meanHigh
                         failures[d1] = fs
@@ -158,11 +162,12 @@ class MLConstrainedNBHMM(stateDimensionEmissionMap: Array<IntArray>,
                         }
                         val mean = values.average()
                         val sd = values.standardDeviation()
-                        val meanLow = mean / Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
-                        val meanHigh = mean * Math.sqrt(MLFreeNBHMM.SIGNAL_TO_NOISE_RATIO)
+                        val snr = MLFreeNBHMM.signalToNoise(attempt)
+                        val meanLow = mean / Math.sqrt(snr)
+                        val meanHigh = mean * Math.sqrt(snr)
                         val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, sd * sd)
-                        LOG.debug("Guess2 emissions mean $mean\tsd $sd")
-                        LOG.debug("Guess2 init meanLow $meanLow\tmeanHigh $meanHigh\tfailures $fs")
+                        LOG.debug("Guess2 $attempt emissions mean $mean\tsd $sd")
+                        LOG.debug("Guess2 $attempt init meanLow $meanLow\tmeanHigh $meanHigh\tfailures $fs")
                         means[d2 + numReplicates1 * 2] = meanLow
                         means[d2 + numReplicates2 + numReplicates1 * 2] = meanHigh
                         failures[d2 + numReplicates1 * 2] = fs
