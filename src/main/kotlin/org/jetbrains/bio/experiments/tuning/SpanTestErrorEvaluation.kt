@@ -24,7 +24,8 @@ class SpanTestErrorEvaluation(
         val builder = DataFrameSpec(synchronized = true)
                 .strings("target", "cell")
                 .ints("k", "batch")
-                .doubles("train_error", "test_error")
+                .doubles("train_error", "test_error", "fdr")
+                .ints("gap")
                 .builder()
         val tracks = dataConfig.extractLabelledTracks(target)
         tracks.forEach {
@@ -32,14 +33,16 @@ class SpanTestErrorEvaluation(
             val results = processTrack(target, it)
             ks.forEach { k ->
                 results[k]?.forEachIndexed { batch, result ->
-                    builder.add(target, it.cellId.toString(), k, batch, result.first, result.second)
+                    builder.add(target, it.name, k, batch, result.trainingError, result.testError, result.fdr, result.gap)
                 }
             }
         }
         return builder.build()
     }
 
-    private fun processTrack(target: String, track: LabelledTrack): Map<Int, List<Pair<Double, Double>>> {
+    internal data class ProcessingResults(val trainingError: Double, val testError: Double, val fdr: Double, val gap: Int)
+
+    private fun processTrack(target: String, track: LabelledTrack): Map<Int, List<ProcessingResults>> {
         val name = track.name
         val labelPath = track.labelPath
         val labels = PeakAnnotation.loadLabels(labelPath, dataConfig.genomeQuery.genome)
@@ -52,7 +55,7 @@ class SpanTestErrorEvaluation(
             listOf(trackPath to inputPath),
             Span.DEFAULT_BIN, AutoFragment
         ).results
-        val res = ConcurrentHashMap<Int, List<Pair<Double, Double>>>()
+        val res = ConcurrentHashMap<Int, List<ProcessingResults>>()
         ks.toList().parallelStream().forEach { k ->
             println("k: $k")
             val split = trainTestSplit(labels, k)
@@ -67,7 +70,7 @@ class SpanTestErrorEvaluation(
                     trainTest.test,
                     LocationsMergingList.create(dataConfig.genomeQuery, peaks.map { it.location })
                 ).error()
-                trainError to testError
+                ProcessingResults(trainError, testError, fdr, gap)
             }
             res[k] = list
         }
