@@ -84,8 +84,8 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
 
 
     companion object {
-        const val TRACK1_PREFIX = "track1"
-        const val TRACK2_PREFIX = "track2"
+        const val TRACK1_PREFIX = "track1_"
+        const val TRACK2_PREFIX = "track2_"
 
         /**
          * Creates experiment for model-based comparison of binned coverage tracks for given queries.

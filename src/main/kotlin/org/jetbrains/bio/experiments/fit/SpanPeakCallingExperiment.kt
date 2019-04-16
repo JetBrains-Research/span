@@ -63,7 +63,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
 
 
     companion object {
-        const val TRACK_PREFIX = "track"
+        const val TRACK_PREFIX = "track_"
 
         /**
          * Creates experiment for model-based enrichment of binned coverage tracks (e.g. ChIP-seq tracks)
