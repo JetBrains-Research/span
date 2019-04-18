@@ -158,9 +158,13 @@ fun SpanFitResults.getPeaks(
         gap: Int,
         cancellableState: CancellableState? = null
 ): List<Peak> {
+    val coverage = fitInfo.scoresDataFrame()
+    if (coverage.isEmpty()) {
+        SpanFitResults.LOG.debug("No coverage caches present, peak scores won't be computed.")
+    }
     val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
         cancellableState?.checkCanceled()
-        getChromosomePeaks(chromosome, fdr, gap)
+        getChromosomePeaks(chromosome, fdr, gap, coverage[chromosome])
     }
     return genomeQuery.get().flatMap { map[it] }
 }
