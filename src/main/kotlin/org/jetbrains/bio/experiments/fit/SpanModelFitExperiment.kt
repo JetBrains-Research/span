@@ -104,6 +104,19 @@ data class SpanFitInformation(
         return chromosome.range.slice(binSize).mapToInt { it.startOffset }.toArray()
     }
 
+    fun scoresDataFrame(): Map<Chromosome, DataFrame> {
+        val gq = genomeQuery()
+        val queries = data.map {
+            CoverageScoresQuery(gq, it.path.toPath(), it.control?.toPath(), fragment, binSize, unique)
+        }
+        if (queries.any { !it.ready }) {
+            return emptyMap()
+        }
+        return gq.get().associateBy({it}) {
+            queries.scoresDataFrame(it, labels.toTypedArray())
+        }
+    }
+
     /**
      * Since all chromosomes are squashed into a single data frame for [SpanModelFitExperiment]
      * This method computes indices of data frame, for given [chromosome]
@@ -431,11 +444,11 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
                 Tar.decompress(tarPath, dir.toFile())
 
                 LOG.debug("Completed model file decompress and started loading: $tarPath")
-                val info = SpanFitInformation.load(dir / SpanModelFitExperiment.INFORMATION_JSON)
+                val info = SpanFitInformation.load(dir / INFORMATION_JSON)
                 // Sanity check
                 genomeQuery?.let { info.checkGenome(it.genome) }
                 val model = ClassificationModel.load<ClassificationModel>(dir / MODEL_JSON)
-                val logNullMembershipsDF = DataFrame.load(dir / SpanModelFitExperiment.NULL_NPZ)
+                val logNullMembershipsDF = DataFrame.load(dir / NULL_NPZ)
                 val logNullMembershipsMap = info.split(logNullMembershipsDF, genomeQuery)
 
                 LOG.info("Completed loading model: $tarPath")

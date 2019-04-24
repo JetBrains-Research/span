@@ -12,6 +12,7 @@ import org.jetbrains.bio.query.CachingQuery
 import org.jetbrains.bio.query.ReadsQuery
 import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.query.stemGz
+import org.jetbrains.bio.util.exists
 import java.nio.file.Path
 
 class CoverageScoresQuery(
@@ -40,16 +41,17 @@ class CoverageScoresQuery(
         return scores[input]
     }
 
+    private val treatmentCoverage = ReadsQuery(
+        genomeQuery, treatmentPath, unique = unique, fragment = fragment
+    )
+
+    private val controlCoverage = controlPath?.let {
+        ReadsQuery(genomeQuery, it, unique = unique, fragment = fragment)
+    }
+
     val scores: GenomeMap<IntArray> by lazy {
-        val treatmentCoverage = ReadsQuery(
-            genomeQuery, treatmentPath, unique = unique, fragment = fragment
-        ).get()
-        val controlCoverage = if (controlPath != null)
-            ReadsQuery(
-                genomeQuery, controlPath, unique = unique, fragment = fragment
-            ).get()
-        else
-            null
+        val treatmentCoverage = treatmentCoverage.get()
+        val controlCoverage = controlCoverage?.get()
         val scale: Double = if (controlCoverage != null)
             computeScale(genomeQuery, treatmentCoverage, controlCoverage)
         else
@@ -58,6 +60,12 @@ class CoverageScoresQuery(
             computeScores(it, treatmentCoverage, controlCoverage, binSize, scale)
         }
     }
+
+    /**
+     * Shows whether the relevant caches are present.
+     */
+    val ready: Boolean
+        get() = treatmentCoverage.npzPath().exists && controlCoverage?.npzPath()?.exists ?: true
 
     companion object {
 
