@@ -115,6 +115,7 @@ compare                         Differential peak calling mode, experimental
 
             parse(params) { options ->
 
+                // this value is lazy to ensure the correct logging order
                 val lazySpanResults = peakCallingResults(options, params)
 
                 val peaksPath = options.valueOf("peaks") as Path?
