@@ -2,6 +2,7 @@ package org.jetbrains.bio.span
 
 import kotlinx.support.jdk7.use
 import org.jetbrains.bio.Configuration
+import org.jetbrains.bio.Tests.assertIn
 import org.jetbrains.bio.big.BedEntry
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
@@ -165,7 +166,7 @@ PEAKS: $peaksPath
 """, out)
                 assertIn("Saved result to $peaksPath", out)
                 // Check model fit has a progress
-                assertIn("] 0.00% (0/25), Elapsed time", out)
+                assertIn("] 0.00% (0/100), Elapsed time", out)
             }
         }
     }
