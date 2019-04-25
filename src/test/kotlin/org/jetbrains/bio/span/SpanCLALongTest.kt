@@ -457,12 +457,12 @@ LABELS, FDR, GAP options are ignored.
             }
             sampleCoverage(path, TO, BIN, enrichedRegions, zeroRegions, goodQuality = true)
             println("Saved sampled track file: $path")
-            withTempDirectory("work") {
-                val bedPath = it / "result.bed"
+            withTempDirectory("work") { dir ->
+                val bedPath = dir / "result.bed"
                 SpanCLA.main(arrayOf(
                     "analyze",
                     "-cs", Genome["to1"].chromSizesPath.toString(),
-                    "-w", it.toString(),
+                    "-w", dir.toString(),
                     "--peaks", bedPath.toString(),
                     "-fdr", FDR.toString(),
                     "-t", path.toString()
@@ -470,7 +470,7 @@ LABELS, FDR, GAP options are ignored.
                 SpanCLA.main(arrayOf(
                     "analyze",
                     "-cs", Genome["to1"].chromSizesPath.toString(),
-                    "-w", it.toString(),
+                    "-w", dir.toString(),
                     "--peaks", bedPath.toString(),
                     "-fdr", FDR.toString(),
                     "-t", path.toString()
@@ -482,7 +482,7 @@ LABELS, FDR, GAP options are ignored.
                     "Expected location not found in called peaks"
                 )
                 // Check correct log file name
-                val logPath = it / "logs" / "${bedPath.stem}.log"
+                val logPath = dir / "logs" / "${bedPath.stem}.log"
                 assertTrue(logPath.exists, "Log file not found")
                 val log = FileReader(logPath.toFile()).use { it.readText() }
                 assertIn("Signal mean:", log)
@@ -513,19 +513,19 @@ LABELS, FDR, GAP options are ignored.
             sampleCoverage(path, TO, BIN, enrichedRegions, zeroRegions, goodQuality = true)
             println("Saved sampled track file: $path")
 
-            withTempDirectory("work") {
+            withTempDirectory("work") { dir ->
                 /* Turn suppressExit on, otherwise Span would call System.exit */
                 val (out, err) = Logs.captureLoggingOutput {
                     withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
                         SpanCLA.main(arrayOf("analyze",
                             "-cs", Genome["to1"].chromSizesPath.toString(),
-                            "-w", it.toString(),
+                            "-w", dir.toString(),
                             "-t", path.toString()))
                     }
                 }
 
                 // Check correct log file name
-                val logPath = it / "logs" / "${reduceIds(listOf(path.stemGz, BIN.toString(), "unique"))}.log"
+                val logPath = dir / "logs" / "${reduceIds(listOf(path.stemGz, BIN.toString(), "unique"))}.log"
                 assertTrue(logPath.exists, "Log file not found")
                 val log = FileReader(logPath.toFile()).use { it.readText() }
                 val errorMessage = "Model can't be trained on empty coverage, exiting."
@@ -603,12 +603,4 @@ LABELS, FDR, GAP options are ignored.
             }
         }
     }
-
-    private fun assertIn(substring: String, fullString: String) {
-        // Process Windows with different line separators correctly.
-        substring.lines().forEach { s ->
-            assertTrue(s in fullString, "Expected <$s> to be in <$fullString>.")
-        }
-    }
-
 }
