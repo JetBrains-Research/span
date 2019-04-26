@@ -300,10 +300,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
         get() = fixedModelPath ?: experimentPath / "$id.span"
 
     private fun calculateModel(): Model {
-        MultitaskProgress.addTask(dataQuery.id, Fitter.MAX_ITERATIONS.toLong())
-        val model = modelFitter.fit(preprocessedData, title = dataQuery.id)
-        MultitaskProgress.finishTask(dataQuery.id)
-        return model
+        return modelFitter.fit(preprocessedData, title = dataQuery.id)
     }
 
     private fun calculateStatesDataFrame(model: Model): DataFrame = DataFrame.rowBind(

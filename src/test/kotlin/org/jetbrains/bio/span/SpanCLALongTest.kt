@@ -393,7 +393,7 @@ LABELS, FDR, GAP options are ignored.
 
 
     @Test
-    fun testPeaksStats() {
+    fun testOutput() {
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
         withTempFile("track", ".bed.gz") { path ->
 
@@ -428,10 +428,11 @@ LABELS, FDR, GAP options are ignored.
                     },
                     "Peak value is reported as 0.0, although the coverage cache is present"
                 )
-
-                // XXX Temporary disabled due to https://github.com/JetBrains-Research/epigenome/issues/1310
-                // Span "signal-to-noise" is very unstable, values differs 2x times for same data
-                // assertIn("Signal to noise: ", out)
+                assertIn("5 x 5 iterations", out)
+                assertIn("Multistart done", out)
+                assertIn("Signal mean: ", out)
+                assertIn("Noise mean: ", out)
+                assertIn("Signal to noise: ", out)
             }
         }
     }
