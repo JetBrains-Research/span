@@ -1,6 +1,5 @@
 package org.jetbrains.bio
 
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -22,30 +21,5 @@ object Tests {
             assertTrue(s in fullString, "Expected <$s> to be in <$fullString>.")
         }
     }
-
-    fun assertIn(regex: Regex, fullString: String) {
-        // Process Windows with different line separators correctly.
-        assertTrue(regex.matches(fullString), "Expected <$regex> to match <$fullString>.")
-    }
-
-    fun <T> assertIn(actual: T, expected: List<T>) = assertTrue(
-        actual in expected,
-        "Expected <$actual> to be in $expected."
-    )
-
-    fun <T> assertNotIn(actual: T, expected: List<T>) = assertFalse(
-        actual in expected,
-        "Expected <$actual> not to be in $expected."
-    )
-
-    fun assertIs(actual: Any, expected: Class<out Any>) {
-        assertTrue(expected.isInstance(actual),
-            "Expected ${expected.simpleName}, got ${actual::class.java.simpleName}.")
-    }
-
-    fun assertMatches(output: String, regex: Regex) = assertTrue(
-        regex.matches(output),
-        "Regex ${regex.pattern} doesn't match content:\n<$output>"
-    )
 
 }
