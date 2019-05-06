@@ -428,7 +428,6 @@ LABELS, FDR, GAP options are ignored.
                     },
                     "Peak value is reported as 0.0, although the coverage cache is present"
                 )
-                assertIn("5 x 5 iterations", out)
                 assertIn("Multistart done", out)
                 assertIn("Signal mean: ", out)
                 assertIn("Noise mean: ", out)
