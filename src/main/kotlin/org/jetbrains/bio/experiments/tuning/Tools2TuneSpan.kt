@@ -24,10 +24,10 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
     const val DEFAULT_BIN = 200
 
     const val DEFAULT_FDR = 1E-6
-    private val FDRS = doubleArrayOf(0.1, 0.05, 1E-2, 1E-4, DEFAULT_FDR, 1E-8, 1E-10, 1E-12)
+    private val FDRS = doubleArrayOf(0.1, 0.05, 1E-2, 1E-3, 1E-4, 1E-5, DEFAULT_FDR, 1E-7, 1E-8, 1E-9, 1E-10)
 
     const val DEFAULT_GAP = 5
-    val GAPS = intArrayOf(2, DEFAULT_GAP, 10, 20, 40, 60, 80, 100, 120)
+    val GAPS = intArrayOf(0, 2, DEFAULT_GAP, 10)
 
     override val parameters =
             FDRS.sorted().flatMap { fdr ->
@@ -170,7 +170,7 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
     const val DEFAULT_BIN = Span.DEFAULT_BIN
 
     private const val DEFAULT_FDR = 1E-60
-    private val FDRS = doubleArrayOf(DEFAULT_FDR, 1E-80, 1E-100, 1E-120, 1E-140, 1E-160)
+    private val FDRS = doubleArrayOf(1E-10, 1E-20, 1E-30, 1E-40, 1E-50, DEFAULT_FDR, 1E-70, 1E-80, 1E-90, 1E-100)
     private val GAPS = Span.GAPS
 
     override val transform = Span.transform
