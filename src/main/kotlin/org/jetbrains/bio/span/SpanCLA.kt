@@ -189,8 +189,6 @@ compare                         Differential peak calling mode, experimental
                         )
                         LOG.info("Saved result to $peaksPath")
                     }
-                } else {
-
                 }
             }
         }
