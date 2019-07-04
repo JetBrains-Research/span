@@ -15,9 +15,12 @@ import org.jetbrains.bio.span.savePeaks
 import org.jetbrains.bio.tools.ToolsChipSeqWashu
 import org.jetbrains.bio.util.*
 import java.nio.file.Path
-import java.util.stream.Collectors
+import java.util.concurrent.Callable
+import java.util.concurrent.Executors
 
 object Span : Tool2Tune<Pair<Double, Int>>() {
+
+    private val tuningExecutor = Executors.newWorkStealingPool(parallelismLevel())
 
     override val id = "span"
     override val suffix = "_peaks.bed"
@@ -27,7 +30,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
     private val FDRS = doubleArrayOf(0.1, 0.05, 1E-2, 1E-3, 1E-4, 1E-5, DEFAULT_FDR, 1E-7, 1E-8, 1E-9, 1E-10)
 
     const val DEFAULT_GAP = 5
-    val GAPS = intArrayOf(0, 2, DEFAULT_GAP, 10)
+    val GAPS = intArrayOf(0, 1, 2, 3, 4, DEFAULT_GAP, 6, 7, 8, 9, 10)
 
     override val parameters =
             FDRS.sorted().flatMap { fdr ->
@@ -134,7 +137,6 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
             parameters: List<Pair<Double, Int>>,
             cancellableState: CancellableState = CancellableState.current()
     ): Pair<List<LabelErrors>, Int> {
-
         val labeledGenomeQuery = GenomeQuery(
             genomeQuery.genome,
             *labels.map { it.location.chromosome.name }.distinct().toTypedArray()
@@ -143,22 +145,27 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
         // 1. getPeaks creates BitterSet per each parameters combination of size
         // ~ 3*10^9 / 200bp / 8 / 1024 / 1024 ~ 2MB for human genome
         // 2. List.parallelStream()....collect(Collectors.toList()) guarantees the same order as in original list.
-        val labelErrorsGrid = parameters.parallelStream().map { (fdr, gap) ->
-            cancellableState.checkCanceled()
-            val peaksOnLabeledGenomeQuery = results.getPeaks(labeledGenomeQuery, fdr, gap)
-            val errors = computeErrors(labels,
-                LocationsMergingList.create(
-                    labeledGenomeQuery, peaksOnLabeledGenomeQuery.stream().map { it.location }.iterator())
-            )
-            MultitaskProgress.reportTask(id)
-            errors
-        }.collect(Collectors.toList())
-        check(labelErrorsGrid.size == parameters.size) {
-            "Discrepancy in errors size and parameters size: $labelErrorsGrid vs $parameters"
-        }
-        val minTotalError = labelErrorsGrid.map { it.error() }.min()!!
+        // Order is important!
+        val labelErrorsGrid = Array<LabelErrors?>(parameters.size) { null }
+        tuningExecutor.awaitAll(
+                parameters.mapIndexed { index, (fdr, gap) ->
+                    Callable {
+                        cancellableState.checkCanceled()
+                        val peaksOnLabeledGenomeQuery = results.getPeaks(labeledGenomeQuery, fdr, gap)
+                        labelErrorsGrid[index] = computeErrors(labels,
+                                LocationsMergingList.create(labeledGenomeQuery,
+                                        peaksOnLabeledGenomeQuery.map { it.location }.iterator())
+
+                        )
+                        MultitaskProgress.reportTask(id)
+                    }
+                }
+
+        )
+        val minTotalError = labelErrorsGrid.map { it!!.error() }.min()!!
         // Parameters should return desired order for each tool
-        return labelErrorsGrid to parameters.indices.first { labelErrorsGrid[it].error() == minTotalError }
+        return labelErrorsGrid.map { it!! } to
+                parameters.indices.first { labelErrorsGrid[it]!!.error() == minTotalError }
     }
 
 }
