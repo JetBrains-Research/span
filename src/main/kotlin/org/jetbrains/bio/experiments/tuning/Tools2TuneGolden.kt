@@ -12,7 +12,7 @@ object Macs2 : Tool2Tune<Double>() {
 
     private const val DEFAULT_FDR = 0.05
     private const val DEFAULT_ULI_FDR = 1E-4
-    private val FDRS = doubleArrayOf(1E-2, DEFAULT_FDR, DEFAULT_ULI_FDR, 1E-6, 1E-8, 1E-10)
+    private val FDRS = doubleArrayOf(0.1, DEFAULT_FDR, 1E-2, 1E-3, DEFAULT_ULI_FDR, 1E-5, 1E-6, 1E-7, 1E-8, 1E-9, 1E-10)
 
     override val parameters = FDRS.sorted()
 
@@ -35,7 +35,7 @@ object Macs2Broad : Tool2Tune<Double>() {
 
     private const val DEFAULT_FDR = 0.1
     private const val DEFAULT_ULI_FDR = 1E-4
-    private val FDRS = doubleArrayOf(DEFAULT_FDR, 1E-2, DEFAULT_ULI_FDR, 1E-6, 1E-8, 1E-10)
+    private val FDRS = doubleArrayOf(DEFAULT_FDR, 0.05, 0.01, 1E-3, DEFAULT_ULI_FDR, 1E-5, 1E-6, 1E-7, 1E-8, 1E-9, 1E-10)
 
     override val parameters = FDRS.sorted()
 
@@ -57,9 +57,9 @@ object Sicer : Tool2Tune<Pair<Double, Int>>() {
     override val id = "sicer"
     override val suffix = "-island.bed"
 
-    private const val DEFAULT_FDR = 1E-2
+    private const val DEFAULT_FDR = 0.01
     private const val DEFAULT_ULI_FDR = 1E-6
-    private val FDRS = doubleArrayOf(DEFAULT_FDR, 1E-4, DEFAULT_ULI_FDR, 1E-8)
+    private val FDRS = doubleArrayOf(0.1, 0.05, DEFAULT_FDR, 1E-3, 1E-4, 1E-5, DEFAULT_ULI_FDR, 1E-7, 1E-8, 1E-9, 1E-10)
 
     private const val DEFAULT_GAP = 600
     private val GAPS = intArrayOf(0, 200, DEFAULT_GAP, 1200)
@@ -68,7 +68,8 @@ object Sicer : Tool2Tune<Pair<Double, Int>>() {
     override val transform: (Pair<Double, Int>) -> String = { (fdr, gap) -> "${fdr}_$gap" }
 
     override fun callPeaks(configuration: DataConfig, p: Path, parameter: Pair<Double, Int>) {
-        ToolsChipSeqWashu().runSicer(Genome[configuration.genome], p, parameter.first, listOf("200", "150", parameter.second.toString()))
+        ToolsChipSeqWashu().runSicer(
+                Genome[configuration.genome], p, parameter.first, listOf("200", "150", parameter.second.toString()))
     }
 
     override fun fileName(cellId: CellId, replicate: String, target: String, parameter: Pair<Double, Int>): String {
