@@ -4,6 +4,7 @@ import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
 import com.google.common.collect.ComparisonChain
 import org.apache.commons.csv.CSVFormat
+import org.apache.commons.math3.stat.descriptive.rank.Percentile
 import org.apache.log4j.Logger
 import org.jetbrains.bio.dataframe.BitterSet
 import org.jetbrains.bio.dataframe.DataFrame
@@ -15,6 +16,9 @@ import org.jetbrains.bio.util.CancellableState
 import org.jetbrains.bio.util.bufferedWriter
 import org.jetbrains.bio.viktor.F64Array
 import java.nio.file.Path
+import kotlin.math.ln
+import kotlin.math.log10
+import kotlin.math.min
 
 /**
  * @param value Foldchange or coverage
@@ -77,13 +81,12 @@ internal fun getChromosomePeaks(
     0.until(enrichedBins.size()).filter { qvalues[it] < fdr }.forEach(enrichedBins::set)
 
     return enrichedBins.aggregate(gap).map { (i, j) ->
-        val set = (i until j).filter { qvalues[it] < fdr }
-        val pvalue = set.map { logNullMemberships[it] }.median()
-        val qvalue = set.map { qvalues[it] }.median()
+        val pvalueLogMedian = DoubleArray(logNullMemberships.size) { logNullMemberships[it] }.median()
+        val qvalueMedian = DoubleArray(qvalues.size) { qvalues[it] }.median()
         val start = offsets[i]
         val end = if (j < offsets.size) offsets[j] else chromosome.length
         // Score should be proportional to length of peak and average original q-value
-        val score = Math.min(1000.0, (-Math.log10(qvalue) * (1 + Math.log((end - start).toDouble()))))
+        val score = min(1000.0, (-log10(qvalueMedian) * (1 + ln((end - start).toDouble()))))
         // Value is either coverage of fold change
         var value = 0.0
         if (coverageDataFrame != null) {
@@ -103,19 +106,18 @@ internal fun getChromosomePeaks(
                             it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX)
                         })
                 // Value if LogFC
-                value = if (track2 != 0.0) Math.log(track1) - Math.log(track2) else Double.MAX_VALUE
+                value = if (track2 != 0.0) ln(track1) - ln(track2) else Double.MAX_VALUE
             } else {
                 Peak.LOG.debug("Failed to compute value for ${coverageDataFrame.labels}")
             }
         }
         Peak(chromosome, start, end,
-                mlogpvalue = -pvalue,
-                mlogqvalue = -Math.log10(qvalue),
+                mlogpvalue = -pvalueLogMedian,
+                mlogqvalue = -log10(qvalueMedian),
                 value = value,
                 score = score.toInt())
     }
 }
-
 
 
 /**
@@ -124,7 +126,7 @@ internal fun getChromosomePeaks(
  * Use cache with weak values to avoid memory overflow.
  */
 private val f64QValuesCache: Cache<Pair<SpanFitResults, Chromosome>, F64Array> =
-    CacheBuilder.newBuilder().weakValues().build()
+        CacheBuilder.newBuilder().weakValues().build()
 
 
 fun SpanFitResults.getChromosomePeaks(
@@ -189,13 +191,13 @@ chromosome, start, end, name, score, strand, coverage/foldchange, -log(pvalue), 
     }
 }
 
-
-fun List<Double>.median(): Double {
-    if (isEmpty()) throw IllegalStateException("Can't compute median for an empty list.")
-    return sorted().let {
-        if (it.size % 2 != 0)
-            it[it.size / 2]
-        else
-            (it[it.size / 2 - 1] + it[it.size / 2]) * 0.5
-    }
+/**
+ * This method doesn't duplicate array while computing, so array gets *modified*,
+ * instead of StatUtils.percentile(doubles, percentile)
+ */
+private fun DoubleArray.median(): Double {
+    return object : Percentile(50.0) {
+        // force Percentile not to copy scores
+        override fun getWorkArray(values: DoubleArray?, begin: Int, length: Int) = this@median
+    }.evaluate(this)
 }
