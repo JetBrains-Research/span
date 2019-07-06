@@ -81,8 +81,9 @@ internal fun getChromosomePeaks(
     0.until(enrichedBins.size()).filter { qvalues[it] < fdr }.forEach(enrichedBins::set)
 
     return enrichedBins.aggregate(gap).map { (i, j) ->
-        val pvalueLogMedian = DoubleArray(logNullMemberships.size) { logNullMemberships[it] }.median()
-        val qvalueMedian = DoubleArray(qvalues.size) { qvalues[it] }.median()
+        val passedFDR = (i until j).filter { qvalues[it] < fdr }
+        val pvalueLogMedian = DoubleArray(passedFDR.size) { logNullMemberships[passedFDR[it]] }.median()
+        val qvalueMedian = DoubleArray(passedFDR.size) { qvalues[passedFDR[it]] }.median()
         val start = offsets[i]
         val end = if (j < offsets.size) offsets[j] else chromosome.length
         // Score should be proportional to length of peak and average original q-value
