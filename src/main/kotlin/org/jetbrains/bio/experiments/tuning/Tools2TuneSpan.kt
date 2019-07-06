@@ -154,9 +154,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
                         val peaksOnLabeledGenomeQuery = results.getPeaks(labeledGenomeQuery, fdr, gap)
                         labelErrorsGrid[index] = computeErrors(labels,
                                 LocationsMergingList.create(labeledGenomeQuery,
-                                        peaksOnLabeledGenomeQuery.map { it.location }.iterator())
-
-                        )
+                                        peaksOnLabeledGenomeQuery.map { it.location }.iterator()))
                         MultitaskProgress.reportTask(id)
                     }
                 }
