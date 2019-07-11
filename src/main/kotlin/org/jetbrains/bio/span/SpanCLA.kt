@@ -167,9 +167,13 @@ compare                         Differential peak calling mode, experimental
                         LOG.info("\n" + (aboutPeaks + aboutModel).map { (k, v) -> "$k: $v" }.joinToString("\n"))
                     } else {
                         val results = TuningResults()
+                        LOG.info("Loading labels $labelsPath...")
                         val labels = PeakAnnotation.loadLabels(labelsPath, gq.genome)
+                        LOG.info("Tuning model on the loaded labels...")
                         val (labelErrorsGrid, index) = Span.tune(spanResults, labels, "", Span.parameters)
+                        LOG.info("Tuning model on the loaded labels complete.")
                         val (optimalFDR, optimalGap) = Span.parameters[index]
+                        LOG.info("Optimal settings: FDR=$optimalFDR, GAP=$optimalGap")
                         labelErrorsGrid.forEachIndexed { i, error ->
                             results.addRecord(
                                 "result",

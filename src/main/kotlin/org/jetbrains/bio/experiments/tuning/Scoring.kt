@@ -74,6 +74,8 @@ class TuningResultTable {
         arrayListOf<Double>()
     }
 
+    fun minError() = errors.mapNotNull { it.min() }.min()
+
     fun addRecord(name: String, parameter: String, labelErrors: LabelErrors) {
         names.add(name)
         parameters.add(parameter)
@@ -108,6 +110,7 @@ class TuningResults(private val results: TuningResultTable = TuningResultTable()
     fun saveOptimalResults(optimalParametersPath: Path) {
         optimalResults.print(optimalParametersPath)
         LOG.info("Saved optimal tuning results to: $optimalParametersPath")
+        LOG.info("Optimal tuning error: ${optimalResults.minError()}")
     }
 
     fun saveTuningErrors(resultsPath: Path) {
