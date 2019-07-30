@@ -25,6 +25,7 @@ import org.jetbrains.bio.statistics.gson.GSONUtil
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
+import org.jetbrains.bio.statistics.mixture.ZeroPoissonMixture
 import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.statistics.state.ZLHID
 import org.jetbrains.bio.util.*
@@ -55,14 +56,14 @@ data class SpanFitInformation(
 
     constructor(
             genomeQuery: GenomeQuery,
-            paths: List<Pair<Path, Path?>>,
+            paths: List<Triple<Path, Path, Path?>>,
             labels: List<String>,
             fragment: Fragment,
             unique: Boolean,
             binSize: Int
     ): this(
         genomeQuery.build,
-        paths.map { TC(it.first.toString(), it.second?.toString()) },
+        paths.map { TC(it.first.toString(), it.second.toString()) },
         labels, fragment, unique, binSize,
         LinkedHashMap<String, Int>().apply {
             genomeQuery.get().sortedBy { it.name }.forEach { this[it.name] = it.length }
@@ -262,7 +263,7 @@ data class SpanFitResults(
 abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : Any>(
         /** XXX may contain chromosomes without reads, use [genomeQuery] instead. Details: [createEffectiveQueries] */
         externalGenomeQuery: GenomeQuery,
-        paths: List<Pair<Path, Path?>>,
+        paths: List<Triple<Path, Path, Path>>,
         labels: List<String>,
         fragment: Fragment,
         val binSize: Int,
@@ -276,6 +277,46 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
     createEffectiveQueries(externalGenomeQuery, paths, labels, fragment, binSize, unique),
     modelFitter, modelClass, availableStates
 ) {
+    private val preprocessedData: List<Preprocessed<DataFrame>>
+
+    init {
+        val readsQueryMe = ReadsQuery(genomeQuery, paths[0].first, true)
+        val readsQueryInput = ReadsQuery(genomeQuery, paths[0].second, true)
+        val coverageMe = readsQueryMe.get()
+        val coverageInput = readsQueryInput.get()
+
+        val chrList: List<Chromosome> = (1..23).map { if (it < 23) genomeQuery["chr$it"]!! else genomeQuery["chrx"]!!}
+
+        val coverLength = chrList.map { it.length/binSize + 1 }.sum()
+        val coverMe = IntArray (coverLength)
+        val coverInput = DoubleArray (coverLength)
+        val GCcontent = DoubleArray (coverLength)
+        val mappability = DoubleArray (coverLength)
+        var prevIdx = 0
+        chrList.forEach {
+            System.arraycopy(
+                    ZeroPoissonMixture.getIntCover(it, coverageMe, binSize),
+                    0, coverMe, prevIdx, it.length / binSize + 1)
+            System.arraycopy(
+                    ZeroPoissonMixture.getDoubleCover(it, coverageInput, binSize),
+                    0, coverInput, prevIdx, it.length / binSize + 1)
+            System.arraycopy(
+                    ZeroPoissonMixture.getGC(it, binSize),
+                    0, GCcontent, prevIdx, it.length / binSize + 1)
+            System.arraycopy(
+                    ZeroPoissonMixture.getMappability(it, paths[0].third, binSize),
+                    0, mappability, prevIdx, it.length / binSize + 1)
+            prevIdx += (it.length/binSize + 1)
+        }
+
+        val covar = DataFrame()
+                .with("y", coverMe)
+                .with("input", coverInput)
+                .with("GC", GCcontent)
+                .with("mappability", mappability)
+                .with("GC2", DoubleArray(GCcontent.size) {GCcontent[it]*GCcontent[it]})
+        preprocessedData = listOf(Preprocessed.of(covar))
+    }
 
     val results: SpanFitResults by lazy {
         getOrLoadResults()
@@ -289,11 +330,8 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
 
     val fitInformation = SpanFitInformation(genomeQuery, paths, labels, fragment, unique, binSize)
 
-    private val preprocessedData: List<Preprocessed<DataFrame>> by lazy {
-        genomeQuery.get().sortedBy { it.name }.map {
-            Preprocessed.of(dataQuery.apply(it))
-        }
-    }
+
+
 
     // XXX It is important to use get() here, because id is overridden in superclasses
     private val modelPath: Path
@@ -392,7 +430,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
          */
         internal fun createEffectiveQueries(
                 genomeQuery: GenomeQuery,
-                paths: List<Pair<Path, Path?>>,
+                paths: List<Triple<Path, Path, Path?>>,
                 labels: List<String>,
                 fragment: Fragment,
                 binSize: Int,

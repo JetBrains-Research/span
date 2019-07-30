@@ -24,8 +24,8 @@ import java.nio.file.Path
  */
 class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State : Any>(
         genomeQuery: GenomeQuery,
-        paths1: List<Pair<Path, Path?>>,
-        paths2: List<Pair<Path, Path?>>,
+        paths1: List<Triple<Path, Path, Path>>,
+        paths2: List<Triple<Path, Path, Path>>,
         fragment: Fragment,
         binSize: Int,
         modelFitter: Fitter<Model>,
@@ -42,8 +42,8 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
 
     constructor(
             genomeQuery: GenomeQuery,
-            paths1: Pair<Path, Path?>,
-            paths2: Pair<Path, Path?>,
+            paths1: Triple<Path, Path, Path>,
+            paths2: Triple<Path, Path, Path>,
             fragment: Fragment, binSize: Int,
             modelFitter: Fitter<Model>,
             modelClass: Class<Model>,
@@ -95,8 +95,8 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
          */
         fun getExperiment(
                 genomeQuery: GenomeQuery,
-                paths1: List<Pair<Path, Path?>>,
-                paths2: List<Pair<Path, Path?>>,
+                paths1: List<Triple<Path, Path, Path>>,
+                paths2: List<Triple<Path, Path, Path>>,
                 bin: Int,
                 fragment: Fragment = AutoFragment
         ): SpanDifferentialPeakCallingExperiment<MLConstrainedNBHMM, ZLHID> {

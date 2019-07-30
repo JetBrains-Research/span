@@ -52,7 +52,7 @@ class SpanTestErrorEvaluation(
                 .flatMap { it.value }.map { it.second.path }.first()
         val results = SpanPeakCallingExperiment.getExperiment(
             dataConfig.genomeQuery,
-            listOf(trackPath to inputPath),
+            listOf(Triple(trackPath, inputPath, inputPath)),
             Span.DEFAULT_BIN, AutoFragment
         ).results
         val res = ConcurrentHashMap<Int, List<ProcessingResults>>()

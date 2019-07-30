@@ -10,10 +10,10 @@ import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.statistics.MultiLabels
 import org.jetbrains.bio.statistics.Preprocessed
-import org.jetbrains.bio.statistics.hmm.MLAbstractHMM
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
+import org.jetbrains.bio.statistics.mixture.ZeroPoissonMixture
 import org.jetbrains.bio.statistics.state.ZLH
 import java.nio.file.Path
 
@@ -23,7 +23,7 @@ import java.nio.file.Path
  */
 class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
         genomeQuery: GenomeQuery,
-        paths: List<Pair<Path, Path?>>,
+        paths: List<Triple<Path, Path, Path>>,
         fragment: Fragment,
         binSize: Int,
         modelFitter: Fitter<Model>,
@@ -41,7 +41,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
 
     constructor(
             genomeQuery: GenomeQuery,
-            paths: Pair<Path, Path?>,
+            paths: Triple<Path, Path, Path>,
             modelFitter: Fitter<Model>,
             modelClass: Class<Model>,
             fragment: Fragment,
@@ -74,35 +74,22 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
          */
         fun getExperiment(
                 genomeQuery: GenomeQuery,
-                paths: List<Pair<Path, Path?>>,
+                paths: List<Triple<Path, Path, Path>>,
                 bin: Int,
                 fragment: Fragment = AutoFragment,
                 unique: Boolean = true,
                 fixedModelPath: Path? = null
-        ): SpanPeakCallingExperiment<out MLAbstractHMM, ZLH> {
+        ): SpanPeakCallingExperiment<out ClassificationModel, ZLH> {
             check(paths.isNotEmpty()) { "No data" }
-            return if (paths.size == 1) {
-                SpanPeakCallingExperiment(
-                        genomeQuery, paths.first(),
-                        semanticCheck(MLFreeNBHMM.fitter().multiStarted()),
-                        MLFreeNBHMM::class.java,
-                        fragment, bin,
-                        ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
-                        unique,
-                        fixedModelPath
-                )
-            } else {
-                SpanPeakCallingExperiment(
-                        genomeQuery, paths,
-                        fragment,
-                        bin,
-                        semanticCheck(MLConstrainedNBHMM.fitter(paths.size), paths.size).multiStarted(),
-                        MLConstrainedNBHMM::class.java,
-                        ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
-                        unique,
-                        fixedModelPath
-                )
-            }
+            return SpanPeakCallingExperiment(
+                    genomeQuery, paths.first(),
+                    ZeroPoissonMixture.fitter(),
+                    ZeroPoissonMixture::class.java,
+                    fragment, bin,
+                    ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
+                    unique,
+                    fixedModelPath
+            )
         }
 
         private fun semanticCheck(fitter: Fitter<MLFreeNBHMM>): Fitter<MLFreeNBHMM> {
@@ -151,8 +138,5 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
                         }
             }
         }
-
-
     }
 }
-

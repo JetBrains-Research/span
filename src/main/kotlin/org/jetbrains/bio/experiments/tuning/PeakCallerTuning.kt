@@ -37,7 +37,7 @@ class PeakCallerTuning(configuration: DataConfig,
         targets.forEach { target ->
             LOG.info("Processing target $target")
             tools.forEach { t ->
-                t.tune(configuration, experimentPath, target, useInput, true)
+                //t.tune(configuration, experimentPath, target, useInput, true)
                 if (computeTestError) {
                     computeTestError(target, t)
                 }
