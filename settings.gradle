@@ -4,6 +4,3 @@ pluginManagement {
     }
 }
 
-rootProject.name = 'span'
-include('bioinf-commons')
-//project(':bioinf-commons').projectDir = new File('/home/elena.kartysheva/IdeaProjects/span/bioinf-commons')
