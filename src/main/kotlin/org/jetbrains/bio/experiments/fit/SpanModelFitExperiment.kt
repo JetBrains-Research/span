@@ -6,12 +6,16 @@ import com.google.gson.*
 import com.google.gson.reflect.TypeToken
 import kotlinx.support.jdk7.use
 import org.apache.log4j.Logger
+import org.jetbrains.bio.big.BigWigFile
+import org.jetbrains.bio.coverage.Coverage
 import org.jetbrains.bio.coverage.Fragment
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.fit.SpanModelFitExperiment.Companion.createEffectiveQueries
 import org.jetbrains.bio.genome.Chromosome
+import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
+import org.jetbrains.bio.genome.sequence.TwoBitSequence
 import org.jetbrains.bio.query.CachingQuery
 import org.jetbrains.bio.query.Query
 import org.jetbrains.bio.query.ReadsQuery
@@ -25,7 +29,6 @@ import org.jetbrains.bio.statistics.gson.GSONUtil
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
-import org.jetbrains.bio.statistics.mixture.ZeroPoissonMixture
 import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.statistics.state.ZLHID
 import org.jetbrains.bio.util.*
@@ -45,7 +48,7 @@ import kotlin.collections.LinkedHashMap
  */
 data class SpanFitInformation(
         val build: String,
-        val data: List<TC>,
+        val data: List<SpanPathsToData>,
         val labels: List<String>,
         val fragment: Fragment,
         val unique: Boolean,
@@ -56,14 +59,14 @@ data class SpanFitInformation(
 
     constructor(
             genomeQuery: GenomeQuery,
-            paths: List<Triple<Path, Path, Path?>>,
+            paths: List<SpanPathsToData>,
             labels: List<String>,
             fragment: Fragment,
             unique: Boolean,
             binSize: Int
     ): this(
         genomeQuery.build,
-        paths.map { TC(it.first.toString(), it.second.toString()) },
+        paths,
         labels, fragment, unique, binSize,
         LinkedHashMap<String, Int>().apply {
             genomeQuery.get().sortedBy { it.name }.forEach { this[it.name] = it.length }
@@ -108,7 +111,7 @@ data class SpanFitInformation(
     fun scoresDataFrame(): Map<Chromosome, DataFrame> {
         val gq = genomeQuery()
         val queries = data.map {
-            CoverageScoresQuery(gq, it.path.toPath(), it.control?.toPath(), fragment, binSize, unique)
+            CoverageScoresQuery(gq, it.pathTreatment, it.pathInput, fragment, binSize, unique)
         }
         if (queries.any { !it.ready }) {
             return emptyMap()
@@ -263,7 +266,7 @@ data class SpanFitResults(
 abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : Any>(
         /** XXX may contain chromosomes without reads, use [genomeQuery] instead. Details: [createEffectiveQueries] */
         externalGenomeQuery: GenomeQuery,
-        paths: List<Triple<Path, Path, Path>>,
+        paths: List<SpanPathsToData>,
         labels: List<String>,
         fragment: Fragment,
         val binSize: Int,
@@ -277,45 +280,100 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
     createEffectiveQueries(externalGenomeQuery, paths, labels, fragment, binSize, unique),
     modelFitter, modelClass, availableStates
 ) {
-    private val preprocessedData: List<Preprocessed<DataFrame>>
+    fun getIntCover(chr1: Chromosome, coverage: Coverage, bin: Int): IntArray {
+        val len = (chr1.length - 1) / bin + 1
+        val cover = IntArray(len)
+        for (i in 0 until len - 1) {
+            cover[i] = coverage.getBothStrandsCoverage(ChromosomeRange(i * bin, (i + 1) * bin, chr1))
+        }
+        cover[len - 1] = coverage.getBothStrandsCoverage(ChromosomeRange((len-1) * bin, chr1.length, chr1))
+        return cover
+    }
+    fun getDoubleCover(chr1: Chromosome, coverage: Coverage, bin: Int): DoubleArray {
+        val len = (chr1.length - 1) / bin + 1
+        val cover = DoubleArray(len)
+        for (i in 0 until len - 1) {
+            cover[i] = coverage
+                    .getBothStrandsCoverage(ChromosomeRange(i * bin, (i + 1) * bin, chr1))
+                    .toDouble()
+        }
+        cover[len - 1] = coverage
+                .getBothStrandsCoverage(ChromosomeRange((len-1) * bin, chr1.length, chr1))
+                .toDouble()
+        return cover
+    }
+    fun getGC(chr1: Chromosome, bin: Int): DoubleArray {
+        val len = (chr1.length - 1) / bin + 1
+        val seq: TwoBitSequence = chr1.sequence
+        val GCcontent = DoubleArray(len)
+        for (i in 0 until len - 1) {
+            GCcontent[i] = seq.substring(i*bin, (i + 1)*bin).count { it == 'c' || it == 'g' }.toDouble()/bin
+        }
+        GCcontent[len - 1] = seq
+                .substring((len-1)*bin, seq.length)
+                .count { it == 'c'|| it == 'g' }
+                .toDouble()/( seq.length - (len-1)*bin)
+        return GCcontent
+    }
 
-    init {
-        val readsQueryMe = ReadsQuery(genomeQuery, paths[0].first, true)
-        val readsQueryInput = ReadsQuery(genomeQuery, paths[0].second, true)
-        val coverageMe = readsQueryMe.get()
+    fun getMappability(chr1: Chromosome, path_mappability: Path, bin: Int): DoubleArray {
+        if (BigWigFile.read(path_mappability).chromosomes.containsValue(chr1.name)) {
+            val mapSummary = BigWigFile
+                    .read(path_mappability)
+                    .summarize(chr1.name, 0, chr1.length - chr1.length % bin, numBins = (chr1.length - 1) / bin)
+            val result = DoubleArray(mapSummary.size + 1) {
+                if (it < mapSummary.size) mapSummary[it].sum / bin else 1.0
+            }
+            result[mapSummary.size] = BigWigFile
+                    .read(path_mappability)
+                    .summarize(chr1.name, chr1.length - chr1.length % bin, 0)[0].sum / chr1.length % bin
+            return result
+        }
+        val meanMappability = BigWigFile.read(path_mappability).totalSummary.sum/BigWigFile.read(path_mappability).totalSummary.count
+        return DoubleArray(chr1.length) {meanMappability}
+    }
+
+    private val preprocessedData: List<Preprocessed<DataFrame>> by lazy {
+        preprocessData(paths)
+    }
+
+    private fun preprocessData(paths: List<SpanPathsToData>): List<Preprocessed<DataFrame>> {
+        val readsQueryTreatment = ReadsQuery(genomeQuery, paths[0].pathTreatment, true)
+        val readsQueryInput = ReadsQuery(genomeQuery, paths[0].pathInput!!, true)
+        val coverageTreatment = readsQueryTreatment.get()
         val coverageInput = readsQueryInput.get()
-
-        val chrList: List<Chromosome> = (1..23).map { if (it < 23) genomeQuery["chr$it"]!! else genomeQuery["chrx"]!!}
+        val chrList: List<Chromosome> = genomeQuery.get().sortedBy { it.name }
 
         val coverLength = chrList.map { it.length/binSize + 1 }.sum()
-        val coverMe = IntArray (coverLength)
+        val coverTreatment = IntArray (coverLength)
         val coverInput = DoubleArray (coverLength)
         val GCcontent = DoubleArray (coverLength)
         val mappability = DoubleArray (coverLength)
         var prevIdx = 0
         chrList.forEach {
+            val arraySize = it.length / binSize + 1
             System.arraycopy(
-                    ZeroPoissonMixture.getIntCover(it, coverageMe, binSize),
-                    0, coverMe, prevIdx, it.length / binSize + 1)
+                    getIntCover(it, coverageTreatment, binSize),
+                    0, coverTreatment, prevIdx, arraySize)
             System.arraycopy(
-                    ZeroPoissonMixture.getDoubleCover(it, coverageInput, binSize),
-                    0, coverInput, prevIdx, it.length / binSize + 1)
+                    getDoubleCover(it, coverageInput, binSize),
+                    0, coverInput, prevIdx, arraySize)
             System.arraycopy(
-                    ZeroPoissonMixture.getGC(it, binSize),
-                    0, GCcontent, prevIdx, it.length / binSize + 1)
+                    getGC(it, binSize),
+                    0, GCcontent, prevIdx, arraySize)
             System.arraycopy(
-                    ZeroPoissonMixture.getMappability(it, paths[0].third, binSize),
-                    0, mappability, prevIdx, it.length / binSize + 1)
-            prevIdx += (it.length/binSize + 1)
+                    getMappability(it, paths[0].pathMappability!!, binSize),
+                    0, mappability, prevIdx, arraySize)
+            prevIdx += (arraySize)
         }
 
         val covar = DataFrame()
-                .with("y", coverMe)
+                .with("y", coverTreatment)
                 .with("input", coverInput)
                 .with("GC", GCcontent)
                 .with("mappability", mappability)
                 .with("GC2", DoubleArray(GCcontent.size) {GCcontent[it]*GCcontent[it]})
-        preprocessedData = listOf(Preprocessed.of(covar))
+        return listOf(Preprocessed.of(covar))
     }
 
     val results: SpanFitResults by lazy {
@@ -430,7 +488,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
          */
         internal fun createEffectiveQueries(
                 genomeQuery: GenomeQuery,
-                paths: List<Triple<Path, Path, Path?>>,
+                paths: List<SpanPathsToData>,
                 labels: List<String>,
                 fragment: Fragment,
                 binSize: Int,
@@ -459,7 +517,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
             )
             return effectiveGenomeQuery to object : CachingQuery<Chromosome, DataFrame>() {
                 val scores = paths.map {
-                    CoverageScoresQuery(genomeQuery, it.first, it.second, fragment, binSize, unique)
+                    CoverageScoresQuery(genomeQuery, it.pathTreatment, it.pathInput, fragment, binSize, unique)
                 }
 
                 override fun getUncached(input: Chromosome): DataFrame {
@@ -489,6 +547,22 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
                 LOG.info("Completed loading model: $tarPath")
                 return@withTempDirectory SpanFitResults(info, model, logNullMembershipsMap)
             }
+        }
+    }
+}
+
+data class SpanPathsToData(
+        val pathTreatment: Path,
+        val pathInput: Path?,
+        val pathMappability: Path?
+) {
+    constructor(pathTreatment: Path, pathInput: Path)
+            : this(pathTreatment, pathInput, null)
+
+    init {
+        if (pathMappability == null || pathInput == null) {
+            println("No mappability file")
+            System.exit(1)
         }
     }
 }

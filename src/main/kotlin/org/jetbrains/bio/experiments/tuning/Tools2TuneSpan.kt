@@ -4,6 +4,7 @@ import org.jetbrains.bio.coverage.AutoFragment
 import org.jetbrains.bio.coverage.removeDuplicates
 import org.jetbrains.bio.dataset.*
 import org.jetbrains.bio.experiments.fit.SpanFitResults
+import org.jetbrains.bio.experiments.fit.SpanPathsToData
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.LocationsMergingList
@@ -63,7 +64,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
 
         labelledTracks.forEach { (cellId, replicate, trackPath, labelsPath) ->
             val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(configuration.genomeQuery,
-                listOf(Triple(trackPath, inputPath!!, inputPath)),
+                listOf(SpanPathsToData(trackPath, inputPath!!)),
                 DEFAULT_BIN, AutoFragment
             )
 

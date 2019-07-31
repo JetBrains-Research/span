@@ -167,7 +167,7 @@ compare                         Differential peak calling mode, experimental
                                 gq,
                                 peaks.map { it.location }.stream(),
                                 peaksPath.toUri(),
-                                fitInfo.data.map { it.path.toPath() }
+                                fitInfo.data.map { it.pathTreatment }
                         )
                         val aboutModel = spanResults.about()
                         LOG.info("\n" + (aboutPeaks + aboutModel).map { (k, v) -> "$k: $v" }.joinToString("\n"))
@@ -320,9 +320,17 @@ compare                         Differential peak calling mode, experimental
 
 
                 val gq = GenomeQuery(genome)
-                val paths1 = matchTreatmentAndControlsAndMappability(treatmentPaths1, controlPaths1, mappabilityPaths1)
+                val paths1 = treatmentPaths1.mapIndexed { index, path ->
+                    matchTreatmentAndControlsAndMappability(
+                            treatmentPaths1[index],
+                            controlPaths1[index])
+                }
                 val coverages1 = treatmentPaths1.map { ReadsQuery(gq, it, fragment = fragment) }
-                val paths2 = matchTreatmentAndControlsAndMappability(treatmentPaths2, controlPaths2, mappabilityPaths2)
+                val paths2 = treatmentPaths2.mapIndexed { index, path ->
+                    matchTreatmentAndControlsAndMappability(
+                            treatmentPaths2[index],
+                            controlPaths2[index])
+                }
                 val coverages2 = treatmentPaths1.map { ReadsQuery(gq, it, fragment = fragment) }
                 val experiment = SpanDifferentialPeakCallingExperiment.getExperiment(
                         gq, paths1, paths2, bin, fragment
@@ -353,15 +361,18 @@ compare                         Differential peak calling mode, experimental
 
 
     private fun matchTreatmentAndControlsAndMappability(
-            treatmentPaths: List<Path>,
-            controlPaths: List<Path>,
-            mappabilityPath: List<Path>
-    ): List<Triple<Path, Path, Path>> {
-        if (controlPaths.size != 1 && controlPaths.size != treatmentPaths.size && controlPaths.size != mappabilityPath.size) {
-            System.err.println("ERROR: required single control file or separate file for each treatment.")
-            System.exit(1)
-        }
-        return Array(treatmentPaths.size) {Triple(treatmentPaths[it], controlPaths[it], mappabilityPath[it])}.toList()
+            treatmentPaths: Path,
+            controlPaths: Path,
+            mappabilityPath: Path?
+    ): SpanPathsToData {
+        return SpanPathsToData(treatmentPaths, controlPaths, mappabilityPath)
+    }
+
+    private fun matchTreatmentAndControlsAndMappability(
+            treatmentPaths: Path,
+            controlPaths: Path
+    ): SpanPathsToData {
+        return SpanPathsToData(treatmentPaths, controlPaths)
     }
 
     private fun matchTreatmentAndControls(
@@ -602,23 +613,23 @@ compare                         Differential peak calling mode, experimental
         val commandLineMappabilityPaths = options.valuesOf("mappability") as List<Path>
         if (fitInformation != null && (commandLineTreatmentPaths.isNotEmpty() || commandLineControlPaths.isNotEmpty())) {
             check(commandLineTreatmentPaths.isNotEmpty()) { "Control paths are provided but treatment paths are missing." }
-            val paths = matchTreatmentAndControlsAndMappability(
-                    commandLineTreatmentPaths,
-                    commandLineControlPaths,
-                    commandLineMappabilityPaths)
-            check(paths == fitInformation.data.map { it.path.toPath() to it.control?.toPath() }) {
+            val paths = commandLineControlPaths.mapIndexed { index, path -> matchTreatmentAndControlsAndMappability(
+                    commandLineTreatmentPaths[index],
+                    commandLineControlPaths[index],
+                    commandLineMappabilityPaths[index])}
+            check(paths == fitInformation.data.map { it.pathTreatment to it.pathInput }) {
                 "Stored treatment-control pairs ${fitInformation.data.joinToString()} differ from the ones inferred " +
                         "from the command line arguments: ${paths.joinToString()}"
             }
 
         }
         val treatmentPaths = when {
-            fitInformation != null -> fitInformation.data.map { it.path.toPath() }
+            fitInformation != null -> fitInformation.data.map { it.pathTreatment }
             commandLineTreatmentPaths.isNotEmpty() -> commandLineTreatmentPaths
             else -> throw IllegalStateException("No treatment files and no existing model file provided, exiting.")
         }
         val controlPaths = when {
-            fitInformation != null -> fitInformation.data.mapNotNull { it.control?.toPath() }
+            fitInformation != null -> fitInformation.data.mapNotNull { it.pathInput }
             else -> commandLineControlPaths
         }
         if (log) {
@@ -643,7 +654,12 @@ compare                         Differential peak calling mode, experimental
         // option parser guarantees that chrom.sizes are not null here
         val genomeQuery = GenomeQuery(Genome["hg19"])
         val (treatmentPaths, controlPaths, mappabilityPaths) = getPaths(options, log = true)
-        val data = matchTreatmentAndControlsAndMappability(treatmentPaths, controlPaths, mappabilityPaths)
+        val data = controlPaths.mapIndexed { index, path ->
+            matchTreatmentAndControlsAndMappability(
+                    treatmentPaths[index],
+                    controlPaths[index],
+                    mappabilityPaths[index])
+        }
         val bin = getBin(options, log = true)
         val fragment = getFragment(options, log = true)
         val unique = getUnique(options, log = true)

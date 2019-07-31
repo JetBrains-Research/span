@@ -16,7 +16,6 @@ import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.state.ZLHID
-import java.nio.file.Path
 
 /**
  * @author Alexey Dievsky
@@ -24,8 +23,8 @@ import java.nio.file.Path
  */
 class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State : Any>(
         genomeQuery: GenomeQuery,
-        paths1: List<Triple<Path, Path, Path>>,
-        paths2: List<Triple<Path, Path, Path>>,
+        paths1: List<SpanPathsToData>,
+        paths2: List<SpanPathsToData>,
         fragment: Fragment,
         binSize: Int,
         modelFitter: Fitter<Model>,
@@ -42,8 +41,8 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
 
     constructor(
             genomeQuery: GenomeQuery,
-            paths1: Triple<Path, Path, Path>,
-            paths2: Triple<Path, Path, Path>,
+            paths1: SpanPathsToData,
+            paths2: SpanPathsToData,
             fragment: Fragment, binSize: Int,
             modelFitter: Fitter<Model>,
             modelClass: Class<Model>,
@@ -55,9 +54,9 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
     )
 
     override val id: String =
-            reduceIds(paths1.flatMap { listOfNotNull(it.first, it.second) }.map { it.stemGz } +
+            reduceIds(paths1.flatMap { listOfNotNull(it.pathTreatment, it.pathInput) }.map { it.stemGz } +
                     listOf("vs") +
-                    paths2.flatMap { listOfNotNull(it.first, it.second) }.map { it.stemGz }
+                    paths2.flatMap { listOfNotNull(it.pathTreatment, it.pathInput) }.map { it.stemGz }
                     + listOfNotNull(fragment.nullableInt, binSize).map { it.toString() })
 
 
@@ -95,8 +94,8 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
          */
         fun getExperiment(
                 genomeQuery: GenomeQuery,
-                paths1: List<Triple<Path, Path, Path>>,
-                paths2: List<Triple<Path, Path, Path>>,
+                paths1: List<SpanPathsToData>,
+                paths2: List<SpanPathsToData>,
                 bin: Int,
                 fragment: Fragment = AutoFragment
         ): SpanDifferentialPeakCallingExperiment<MLConstrainedNBHMM, ZLHID> {

@@ -23,7 +23,7 @@ import java.nio.file.Path
  */
 class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
         genomeQuery: GenomeQuery,
-        paths: List<Triple<Path, Path, Path>>,
+        paths: List<SpanPathsToData>,
         fragment: Fragment,
         binSize: Int,
         modelFitter: Fitter<Model>,
@@ -41,7 +41,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
 
     constructor(
             genomeQuery: GenomeQuery,
-            paths: Triple<Path, Path, Path>,
+            paths: SpanPathsToData,
             modelFitter: Fitter<Model>,
             modelClass: Class<Model>,
             fragment: Fragment,
@@ -58,7 +58,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
 
     override val id: String =
             reduceIds(
-                    paths.flatMap { listOfNotNull(it.first, it.second) }.map { it.stemGz } +
+                    paths.flatMap { listOfNotNull(it.pathTreatment, it.pathInput) }.map { it.stemGz } +
                             listOfNotNull(fragment.nullableInt, binSize).map { it.toString() })
 
 
@@ -74,22 +74,35 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
          */
         fun getExperiment(
                 genomeQuery: GenomeQuery,
-                paths: List<Triple<Path, Path, Path>>,
+                paths: List<SpanPathsToData>,
                 bin: Int,
                 fragment: Fragment = AutoFragment,
                 unique: Boolean = true,
                 fixedModelPath: Path? = null
         ): SpanPeakCallingExperiment<out ClassificationModel, ZLH> {
             check(paths.isNotEmpty()) { "No data" }
-            return SpanPeakCallingExperiment(
-                    genomeQuery, paths.first(),
-                    ZeroPoissonMixture.fitter(),
-                    ZeroPoissonMixture::class.java,
-                    fragment, bin,
-                    ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
-                    unique,
-                    fixedModelPath
-            )
+            return if (paths.size == 1) {
+                SpanPeakCallingExperiment(
+                        genomeQuery, paths.first(),
+                        ZeroPoissonMixture.fitter(),
+                        ZeroPoissonMixture::class.java,
+                        fragment, bin,
+                        ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
+                        unique,
+                        fixedModelPath
+                )
+            } else {
+                SpanPeakCallingExperiment(
+                        genomeQuery, paths,
+                        fragment,
+                        bin,
+                        semanticCheck(MLConstrainedNBHMM.fitter(paths.size), paths.size).multiStarted(),
+                        MLConstrainedNBHMM::class.java,
+                        ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
+                        unique,
+                        fixedModelPath
+                )
+            }
         }
 
         private fun semanticCheck(fitter: Fitter<MLFreeNBHMM>): Fitter<MLFreeNBHMM> {
