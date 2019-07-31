@@ -1,6 +1,5 @@
 package org.jetbrains.bio.experiments.tuning
 
-import com.google.common.primitives.Shorts
 import kotlinx.support.jdk7.use
 import org.jetbrains.bio.coverage.AutoFragment
 import org.jetbrains.bio.coverage.removeDuplicates
@@ -17,6 +16,7 @@ import org.jetbrains.bio.util.*
 import java.nio.file.Path
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
+import kotlin.math.roundToInt
 
 object Span : Tool2Tune<Pair<Double, Int>>() {
 
@@ -289,7 +289,7 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
         val labelErrorsPath = folder / "${target}_${id}_error_labels.bed"
         BedFormat().print(labelErrorsPath).use { printer ->
             for (entry in labelErrorsGrid[index]) {
-                val score = Shorts.checkedCast((entry.value.rate() * 1000).toLong())
+                val score = (entry.value.rate() * 1000).roundToInt()
                 printer.print(entry.key.asBedEntry().copy(score = score))
             }
         }
