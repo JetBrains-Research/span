@@ -197,9 +197,30 @@ data class SpanFitInformation(
             }
         }
 
+        object PathTypeAdapter : JsonSerializer<Path>, JsonDeserializer<Path> {
+
+            override fun serialize(
+                    src: Path, typeOfSrc: Type,
+                    context: JsonSerializationContext
+            ): JsonElement = context.serialize(src.toString())
+
+            override fun deserialize(
+                    json: JsonElement, typeOfT: Type,
+                    context: JsonDeserializationContext
+            ): Path {
+                val str = context.deserialize<String>(json, object : TypeToken<String>() {}.type)
+                try {
+                    return str.toPath()
+                } catch (e: NumberFormatException) {
+                    throw IllegalStateException("Failed to deserialize $str", e)
+                }
+            }
+        }
+
 
         private val GSON = GsonBuilder()
                 .registerTypeAdapter(object : TypeToken<Fragment>() {}.type, FragmentTypeAdapter)
+                .registerTypeAdapter(object : TypeToken<Path>() {}.type, PathTypeAdapter)
                 .setPrettyPrinting()
                 .setFieldNamingStrategy(GSONUtil.NO_MY_UNDESCORE_NAMING_STRATEGY)
                 .create()
