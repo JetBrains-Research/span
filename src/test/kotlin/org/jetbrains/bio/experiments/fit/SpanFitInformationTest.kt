@@ -12,7 +12,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.ExpectedException
-import java.nio.file.Path
 import java.util.*
 import java.util.stream.Collectors
 
@@ -56,7 +55,10 @@ class SpanFitInformationTest {
     fun checkSave() {
         withTempFile("treatment", ".bam") { t ->
             withTempFile("control", ".bam") { c ->
-                val info = SpanFitInformation(gq, listOf(t to c), listOf("treatment_control"), 100, false, 200)
+                val info = SpanFitInformation(
+                    gq, listOf(SpanPathsToData(t, c, null)), listOf("treatment_control"),
+                    100, false, 200
+                )
                 withTempFile("foo", ".tar") { path ->
                     info.save(path)
                     // Escape Windows separators here
@@ -92,7 +94,8 @@ class SpanFitInformationTest {
     @Test
     fun checkLoad() {
         val info = SpanFitInformation(
-            gq, listOf("path_to_file".toPath() to null), listOf("treatment_control"), AutoFragment, false, 200
+            gq, listOf(SpanPathsToData("path_to_file".toPath(), null, null)),
+            listOf("treatment_control"), AutoFragment, false, 200
         )
         withTempFile("foo", ".tar") { path ->
             path.bufferedWriter().use {
@@ -163,7 +166,7 @@ class SpanFitInformationTest {
  */
 internal operator fun SpanFitInformation.Companion.invoke(
         genomeQuery: GenomeQuery,
-        paths: List<Pair<Path, Path?>>,
+        paths: List<SpanPathsToData>,
         labels: List<String>,
         fragment: Int,
         unique: Boolean,
