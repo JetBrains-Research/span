@@ -652,7 +652,7 @@ compare                         Differential peak calling mode, experimental
     ): Lazy<SpanPeakCallingExperiment<out ClassificationModel, ZLH>> {
         val (_, chromSizesPath) = getAndLogWorkDirAndChromSizes(options)
         // option parser guarantees that chrom.sizes are not null here
-        val genomeQuery = GenomeQuery(Genome["hg19"])
+        val genomeQuery = GenomeQuery(Genome[chromSizesPath!!])
         val (treatmentPaths, controlPaths, mappabilityPaths) = getPaths(options, log = true)
         val data = controlPaths.mapIndexed { index, path ->
             matchTreatmentAndControlsAndMappability(
