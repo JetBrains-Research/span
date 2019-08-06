@@ -658,7 +658,7 @@ compare                         Differential peak calling mode, experimental
             matchTreatmentAndControlsAndMappability(
                     treatmentPaths[index],
                     controlPaths[index],
-                    mappabilityPaths[index])
+                    mappabilityPaths.getOrNull(index))
         }
         val bin = getBin(options, log = true)
         val fragment = getFragment(options, log = true)

@@ -382,19 +382,32 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
             System.arraycopy(
                     getGC(it, binSize),
                     0, GCcontent, prevIdx, arraySize)
-            System.arraycopy(
-                    getMappability(it, paths[0].pathMappability!!, binSize),
-                    0, mappability, prevIdx, arraySize)
+            if (paths[0].pathMappability != null) {
+                System.arraycopy(
+                        getMappability(it, paths[0].pathMappability!!, binSize),
+                        0, mappability, prevIdx, arraySize)
+            }
             prevIdx += (arraySize)
         }
 
-        val covar = DataFrame()
-                .with("y", coverTreatment)
-                .with("input", coverInput)
-                .with("GC", GCcontent)
-                .with("mappability", mappability)
-                .with("GC2", DoubleArray(GCcontent.size) {GCcontent[it]*GCcontent[it]})
-        return listOf(Preprocessed.of(covar))
+        if (paths[0].pathMappability != null) {
+            val covar = DataFrame()
+                    .with("y", coverTreatment)
+                    .with("input", coverInput)
+                    .with("GC", GCcontent)
+                    .with("mappability", mappability)
+                    .with("GC2", DoubleArray(GCcontent.size) { GCcontent[it] * GCcontent[it] })
+
+            return listOf(Preprocessed.of(covar))
+        } else {
+            val covar = DataFrame()
+                    .with("y", coverTreatment)
+                    .with("input", coverInput)
+                    .with("GC", GCcontent)
+                    .with("GC2", DoubleArray(GCcontent.size) { GCcontent[it] * GCcontent[it] })
+
+            return listOf(Preprocessed.of(covar))
+        }
     }
 
     val results: SpanFitResults by lazy {
@@ -579,11 +592,4 @@ data class SpanPathsToData(
 ) {
     constructor(pathTreatment: Path, pathInput: Path)
             : this(pathTreatment, pathInput, null)
-
-    init {
-        if (pathMappability == null || pathInput == null) {
-            println("No mappability file")
-            System.exit(1)
-        }
-    }
 }
