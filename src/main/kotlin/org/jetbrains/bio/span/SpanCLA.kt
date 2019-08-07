@@ -654,11 +654,15 @@ compare                         Differential peak calling mode, experimental
         // option parser guarantees that chrom.sizes are not null here
         val genomeQuery = GenomeQuery(Genome[chromSizesPath!!])
         val (treatmentPaths, controlPaths, mappabilityPaths) = getPaths(options, log = true)
-        val data = controlPaths.mapIndexed { index, path ->
-            matchTreatmentAndControlsAndMappability(
+        val data = if (controlPaths.isNotEmpty()) {
+            controlPaths.mapIndexed { index, path ->
+                matchTreatmentAndControlsAndMappability(
                     treatmentPaths[index],
                     controlPaths[index],
                     mappabilityPaths.getOrNull(index))
+            }
+        } else {
+            treatmentPaths.map { SpanPathsToData(it, null, mappabilityPaths.firstOrNull()) }
         }
         val bin = getBin(options, log = true)
         val fragment = getFragment(options, log = true)

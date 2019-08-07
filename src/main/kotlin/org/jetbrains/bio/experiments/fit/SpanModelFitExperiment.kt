@@ -295,7 +295,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
         modelClass: Class<Model>,
         availableStates: Array<State>,
         private val nullHypothesis: NullHypothesis<State>,
-        unique: Boolean = true,
+        val unique: Boolean = true,
         private val fixedModelPath: Path? = null
 ) : ModelFitExperiment<Model, State>(
     createEffectiveQueries(externalGenomeQuery, paths, labels, fragment, binSize, unique),
@@ -359,10 +359,10 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
     }
 
     private fun preprocessData(paths: List<SpanPathsToData>): List<Preprocessed<DataFrame>> {
-        val readsQueryTreatment = ReadsQuery(genomeQuery, paths[0].pathTreatment, true)
-        val readsQueryInput = ReadsQuery(genomeQuery, paths[0].pathInput!!, true)
+        val readsQueryTreatment = ReadsQuery(genomeQuery, paths[0].pathTreatment, unique)
+        val readsQueryInput = paths[0].pathInput?.let { ReadsQuery(genomeQuery, it, unique) }
         val coverageTreatment = readsQueryTreatment.get()
-        val coverageInput = readsQueryInput.get()
+        val coverageInput = readsQueryInput?.get()
         val chrList: List<Chromosome> = genomeQuery.get().sortedBy { it.name }
 
         val coverLength = chrList.map { it.length/binSize + 1 }.sum()
@@ -376,9 +376,11 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
             System.arraycopy(
                     getIntCover(it, coverageTreatment, binSize),
                     0, coverTreatment, prevIdx, arraySize)
-            System.arraycopy(
+            if (coverageInput != null) {
+                System.arraycopy(
                     getDoubleCover(it, coverageInput, binSize),
                     0, coverInput, prevIdx, arraySize)
+            }
             System.arraycopy(
                     getGC(it, binSize),
                     0, GCcontent, prevIdx, arraySize)
@@ -390,24 +392,19 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
             prevIdx += (arraySize)
         }
 
+        var covar = DataFrame().with("y", coverTreatment)
+                .with("GC", GCcontent)
+                .with("GC2", DoubleArray(GCcontent.size) { GCcontent[it] * GCcontent[it] })
+
         if (paths[0].pathMappability != null) {
-            val covar = DataFrame()
-                    .with("y", coverTreatment)
-                    .with("input", coverInput)
-                    .with("GC", GCcontent)
-                    .with("mappability", mappability)
-                    .with("GC2", DoubleArray(GCcontent.size) { GCcontent[it] * GCcontent[it] })
-
-            return listOf(Preprocessed.of(covar))
-        } else {
-            val covar = DataFrame()
-                    .with("y", coverTreatment)
-                    .with("input", coverInput)
-                    .with("GC", GCcontent)
-                    .with("GC2", DoubleArray(GCcontent.size) { GCcontent[it] * GCcontent[it] })
-
-            return listOf(Preprocessed.of(covar))
+            covar = covar.with("mappability", mappability)
         }
+
+        if (coverageInput != null) {
+            covar = covar.with("input", coverInput)
+        }
+
+        return listOf(Preprocessed.of(covar))
     }
 
     val results: SpanFitResults by lazy {
