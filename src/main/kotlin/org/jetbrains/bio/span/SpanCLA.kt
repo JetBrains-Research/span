@@ -616,7 +616,7 @@ compare                         Differential peak calling mode, experimental
             val paths = commandLineControlPaths.mapIndexed { index, path -> matchTreatmentAndControlsAndMappability(
                     commandLineTreatmentPaths[index],
                     commandLineControlPaths[index],
-                    commandLineMappabilityPaths[index])}
+                    commandLineMappabilityPaths.getOrNull(index))}
             check(paths == fitInformation.data.map { it.pathTreatment to it.pathInput }) {
                 "Stored treatment-control pairs ${fitInformation.data.joinToString()} differ from the ones inferred " +
                         "from the command line arguments: ${paths.joinToString()}"
