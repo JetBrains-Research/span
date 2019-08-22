@@ -11,7 +11,6 @@ import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.statistics.MultiLabels
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
-import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.mixture.ZeroPoissonMixture
 import org.jetbrains.bio.statistics.state.ZLH
@@ -84,7 +83,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
             return if (paths.size == 1) {
                 SpanPeakCallingExperiment(
                         genomeQuery, paths.first(),
-                        ZeroPoissonMixture.fitter(),
+                        semanticCheck(ZeroPoissonMixture.fitter()),
                         ZeroPoissonMixture::class.java,
                         fragment, bin,
                         ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
@@ -105,6 +104,29 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
             }
         }
 
+        private fun semanticCheck(fitter: Fitter<ZeroPoissonMixture>): Fitter<ZeroPoissonMixture> {
+            return object : Fitter<ZeroPoissonMixture> by fitter {
+
+                override fun fit(preprocessed: Preprocessed<DataFrame>,
+                                 title: String,
+                                 threshold: Double,
+                                 maxIter: Int,
+                                 attempt: Int): ZeroPoissonMixture =
+                        fitter.fit(preprocessed, title, threshold, maxIter, attempt).apply {
+                            flipStatesIfNecessary()
+                        }
+
+                override fun fit(preprocessed: List<Preprocessed<DataFrame>>,
+                                 title: String,
+                                 threshold: Double,
+                                 maxIter: Int,
+                                 attempt: Int): ZeroPoissonMixture =
+                        fitter.fit(preprocessed, title, threshold, maxIter, attempt).apply {
+                            flipStatesIfNecessary()
+                        }
+            }
+        }
+        /*
         private fun semanticCheck(fitter: Fitter<MLFreeNBHMM>): Fitter<MLFreeNBHMM> {
             return object : Fitter<MLFreeNBHMM> by fitter {
 
@@ -126,7 +148,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
                             flipStatesIfNecessary()
                         }
             }
-        }
+        } */
 
 
         private fun semanticCheck(fitter: Fitter<MLConstrainedNBHMM>, tracks: Int): Fitter<MLConstrainedNBHMM> {

@@ -3,8 +3,10 @@ package org.jetbrains.bio.experiments.fit
 import org.apache.log4j.Logger
 import org.jetbrains.bio.experiments.tuning.Span
 import org.jetbrains.bio.statistics.emission.NegBinEmissionScheme
+import org.jetbrains.bio.statistics.emission.PoissonRegressionEmissionScheme
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
+import org.jetbrains.bio.statistics.mixture.ZeroPoissonMixture
 
 
 private val LOG = Logger.getLogger(Span::class.java)
@@ -45,6 +47,23 @@ internal fun MLConstrainedNBHMM.probabilityFlip(state1: Int, state2: Int, stateN
     this.logPriorProbabilities[state2] = tmp
 }
 
+/**
+ * Flip states in case when states with HIGH get lower mean than LOW
+ */
+internal fun ZeroPoissonMixture.flipStatesIfNecessary() {
+    val lowScheme = this[1] as PoissonRegressionEmissionScheme
+    val highScheme = this[2] as PoissonRegressionEmissionScheme
+    val interceptLow = lowScheme.regressionCoefficients[0]
+    val interceptHigh = highScheme.regressionCoefficients[0]
+    if (interceptLow > interceptHigh){
+        LOG.warn("After fitting the model, intercept in LOW state ($interceptLow) is higher than " +
+                "intercept in HIGH state ($interceptHigh).")
+        LOG.warn("This usually indicates that the states were flipped during fitting. We will now flip them back.")
+        this[2] = lowScheme
+        this[1] = highScheme
+    }
+
+}
 /**
  * Flip states in case when states with HIGH get lower mean than LOW
  */
