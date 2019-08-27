@@ -20,10 +20,15 @@ import org.jetbrains.bio.query.ReadsQuery
 import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.query.stemGz
 import org.jetbrains.bio.statistics.ClassificationModel
+import org.jetbrains.bio.statistics.emission.PoissonRegressionEmissionScheme
+import org.jetbrains.bio.statistics.mixture.ZeroPoissonMixture
 import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.util.*
 import org.jetbrains.bio.util.FileSize.Companion.GB
+import java.io.File
 import java.nio.file.Path
+import java.text.NumberFormat
+
 
 /**
  * Tool for analyzing and comparing ChIP-Seq data.
@@ -68,6 +73,7 @@ compare                         Differential peak calling mode, experimental
 """
     private const val ANALYZE = "analyze"
     private const val COMPARE = "compare"
+    private const val GETCOEF = "coefficients"
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -78,6 +84,7 @@ compare                         Differential peak calling mode, experimental
             when (args[0]) {
                 ANALYZE -> analyze(args.copyOfRange(1, args.size))
                 COMPARE -> compare(args.copyOfRange(1, args.size))
+                GETCOEF -> getCoefficients(args.copyOfRange(1, args.size))
 
                 "-?", "-h", "--help" -> println(HELP)
                 "-v", "--version" -> println(version())
@@ -90,6 +97,72 @@ compare                         Differential peak calling mode, experimental
         }
     }
 
+    private fun getCoefficients(params: Array<String>) {
+        val parcer = OptionParser()
+        parcer.acceptsAll(listOf("m", "model"),
+                    "Model file. span file")
+                    .withRequiredArg()
+                    .withValuesConvertedBy(PathConverter.exists())
+        parcer.acceptsAll(listOf("csv_low"),
+                        "Output file file. csv file")
+                .withRequiredArg()
+                .withValuesConvertedBy(PathConverter.exists())
+        parcer.acceptsAll(listOf("csv_high"),
+                "Output file file. csv file")
+                .withRequiredArg()
+                .withValuesConvertedBy(PathConverter.exists())
+        parcer.acceptsAll(listOf("csv_weights"),
+                "Output file file. csv file")
+                .withRequiredArg()
+                .withValuesConvertedBy(PathConverter.exists())
+
+        parcer.parse(params) { options ->
+
+            // this value is lazy to ensure the correct logging order
+            val spanResults = SpanModelFitExperiment.loadResults(tarPath = options.valueOf("model") as Path)
+            spanResults.about()
+            val coef_1 = (
+                    (spanResults.model as ZeroPoissonMixture)
+                            .get(1) as PoissonRegressionEmissionScheme
+                    ).regressionCoefficients
+            val coef_2 = (
+                    spanResults.model
+                            .get(2) as PoissonRegressionEmissionScheme
+                    ).regressionCoefficients
+            val weights = spanResults.model.weights.toDoubleArray()
+
+            val nf = NumberFormat.getNumberInstance()
+            nf.maximumFractionDigits = 2
+
+            val fileLow = File(options.valueOf("csv_low").toString())
+            val fileHigh = File(options.valueOf("csv_high").toString())
+            val fileWeights = File(options.valueOf("csv_weights").toString())
+
+            fileLow.appendText("\n" + options
+                    .valueOf("model")
+                    .toString()
+                    .replaceBeforeLast("/", "")
+                    .drop(1)
+                    .dropLast(5))
+            coef_1.forEach { fileLow.appendText("," + nf.format(it)) }
+
+            fileHigh.appendText("\n" + options
+                    .valueOf("model")
+                    .toString()
+                    .replaceBeforeLast("/", "")
+                    .drop(1)
+                    .dropLast(5))
+            coef_2.forEach { fileHigh.appendText("," + nf.format(it)) }
+
+            fileWeights.appendText("\n" + options
+                    .valueOf("model")
+                    .toString()
+                    .replaceBeforeLast("/", "")
+                    .drop(1)
+                    .dropLast(5))
+            weights.forEach { fileWeights.appendText("," + nf.format(it)) }
+        }
+    }
 
     private fun analyze(params: Array<String>) {
         with(getOptionParser()) {
@@ -652,7 +725,7 @@ compare                         Differential peak calling mode, experimental
     ): Lazy<SpanPeakCallingExperiment<out ClassificationModel, ZLH>> {
         val (_, chromSizesPath) = getAndLogWorkDirAndChromSizes(options)
         // option parser guarantees that chrom.sizes are not null here
-        val genomeQuery = GenomeQuery(Genome[chromSizesPath!!])
+        val genomeQuery = GenomeQuery(Genome["hg19"])
         val (treatmentPaths, controlPaths, mappabilityPaths) = getPaths(options, log = true)
         val data = if (controlPaths.isNotEmpty()) {
             controlPaths.mapIndexed { index, path ->
