@@ -1,12 +1,12 @@
 package org.jetbrains.bio.experiments.tuning
 
-import com.google.common.primitives.Shorts
 import kotlinx.support.jdk7.use
 import org.jetbrains.bio.experiments.tuning.PeakCallerTuning.Companion.LOG
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.io.BedFormat
 import org.jetbrains.bio.util.*
 import java.nio.file.Path
+import kotlin.math.roundToInt
 
 /**
  * Created by Aleksei Dievskii on 15.02.2018.
@@ -30,7 +30,7 @@ internal fun PeakCallerTuning.generateLabelErrors(target: String, tool: Tool2Tun
         }
         BedFormat().print(output.path).use { printer ->
             labelErrors.forEach { entry ->
-                val score = Shorts.checkedCast((entry.value.rate() * 1000).toLong())
+                val score = (entry.value.rate() * 1000).roundToInt()
                 printer.print(entry.key.asBedEntry().copy(score = score))
             }
         }
@@ -60,7 +60,7 @@ internal fun PeakCallerTuning.generateReplicatedLabelErrors(target: String, tool
         val labelErrors = computeErrors(labels, LocationsMergingList.load(configuration.genomeQuery, peaksPath))
         BedFormat().print(output.path).use { printer ->
             labelErrors.forEach { entry ->
-                val score = Shorts.checkedCast((entry.value.rate() * 1000).toLong())
+                val score = (entry.value.rate() * 1000).roundToInt()
                 printer.print(entry.key.asBedEntry().copy(score = score))
             }
         }
