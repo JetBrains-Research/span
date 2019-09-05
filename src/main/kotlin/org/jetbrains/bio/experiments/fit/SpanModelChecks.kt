@@ -64,6 +64,7 @@ internal fun ZeroPoissonMixture.flipStatesIfNecessary() {
     }
 
 }
+
 /**
  * Flip states in case when states with HIGH get lower mean than LOW
  */
