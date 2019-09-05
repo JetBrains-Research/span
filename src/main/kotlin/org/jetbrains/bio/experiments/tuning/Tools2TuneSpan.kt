@@ -249,7 +249,7 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
 
         val replicatedPeakCallingExperiment = SpanPeakCallingExperiment.getExperiment(
             configuration.genomeQuery,
-            labelledTracks.map(LabelledTrack::trackPath).map { it to inputPath },
+            labelledTracks.map(LabelledTrack::trackPath).map { SpanPathsToData(it, inputPath, null) },
             DEFAULT_BIN, AutoFragment
         )
 

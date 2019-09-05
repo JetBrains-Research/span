@@ -315,20 +315,14 @@ compare                         Differential peak calling mode, experimental
 
                 checkMemory()
 
-
                 val gq = GenomeQuery(genome)
-                val paths1 = treatmentPaths1.mapIndexed { index, path ->
-                    matchTreatmentAndControlsAndMappability(
-                        treatmentPaths1[index],
-                        controlPaths1[index])
-                }
+                val paths1 = getCommandLinePaths(treatmentPaths1, controlPaths1)
+                check(paths1 != null) { "No treatment files provided for set 1, use -t1 option." }
+                val paths2 = getCommandLinePaths(treatmentPaths2, controlPaths2)
+                check(paths2 != null) { "No treatment files provided for set 2, use -t1 option." }
+
                 val coverages1 = treatmentPaths1.map { ReadsQuery(gq, it, fragment = fragment) }
-                val paths2 = treatmentPaths2.mapIndexed { index, path ->
-                    matchTreatmentAndControlsAndMappability(
-                        treatmentPaths2[index],
-                        controlPaths2[index])
-                }
-                val coverages2 = treatmentPaths1.map { ReadsQuery(gq, it, fragment = fragment) }
+                val coverages2 = treatmentPaths2.map { ReadsQuery(gq, it, fragment = fragment) }
                 val experiment = SpanDifferentialPeakCallingExperiment.getExperiment(
                     gq, paths1, paths2, bin, fragment
                 )
@@ -354,13 +348,6 @@ compare                         Differential peak calling mode, experimental
                 }
             }
         }
-    }
-
-    private fun matchTreatmentAndControlsAndMappability(
-            treatmentPaths: Path,
-            controlPaths: Path
-    ): SpanPathsToData {
-        return SpanPathsToData(treatmentPaths, controlPaths)
     }
 
     private fun configurePaths(outputPath: Path, chromSizesPath: Path?) {
@@ -602,7 +589,9 @@ compare                         Differential peak calling mode, experimental
     }
 
     /**
-     * Retrieves the paths either from command-line options or from the stored fit information.
+     * Retrieves the paths (treatment, optional control, and optional mapability)
+     * either from command-line options or from the stored fit information.
+     *
      * If both are available, checks that they are consistent.
      */
     private fun getPaths(
@@ -612,27 +601,9 @@ compare                         Differential peak calling mode, experimental
         val commandLineControlPaths = options.valuesOf("control") as List<Path>
         val commandLineMapabilityPath = options.valueOf("mapability") as Path?
 
-        val commandLinePaths = run {
-            if (commandLineTreatmentPaths.isEmpty()) {
-                return@run null
-            }
-            val spreadControlPaths = if (commandLineControlPaths.isNotEmpty()) {
-                when {
-                    commandLineControlPaths.size == 1 ->
-                        Array(commandLineTreatmentPaths.size) { commandLineControlPaths.single() }.toList()
-                    commandLineControlPaths.size == commandLineTreatmentPaths.size -> commandLineControlPaths
-                    else -> throw IllegalArgumentException(
-                        "Expected either: no control files, a single control file, " +
-                                "or as many control files as treatment files."
-                    )
-                }
-            } else {
-                Array(commandLineTreatmentPaths.size) { null as Path? }.toList()
-            }
-            return@run commandLineTreatmentPaths.zip(spreadControlPaths).map { (treatment, control) ->
-                SpanPathsToData(treatment, control, commandLineMapabilityPath)
-            }
-        }
+        val commandLinePaths = getCommandLinePaths(
+            commandLineTreatmentPaths, commandLineControlPaths, commandLineMapabilityPath
+        )
 
         val fitInfoPaths = fitInformation?.data
         if (commandLinePaths != null && fitInfoPaths != null && commandLinePaths != fitInfoPaths) {
@@ -664,13 +635,39 @@ compare                         Differential peak calling mode, experimental
         return paths
     }
 
+    private fun getCommandLinePaths(
+            commandLineTreatmentPaths: List<Path>,
+            commandLineControlPaths: List<Path>,
+            commandLineMapabilityPath: Path? = null
+    ): List<SpanPathsToData>? {
+        if (commandLineTreatmentPaths.isEmpty()) {
+            return null
+        }
+        val spreadControlPaths = if (commandLineControlPaths.isNotEmpty()) {
+            when {
+                commandLineControlPaths.size == 1 ->
+                    Array(commandLineTreatmentPaths.size) { commandLineControlPaths.single() }.toList()
+                commandLineControlPaths.size == commandLineTreatmentPaths.size -> commandLineControlPaths
+                else -> throw IllegalArgumentException(
+                    "Expected either: no control files, a single control file, " +
+                            "or as many control files as treatment files."
+                )
+            }
+        } else {
+            Array(commandLineTreatmentPaths.size) { null as Path? }.toList()
+        }
+        return commandLineTreatmentPaths.zip(spreadControlPaths).map { (treatment, control) ->
+            SpanPathsToData(treatment, control, commandLineMapabilityPath)
+        }
+    }
+
     /**
      * Creates the peak calling experiment using the supplied command line arguments.
      * Logs the progress.
      */
     private fun constructPeakCallingExperiment(
             options: OptionSet
-    ): Lazy<SpanPeakCallingExperiment<out ClassificationModel, ZLH>> {
+    ): Lazy<SpanModelFitExperiment<ClassificationModel, ZLH>> {
         val (_, chromSizesPath) = getAndLogWorkDirAndChromSizes(options)
         // option parser guarantees that chrom.sizes are not null here
         val genomeQuery = GenomeQuery(Genome[chromSizesPath!!])
@@ -681,7 +678,12 @@ compare                         Differential peak calling mode, experimental
         val modelPath = options.valueOf("model") as Path?
         val modelType = getModelType(options, modelPath, log = true)
         return lazy {
-            SpanPeakCallingExperiment.getExperiment(genomeQuery, data, bin, fragment, unique, modelPath, modelType)
+            when (modelType) {
+                SpanModel.NB_HMM ->
+                    SpanPeakCallingExperiment.getExperiment(genomeQuery, data, bin, fragment, unique, modelPath)
+                SpanModel.POISSON_REGRESSION_MIXTURE ->
+                    Span2PeakCallingExperiment.getExperiment(genomeQuery, data, fragment, bin, unique, modelPath)
+            }
         }
     }
 

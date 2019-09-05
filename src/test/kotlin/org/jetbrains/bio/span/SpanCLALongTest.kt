@@ -131,7 +131,8 @@ compare                         Differential peak calling mode, experimental
                 val peaksPath = it / "peaks.bed"
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 val (out, _) = Logs.captureLoggingOutput {
-                    SpanCLA.main(arrayOf("compare",
+                    SpanCLA.main(arrayOf(
+                        "compare",
                         "-cs", chromsizes,
                         "--workdir", it.toString(),
                         "-t1", path.toString(),
@@ -139,7 +140,8 @@ compare                         Differential peak calling mode, experimental
                         "--peaks", peaksPath.toString(),
                         "--fdr", FDR.toString(),
                         "--gap", GAP.toString(),
-                        "--threads", THREADS.toString()))
+                        "--threads", THREADS.toString()
+                    ))
                 }
 
                 assertTrue(
@@ -422,7 +424,7 @@ LABELS, FDR, GAP options are ignored.
                 assertTrue(
                     format.parse(peaksPath) { parser ->
                         parser.all { entry ->
-                            val coverage = entry.unpack(6, 3).extraFields?.get(0)
+                            val coverage = entry.unpack(6).extraFields?.get(0)
                             return@all coverage != null && coverage != "0.0"
                         }
                     },

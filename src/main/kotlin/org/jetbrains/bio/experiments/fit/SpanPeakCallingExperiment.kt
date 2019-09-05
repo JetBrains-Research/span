@@ -13,7 +13,6 @@ import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
-import org.jetbrains.bio.statistics.mixture.ZeroPoissonMixture
 import org.jetbrains.bio.statistics.state.ZLH
 import java.nio.file.Path
 
@@ -78,32 +77,19 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
                 bin: Int,
                 fragment: Fragment = AutoFragment,
                 unique: Boolean = true,
-                fixedModelPath: Path? = null,
-                modelType: SpanModel = SpanModel.NB_HMM
+                fixedModelPath: Path? = null
         ): SpanPeakCallingExperiment<out ClassificationModel, ZLH> {
             check(paths.isNotEmpty()) { "No data" }
             return if (paths.size == 1) {
-                if (modelType == SpanModel.NB_HMM) {
-                    SpanPeakCallingExperiment(
-                        genomeQuery, paths.first(),
-                        semanticCheck(MLFreeNBHMM.fitter()),
-                        MLFreeNBHMM::class.java,
-                        fragment, bin,
-                        ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
-                        unique,
-                        fixedModelPath
-                    )
-                } else {
-                    SpanPeakCallingExperiment(
-                        genomeQuery, paths.first(),
-                        semanticCheckZPM(ZeroPoissonMixture.fitter()),
-                        ZeroPoissonMixture::class.java,
-                        fragment, bin,
-                        ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
-                        unique,
-                        fixedModelPath
-                    )
-                }
+                SpanPeakCallingExperiment(
+                    genomeQuery, paths.first(),
+                    semanticCheck(MLFreeNBHMM.fitter()).multiStarted(),
+                    MLFreeNBHMM::class.java,
+                    fragment, bin,
+                    ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
+                    unique,
+                    fixedModelPath
+                )
             } else {
                 SpanPeakCallingExperiment(
                     genomeQuery, paths,
@@ -115,33 +101,6 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
                     unique,
                     fixedModelPath
                 )
-            }
-        }
-
-        private fun semanticCheckZPM(fitter: Fitter<ZeroPoissonMixture>): Fitter<ZeroPoissonMixture> {
-            return object : Fitter<ZeroPoissonMixture> by fitter {
-
-                override fun fit(
-                        preprocessed: Preprocessed<DataFrame>,
-                        title: String,
-                        threshold: Double,
-                        maxIter: Int,
-                        attempt: Int
-                ): ZeroPoissonMixture =
-                        fitter.fit(preprocessed, title, threshold, maxIter, attempt).apply {
-                            flipStatesIfNecessary()
-                        }
-
-                override fun fit(
-                        preprocessed: List<Preprocessed<DataFrame>>,
-                        title: String,
-                        threshold: Double,
-                        maxIter: Int,
-                        attempt: Int
-                ): ZeroPoissonMixture =
-                        fitter.fit(preprocessed, title, threshold, maxIter, attempt).apply {
-                            flipStatesIfNecessary()
-                        }
             }
         }
 

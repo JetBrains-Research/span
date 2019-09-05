@@ -31,7 +31,8 @@ abstract class ModelFitExperiment<out Model : ClassificationModel, State : Any>(
             queries: Pair<GenomeQuery, Query<Chromosome, DataFrame>>,
             modelFitter: Fitter<Model>,
             modelClass: Class<out Model>,
-            availableStates: Array<State>) : this(queries.first, queries.second, modelFitter, modelClass, availableStates)
+            availableStates: Array<State>
+    ) : this(queries.first, queries.second, modelFitter, modelClass, availableStates)
 
 
     open val id: String
