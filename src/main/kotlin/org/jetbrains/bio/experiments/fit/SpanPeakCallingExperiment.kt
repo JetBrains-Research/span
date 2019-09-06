@@ -33,7 +33,8 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
         fixedModelPath: Path? = null
 ) : SpanModelFitExperiment<Model, State>(
     genomeQuery,
-    paths, MultiLabels.generate(TRACK_PREFIX, paths.size).toList(),
+    paths, null,
+    MultiLabels.generate(TRACK_PREFIX, paths.size).toList(),
     fragment, binSize,
     modelFitter, modelClass, states, nullHypothesis, unique, fixedModelPath
 ) {

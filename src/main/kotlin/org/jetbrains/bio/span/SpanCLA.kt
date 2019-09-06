@@ -555,6 +555,16 @@ compare                         Differential peak calling mode, experimental
         "model type", "MODEL_TYPE", log
     )
 
+    private fun getMapabilityPath(
+            options: OptionSet, fitInfo: SpanFitInformation? = null, log: Boolean = false
+    ) = getProperty(
+        options.valueOf("mapability") as Path?,
+        fitInfo?.mapabilityPath,
+        null,
+        "mapability", "MAPABILITY",
+        log
+    )
+
     private fun getAndLogWorkDirAndChromSizes(
             options: OptionSet, fitInformation: SpanFitInformation? = null
     ): Pair<Path, Path?> {
@@ -599,10 +609,9 @@ compare                         Differential peak calling mode, experimental
     ): List<SpanDataPaths> {
         val commandLineTreatmentPaths = options.valuesOf("treatment") as List<Path>
         val commandLineControlPaths = options.valuesOf("control") as List<Path>
-        val commandLineMapabilityPath = options.valueOf("mapability") as Path?
 
         val commandLinePaths = getCommandLinePaths(
-            commandLineTreatmentPaths, commandLineControlPaths, commandLineMapabilityPath
+            commandLineTreatmentPaths, commandLineControlPaths
         )
 
         val fitInfoPaths = fitInformation?.data
@@ -626,19 +635,13 @@ compare                         Differential peak calling mode, experimental
                     LOG.info("CONTROL: none")
                 }
             }
-            paths.mapNotNull { it.mapability }.let {
-                if (it.isNotEmpty()) {
-                    LOG.info("MAPABILITY: ${it.first()}")
-                }
-            }
         }
         return paths
     }
 
     private fun getCommandLinePaths(
             commandLineTreatmentPaths: List<Path>,
-            commandLineControlPaths: List<Path>,
-            commandLineMapabilityPath: Path? = null
+            commandLineControlPaths: List<Path>
     ): List<SpanDataPaths>? {
         if (commandLineTreatmentPaths.isEmpty()) {
             return null
@@ -657,7 +660,7 @@ compare                         Differential peak calling mode, experimental
             Array(commandLineTreatmentPaths.size) { null as Path? }.toList()
         }
         return commandLineTreatmentPaths.zip(spreadControlPaths).map { (treatment, control) ->
-            SpanDataPaths(treatment, control, commandLineMapabilityPath)
+            SpanDataPaths(treatment, control)
         }
     }
 
@@ -677,12 +680,20 @@ compare                         Differential peak calling mode, experimental
         val unique = getUnique(options, log = true)
         val modelPath = options.valueOf("model") as Path?
         val modelType = getModelType(options, modelPath, log = true)
+        val mapabilityPath = if (modelType == SpanModel.POISSON_REGRESSION_MIXTURE) {
+            getMapabilityPath(options, log = true)
+        } else {
+            null
+        }
+
         return lazy {
             when (modelType) {
                 SpanModel.NB_HMM ->
                     SpanPeakCallingExperiment.getExperiment(genomeQuery, data, bin, fragment, unique, modelPath)
                 SpanModel.POISSON_REGRESSION_MIXTURE ->
-                    Span2PeakCallingExperiment.getExperiment(genomeQuery, data, fragment, bin, unique, modelPath)
+                    Span2PeakCallingExperiment.getExperiment(
+                        genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath
+                    )
             }
         }
     }

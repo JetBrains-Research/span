@@ -23,6 +23,7 @@ import java.nio.file.Path
 class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
         genomeQuery: GenomeQuery,
         paths: SpanDataPaths,
+        mapabilityPath: Path?,
         fragment: Fragment,
         binSize: Int,
         modelFitter: Fitter<Model>,
@@ -32,8 +33,9 @@ class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
         unique: Boolean = true,
         fixedModelPath: Path? = null
 ) : SpanModelFitExperiment<Model, State>(
-    genomeQuery to createDataQuery(genomeQuery, paths, fragment, binSize, unique),
-    listOf(paths), listOfNotNull("y", paths.control?.let { "input" }),
+    genomeQuery to createDataQuery(genomeQuery, paths, mapabilityPath, fragment, binSize, unique),
+    listOf(paths), mapabilityPath,
+    listOfNotNull("y", paths.control?.let { "input" }),
     fragment, binSize,
     modelFitter, modelClass,
     states, nullHypothesis,
@@ -101,6 +103,7 @@ class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
         fun createDataQuery(
                 genomeQuery: GenomeQuery,
                 paths: SpanDataPaths,
+                mapabilityPath: Path?,
                 fragment: Fragment,
                 binSize: Int,
                 unique: Boolean
@@ -120,7 +123,7 @@ class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
                 val control = controlCoverage?.let { binnedCoverageAsDouble(input, it.get(), binSize) }
                 val gc = meanGC(input, binSize)
                 val gc2 = (gc.asF64Array() * gc.asF64Array()).data
-                val mapability = paths.mapability?.let { binnedMapability(input, it, binSize) }
+                val mapability = mapabilityPath?.let { binnedMapability(input, it, binSize) }
                 var df = DataFrame().with("y", y)
                 if (control != null) df = df.with("input", control)
                 df = df.with("GC", gc).with("GC2", gc2)
@@ -159,6 +162,7 @@ class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
         fun getExperiment(
                 genomeQuery: GenomeQuery,
                 data: List<SpanDataPaths>,
+                mapabilityPath: Path?,
                 fragment: Fragment,
                 binSize: Int,
                 unique: Boolean,
@@ -166,7 +170,7 @@ class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
         ): Span2PeakCallingExperiment<ZeroPoissonMixture, ZLH> {
             check(data.size == 1) { "Poisson regression mixture currently accepts a single data track." }
             return Span2PeakCallingExperiment(
-                genomeQuery, data.single(),
+                genomeQuery, data.single(), mapabilityPath,
                 fragment, binSize,
                 semanticCheck(ZeroPoissonMixture.fitter()), ZeroPoissonMixture::class.java,
                 ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),

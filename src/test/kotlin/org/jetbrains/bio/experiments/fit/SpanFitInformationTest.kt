@@ -33,7 +33,7 @@ class SpanFitInformationTest {
         expectedEx.expect(IllegalStateException::class.java)
         expectedEx.expectMessage("Wrong genome build, expected: hg19, got: to1")
         SpanFitInformation(
-            "hg19", emptyList(), emptyList(), FixedFragment(100), true, 200, LinkedHashMap(), 1
+            "hg19", emptyList(), null, emptyList(), FixedFragment(100), true, 200, LinkedHashMap(), 1
         ).checkGenome(Genome["to1"])
     }
 
@@ -94,7 +94,7 @@ class SpanFitInformationTest {
     @Test
     fun checkLoad() {
         val info = SpanFitInformation(
-            gq, listOf(SpanDataPaths("path_to_file".toPath(), null, null)),
+            gq, listOf(SpanDataPaths("path_to_file".toPath(), null, null)), null,
             listOf("treatment_control"), AutoFragment, false, 200
         )
         withTempFile("foo", ".tar") { path ->
@@ -171,4 +171,4 @@ internal operator fun SpanFitInformation.Companion.invoke(
         fragment: Int,
         unique: Boolean,
         binSize: Int
-): SpanFitInformation = SpanFitInformation(genomeQuery, paths, labels, FixedFragment(fragment), unique, binSize)
+): SpanFitInformation = SpanFitInformation(genomeQuery, paths, null, labels, FixedFragment(fragment), unique, binSize)

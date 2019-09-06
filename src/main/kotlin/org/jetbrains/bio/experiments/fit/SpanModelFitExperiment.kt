@@ -45,6 +45,7 @@ import kotlin.collections.LinkedHashMap
 data class SpanFitInformation(
         val build: String,
         val data: List<SpanDataPaths>,
+        val mapabilityPath: Path?,
         val labels: List<String>,
         val fragment: Fragment,
         val unique: Boolean,
@@ -56,13 +57,14 @@ data class SpanFitInformation(
     constructor(
             genomeQuery: GenomeQuery,
             paths: List<SpanDataPaths>,
+            mapabilityPath: Path?,
             labels: List<String>,
             fragment: Fragment,
             unique: Boolean,
             binSize: Int
     ): this(
         genomeQuery.build,
-        paths,
+        paths, mapabilityPath,
         labels, fragment, unique, binSize,
         LinkedHashMap<String, Int>().apply {
             genomeQuery.get().sortedBy { it.name }.forEach { this[it.name] = it.length }
@@ -229,7 +231,8 @@ data class SpanFitInformation(
                 val version: Int = 2
         ) {
             fun convertToV3(): SpanFitInformation = SpanFitInformation(
-                build, data.map { it.toSpanDataPaths() }, labels, fragment, unique, binSize, chromosomesSizes, 3
+                build, data.map { it.toSpanDataPaths() }, null,
+                labels, fragment, unique, binSize, chromosomesSizes, 3
             )
         }
 
@@ -319,6 +322,7 @@ data class SpanFitResults(
 abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : Any> protected constructor(
         genomeDataQuery: Pair<GenomeQuery, Query<Chromosome, DataFrame>>,
         paths: List<SpanDataPaths>,
+        mapabilityPath: Path?,
         labels: List<String>,
         fragment: Fragment,
         val binSize: Int,
@@ -334,6 +338,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
             /** XXX may contain chromosomes without reads, use [genomeQuery] instead. Details: [createEffectiveQueries] */
             externalGenomeQuery: GenomeQuery,
             paths: List<SpanDataPaths>,
+            mapabilityPath: Path?,
             labels: List<String>,
             fragment: Fragment,
             binSize: Int,
@@ -345,7 +350,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
             fixedModelPath: Path? = null
     ) : this(
         createEffectiveQueries(externalGenomeQuery, paths, labels, fragment, binSize, unique),
-        paths, labels,
+        paths, mapabilityPath, labels,
         fragment, binSize,
         modelFitter, modelClass,
         availableStates, nullHypothesis,
@@ -368,7 +373,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
         results.logNullMemberships
     }
 
-    val fitInformation = SpanFitInformation(genomeQuery, paths, labels, fragment, unique, binSize)
+    val fitInformation = SpanFitInformation(genomeQuery, paths, mapabilityPath, labels, fragment, unique, binSize)
 
     // XXX It is important to use get() here, because id is overridden in superclasses
     private val modelPath: Path

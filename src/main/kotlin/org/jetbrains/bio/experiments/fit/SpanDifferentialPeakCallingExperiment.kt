@@ -33,7 +33,7 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
         nullHypothesis: NullHypothesis<State>
 ): SpanModelFitExperiment<Model, State>(
     genomeQuery,
-    paths1 + paths2,
+    paths1 + paths2, null,
     MultiLabels.generate(TRACK1_PREFIX, paths1.size).toList() +
             MultiLabels.generate(TRACK2_PREFIX, paths2.size).toList(),
     fragment, binSize, modelFitter, modelClass, states, nullHypothesis
