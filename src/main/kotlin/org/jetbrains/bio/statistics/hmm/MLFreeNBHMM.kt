@@ -2,6 +2,7 @@ package org.jetbrains.bio.statistics.hmm
 
 import org.apache.log4j.Logger
 import org.jetbrains.bio.dataframe.DataFrame
+import org.jetbrains.bio.experiments.fit.flipStatesIfNecessary
 import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.distribution.NegativeBinomialDistribution
@@ -39,6 +40,11 @@ class MLFreeNBHMM(meanLow: Double, meanHigh: Double, failures: Double) : MLFreeH
         } else {
             negBinEmissionSchemes[i - 1] = e
         }
+    }
+
+    override fun fit(preprocessed: List<Preprocessed<DataFrame>>, title: String, threshold: Double, maxIter: Int) {
+        super.fit(preprocessed, title, threshold, maxIter)
+        flipStatesIfNecessary()
     }
 
     val means: F64Array get() = F64Array(2) { negBinEmissionSchemes[it].mean }

@@ -2,14 +2,12 @@ package org.jetbrains.bio.experiments.fit
 
 import org.jetbrains.bio.coverage.AutoFragment
 import org.jetbrains.bio.coverage.Fragment
-import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.query.stemGz
 import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.statistics.MultiLabels
-import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
@@ -84,7 +82,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
             return if (paths.size == 1) {
                 SpanPeakCallingExperiment(
                     genomeQuery, paths.first(),
-                    semanticCheck(MLFreeNBHMM.fitter()).multiStarted(),
+                    MLFreeNBHMM.fitter().multiStarted(),
                     MLFreeNBHMM::class.java,
                     fragment, bin,
                     ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
@@ -96,67 +94,12 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
                     genomeQuery, paths,
                     fragment,
                     bin,
-                    semanticCheck(MLConstrainedNBHMM.fitter(paths.size), paths.size).multiStarted(),
+                    MLConstrainedNBHMM.fitter(paths.size).multiStarted(),
                     MLConstrainedNBHMM::class.java,
                     ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
                     unique,
                     fixedModelPath
                 )
-            }
-        }
-
-        private fun semanticCheck(fitter: Fitter<MLFreeNBHMM>): Fitter<MLFreeNBHMM> {
-            return object : Fitter<MLFreeNBHMM> by fitter {
-
-                override fun fit(
-                        preprocessed: Preprocessed<DataFrame>,
-                        title: String,
-                        threshold: Double,
-                        maxIter: Int,
-                        attempt: Int
-                ): MLFreeNBHMM =
-                        fitter.fit(preprocessed, title, threshold, maxIter, attempt).apply {
-                            flipStatesIfNecessary()
-                        }
-
-                override fun fit(
-                        preprocessed: List<Preprocessed<DataFrame>>,
-                        title: String,
-                        threshold: Double,
-                        maxIter: Int,
-                        attempt: Int
-                ): MLFreeNBHMM =
-                        fitter.fit(preprocessed, title, threshold, maxIter, attempt).apply {
-                            flipStatesIfNecessary()
-                        }
-            }
-        }
-
-
-        private fun semanticCheck(fitter: Fitter<MLConstrainedNBHMM>, tracks: Int): Fitter<MLConstrainedNBHMM> {
-            return object : Fitter<MLConstrainedNBHMM> by fitter {
-
-                override fun fit(
-                        preprocessed: Preprocessed<DataFrame>,
-                        title: String,
-                        threshold: Double,
-                        maxIter: Int,
-                        attempt: Int
-                ): MLConstrainedNBHMM =
-                        fitter.fit(preprocessed, title, threshold, maxIter, attempt).apply {
-                            flipStatesIfNecessary(tracks)
-                        }
-
-                override fun fit(
-                        preprocessed: List<Preprocessed<DataFrame>>,
-                        title: String,
-                        threshold: Double,
-                        maxIter: Int,
-                        attempt: Int
-                ): MLConstrainedNBHMM =
-                        fitter.fit(preprocessed, title, threshold, maxIter, attempt).apply {
-                            flipStatesIfNecessary(tracks)
-                        }
             }
         }
     }

@@ -2,7 +2,6 @@ package org.jetbrains.bio.experiments.fit
 
 import org.jetbrains.bio.coverage.AutoFragment
 import org.jetbrains.bio.coverage.Fragment
-import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.query.reduceIds
@@ -12,7 +11,6 @@ import org.jetbrains.bio.span.getChromosomePeaks
 import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.statistics.MultiLabels
-import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.state.ZLHID
@@ -104,7 +102,7 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
                 SpanDifferentialPeakCallingExperiment(
                     genomeQuery, paths1.first(), paths2.first(),
                     fragment, bin,
-                    semanticCheck(MLConstrainedNBHMM.fitter(1, 1), 1, 1),
+                    MLConstrainedNBHMM.fitter(1, 1),
                     MLConstrainedNBHMM::class.java,
                     ZLHID.values(), NullHypothesis.of(ZLHID.same())
                 )
@@ -112,35 +110,11 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
                 SpanDifferentialPeakCallingExperiment(
                     genomeQuery, paths1, paths2,
                     fragment, bin,
-                    semanticCheck(MLConstrainedNBHMM.fitter(paths1.size, paths2.size), paths1.size, paths2.size),
+                    MLConstrainedNBHMM.fitter(paths1.size, paths2.size),
                     MLConstrainedNBHMM::class.java,
                     ZLHID.values(), NullHypothesis.of(ZLHID.same())
                 )
             }
         }
-
-        private fun semanticCheck(fitter: Fitter<MLConstrainedNBHMM>, tracks1: Int, tracks2: Int): Fitter<MLConstrainedNBHMM> {
-            return object : Fitter<MLConstrainedNBHMM> by fitter {
-                override fun fit(preprocessed: Preprocessed<DataFrame>,
-                                 title: String,
-                                 threshold: Double,
-                                 maxIter: Int,
-                                 attempt: Int): MLConstrainedNBHMM =
-                        fitter.fit(preprocessed, title, threshold, maxIter, attempt).apply {
-                            flipStatesIfNecessary(tracks1, tracks2)
-                        }
-
-                override fun fit(preprocessed: List<Preprocessed<DataFrame>>,
-                                 title: String,
-                                 threshold: Double,
-                                 maxIter: Int,
-                                 attempt: Int): MLConstrainedNBHMM =
-                        fitter.fit(preprocessed, title, threshold, maxIter, attempt).apply {
-                            flipStatesIfNecessary(tracks1, tracks2)
-                        }
-            }
-        }
-
-
     }
 }
