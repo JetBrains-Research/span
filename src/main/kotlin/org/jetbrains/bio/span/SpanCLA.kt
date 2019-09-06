@@ -166,7 +166,7 @@ compare                         Differential peak calling mode, experimental
                             gq,
                             peaks.map { it.location }.stream(),
                             peaksPath.toUri(),
-                            fitInfo.data.map { it.pathTreatment }
+                            fitInfo.data.map { it.treatment }
                         )
                         val aboutModel = spanResults.about()
                         LOG.info("\n" + (aboutPeaks + aboutModel).map { (k, v) -> "$k: $v" }.joinToString("\n"))
@@ -454,7 +454,7 @@ compare                         Differential peak calling mode, experimental
             // No peaks, no model, generate ID from command-line options.
             // Option parser guarantees that treatment paths are not empty here.
             val data = getPaths(options)
-            val ids = listOf(data.map { it.pathTreatment }, data.mapNotNull { it.pathInput }).flatMap { paths ->
+            val ids = listOf(data.map { it.treatment }, data.mapNotNull { it.control }).flatMap { paths ->
                 paths.map { it.stemGz }
             }.toMutableList()
             val bin = getBin(options)
@@ -596,7 +596,7 @@ compare                         Differential peak calling mode, experimental
      */
     private fun getPaths(
             options: OptionSet, fitInformation: SpanFitInformation? = null, log: Boolean = false
-    ): List<SpanPathsToData> {
+    ): List<SpanDataPaths> {
         val commandLineTreatmentPaths = options.valuesOf("treatment") as List<Path>
         val commandLineControlPaths = options.valuesOf("control") as List<Path>
         val commandLineMapabilityPath = options.valueOf("mapability") as Path?
@@ -618,15 +618,15 @@ compare                         Differential peak calling mode, experimental
                 ?: throw IllegalStateException("No treatment files and no existing model file provided, exiting.")
 
         if (log) {
-            LOG.info("TREATMENT: ${paths.map { it.pathTreatment }.joinToString(", ", transform = Path::toString)}")
-            paths.mapNotNull { it.pathInput }.let {
+            LOG.info("TREATMENT: ${paths.map { it.treatment }.joinToString(", ", transform = Path::toString)}")
+            paths.mapNotNull { it.control }.let {
                 if (it.isNotEmpty()) {
                     LOG.info("CONTROL: ${it.joinToString(", ", transform = Path::toString)}")
                 } else {
                     LOG.info("CONTROL: none")
                 }
             }
-            paths.mapNotNull { it.pathMappability }.let {
+            paths.mapNotNull { it.mapability }.let {
                 if (it.isNotEmpty()) {
                     LOG.info("MAPABILITY: ${it.first()}")
                 }
@@ -639,7 +639,7 @@ compare                         Differential peak calling mode, experimental
             commandLineTreatmentPaths: List<Path>,
             commandLineControlPaths: List<Path>,
             commandLineMapabilityPath: Path? = null
-    ): List<SpanPathsToData>? {
+    ): List<SpanDataPaths>? {
         if (commandLineTreatmentPaths.isEmpty()) {
             return null
         }
@@ -657,7 +657,7 @@ compare                         Differential peak calling mode, experimental
             Array(commandLineTreatmentPaths.size) { null as Path? }.toList()
         }
         return commandLineTreatmentPaths.zip(spreadControlPaths).map { (treatment, control) ->
-            SpanPathsToData(treatment, control, commandLineMapabilityPath)
+            SpanDataPaths(treatment, control, commandLineMapabilityPath)
         }
     }
 

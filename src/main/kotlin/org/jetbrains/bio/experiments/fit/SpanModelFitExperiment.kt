@@ -44,7 +44,7 @@ import kotlin.collections.LinkedHashMap
  */
 data class SpanFitInformation(
         val build: String,
-        val data: List<SpanPathsToData>,
+        val data: List<SpanDataPaths>,
         val labels: List<String>,
         val fragment: Fragment,
         val unique: Boolean,
@@ -55,7 +55,7 @@ data class SpanFitInformation(
 
     constructor(
             genomeQuery: GenomeQuery,
-            paths: List<SpanPathsToData>,
+            paths: List<SpanDataPaths>,
             labels: List<String>,
             fragment: Fragment,
             unique: Boolean,
@@ -107,7 +107,7 @@ data class SpanFitInformation(
     fun scoresDataFrame(): Map<Chromosome, DataFrame> {
         val gq = genomeQuery()
         val queries = data.map {
-            CoverageScoresQuery(gq, it.pathTreatment, it.pathInput, fragment, binSize, unique)
+            CoverageScoresQuery(gq, it.treatment, it.control, fragment, binSize, unique)
         }
         if (queries.any { !it.ready }) {
             return emptyMap()
@@ -277,7 +277,7 @@ data class SpanFitResults(
  */
 abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : Any> protected constructor(
         genomeDataQuery: Pair<GenomeQuery, Query<Chromosome, DataFrame>>,
-        paths: List<SpanPathsToData>,
+        paths: List<SpanDataPaths>,
         labels: List<String>,
         fragment: Fragment,
         val binSize: Int,
@@ -292,7 +292,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
     constructor(
             /** XXX may contain chromosomes without reads, use [genomeQuery] instead. Details: [createEffectiveQueries] */
             externalGenomeQuery: GenomeQuery,
-            paths: List<SpanPathsToData>,
+            paths: List<SpanDataPaths>,
             labels: List<String>,
             fragment: Fragment,
             binSize: Int,
@@ -426,7 +426,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
          */
         internal fun createEffectiveQueries(
                 genomeQuery: GenomeQuery,
-                paths: List<SpanPathsToData>,
+                paths: List<SpanDataPaths>,
                 labels: List<String>,
                 fragment: Fragment,
                 binSize: Int,
@@ -455,7 +455,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
             )
             return effectiveGenomeQuery to object : CachingQuery<Chromosome, DataFrame>() {
                 val scores = paths.map {
-                    CoverageScoresQuery(genomeQuery, it.pathTreatment, it.pathInput, fragment, binSize, unique)
+                    CoverageScoresQuery(genomeQuery, it.treatment, it.control, fragment, binSize, unique)
                 }
 
                 override fun getUncached(input: Chromosome): DataFrame {
@@ -489,11 +489,8 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
     }
 }
 
-data class SpanPathsToData(
-        val pathTreatment: Path,
-        val pathInput: Path?,
-        val pathMappability: Path?
-) {
-    constructor(pathTreatment: Path, pathInput: Path)
-            : this(pathTreatment, pathInput, null)
-}
+data class SpanDataPaths(
+        val treatment: Path,
+        val control: Path?,
+        val mapability: Path? = null
+)

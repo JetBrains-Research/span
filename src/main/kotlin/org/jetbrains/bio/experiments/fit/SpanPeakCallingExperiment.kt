@@ -22,7 +22,7 @@ import java.nio.file.Path
  */
 class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
         genomeQuery: GenomeQuery,
-        paths: List<SpanPathsToData>,
+        paths: List<SpanDataPaths>,
         fragment: Fragment,
         binSize: Int,
         modelFitter: Fitter<Model>,
@@ -40,7 +40,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
 
     constructor(
             genomeQuery: GenomeQuery,
-            paths: SpanPathsToData,
+            paths: SpanDataPaths,
             modelFitter: Fitter<Model>,
             modelClass: Class<Model>,
             fragment: Fragment,
@@ -57,7 +57,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
 
     override val id: String =
             reduceIds(
-                paths.flatMap { listOfNotNull(it.pathTreatment, it.pathInput) }.map { it.stemGz } +
+                paths.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
                         listOfNotNull(fragment.nullableInt, binSize).map { it.toString() })
 
 
@@ -73,7 +73,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
          */
         fun getExperiment(
                 genomeQuery: GenomeQuery,
-                paths: List<SpanPathsToData>,
+                paths: List<SpanDataPaths>,
                 bin: Int,
                 fragment: Fragment = AutoFragment,
                 unique: Boolean = true,

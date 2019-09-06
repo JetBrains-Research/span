@@ -8,7 +8,7 @@ import org.jetbrains.bio.dataset.DataConfig
 import org.jetbrains.bio.dataset.DataType
 import org.jetbrains.bio.dataset.toDataType
 import org.jetbrains.bio.experiment.Experiment
-import org.jetbrains.bio.experiments.fit.SpanPathsToData
+import org.jetbrains.bio.experiments.fit.SpanDataPaths
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.span.getPeaks
@@ -53,7 +53,7 @@ class SpanTestErrorEvaluation(
                 .flatMap { it.value }.map { it.second.path }.first()
         val results = SpanPeakCallingExperiment.getExperiment(
             dataConfig.genomeQuery,
-            listOf(SpanPathsToData(trackPath, inputPath)),
+            listOf(SpanDataPaths(trackPath, inputPath)),
             Span.DEFAULT_BIN, AutoFragment
         ).results
         val res = ConcurrentHashMap<Int, List<ProcessingResults>>()

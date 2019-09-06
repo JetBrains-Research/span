@@ -23,8 +23,8 @@ import org.jetbrains.bio.statistics.state.ZLHID
  */
 class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State : Any>(
         genomeQuery: GenomeQuery,
-        paths1: List<SpanPathsToData>,
-        paths2: List<SpanPathsToData>,
+        paths1: List<SpanDataPaths>,
+        paths2: List<SpanDataPaths>,
         fragment: Fragment,
         binSize: Int,
         modelFitter: Fitter<Model>,
@@ -41,8 +41,8 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
 
     constructor(
             genomeQuery: GenomeQuery,
-            paths1: SpanPathsToData,
-            paths2: SpanPathsToData,
+            paths1: SpanDataPaths,
+            paths2: SpanDataPaths,
             fragment: Fragment, binSize: Int,
             modelFitter: Fitter<Model>,
             modelClass: Class<Model>,
@@ -54,9 +54,9 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
     )
 
     override val id: String =
-            reduceIds(paths1.flatMap { listOfNotNull(it.pathTreatment, it.pathInput) }.map { it.stemGz } +
+            reduceIds(paths1.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
                     listOf("vs") +
-                    paths2.flatMap { listOfNotNull(it.pathTreatment, it.pathInput) }.map { it.stemGz }
+                    paths2.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz }
                     + listOfNotNull(fragment.nullableInt, binSize).map { it.toString() })
 
 
@@ -94,8 +94,8 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
          */
         fun getExperiment(
                 genomeQuery: GenomeQuery,
-                paths1: List<SpanPathsToData>,
-                paths2: List<SpanPathsToData>,
+                paths1: List<SpanDataPaths>,
+                paths2: List<SpanDataPaths>,
                 bin: Int,
                 fragment: Fragment = AutoFragment
         ): SpanDifferentialPeakCallingExperiment<MLConstrainedNBHMM, ZLHID> {

@@ -4,8 +4,8 @@ import kotlinx.support.jdk7.use
 import org.jetbrains.bio.coverage.AutoFragment
 import org.jetbrains.bio.coverage.removeDuplicates
 import org.jetbrains.bio.dataset.*
+import org.jetbrains.bio.experiments.fit.SpanDataPaths
 import org.jetbrains.bio.experiments.fit.SpanFitResults
-import org.jetbrains.bio.experiments.fit.SpanPathsToData
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.LocationsMergingList
@@ -67,7 +67,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
 
         labelledTracks.forEach { (cellId, replicate, trackPath, labelsPath) ->
             val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(configuration.genomeQuery,
-                listOf(SpanPathsToData(trackPath, inputPath!!)),
+                listOf(SpanDataPaths(trackPath, inputPath!!)),
                 DEFAULT_BIN, AutoFragment
             )
 
@@ -249,7 +249,7 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
 
         val replicatedPeakCallingExperiment = SpanPeakCallingExperiment.getExperiment(
             configuration.genomeQuery,
-            labelledTracks.map(LabelledTrack::trackPath).map { SpanPathsToData(it, inputPath, null) },
+            labelledTracks.map(LabelledTrack::trackPath).map { SpanDataPaths(it, inputPath, null) },
             DEFAULT_BIN, AutoFragment
         )
 

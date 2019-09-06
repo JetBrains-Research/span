@@ -22,7 +22,7 @@ import java.nio.file.Path
 
 class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
         genomeQuery: GenomeQuery,
-        paths: SpanPathsToData,
+        paths: SpanDataPaths,
         fragment: Fragment,
         binSize: Int,
         modelFitter: Fitter<Model>,
@@ -33,7 +33,7 @@ class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
         fixedModelPath: Path? = null
 ) : SpanModelFitExperiment<Model, State>(
     genomeQuery to createDataQuery(genomeQuery, paths, fragment, binSize, unique),
-    listOf(paths), listOfNotNull("y", paths.pathInput?.let { "input" }),
+    listOf(paths), listOfNotNull("y", paths.control?.let { "input" }),
     fragment, binSize,
     modelFitter, modelClass,
     states, nullHypothesis,
@@ -100,15 +100,15 @@ class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
 
         fun createDataQuery(
                 genomeQuery: GenomeQuery,
-                paths: SpanPathsToData,
+                paths: SpanDataPaths,
                 fragment: Fragment,
                 binSize: Int,
                 unique: Boolean
         ) = object : CachingQuery<Chromosome, DataFrame>() {
 
             private val treatmentCoverage =
-                    ReadsQuery(genomeQuery, paths.pathTreatment, unique, fragment, logFragmentSize = false)
-            private val controlCoverage = paths.pathInput?.let {
+                    ReadsQuery(genomeQuery, paths.treatment, unique, fragment, logFragmentSize = false)
+            private val controlCoverage = paths.control?.let {
                 ReadsQuery(genomeQuery, it, unique, fragment, logFragmentSize = false)
             }
 
@@ -120,7 +120,7 @@ class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
                 val control = controlCoverage?.let { binnedCoverageAsDouble(input, it.get(), binSize) }
                 val gc = meanGC(input, binSize)
                 val gc2 = (gc.asF64Array() * gc.asF64Array()).data
-                val mapability = paths.pathMappability?.let { binnedMapability(input, it, binSize) }
+                val mapability = paths.mapability?.let { binnedMapability(input, it, binSize) }
                 var df = DataFrame().with("y", y)
                 if (control != null) df = df.with("input", control)
                 df = df.with("GC", gc).with("GC2", gc2)
@@ -158,7 +158,7 @@ class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
 
         fun getExperiment(
                 genomeQuery: GenomeQuery,
-                data: List<SpanPathsToData>,
+                data: List<SpanDataPaths>,
                 fragment: Fragment,
                 binSize: Int,
                 unique: Boolean,

@@ -56,7 +56,7 @@ class SpanFitInformationTest {
         withTempFile("treatment", ".bam") { t ->
             withTempFile("control", ".bam") { c ->
                 val info = SpanFitInformation(
-                    gq, listOf(SpanPathsToData(t, c, null)), listOf("treatment_control"),
+                    gq, listOf(SpanDataPaths(t, c, null)), listOf("treatment_control"),
                     100, false, 200
                 )
                 withTempFile("foo", ".tar") { path ->
@@ -94,7 +94,7 @@ class SpanFitInformationTest {
     @Test
     fun checkLoad() {
         val info = SpanFitInformation(
-            gq, listOf(SpanPathsToData("path_to_file".toPath(), null, null)),
+            gq, listOf(SpanDataPaths("path_to_file".toPath(), null, null)),
             listOf("treatment_control"), AutoFragment, false, 200
         )
         withTempFile("foo", ".tar") { path ->
@@ -166,7 +166,7 @@ class SpanFitInformationTest {
  */
 internal operator fun SpanFitInformation.Companion.invoke(
         genomeQuery: GenomeQuery,
-        paths: List<SpanPathsToData>,
+        paths: List<SpanDataPaths>,
         labels: List<String>,
         fragment: Int,
         unique: Boolean,
