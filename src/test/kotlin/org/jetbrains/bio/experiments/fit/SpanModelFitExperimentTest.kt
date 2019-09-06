@@ -28,7 +28,7 @@ class SpanModelFitExperimentTest {
             SpanCLALongTest.sampleCoverage(path, GenomeQuery(Genome["to1"]), 200, goodQuality = true)
             println("Saved sampled track file: $path")
             val (_, dataQuery) = SpanModelFitExperiment.createEffectiveQueries(
-                GenomeQuery(Genome["to1"]), listOf(SpanDataPaths(path, null, null)),
+                GenomeQuery(Genome["to1"]), listOf(SpanDataPaths(path, null)),
                 listOf("foo"), AutoFragment, 200
             )
 
@@ -51,7 +51,7 @@ class SpanModelFitExperimentTest {
                 val (effectiveGenomeQuery, _) =
                         SpanModelFitExperiment.createEffectiveQueries(
                             GenomeQuery(Genome["to1"]),
-                            listOf(SpanDataPaths(path, null, null)), listOf("foo"), AutoFragment, 200
+                            listOf(SpanDataPaths(path, null)), listOf("foo"), AutoFragment, 200
                         )
                 assertEquals("[chr1]", effectiveGenomeQuery.get().map { it.name }.toString())
             }
@@ -72,7 +72,7 @@ class SpanModelFitExperimentTest {
             )
             println("Saved sampled track file: $path")
             val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(
-                fullGenomeQuery, listOf(SpanDataPaths(path, null, null)), 200, AutoFragment
+                fullGenomeQuery, listOf(SpanDataPaths(path, null)), 200, AutoFragment
             )
             assertTrue(
                 peakCallingExperiment.results.getPeaks(fullGenomeQuery, 0.05, 0).isNotEmpty(),

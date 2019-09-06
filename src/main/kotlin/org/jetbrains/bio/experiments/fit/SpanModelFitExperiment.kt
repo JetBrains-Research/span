@@ -537,8 +537,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
 
 data class SpanDataPaths(
         val treatment: Path,
-        val control: Path?,
-        val mapability: Path? = null
+        val control: Path?
 )
 
 /**
