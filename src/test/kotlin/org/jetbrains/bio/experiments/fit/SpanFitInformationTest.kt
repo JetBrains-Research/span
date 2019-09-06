@@ -60,13 +60,15 @@ class SpanFitInformationTest {
                     100, false, 200
                 )
                 withTempFile("foo", ".tar") { path ->
+                    // note that [info.mapabilityPath] doesn't get serialized, because we don't serialize nulls,
+                    // and we want to keep it that way
                     info.save(path)
                     // Escape Windows separators here
                     assertEquals("""{
   "build": "to1",
   "data": [
     {
-      "path": "${t.toString().replace("\\", "\\\\")}",
+      "treatment": "${t.toString().replace("\\", "\\\\")}",
       "control": "${c.toString().replace("\\", "\\\\")}"
     }
   ],
@@ -83,7 +85,7 @@ class SpanFitInformationTest {
     "chrM": 1000000,
     "chrX": 1000000
   },
-  "version": 2
+  "version": 3
 }""".trim().lines(), path.bufferedReader().lines().collect(Collectors.toList()))
                 }
                 assertEquals(listOf("chr1", "chr2", "chr3", "chrM", "chrX"), info.chromosomesSizes.keys.toList())
@@ -92,7 +94,7 @@ class SpanFitInformationTest {
     }
 
     @Test
-    fun checkLoad() {
+    fun checkLoadV2() {
         val info = SpanFitInformation(
             gq, listOf(SpanDataPaths("path_to_file".toPath(), null)), null,
             listOf("treatment_control"), AutoFragment, false, 200
@@ -127,9 +129,46 @@ class SpanFitInformationTest {
     }
 
     @Test
-    fun checkVersion() {
+    fun checkLoadV3() {
+        val info = SpanFitInformation(
+            gq, listOf(SpanDataPaths("path_to_file".toPath(), "path_to_control".toPath())), "mapability.bigWig".toPath(),
+            listOf("treatment_control"), FixedFragment(42), false, 200
+        )
+        withTempFile("foo", ".tar") { path ->
+            path.bufferedWriter().use {
+                it.write("""{
+  "build": "to1",
+  "data": [
+    {
+      "treatment": "path_to_file",
+      "control": "path_to_control"
+    }
+  ],
+  "mapability_path": "mapability.bigWig",
+  "labels": [
+    "treatment_control"
+  ],
+  "fragment": 42,
+  "unique": false,
+  "bin_size": 200,
+  "chromosomes_sizes": {
+    "chr1": 10000000,
+    "chr2": 1000000,
+    "chr3": 1000000,
+    "chrM": 1000000,
+    "chrX": 1000000
+  },
+  "version": 3
+}""")
+            }
+            assertEquals(info, SpanFitInformation.load(path))
+        }
+    }
+
+    @Test
+    fun checkObsoleteVersion() {
         expectedEx.expect(IllegalStateException::class.java)
-        expectedEx.expectMessage("Wrong version: expected: 2, got: 3")
+        expectedEx.expectMessage("SpanFitInformation version 1 is no longer supported")
         withTempFile("foo", ".tar") { path ->
             path.bufferedWriter().use {
                 it.write("""{
@@ -139,7 +178,29 @@ class SpanFitInformationTest {
   "fragment": "auto",
   "bin_size": 200,
   "chromosomes_sizes": {},
-  "version": 3
+  "version": 1
+}""")
+            }
+            SpanFitInformation.load(path)
+        }
+    }
+
+    @Test
+    fun checkFutureVersion() {
+        expectedEx.expect(IllegalStateException::class.java)
+        expectedEx.expectMessage("SpanFitInformation version 100500 seems to be from the future.")
+        withTempFile("foo", ".tar") { path ->
+            path.bufferedWriter().use {
+                it.write("""{
+  "build": "to1",
+  "data": [],
+  "labels": [],
+  "fragment": "auto",
+  "bin_size": 200,
+  "ie6_compatibility": false,
+  "enable_quantum_optimization": true,
+  "chromosomes_sizes": {},
+  "version": 100500
 }""")
             }
             SpanFitInformation.load(path)
