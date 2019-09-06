@@ -172,7 +172,7 @@ class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
             return Span2PeakCallingExperiment(
                 genomeQuery, data.single(), mapabilityPath,
                 fragment, binSize,
-                semanticCheck(ZeroPoissonMixture.fitter()), ZeroPoissonMixture::class.java,
+                ZeroPoissonMixture.fitter(), ZeroPoissonMixture::class.java,
                 ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
                 unique,
                 fixedModelPath
