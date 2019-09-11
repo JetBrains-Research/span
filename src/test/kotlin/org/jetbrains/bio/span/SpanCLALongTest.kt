@@ -4,6 +4,7 @@ import kotlinx.support.jdk7.use
 import org.jetbrains.bio.Configuration
 import org.jetbrains.bio.Tests.assertIn
 import org.jetbrains.bio.big.BedEntry
+import org.jetbrains.bio.experiments.fit.SpanModel
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.Location
@@ -389,6 +390,62 @@ LABELS, FDR, GAP options are ignored.
                     }
                     assertIn("Stored bin size (200) differs from the command line argument (137)", invalidErr)
                 }
+            }
+        }
+    }
+
+    /**
+     * Model extension is used to determine the model type.
+     * .span = negative binomial HMM (classic Span)
+     * .span2 = Poisson regression mixture (experimental Span)
+     * any other = error, unrecognized type.
+     * If the model extension contradicts the provided '--type' command line argument, Span should exit with an error.
+     */
+    @Test
+    fun testCustomModelPathWrongExtension() {
+        withTempDirectory("work") { dir ->
+            withTempFile("track", ".bed.gz", dir) { path ->
+                // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
+                sampleCoverage(path, TO, BIN, goodQuality = true)
+
+                val chromsizes = Genome["to1"].chromSizesPath.toString()
+                val invalidModelPath = dir / "custom" / "path" / "model.foo"
+                val (_, invalidErr) = Logs.captureLoggingOutput {
+                    withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
+                        SpanCLA.main(arrayOf(
+                            "analyze",
+                            "-cs", chromsizes,
+                            "--workdir", dir.toString(),
+                            "-t", path.toString(),
+                            "--threads", THREADS.toString(),
+                            "--model", invalidModelPath.toString()
+                        ))
+                    }
+                }
+                assertIn(
+                    "Unrecognized model extension '.foo', should be either '.span' or '.span2'",
+                    invalidErr
+                )
+
+                val wrongModelPath = dir / "custom" / "path" / "model.span2"
+                val (_, wrongErr) = Logs.captureLoggingOutput {
+                    withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
+                        SpanCLA.main(arrayOf(
+                            "analyze",
+                            "-cs", chromsizes,
+                            "--workdir", dir.toString(),
+                            "-t", path.toString(),
+                            "--threads", THREADS.toString(),
+                            "--type", "nbhmm",
+                            "--model", wrongModelPath.toString()
+                        ))
+                    }
+                }
+                assertIn(
+                    "Stored model type (${SpanModel.POISSON_REGRESSION_MIXTURE}) " +
+                        "differs from the command line argument (${SpanModel.NB_HMM})",
+                    wrongErr
+                )
             }
         }
     }

@@ -126,4 +126,43 @@ class Span2CLALongTest {
         }
     }
 
+    /**
+     * Model extension is used to determine the model type.
+     * .span = negative binomial HMM (classic Span)
+     * .span2 = Poisson regression mixture (experimental Span)
+     * any other = error, unrecognized type.
+     * If the model extension contradicts the provided '--type' command line argument, Span should exit with an error.
+     */
+    @Test
+    fun testCustomModelPathWrongExtension() {
+        withTempDirectory("work") { dir ->
+            withTempFile("track", ".bed.gz", dir) { path ->
+                // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
+                SpanCLALongTest.sampleCoverage(path, SpanCLALongTest.TO, SpanCLALongTest.BIN, goodQuality = true)
+
+                val chromsizes = Genome["to1"].chromSizesPath.toString()
+
+                val wrongModelPath = dir / "custom" / "path" / "model.span"
+                val (_, wrongErr) = Logs.captureLoggingOutput {
+                    SpanCLALongTest.withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
+                        SpanCLA.main(arrayOf(
+                            "analyze",
+                            "-cs", chromsizes,
+                            "--workdir", dir.toString(),
+                            "-t", path.toString(),
+                            "--threads", SpanCLALongTest.THREADS.toString(),
+                            "--type", "prm",
+                            "--model", wrongModelPath.toString()
+                        ))
+                    }
+                }
+                Tests.assertIn(
+                    "Stored model type (${SpanModel.NB_HMM}) " +
+                            "differs from the command line argument (${SpanModel.POISSON_REGRESSION_MIXTURE})",
+                    wrongErr
+                )
+            }
+        }
+    }
+
 }

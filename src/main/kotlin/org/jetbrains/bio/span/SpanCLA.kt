@@ -547,7 +547,7 @@ compare                         Differential peak calling mode, experimental
                 "span" -> SpanModel.NB_HMM
                 "span2" -> SpanModel.POISSON_REGRESSION_MIXTURE
                 else -> throw IllegalArgumentException(
-                    "Unrecognized model extension ${it.extension}, should be either '.span' or '.span2'."
+                    "Unrecognized model extension '.${it.extension}', should be either '.span' or '.span2'."
                 )
             }
         },
