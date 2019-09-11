@@ -9,6 +9,7 @@ import org.jetbrains.bio.statistics.emission.PoissonRegressionEmissionScheme
 import org.jetbrains.bio.viktor.F64Array
 import org.jetbrains.bio.viktor.asF64Array
 import java.util.function.IntPredicate
+import kotlin.math.exp
 import kotlin.math.ln
 
 /**
@@ -37,6 +38,12 @@ class ZeroPoissonMixture(
             regressionCoefficients = regressionCoefficients[1]
         )
     )
+
+    val signalToNoise: Double
+        get() = exp(
+            regressionEmissionSchemes[1].regressionCoefficients[0] -
+                    regressionEmissionSchemes[0].regressionCoefficients[0]
+        )
 
     operator fun get(i: Int): EmissionScheme {
         return if (i == 0) zeroEmission else regressionEmissionSchemes[i - 1]
