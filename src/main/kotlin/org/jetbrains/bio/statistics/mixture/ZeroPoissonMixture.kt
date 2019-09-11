@@ -26,31 +26,28 @@ class ZeroPoissonMixture(
 
     val covariatesNum = covariateLabels.size
 
-    private val components: Array<EmissionScheme> = arrayOf(
-            ConstantIntegerEmissionScheme(0),
-            PoissonRegressionEmissionScheme(
-                    covariateLabels = covariateLabels,
-                    regressionCoefficients = regressionCoefficients[0]
-            ),
-            PoissonRegressionEmissionScheme(
-                    covariateLabels = covariateLabels,
-                    regressionCoefficients = regressionCoefficients[1]
-            )
+    private val zeroEmission = ConstantIntegerEmissionScheme(0)
+    private val regressionEmissionSchemes = arrayOf(
+        PoissonRegressionEmissionScheme(
+            covariateLabels = covariateLabels,
+            regressionCoefficients = regressionCoefficients[0]
+        ),
+        PoissonRegressionEmissionScheme(
+            covariateLabels = covariateLabels,
+            regressionCoefficients = regressionCoefficients[1]
+        )
     )
 
     operator fun get(i: Int): EmissionScheme {
-        return components[i]
+        return if (i == 0) zeroEmission else regressionEmissionSchemes[i - 1]
     }
 
     operator fun set(i: Int, e: PoissonRegressionEmissionScheme) {
-        if (i == 0) {
-            throw IllegalArgumentException()
-        } else {
-            components[i] = e
-        }
+        require(i > 0)
+        regressionEmissionSchemes[i - 1] = e
     }
 
-    override fun getEmissionScheme(i: Int, d: Int): EmissionScheme = components[i]
+    override fun getEmissionScheme(i: Int, d: Int): EmissionScheme = get(i)
 
     override fun fit(preprocessed: List<Preprocessed<DataFrame>>, title: String, threshold: Double, maxIter: Int) {
         super.fit(preprocessed, title, threshold, maxIter)
