@@ -105,6 +105,8 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
     }
 }
 
-enum class SpanModel {
-    NB_HMM, POISSON_REGRESSION_MIXTURE
+enum class SpanModel(val description: String) {
+    NB_HMM("negative binomial HMM"), POISSON_REGRESSION_MIXTURE("Poisson regression mixture");
+
+    override fun toString() = description
 }
