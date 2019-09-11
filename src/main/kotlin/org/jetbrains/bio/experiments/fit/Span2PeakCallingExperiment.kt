@@ -11,12 +11,13 @@ import org.jetbrains.bio.genome.sequence.TwoBitSequence
 import org.jetbrains.bio.query.CachingQuery
 import org.jetbrains.bio.query.ReadsQuery
 import org.jetbrains.bio.query.reduceIds
+import org.jetbrains.bio.query.stemGz
 import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.Fitter
-import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.mixture.ZeroPoissonMixture
 import org.jetbrains.bio.statistics.state.ZLH
+import org.jetbrains.bio.util.div
 import org.jetbrains.bio.viktor.asF64Array
 import java.nio.file.Path
 
@@ -42,6 +43,11 @@ class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
     unique,
     fixedModelPath
 ) {
+
+    override val modelPath: Path get() = fixedModelPath ?: experimentPath / "$id.span2"
+    override val id = reduceIds(
+        listOfNotNull(paths.treatment, paths.control, mapabilityPath).map { it.stemGz } +
+                listOfNotNull(fragment.nullableInt, binSize).map { it.toString() })
 
     companion object {
 
@@ -129,33 +135,6 @@ class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
                 df = df.with("GC", gc).with("GC2", gc2)
                 if (mapability != null) df = df.with("mapability", mapability)
                 return df
-            }
-        }
-
-        private fun semanticCheck(fitter: Fitter<ZeroPoissonMixture>): Fitter<ZeroPoissonMixture> {
-            return object : Fitter<ZeroPoissonMixture> by fitter {
-
-                override fun fit(
-                        preprocessed: Preprocessed<DataFrame>,
-                        title: String,
-                        threshold: Double,
-                        maxIter: Int,
-                        attempt: Int
-                ): ZeroPoissonMixture =
-                        fitter.fit(preprocessed, title, threshold, maxIter, attempt).apply {
-                            flipStatesIfNecessary()
-                        }
-
-                override fun fit(
-                        preprocessed: List<Preprocessed<DataFrame>>,
-                        title: String,
-                        threshold: Double,
-                        maxIter: Int,
-                        attempt: Int
-                ): ZeroPoissonMixture =
-                        fitter.fit(preprocessed, title, threshold, maxIter, attempt).apply {
-                            flipStatesIfNecessary()
-                        }
             }
         }
 

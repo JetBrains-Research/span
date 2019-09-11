@@ -331,7 +331,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
         availableStates: Array<State>,
         private val nullHypothesis: NullHypothesis<State>,
         val unique: Boolean = true,
-        private val fixedModelPath: Path? = null
+        protected val fixedModelPath: Path? = null
 ) : ModelFitExperiment<Model, State>(genomeDataQuery, modelFitter, modelClass, availableStates) {
 
     constructor(
@@ -376,7 +376,7 @@ abstract class SpanModelFitExperiment<out Model : ClassificationModel, State : A
     val fitInformation = SpanFitInformation(genomeQuery, paths, mapabilityPath, labels, fragment, unique, binSize)
 
     // XXX It is important to use get() here, because id is overridden in superclasses
-    private val modelPath: Path
+    protected open val modelPath: Path
         get() = fixedModelPath ?: experimentPath / "$id.span"
 
     private fun calculateModel(): Model {
