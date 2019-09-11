@@ -539,11 +539,11 @@ LABELS, FDR, GAP options are ignored.
     }
 
     companion object {
-        private val TO = GenomeQuery(Genome["to1"])
-        private const val BIN = 200
+        internal val TO = GenomeQuery(Genome["to1"])
+        internal const val BIN = 200
         private const val FDR = 1E-10
         private const val GAP = 10
-        private const val THREADS = 1
+        internal const val THREADS = 1
         private const val FRAGMENT = 150
 
         fun assertLinesEqual(expected: String, actual: String) =
