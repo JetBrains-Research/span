@@ -208,6 +208,23 @@ class SpanFitInformationTest {
     }
 
     @Test
+    fun checkNoVersion() {
+        withTempFile("foo", ".tar") { path ->
+            expectedEx.expect(IllegalStateException::class.java)
+            expectedEx.expectMessage("Failed to load info from $path: version is 0 or absent.")
+            path.bufferedWriter().use {
+                it.write(
+"""{
+  "foo": "bar",
+  "baz": []
+}"""
+                )
+            }
+            SpanFitInformation.load(path)
+        }
+    }
+
+    @Test
     fun checkIndices() {
         val info = SpanFitInformation(gq, emptyList(), emptyList(), 100, true, 200)
         assertEquals(50000 to 55000, info.getChromosomesIndices(chr2))

@@ -238,7 +238,9 @@ data class SpanFitInformation(
         }
 
         private fun loadVersion(path: Path): Int = path.bufferedReader().use {
-            GSON.fromJson(it, VersionedInfo::class.java).version
+            val version = GSON.fromJson(it, VersionedInfo::class.java).version
+            check(version != 0) { "Failed to load info from $path: version is 0 or absent." }
+            return@use version
         }
 
         fun load(path: Path): SpanFitInformation = load(path, loadVersion(path))
