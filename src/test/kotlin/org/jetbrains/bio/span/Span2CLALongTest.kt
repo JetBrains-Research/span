@@ -32,6 +32,38 @@ class Span2CLALongTest {
     }
 
     @Test
+    fun testMultipleTracks() {
+        withTempFile("trackA", ".bed.gz") { pathA ->
+            SpanCLALongTest.sampleCoverage(pathA, SpanCLALongTest.TO, SpanCLALongTest.BIN, goodQuality = true)
+            println("Saved sampled track file: $pathA")
+
+            withTempFile("trackB", ".bed.gz") { pathB ->
+                SpanCLALongTest.sampleCoverage(pathA, SpanCLALongTest.TO, SpanCLALongTest.BIN, goodQuality = false)
+                println("Saved sampled track file: $pathA")
+
+                withTempDirectory("work") { dir ->
+                    val chromsizes = Genome["to1"].chromSizesPath.toString()
+
+                    val (_, err) = Logs.captureLoggingOutput {
+                        SpanCLALongTest.withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
+                            SpanCLA.main(arrayOf(
+                                "analyze",
+                                "-cs", chromsizes,
+                                "--workdir", dir.toString(),
+                                "-t", listOf(pathA, pathB).joinToString(","),
+                                "--threads", SpanCLALongTest.THREADS.toString(),
+                                "--type", "prm"
+                            ))
+                        }
+                    }
+                    Tests.assertIn("ERROR", err)
+                    Tests.assertIn("Poisson regression mixture currently accepts a single data track", err)
+                }
+            }
+        }
+    }
+
+    @Test
     fun testOutput() {
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
         withTempFile("track", ".bed.gz") { path ->
