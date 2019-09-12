@@ -196,17 +196,16 @@ data class SpanFitInformation(
             override fun serialize(
                     src: Path, typeOfSrc: Type,
                     context: JsonSerializationContext
-            ): JsonElement = context.serialize(src.toString())
+            ): JsonElement = JsonPrimitive(src.toString())
 
             override fun deserialize(
                     json: JsonElement, typeOfT: Type,
                     context: JsonDeserializationContext
             ): Path {
-                val str = context.deserialize<String>(json, object : TypeToken<String>() {}.type)
                 try {
-                    return str.toPath()
+                    return json.asString.toPath()
                 } catch (e: NumberFormatException) {
-                    throw IllegalStateException("Failed to deserialize $str", e)
+                    throw IllegalStateException("Failed to deserialize ${json.asString}", e)
                 }
             }
         }
