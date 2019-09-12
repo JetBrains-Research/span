@@ -7,7 +7,6 @@ import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
-import org.jetbrains.bio.genome.sequence.TwoBitSequence
 import org.jetbrains.bio.query.CachingQuery
 import org.jetbrains.bio.query.ReadsQuery
 import org.jetbrains.bio.query.reduceIds
@@ -47,63 +46,70 @@ class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
     override val modelPath: Path get() = fixedModelPath ?: experimentPath / "$id.span2"
     override val id = reduceIds(
         listOfNotNull(paths.treatment, paths.control, mapabilityPath).map { it.stemGz } +
-                listOfNotNull(fragment.nullableInt, binSize).map { it.toString() })
+                listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
+    )
 
     companion object {
 
         fun binnedCoverageAsInt(chr: Chromosome, coverage: Coverage, binSize: Int): IntArray {
             val len = (chr.length - 1) / binSize + 1
-            val cover = IntArray(len)
+            val res = IntArray(len)
             for (i in 0 until len - 1) {
-                cover[i] = coverage.getBothStrandsCoverage(ChromosomeRange(i * binSize, (i + 1) * binSize, chr))
+                res[i] = coverage.getBothStrandsCoverage(
+                    ChromosomeRange(i * binSize, (i + 1) * binSize, chr)
+                )
             }
-            cover[len - 1] = coverage.getBothStrandsCoverage(ChromosomeRange((len-1) * binSize, chr.length, chr))
-            return cover
+            res[len - 1] = coverage.getBothStrandsCoverage(
+                ChromosomeRange((len - 1) * binSize, chr.length, chr)
+            )
+            return res
         }
 
         fun binnedCoverageAsDouble(chr: Chromosome, coverage: Coverage, binSize: Int): DoubleArray {
             val len = (chr.length - 1) / binSize + 1
-            val cover = DoubleArray(len)
+            val res = DoubleArray(len)
             for (i in 0 until len - 1) {
-                cover[i] = coverage
-                        .getBothStrandsCoverage(ChromosomeRange(i * binSize, (i + 1) * binSize, chr))
-                        .toDouble()
+                res[i] = coverage.getBothStrandsCoverage(
+                    ChromosomeRange(i * binSize, (i + 1) * binSize, chr)
+                ).toDouble()
             }
-            cover[len - 1] = coverage
-                    .getBothStrandsCoverage(ChromosomeRange((len-1) * binSize, chr.length, chr))
-                    .toDouble()
-            return cover
+            res[len - 1] = coverage.getBothStrandsCoverage(
+                ChromosomeRange((len - 1) * binSize, chr.length, chr)
+            ).toDouble()
+            return res
         }
 
         fun meanGC(chr: Chromosome, binSize: Int): DoubleArray {
             val len = (chr.length - 1) / binSize + 1
-            val seq: TwoBitSequence = chr.sequence
-            val GCcontent = DoubleArray(len)
+            val seq = chr.sequence
+            val gcContent = DoubleArray(len)
             for (i in 0 until len - 1) {
-                GCcontent[i] = seq.substring(i*binSize, (i + 1)*binSize).count { it == 'c' || it == 'g' }.toDouble()/binSize
+                gcContent[i] = seq.substring(i * binSize, (i + 1) * binSize)
+                        .count { it == 'c' || it == 'g' }.toDouble() / binSize
             }
-            GCcontent[len - 1] = seq
-                    .substring((len-1)*binSize, seq.length)
-                    .count { it == 'c'|| it == 'g' }
-                    .toDouble()/( seq.length - (len-1)*binSize)
-            return GCcontent
+            gcContent[len - 1] = seq.substring((len - 1) * binSize, seq.length)
+                    .count { it == 'c' || it == 'g' }
+                    .toDouble() / (seq.length - (len - 1) * binSize)
+            return gcContent
         }
 
         fun binnedMapability(chr: Chromosome, mapabilityPath: Path, binSize: Int): DoubleArray {
-            if (BigWigFile.read(mapabilityPath).chromosomes.containsValue(chr.name)) {
-                val mapSummary = BigWigFile
-                        .read(mapabilityPath)
-                        .summarize(chr.name, 0, chr.length - chr.length % binSize, numBins = (chr.length - 1) / binSize)
-                val result = DoubleArray(mapSummary.size + 1) {
-                    if (it < mapSummary.size) mapSummary[it].sum / binSize else 1.0
-                }
-                result[mapSummary.size] = BigWigFile
-                        .read(mapabilityPath)
-                        .summarize(chr.name, chr.length - chr.length % binSize, 0)[0].sum / chr.length % binSize
-                return result
+            val bwFile = BigWigFile.read(mapabilityPath)
+
+            if (!bwFile.chromosomes.containsValue(chr.name)) {
+                // the chromosome isn't present in the bigWig file, use mean genome mapability for all bins
+                val meanMapability = bwFile.totalSummary.sum / bwFile.totalSummary.count
+                return DoubleArray(chr.length) { meanMapability }
             }
-            val meanMappability = BigWigFile.read(mapabilityPath).totalSummary.sum/ BigWigFile.read(mapabilityPath).totalSummary.count
-            return DoubleArray(chr.length) {meanMappability}
+            val len = (chr.length - 1) / binSize + 1
+            val mapSummary = bwFile.summarize(chr.name, 0, (len - 1) * binSize, numBins = len - 1)
+            val res = DoubleArray(len)
+            for (i in 0 until len - 1) {
+                res[i] = mapSummary[i].sum / binSize
+            }
+            res[len - 1] = bwFile.summarize(chr.name, (len - 1) * binSize, chr.length)[0].sum /
+                    (chr.length - (len - 1) * binSize)
+            return res
         }
 
         fun createDataQuery(
@@ -131,8 +137,8 @@ class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
                 val gc2 = (gc.asF64Array() * gc.asF64Array()).data
                 val mapability = mapabilityPath?.let { binnedMapability(input, it, binSize) }
                 var df = DataFrame().with("y", y)
-                if (control != null) df = df.with("input", control)
                 df = df.with("GC", gc).with("GC2", gc2)
+                if (control != null) df = df.with("input", control)
                 if (mapability != null) df = df.with("mapability", mapability)
                 return df
             }
