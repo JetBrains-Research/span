@@ -213,7 +213,7 @@ data class SpanFitInformation(
 
         private val GSON = GsonBuilder()
                 .registerTypeAdapter(object : TypeToken<Fragment>() {}.type, FragmentTypeAdapter)
-                .registerTypeAdapter(object : TypeToken<Path>() {}.type, PathTypeAdapter)
+                .registerTypeHierarchyAdapter(Path::class.java, PathTypeAdapter)
                 .setPrettyPrinting()
                 .setFieldNamingStrategy(GSONUtil.NO_MY_UNDESCORE_NAMING_STRATEGY)
                 .create()
