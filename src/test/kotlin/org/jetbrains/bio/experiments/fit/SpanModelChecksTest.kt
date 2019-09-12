@@ -3,7 +3,7 @@ package org.jetbrains.bio.experiments.fit
 import org.jetbrains.bio.statistics.emission.PoissonRegressionEmissionScheme
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
-import org.jetbrains.bio.statistics.mixture.ZeroPoissonMixture
+import org.jetbrains.bio.statistics.mixture.PoissonRegressionMixture
 import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.statistics.state.ZLHID
 import org.jetbrains.bio.viktor.F64Array
@@ -264,7 +264,7 @@ class SpanModelChecksTest {
             doubleArrayOf(-4.0, 1.0),
             doubleArrayOf(-5.0, 2.0)
         )
-        val model = ZeroPoissonMixture(
+        val model = PoissonRegressionMixture(
             F64Array.of(0.5, 0.4, 0.1),
             listOf("first", "second"),
             regressionCoefficients
@@ -281,7 +281,7 @@ class SpanModelChecksTest {
             doubleArrayOf(-5.0, 2.0),
             doubleArrayOf(-4.0, 1.0)
         )
-        val model = ZeroPoissonMixture(
+        val model = PoissonRegressionMixture(
             F64Array.of(0.5, 0.1, 0.4),
             listOf("first", "second"),
             regressionCoefficients

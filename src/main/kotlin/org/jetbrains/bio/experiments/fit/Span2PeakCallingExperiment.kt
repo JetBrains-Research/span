@@ -14,7 +14,7 @@ import org.jetbrains.bio.query.stemGz
 import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
-import org.jetbrains.bio.statistics.mixture.ZeroPoissonMixture
+import org.jetbrains.bio.statistics.mixture.PoissonRegressionMixture
 import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.util.div
 import org.jetbrains.bio.viktor.asF64Array
@@ -152,12 +152,12 @@ class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
                 binSize: Int,
                 unique: Boolean,
                 fixedModelPath: Path?
-        ): Span2PeakCallingExperiment<ZeroPoissonMixture, ZLH> {
+        ): Span2PeakCallingExperiment<PoissonRegressionMixture, ZLH> {
             check(data.size == 1) { "Poisson regression mixture currently accepts a single data track." }
             return Span2PeakCallingExperiment(
                 genomeQuery, data.single(), mapabilityPath,
                 fragment, binSize,
-                ZeroPoissonMixture.fitter(), ZeroPoissonMixture::class.java,
+                PoissonRegressionMixture.fitter(), PoissonRegressionMixture::class.java,
                 ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
                 unique,
                 fixedModelPath

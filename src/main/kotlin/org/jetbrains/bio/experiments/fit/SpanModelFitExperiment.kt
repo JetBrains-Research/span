@@ -25,7 +25,7 @@ import org.jetbrains.bio.statistics.gson.GSONUtil
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
-import org.jetbrains.bio.statistics.mixture.ZeroPoissonMixture
+import org.jetbrains.bio.statistics.mixture.PoissonRegressionMixture
 import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.statistics.state.ZLHID
 import org.jetbrains.bio.util.*
@@ -301,7 +301,7 @@ data class SpanFitResults(
                     "Signal to noise" to ((signalMean + 1e-10) / (noiseMean + 1e-10)).toString()
                 )
             }
-            is ZeroPoissonMixture -> mapOf("Signal to noise" to model.signalToNoise.toString())
+            is PoissonRegressionMixture -> mapOf("Signal to noise" to model.signalToNoise.toString())
             else -> emptyMap()
         }
     }

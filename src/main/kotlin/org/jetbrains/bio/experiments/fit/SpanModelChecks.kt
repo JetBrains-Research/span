@@ -6,7 +6,7 @@ import org.jetbrains.bio.statistics.emission.NegBinEmissionScheme
 import org.jetbrains.bio.statistics.emission.PoissonRegressionEmissionScheme
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
-import org.jetbrains.bio.statistics.mixture.ZeroPoissonMixture
+import org.jetbrains.bio.statistics.mixture.PoissonRegressionMixture
 
 
 private val LOG = Logger.getLogger(Span::class.java)
@@ -47,7 +47,7 @@ internal fun MLConstrainedNBHMM.probabilityFlip(state1: Int, state2: Int, stateN
     this.logPriorProbabilities[state2] = tmp
 }
 
-internal fun ZeroPoissonMixture.probabilityFlip(state1: Int, state2: Int) {
+internal fun PoissonRegressionMixture.probabilityFlip(state1: Int, state2: Int) {
     val tmp = logWeights[state1]
     logWeights[state1] = logWeights[state2]
     logWeights[state2] = tmp
@@ -56,7 +56,7 @@ internal fun ZeroPoissonMixture.probabilityFlip(state1: Int, state2: Int) {
 /**
  * Flip states in case when states with HIGH get lower mean than LOW
  */
-internal fun ZeroPoissonMixture.flipStatesIfNecessary() {
+internal fun PoissonRegressionMixture.flipStatesIfNecessary() {
     val lowScheme = this[1] as PoissonRegressionEmissionScheme
     val highScheme = this[2] as PoissonRegressionEmissionScheme
     if (weights[1] < weights[2]){
