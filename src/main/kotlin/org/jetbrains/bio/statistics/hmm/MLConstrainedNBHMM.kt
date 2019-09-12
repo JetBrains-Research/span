@@ -88,8 +88,13 @@ class MLConstrainedNBHMM(
          */
         fun fitter(numReplicates: Int): Fitter<MLConstrainedNBHMM> {
             return object : Fitter<MLConstrainedNBHMM> {
-                override fun guess(preprocessed: Preprocessed<DataFrame>, title: String,
-                        threshold: Double, maxIter: Int, attempt: Int): MLConstrainedNBHMM {
+                override fun guess(
+                        preprocessed: Preprocessed<DataFrame>,
+                        title: String,
+                        threshold: Double,
+                        maxIter: Int,
+                        attempt: Int
+                ): MLConstrainedNBHMM {
                     val df = preprocessed.get()
                     val meanCoverage = DoubleArray(numReplicates)
                     val means = DoubleArray(numReplicates * 2)
@@ -139,12 +144,21 @@ class MLConstrainedNBHMM(
          */
         fun fitter(numReplicates1: Int, numReplicates2: Int): Fitter<MLConstrainedNBHMM> {
             return object : Fitter<MLConstrainedNBHMM> {
-                override fun guess(preprocessed: Preprocessed<DataFrame>, title: String,
-                        threshold: Double, maxIter: Int, attempt: Int): MLConstrainedNBHMM =
-                        guess(listOf(preprocessed), title, threshold, maxIter, attempt)
+                override fun guess(
+                        preprocessed: Preprocessed<DataFrame>,
+                        title: String,
+                        threshold: Double,
+                        maxIter: Int,
+                        attempt: Int
+                ): MLConstrainedNBHMM = guess(listOf(preprocessed), title, threshold, maxIter, attempt)
 
-                override fun guess(preprocessed: List<Preprocessed<DataFrame>>, title: String,
-                        threshold: Double, maxIter: Int, attempt: Int): MLConstrainedNBHMM {
+                override fun guess(
+                        preprocessed: List<Preprocessed<DataFrame>>,
+                        title: String,
+                        threshold: Double,
+                        maxIter: Int,
+                        attempt: Int
+                ): MLConstrainedNBHMM {
                     val df = DataFrame.rowBind(preprocessed.map { it.get() }.toTypedArray())
                     val means = DoubleArray((numReplicates1 + numReplicates2) * 2)
                     val failures = DoubleArray((numReplicates1 + numReplicates2) * 2)
