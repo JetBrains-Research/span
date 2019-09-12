@@ -47,22 +47,25 @@ internal fun MLConstrainedNBHMM.probabilityFlip(state1: Int, state2: Int, stateN
     this.logPriorProbabilities[state2] = tmp
 }
 
+internal fun ZeroPoissonMixture.probabilityFlip(state1: Int, state2: Int) {
+    val tmp = logWeights[state1]
+    logWeights[state1] = logWeights[state2]
+    logWeights[state2] = tmp
+}
+
 /**
  * Flip states in case when states with HIGH get lower mean than LOW
  */
 internal fun ZeroPoissonMixture.flipStatesIfNecessary() {
     val lowScheme = this[1] as PoissonRegressionEmissionScheme
     val highScheme = this[2] as PoissonRegressionEmissionScheme
-    val interceptLow = lowScheme.regressionCoefficients[0]
-    val interceptHigh = highScheme.regressionCoefficients[0]
-    if (interceptLow > interceptHigh){
-        LOG.warn("After fitting the model, intercept in LOW state ($interceptLow) is higher than " +
-                "intercept in HIGH state ($interceptHigh).")
+    if (weights[1] < weights[2]){
+        LOG.warn("After fitting the model, the weight of LOW state is lower than that of HIGH state.")
         LOG.warn("This usually indicates that the states were flipped during fitting. We will now flip them back.")
         this[2] = lowScheme
         this[1] = highScheme
+        probabilityFlip(1, 2)
     }
-
 }
 
 /**
