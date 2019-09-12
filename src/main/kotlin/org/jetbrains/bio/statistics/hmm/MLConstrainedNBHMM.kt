@@ -129,10 +129,8 @@ class MLConstrainedNBHMM(
                         threshold: Double,
                         maxIter: Int,
                         attempt: Int
-                ): MLConstrainedNBHMM {
-                    return super.fit(preprocessed, title, threshold, maxIter, attempt).apply {
-                        flipStatesIfNecessary(numReplicates)
-                    }
+                ) = super.fit(preprocessed, title, threshold, maxIter, attempt).apply {
+                    flipStatesIfNecessary(numReplicates)
                 }
             }
         }
@@ -150,7 +148,7 @@ class MLConstrainedNBHMM(
                         threshold: Double,
                         maxIter: Int,
                         attempt: Int
-                ): MLConstrainedNBHMM = guess(listOf(preprocessed), title, threshold, maxIter, attempt)
+                ) = guess(listOf(preprocessed), title, threshold, maxIter, attempt)
 
                 override fun guess(
                         preprocessed: List<Preprocessed<DataFrame>>,
@@ -202,9 +200,7 @@ class MLConstrainedNBHMM(
                         failures[d2 + numReplicates1 * 2] = fs
                         failures[d2 + numReplicates2 + numReplicates1 * 2] = fs
                     }
-                    return MLConstrainedNBHMM(
-                        ZLHID.constraintMap(numReplicates1, numReplicates2),
-                        means, failures)
+                    return MLConstrainedNBHMM(ZLHID.constraintMap(numReplicates1, numReplicates2), means, failures)
                 }
 
                 override fun fit(
@@ -213,10 +209,8 @@ class MLConstrainedNBHMM(
                         threshold: Double,
                         maxIter: Int,
                         attempt: Int
-                ): MLConstrainedNBHMM {
-                    return super.fit(preprocessed, title, threshold, maxIter, attempt).apply {
-                        flipStatesIfNecessary(numReplicates1, numReplicates2)
-                    }
+                ) = super.fit(preprocessed, title, threshold, maxIter, attempt).apply {
+                    flipStatesIfNecessary(numReplicates1, numReplicates2)
                 }
             }
         }
