@@ -22,11 +22,13 @@ import java.nio.file.Paths
  * Created by Aleksei Dievskii on 24.10.2017.
  */
 
-class PeakCallerTuning(configuration: DataConfig,
-                       toolsWashuPath: Path = ToolsChipSeqWashu.DEFAULT_PATH,
-                       val tools: List<Tool2Tune<*>>,
-                       val useInput: Boolean = true,
-                       private val computeTestError: Boolean = false) : DataConfigExperiment("benchmark", configuration) {
+class PeakCallerTuning(
+        configuration: DataConfig,
+        toolsWashuPath: Path = ToolsChipSeqWashu.DEFAULT_PATH,
+        val tools: List<Tool2Tune<*>>,
+        val useInput: Boolean = true,
+        private val computeTestError: Boolean = false
+) : DataConfigExperiment("benchmark", configuration) {
 
     val toolsWashu = ToolsChipSeqWashu(toolsWashuPath)
 
@@ -37,7 +39,7 @@ class PeakCallerTuning(configuration: DataConfig,
         targets.forEach { target ->
             LOG.info("Processing target $target")
             tools.forEach { t ->
-                //t.tune(configuration, experimentPath, target, useInput, true)
+                t.tune(configuration, experimentPath, target, useInput, true)
                 if (computeTestError) {
                     computeTestError(target, t)
                 }
@@ -57,17 +59,23 @@ class PeakCallerTuning(configuration: DataConfig,
             LOG.info("Processing target $target")
             tools.forEach { t ->
                 try {
-                    computeFripAndReport(report, target, t,
-                            t.folder(experimentPath, target, useInput), "tuned", toolsWashu)
-                    computeFripAndReport(report, target, t,
-                            t.defaultsFolder(experimentPath, target, useInput, false),
-                            "default", toolsWashu)
+                    computeFripAndReport(
+                        report, target, t, t.folder(experimentPath, target, useInput),
+                        "tuned", toolsWashu
+                    )
+                    computeFripAndReport(
+                        report, target, t, t.defaultsFolder(experimentPath, target, useInput, false),
+                        "default", toolsWashu
+                    )
 
-                    computeFripAndReport(uliReport, target, t,
-                            t.folder(experimentPath, target, useInput), "tuned", toolsWashu)
-                    computeFripAndReport(uliReport, target, t,
-                            t.defaultsFolder(experimentPath, target, useInput, true),
-                            "default", toolsWashu)
+                    computeFripAndReport(
+                        uliReport, target, t, t.folder(experimentPath, target, useInput),
+                        "tuned", toolsWashu
+                    )
+                    computeFripAndReport(
+                        uliReport, target, t, t.defaultsFolder(experimentPath, target, useInput, true),
+                        "default", toolsWashu
+                    )
                 } catch (e: Throwable) {
                     LOG.error("Couldn't process $t for $target", e)
                 }
@@ -92,9 +100,13 @@ class PeakCallerTuning(configuration: DataConfig,
                 LOG.warn("Skipping non-existent peak file for $target $tool ${track.cellId} ${track.name}")
                 return@forEach
             }
-            resultTable.addRecord(track.name, "test",
-                    computeErrors(PeakAnnotation.loadLabels(track.testLabelPath!!, configuration.genomeQuery.genome),
-                            LocationsMergingList.load(configuration.genomeQuery, peakPath)))
+            resultTable.addRecord(
+                track.name, "test",
+                computeErrors(
+                    PeakAnnotation.loadLabels(track.testLabelPath!!, configuration.genomeQuery.genome),
+                    LocationsMergingList.load(configuration.genomeQuery, peakPath)
+                )
+            )
         }
         resultTable.print(tool.folder(experimentPath, target, useInput) / "${target}_${tool}_test_error.tsv")
     }
@@ -182,10 +194,12 @@ class PeakCallerTuning(configuration: DataConfig,
                 // XXX  and propagate you custom paths there
                 // assert(configuration.genomeQuery.genome.chromSizesPath == myCustomPath
 
-                PeakCallerTuning(configuration, washuPath,
-                        tools = tools,
-                        useInput = input,
-                        computeTestError = test).run()
+                PeakCallerTuning(
+                    configuration, washuPath,
+                    tools = tools,
+                    useInput = input,
+                    computeTestError = test
+                ).run()
             }
         }
 
