@@ -61,7 +61,8 @@ class PoissonRegressionMixture(
      * and that the remaining columns include all of the covariate labels as the double-valued covariates.
      */
     override fun fit(preprocessed: List<Preprocessed<DataFrame>>, title: String, threshold: Double, maxIter: Int) {
-        super.fit(preprocessed, title, threshold, maxIter)
+        val data = DataFrame.rowBind(preprocessed.map { it.get() }.toTypedArray())
+        super.fit(Preprocessed.of(data), title, threshold, maxIter)
         flipStatesIfNecessary()
     }
 

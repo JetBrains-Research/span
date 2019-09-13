@@ -96,12 +96,14 @@ class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
         fun binnedMapability(chr: Chromosome, mapabilityPath: Path, binSize: Int): DoubleArray {
             val bwFile = BigWigFile.read(mapabilityPath)
 
+            val len = (chr.length - 1) / binSize + 1
+
             if (!bwFile.chromosomes.containsValue(chr.name)) {
                 // the chromosome isn't present in the bigWig file, use mean genome mapability for all bins
                 val meanMapability = bwFile.totalSummary.sum / bwFile.totalSummary.count
-                return DoubleArray(chr.length) { meanMapability }
+                return DoubleArray(len) { meanMapability }
             }
-            val len = (chr.length - 1) / binSize + 1
+
             val mapSummary = bwFile.summarize(chr.name, 0, (len - 1) * binSize, numBins = len - 1)
             val res = DoubleArray(len)
             for (i in 0 until len - 1) {
