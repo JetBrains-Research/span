@@ -9,7 +9,6 @@ import org.jetbrains.bio.statistics.emission.PoissonRegressionEmissionScheme
 import org.jetbrains.bio.viktor.F64Array
 import org.jetbrains.bio.viktor.asF64Array
 import kotlin.math.exp
-import kotlin.math.ln
 
 /**
  * Mixture of 3 components:
@@ -65,10 +64,6 @@ class PoissonRegressionMixture(
         super.fit(Preprocessed.of(data), title, threshold, maxIter)
         flipStatesIfNecessary()
     }
-
-    fun BIC(df: DataFrame) = ln(df.rowsNumber.toDouble()) * degreesOfFreedom() - 2 * logLikelihood(Preprocessed.of(df))
-
-    fun AIC(df: DataFrame) = 2 * degreesOfFreedom() - 2 * logLikelihood(Preprocessed.of(df))
 
     companion object {
         @Transient @JvmField var VERSION = 1
