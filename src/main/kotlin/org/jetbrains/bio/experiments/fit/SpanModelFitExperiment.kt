@@ -220,22 +220,6 @@ data class SpanFitInformation(
 
         private data class VersionedInfo(val version: Int)
 
-        private data class SpanFitInformationV2(
-                val build: String,
-                val data: List<TC>,
-                val labels: List<String>,
-                val fragment: Fragment,
-                val unique: Boolean,
-                val binSize: Int,
-                val chromosomesSizes: LinkedHashMap<String, Int>,
-                val version: Int = 2
-        ) {
-            fun convertToV3(): SpanFitInformation = SpanFitInformation(
-                build, data.map { it.toSpanDataPaths() }, null,
-                labels, fragment, unique, binSize, chromosomesSizes, 3
-            )
-        }
-
         private fun loadVersion(path: Path): Int = path.bufferedReader().use {
             val version = GSON.fromJson(it, VersionedInfo::class.java).version
             check(version != 0) { "Failed to load info from $path: version is 0 or absent." }
@@ -245,30 +229,14 @@ data class SpanFitInformation(
         fun load(path: Path): SpanFitInformation = load(path, loadVersion(path))
 
         private fun load(path: Path, version: Int): SpanFitInformation {
-            check(version > 1) {
+            check(version > 2) {
                 "SpanFitInformation version $version is no longer supported. " +
                         "Try using an older version of Span, or deleting and re-creating the model file."
             }
             check(version < 4) {
                 "SpanFitInformation version $version seems to be from the future. Try using a newer version of Span."
             }
-            val info = path.bufferedReader().use {
-                when (version) {
-                    2 -> GSON.fromJson(it, SpanFitInformationV2::class.java)?.convertToV3()
-                    3 -> GSON.fromJson(it, SpanFitInformation::class.java)
-                    else -> {
-                        check(version > 1) {
-                            "SpanFitInformation version $version is no longer supported. " +
-                                    "Try using an older version of Span, or deleting and re-creating the model file."
-                        }
-                        check(version < 4) {
-                            "SpanFitInformation version $version seems to be from the future. Try using a newer version of Span."
-                        }
-                        // can't happen, we've exhausted all possibilities
-                        throw IllegalStateException("Unexpected SpanFitInformation version $version.")
-                    }
-                }
-            }
+            val info = path.bufferedReader().use { GSON.fromJson(it, SpanFitInformation::class.java) }
             checkNotNull(info) {
                 "Failed to load info from $path"
             }
@@ -542,13 +510,3 @@ data class SpanDataPaths(
         val treatment: Path,
         val control: Path?
 )
-
-/**
- * Legacy class for [SpanFitInformation] version 2.
- */
-data class TC(
-        val path: String,
-        val control: String?
-) {
-    fun toSpanDataPaths() = SpanDataPaths(path.toPath(), control?.toPath())
-}
