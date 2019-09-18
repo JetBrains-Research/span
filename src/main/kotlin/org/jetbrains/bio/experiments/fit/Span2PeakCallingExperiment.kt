@@ -7,6 +7,7 @@ import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
+import org.jetbrains.bio.genome.sequence.CpGContent
 import org.jetbrains.bio.query.CachingQuery
 import org.jetbrains.bio.query.ReadsQuery
 import org.jetbrains.bio.query.reduceIds
@@ -79,20 +80,6 @@ class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
             return res
         }
 
-        fun meanGC(chr: Chromosome, binSize: Int): DoubleArray {
-            val len = (chr.length - 1) / binSize + 1
-            val seq = chr.sequence
-            val gcContent = DoubleArray(len)
-            for (i in 0 until len - 1) {
-                gcContent[i] = seq.substring(i * binSize, (i + 1) * binSize)
-                        .count { it == 'c' || it == 'g' }.toDouble() / binSize
-            }
-            gcContent[len - 1] = seq.substring((len - 1) * binSize, seq.length)
-                    .count { it == 'c' || it == 'g' }
-                    .toDouble() / (seq.length - (len - 1) * binSize)
-            return gcContent
-        }
-
         fun binnedMapability(chr: Chromosome, mapabilityPath: Path, binSize: Int): DoubleArray {
             val bwFile = BigWigFile.read(mapabilityPath)
 
@@ -109,7 +96,7 @@ class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
             for (i in 0 until len - 1) {
                 res[i] = mapSummary[i].sum / binSize
             }
-            res[len - 1] = bwFile.summarize(chr.name, (len - 1) * binSize, chr.length)[0].sum /
+            res[len - 1] = bwFile.summarize(chr.name, (len - 1) * binSize, chr.length).single().sum /
                     (chr.length - (len - 1) * binSize)
             return res
         }
@@ -135,7 +122,7 @@ class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
             override fun getUncached(input: Chromosome): DataFrame {
                 val y = binnedCoverageAsInt(input, treatmentCoverage.get(), binSize)
                 val control = controlCoverage?.let { binnedCoverageAsDouble(input, it.get(), binSize) }
-                val gc = meanGC(input, binSize)
+                val gc = CpGContent.binnedMeanCG(input, binSize)
                 val gc2 = (gc.asF64Array() * gc.asF64Array()).data
                 val mapability = mapabilityPath?.let { binnedMapability(input, it, binSize) }
                 var df = DataFrame().with("y", y)
