@@ -2,12 +2,16 @@ package org.jetbrains.bio.experiments.fit
 
 import org.jetbrains.bio.coverage.AutoFragment
 import org.jetbrains.bio.coverage.Fragment
+import org.jetbrains.bio.dataframe.DataFrame
+import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.query.stemGz
+import org.jetbrains.bio.span.CoverageScoresQuery
 import org.jetbrains.bio.span.Peak
 import org.jetbrains.bio.span.getChromosomePeaks
+import org.jetbrains.bio.span.scoresDataFrame
 import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.statistics.MultiLabels
@@ -29,12 +33,20 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
         modelClass: Class<Model>,
         states: Array<State>,
         nullHypothesis: NullHypothesis<State>
-): SpanModelFitExperiment<Model, State>(
-    genomeQuery,
-    paths1 + paths2, null,
-    MultiLabels.generate(TRACK1_PREFIX, paths1.size).toList() +
-            MultiLabels.generate(TRACK2_PREFIX, paths2.size).toList(),
-    fragment, binSize, modelFitter, modelClass, states, nullHypothesis
+): SpanModelFitExperiment<Model, Span1CompareFitInformation, State>(
+    createEffectiveQueries(
+        genomeQuery, paths1 + paths2,
+        MultiLabels.generate(TRACK1_PREFIX, paths1.size).toList() +
+                MultiLabels.generate(TRACK2_PREFIX, paths2.size).toList(),
+        fragment, binSize
+    ), Span1CompareFitInformation(
+        genomeQuery,
+        paths1, paths2,
+        MultiLabels.generate(TRACK1_PREFIX, paths1.size).toList(),
+        MultiLabels.generate(TRACK2_PREFIX, paths2.size).toList(),
+        fragment, true, binSize
+    ),
+    modelFitter, modelClass, states, nullHypothesis
 ) {
 
     constructor(
@@ -59,9 +71,9 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
 
 
     fun computeDirectedDifferencePeaks(fdr: Double,
-                                       gap: Int): Pair<List<Peak>, List<Peak>> {
+            gap: Int): Pair<List<Peak>, List<Peak>> {
         val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
-            results.getChromosomePeaks(chromosome, fdr, gap, getData(chromosome))
+            results.getChromosomePeaks(chromosome, fdr, gap, dataQuery.apply(chromosome))
         }
         val highLow = arrayListOf<Peak>()
         val lowHigh = arrayListOf<Peak>()
@@ -116,5 +128,57 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
                 )
             }
         }
+    }
+}
+
+data class Span1CompareFitInformation(
+        override val build: String,
+        val data1: List<SpanDataPaths>,
+        val data2: List<SpanDataPaths>,
+        val labels1: List<String>,
+        val labels2: List<String>,
+        val fragment: Fragment,
+        val unique: Boolean,
+        override val binSize: Int,
+        override val chromosomesSizes: LinkedHashMap<String, Int>
+) : FitInformation {
+
+    constructor(
+            genomeQuery: GenomeQuery,
+            paths1: List<SpanDataPaths>,
+            paths2: List<SpanDataPaths>,
+            labels1: List<String>,
+            labels2: List<String>,
+            fragment: Fragment,
+            unique: Boolean,
+            binSize: Int
+    ): this(
+        genomeQuery.build, paths1, paths2,
+        labels1, labels2, fragment, unique, binSize,
+        FitInformation.chromSizes(genomeQuery)
+    )
+
+
+    override fun scoresDataFrame(): Map<Chromosome, DataFrame> {
+        val gq = genomeQuery()
+        val queries1 = data1.map {
+            CoverageScoresQuery(gq, it.treatment, it.control, fragment, binSize, unique)
+        }
+        val queries2 = data2.map {
+            CoverageScoresQuery(gq, it.treatment, it.control, fragment, binSize, unique)
+        }
+        if (queries1.any { !it.ready } || queries2.any { !it.ready }) {
+            return emptyMap()
+        }
+        return gq.get().associateBy({it}) {
+            DataFrame.columnBind(
+                queries1.scoresDataFrame(it, labels1.toTypedArray()),
+                queries2.scoresDataFrame(it, labels2.toTypedArray())
+            )
+        }
+    }
+
+    companion object {
+        const val VERSION: Int = 3
     }
 }

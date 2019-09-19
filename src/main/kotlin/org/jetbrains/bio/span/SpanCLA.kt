@@ -150,6 +150,9 @@ compare                         Differential peak calling mode, experimental
 
                 val spanResults = lazySpanResults.value
                 val fitInfo = spanResults.fitInfo
+                check(fitInfo is SpanAnalyzeFitInformation) {
+                    "Expected SpanAnalyzeFitInformation, got ${fitInfo::class.java.name}"
+                }
                 val gq = fitInfo.genomeQuery()
                 val fragment = fitInfo.fragment
                 val bin = fitInfo.binSize
@@ -283,13 +286,13 @@ compare                         Differential peak calling mode, experimental
                 LOG.info("LOG: $logPath")
                 LOG.info("WORKING DIR: $workingDir")
                 LOG.info("TREATMENT1: ${treatmentPaths1.joinToString(", ", transform = Path::toString)}")
-                if (controlPaths1 != null && controlPaths1.isNotEmpty()) {
+                if (controlPaths1.isNotEmpty()) {
                     LOG.info("CONTROL1: ${controlPaths1.joinToString(", ", transform = Path::toString)}")
                 } else {
                     LOG.info("CONTROL1: none")
                 }
                 LOG.info("TREATMENT2: ${treatmentPaths2.joinToString(", ", transform = Path::toString)}")
-                if (controlPaths2 != null && controlPaths2.isNotEmpty()) {
+                if (controlPaths2.isNotEmpty()) {
                     LOG.info("CONTROL2: ${controlPaths2.joinToString(", ", transform = Path::toString)}")
                 } else {
                     LOG.info("CONTROL2: none")
@@ -484,12 +487,18 @@ compare                         Differential peak calling mode, experimental
      * Checks supplied command line options against those stored in the fit information.
      * Configures working directory and genomes path (if provided). Logs the progress.
      */
-    private fun checkFitInformation(options: OptionSet, fitInformation: SpanFitInformation) {
+    private fun checkFitInformation(options: OptionSet, fitInformation: FitInformation) {
+        check(fitInformation is SpanAnalyzeFitInformation) {
+            "Invalid fit information; expected SpanAnalyzeFitInformation, got ${fitInformation::class.java.name}"
+        }
         getAndLogWorkDirAndChromSizes(options, fitInformation)
         getPaths(options, fitInformation, log = true)
         getBin(options, fitInformation, log = true)
         getFragment(options, fitInformation, log = true)
         getUnique(options, fitInformation, log = true)
+        if (fitInformation is Span2FitInformation) {
+            getMapabilityPath(options,  fitInformation, log = true)
+        }
     }
 
     /**
@@ -511,7 +520,7 @@ compare                         Differential peak calling mode, experimental
     }
 
     private fun getUnique(
-            options: OptionSet, fitInformation: SpanFitInformation? = null, log: Boolean = false
+            options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null, log: Boolean = false
     ) = !getProperty(
         if ("keep-dup" in options) options.valueOf("keep-dup") as Boolean else null,
         fitInformation?.unique?.not(), false,
@@ -519,14 +528,14 @@ compare                         Differential peak calling mode, experimental
     )
 
     private fun getFragment(
-            options: OptionSet, fitInformation: SpanFitInformation? = null, log: Boolean = false
+            options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null, log: Boolean = false
     ) = getProperty(
         options.valueOf("fragment") as Fragment?, fitInformation?.fragment, AutoFragment,
         "fragment size", "FRAGMENT", log
     )
 
     private fun getBin(
-            options: OptionSet, fitInformation: SpanFitInformation? = null, log: Boolean = false
+            options: OptionSet, fitInformation: FitInformation? = null, log: Boolean = false
     ) = getProperty(
         options.valueOf("bin") as Int?, fitInformation?.binSize, Span.DEFAULT_BIN,
         "bin size", "BIN", log
@@ -556,7 +565,7 @@ compare                         Differential peak calling mode, experimental
     )
 
     private fun getMapabilityPath(
-            options: OptionSet, fitInfo: SpanFitInformation? = null, log: Boolean = false
+            options: OptionSet, fitInfo: Span2FitInformation? = null, log: Boolean = false
     ) = getProperty(
         options.valueOf("mapability") as Path?,
         fitInfo?.mapabilityPath,
@@ -566,7 +575,7 @@ compare                         Differential peak calling mode, experimental
     )
 
     private fun getAndLogWorkDirAndChromSizes(
-            options: OptionSet, fitInformation: SpanFitInformation? = null
+            options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null
     ): Pair<Path, Path?> {
         val workingDir = options.valueOf("workdir") as Path
         LOG.info("WORKING DIR: $workingDir")
@@ -584,7 +593,7 @@ compare                         Differential peak calling mode, experimental
             LOG.info("GENOME: ${genome.build}")
             val chromosomeMap = genome.chromosomeNamesMap
             // we don't check the map equality, since the stored map contains only non-empty chromosomes
-            fitInformation.chromosomesSizes.forEach { name, length ->
+            fitInformation.chromosomesSizes.forEach { (name, length) ->
                 check(name in chromosomeMap) {
                     "Stored chromosome $name couldn't be found in the chrom.sizes file $chromSizesPath"
                 }
@@ -605,7 +614,7 @@ compare                         Differential peak calling mode, experimental
      * If both are available, checks that they are consistent.
      */
     private fun getPaths(
-            options: OptionSet, fitInformation: SpanFitInformation? = null, log: Boolean = false
+            options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null, log: Boolean = false
     ): List<SpanDataPaths> {
         val commandLineTreatmentPaths = options.valuesOf("treatment") as List<Path>
         val commandLineControlPaths = options.valuesOf("control") as List<Path>
@@ -670,7 +679,7 @@ compare                         Differential peak calling mode, experimental
      */
     private fun constructPeakCallingExperiment(
             options: OptionSet
-    ): Lazy<SpanModelFitExperiment<ClassificationModel, ZLH>> {
+    ): Lazy<SpanModelFitExperiment<ClassificationModel, FitInformation, ZLH>> {
         val (_, chromSizesPath) = getAndLogWorkDirAndChromSizes(options)
         // option parser guarantees that chrom.sizes are not null here
         val genomeQuery = GenomeQuery(Genome[chromSizesPath!!])

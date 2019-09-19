@@ -4,6 +4,7 @@ import org.jetbrains.bio.big.BigWigFile
 import org.jetbrains.bio.coverage.Coverage
 import org.jetbrains.bio.coverage.Fragment
 import org.jetbrains.bio.dataframe.DataFrame
+import org.jetbrains.bio.experiments.fit.FitInformation.Companion.chromSizes
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
@@ -33,14 +34,15 @@ class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
         nullHypothesis: NullHypothesis<State>,
         unique: Boolean = true,
         fixedModelPath: Path? = null
-) : SpanModelFitExperiment<Model, State>(
+) : SpanModelFitExperiment<Model, Span2FitInformation, State>(
     genomeQuery to createDataQuery(genomeQuery, paths, mapabilityPath, fragment, binSize, unique),
-    listOf(paths), mapabilityPath,
-    listOfNotNull("y", paths.control?.let { "input" }),
-    fragment, binSize,
+    Span2FitInformation(
+        genomeQuery.build, listOf(paths),
+        listOfNotNull("y", paths.control?.let { "input" }),
+        mapabilityPath, fragment, unique, binSize, chromSizes(genomeQuery)
+    ),
     modelFitter, modelClass,
     states, nullHypothesis,
-    unique,
     fixedModelPath
 ) {
 
@@ -153,4 +155,27 @@ class Span2PeakCallingExperiment<Model : ClassificationModel, State : Any>(
             )
         }
     }
+}
+
+data class Span2FitInformation(
+        override val build: String,
+        override val data: List<SpanDataPaths>,
+        override val labels: List<String>,
+        val mapabilityPath: Path?,
+        override val fragment: Fragment,
+        override val unique: Boolean,
+        override val binSize: Int,
+        override val chromosomesSizes: LinkedHashMap<String, Int>
+): SpanAnalyzeFitInformation {
+    constructor(
+            genomeQuery: GenomeQuery,
+            data: List<SpanDataPaths>,
+            labels: List<String>,
+            mapabilityPath: Path?,
+            fragment: Fragment,
+            unique: Boolean,
+            binSize: Int
+    ): this(
+        genomeQuery.build, data, labels, mapabilityPath, fragment, unique, binSize, chromSizes(genomeQuery)
+    )
 }
