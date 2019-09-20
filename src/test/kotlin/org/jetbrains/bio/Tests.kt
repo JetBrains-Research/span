@@ -1,5 +1,6 @@
 package org.jetbrains.bio
 
+import kotlin.math.abs
 import kotlin.test.assertTrue
 
 /**
@@ -19,6 +20,16 @@ object Tests {
         // Process Windows with different line separators correctly.
         substring.lines().forEach { s ->
             assertTrue(s in fullString, "Expected <$s> to be in <$fullString>.")
+        }
+    }
+
+    fun assertEquals(expected: DoubleArray, actual: DoubleArray, precision: Double) {
+        kotlin.test.assertEquals(expected.size, actual.size, "Array sizes differ")
+        expected.indices.forEach {
+            assertTrue(
+                abs(expected[it] - actual[it]) < precision,
+                "Arrays differ at position $it: expected ${expected[it]}, actual ${actual[it]}."
+            )
         }
     }
 
