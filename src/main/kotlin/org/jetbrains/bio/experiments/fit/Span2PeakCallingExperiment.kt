@@ -17,6 +17,23 @@ import org.jetbrains.bio.util.div
 import org.jetbrains.bio.viktor.asF64Array
 import java.nio.file.Path
 
+/**
+ * Corresponds to Span `analyze --type prm` invocation.
+ *
+ * Currently supports only a single treatment track.
+ *
+ * We compute binned coverage for the treatment track and use it as the response vector.
+ *
+ * We also compute the covariates:
+ * - "GC" and "GC2" are binned mean GC content and its square
+ * - "input" is the binned control track coverage, if supplied
+ * - "mapability" is the binned mean mapability, if supplied
+ *
+ * These data are used as the input for a three-state Poisson regression mixture.
+ * - ZERO state corresponds to zero emission
+ * - LOW state employs a Poisson GLM with the covariates listed above
+ * - HIGH state employs another Poisson GLM with the covariates listed above
+ */
 class Span2PeakCallingExperiment private constructor(
         fitInformation: Span2FitInformation,
         fixedModelPath: Path?

@@ -22,6 +22,18 @@ import org.jetbrains.bio.util.div
 import java.nio.file.Path
 
 /**
+ * Corresponds to Span `compare` invocation.
+ *
+ * The treatment-control pairs are split into two sets that are to compare.
+ *
+ * For each treatment-control pair, we compute binned DiffBind-like scores (see [CoverageScoresQuery] for details).
+ * These scores are used as the input for a five-state multidimensional negative binomial HMM.
+ * For each dimension `d`, there are two negative binomial distributions, low_d and high_d.
+ * - ZERO state corresponds to zero emissions for all dimensions
+ * - LOW state employs `low_d` emission for each dimension `d`
+ * - HIGH state employs `high_d` emission for each dimension `d`
+ * - INCREASED state employs `low_d` emission for each dimension `d` from the first set and `high_d` for the second set
+ * - DECREASED state employs `high_d` emission for each dimension `d` from the first set and `low_d` for the second set
  * @author Alexey Dievsky
  * @since 10/04/15
  */
