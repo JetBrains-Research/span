@@ -26,15 +26,13 @@ import java.nio.file.Path
  * @author Alexey Dievsky
  * @since 10/04/15
  */
-class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any> private constructor(
+class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor(
         fitInformation: Span1AnalyzeFitInformation,
         modelFitter: Fitter<Model>,
         modelClass: Class<Model>,
-        states: Array<State>,
-        nullHypothesis: NullHypothesis<State>,
         fixedModelPath: Path?
-) : SpanModelFitExperiment<Model, Span1AnalyzeFitInformation, State>(
-    fitInformation, modelFitter, modelClass, states, nullHypothesis, fixedModelPath
+) : SpanModelFitExperiment<Model, Span1AnalyzeFitInformation, ZLH>(
+    fitInformation, modelFitter, modelClass, ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L), fixedModelPath
 ) {
 
     override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span"
@@ -56,7 +54,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any> privat
                 fragment: Fragment = AutoFragment,
                 unique: Boolean = true,
                 fixedModelPath: Path? = null
-        ): SpanPeakCallingExperiment<out ClassificationModel, ZLH> {
+        ): SpanPeakCallingExperiment<out ClassificationModel> {
             check(paths.isNotEmpty()) { "No data" }
             val fitInformation = Span1AnalyzeFitInformation.effective(
                 genomeQuery, paths, MultiLabels.generate(TRACK_PREFIX, paths.size).toList(),
@@ -66,16 +64,14 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any> privat
                 SpanPeakCallingExperiment(
                     fitInformation,
                     MLFreeNBHMM.fitter().multiStarted(),
-                    MLFreeNBHMM::class.java, ZLH.values(),
-                    NullHypothesis.of(ZLH.Z, ZLH.L),
+                    MLFreeNBHMM::class.java,
                     fixedModelPath
                 )
             } else {
                 SpanPeakCallingExperiment(
                     fitInformation,
                     MLConstrainedNBHMM.fitter(paths.size).multiStarted(),
-                    MLConstrainedNBHMM::class.java, ZLH.values(),
-                    NullHypothesis.of(ZLH.Z, ZLH.L),
+                    MLConstrainedNBHMM::class.java,
                     fixedModelPath
                 )
             }
