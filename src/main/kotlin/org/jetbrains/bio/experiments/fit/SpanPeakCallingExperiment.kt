@@ -3,9 +3,11 @@ package org.jetbrains.bio.experiments.fit
 import org.jetbrains.bio.coverage.AutoFragment
 import org.jetbrains.bio.coverage.Fragment
 import org.jetbrains.bio.dataframe.DataFrame
-import org.jetbrains.bio.experiments.fit.FitInformation.Companion.chromSizes
+import org.jetbrains.bio.experiments.fit.SpanFitInformation.Companion.chromSizes
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
+import org.jetbrains.bio.query.CachingQuery
+import org.jetbrains.bio.query.Query
 import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.query.stemGz
 import org.jetbrains.bio.span.CoverageScoresQuery
@@ -17,6 +19,7 @@ import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.state.ZLH
+import org.jetbrains.bio.util.div
 import java.nio.file.Path
 
 /**
@@ -28,45 +31,21 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
         paths: List<SpanDataPaths>,
         fragment: Fragment,
         binSize: Int,
+        unique: Boolean,
         modelFitter: Fitter<Model>,
         modelClass: Class<Model>,
         states: Array<State>,
         nullHypothesis: NullHypothesis<State>,
-        unique: Boolean = true,
-        fixedModelPath: Path? = null
+        fixedModelPath: Path?
 ) : SpanModelFitExperiment<Model, Span1AnalyzeFitInformation, State>(
-    createEffectiveQueries(
-        genomeQuery, paths, MultiLabels.generate(TRACK_PREFIX, paths.size).toList(), fragment, binSize, unique
-    ),
-    Span1AnalyzeFitInformation(
+    Span1AnalyzeFitInformation.effective(
         genomeQuery, paths, MultiLabels.generate(TRACK_PREFIX, paths.size).toList(),
         fragment, unique, binSize
     ),
     modelFitter, modelClass, states, nullHypothesis, fixedModelPath
 ) {
 
-    constructor(
-            genomeQuery: GenomeQuery,
-            paths: SpanDataPaths,
-            modelFitter: Fitter<Model>,
-            modelClass: Class<Model>,
-            fragment: Fragment,
-            binSize: Int,
-            states: Array<State>,
-            nullHypothesis: NullHypothesis<State>,
-            unique: Boolean = true,
-            fixedModelPath: Path? = null
-    ) : this(
-        genomeQuery, listOf(paths),
-        fragment, binSize,
-        modelFitter, modelClass, states, nullHypothesis, unique, fixedModelPath
-    )
-
-    override val id: String =
-            reduceIds(
-                paths.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
-                        listOfNotNull(fragment.nullableInt, binSize).map { it.toString() })
-
+    override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span"
 
     companion object {
         const val TRACK_PREFIX = "track_"
@@ -89,34 +68,25 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
             check(paths.isNotEmpty()) { "No data" }
             return if (paths.size == 1) {
                 SpanPeakCallingExperiment(
-                    genomeQuery, paths.first(),
+                    genomeQuery, paths,
+                    fragment, bin, unique,
                     MLFreeNBHMM.fitter().multiStarted(),
-                    MLFreeNBHMM::class.java,
-                    fragment, bin,
-                    ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
-                    unique,
+                    MLFreeNBHMM::class.java, ZLH.values(),
+                    NullHypothesis.of(ZLH.Z, ZLH.L),
                     fixedModelPath
                 )
             } else {
                 SpanPeakCallingExperiment(
                     genomeQuery, paths,
-                    fragment,
-                    bin,
+                    fragment, bin, unique,
                     MLConstrainedNBHMM.fitter(paths.size).multiStarted(),
-                    MLConstrainedNBHMM::class.java,
-                    ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
-                    unique,
+                    MLConstrainedNBHMM::class.java, ZLH.values(),
+                    NullHypothesis.of(ZLH.Z, ZLH.L),
                     fixedModelPath
                 )
             }
         }
     }
-}
-
-enum class SpanModel(val description: String) {
-    NB_HMM("negative binomial HMM"), POISSON_REGRESSION_MIXTURE("Poisson regression mixture");
-
-    override fun toString() = description
 }
 
 /**
@@ -150,6 +120,26 @@ data class Span1AnalyzeFitInformation(
         chromSizes(genomeQuery)
     )
 
+    override val id: String =
+            reduceIds(
+                data.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
+                        listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
+            )
+
+    override val dataQuery: Query<Chromosome, DataFrame>
+        get() = object : CachingQuery<Chromosome, DataFrame>() {
+            val scores = data.map {
+                CoverageScoresQuery(genomeQuery(), it.treatment, it.control, fragment, binSize, unique)
+            }
+
+            override fun getUncached(input: Chromosome): DataFrame {
+                return scores.scoresDataFrame(input, labels.toTypedArray())
+            }
+
+            override val id: String
+                get() = reduceIds(scores.zip(labels).flatMap { (s, l) -> listOf(s.id, l) })
+        }
+
 
     override fun scoresDataFrame(): Map<Chromosome, DataFrame> {
         val gq = genomeQuery()
@@ -166,5 +156,19 @@ data class Span1AnalyzeFitInformation(
 
     companion object {
         const val VERSION: Int = 3
+
+        fun effective(
+                genomeQuery: GenomeQuery,
+                paths: List<SpanDataPaths>,
+                labels: List<String>,
+                fragment: Fragment,
+                unique: Boolean,
+                binSize: Int
+        ): Span1AnalyzeFitInformation {
+            val effectiveGQ = SpanModelFitExperiment.effectiveGenomeQuery(genomeQuery, paths, fragment, unique)
+            return Span1AnalyzeFitInformation(
+                effectiveGQ.build, paths, labels, fragment, unique, binSize, chromSizes(effectiveGQ)
+            )
+        }
     }
 }

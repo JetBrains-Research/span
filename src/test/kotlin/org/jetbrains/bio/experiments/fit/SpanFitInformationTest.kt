@@ -97,7 +97,7 @@ class SpanFitInformationTest {
     @Test
     fun checkLoad() {
         val info = Span2FitInformation(
-            gq, listOf(SpanDataPaths("path_to_file".toPath(), "path_to_control".toPath())),
+            gq, SpanDataPaths("path_to_file".toPath(), "path_to_control".toPath()),
             listOf("treatment_control"),
             "mapability.bigWig".toPath(), FixedFragment(42), false, 200
         )
@@ -129,7 +129,7 @@ class SpanFitInformationTest {
   "version": 3
 }""")
             }
-            assertEquals(info, FitInformation.load(path))
+            assertEquals(info, SpanFitInformation.load(path))
         }
     }
 
@@ -152,7 +152,7 @@ class SpanFitInformationTest {
   "version": 100500
 }""")
             }
-            FitInformation.load<FitInformation>(path)
+            SpanFitInformation.load<SpanFitInformation>(path)
         }
     }
 
@@ -192,7 +192,7 @@ class SpanFitInformationTest {
 }"""
                 )
             }
-            FitInformation.load<FitInformation>(path)
+            SpanFitInformation.load<SpanFitInformation>(path)
         }
     }
 
@@ -210,7 +210,7 @@ class SpanFitInformationTest {
 }"""
                 )
             }
-            FitInformation.load<FitInformation>(path)
+            SpanFitInformation.load<SpanFitInformation>(path)
         }
     }
 
@@ -247,7 +247,7 @@ class SpanFitInformationTest {
 }"""
                 )
             }
-            FitInformation.load<FitInformation>(path)
+            SpanFitInformation.load<SpanFitInformation>(path)
         }
     }
 

@@ -26,15 +26,6 @@ abstract class ModelFitExperiment<out Model : ClassificationModel, State : Any>(
         protected val availableStates: Array<State>)
     : Experiment("fit") {
 
-    /** Secondary constructor to support effective genome query, see [SpanModelFitExperiment.createEffectiveQueries]. */
-    internal constructor(
-            queries: Pair<GenomeQuery, Query<Chromosome, DataFrame>>,
-            modelFitter: Fitter<Model>,
-            modelClass: Class<out Model>,
-            availableStates: Array<State>
-    ) : this(queries.first, queries.second, modelFitter, modelClass, availableStates)
-
-
     open val id: String
         get() {
             val model = modelClass.simpleName.replace(Regex("[^A-Z0-9]"), "").toLowerCase()

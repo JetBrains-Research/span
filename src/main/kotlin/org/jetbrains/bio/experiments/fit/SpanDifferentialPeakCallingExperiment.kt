@@ -1,74 +1,51 @@
 package org.jetbrains.bio.experiments.fit
 
-import org.jetbrains.bio.coverage.AutoFragment
 import org.jetbrains.bio.coverage.Fragment
 import org.jetbrains.bio.dataframe.DataFrame
+import org.jetbrains.bio.experiments.fit.SpanFitInformation.Companion.chromSizes
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
+import org.jetbrains.bio.query.CachingQuery
+import org.jetbrains.bio.query.Query
 import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.query.stemGz
 import org.jetbrains.bio.span.CoverageScoresQuery
 import org.jetbrains.bio.span.Peak
 import org.jetbrains.bio.span.getChromosomePeaks
 import org.jetbrains.bio.span.scoresDataFrame
-import org.jetbrains.bio.statistics.ClassificationModel
-import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.statistics.MultiLabels
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.state.ZLHID
+import org.jetbrains.bio.util.div
+import java.nio.file.Path
 
 /**
  * @author Alexey Dievsky
  * @since 10/04/15
  */
-class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State : Any>(
+class SpanDifferentialPeakCallingExperiment(
         genomeQuery: GenomeQuery,
         paths1: List<SpanDataPaths>,
         paths2: List<SpanDataPaths>,
         fragment: Fragment,
         binSize: Int,
-        modelFitter: Fitter<Model>,
-        modelClass: Class<Model>,
-        states: Array<State>,
-        nullHypothesis: NullHypothesis<State>
-): SpanModelFitExperiment<Model, Span1CompareFitInformation, State>(
-    createEffectiveQueries(
-        genomeQuery, paths1 + paths2,
-        MultiLabels.generate(TRACK1_PREFIX, paths1.size).toList() +
-                MultiLabels.generate(TRACK2_PREFIX, paths2.size).toList(),
-        fragment, binSize
-    ), Span1CompareFitInformation(
+        unique: Boolean
+): SpanModelFitExperiment<MLConstrainedNBHMM, Span1CompareFitInformation, ZLHID>(
+    Span1CompareFitInformation.effective(
         genomeQuery,
         paths1, paths2,
         MultiLabels.generate(TRACK1_PREFIX, paths1.size).toList(),
         MultiLabels.generate(TRACK2_PREFIX, paths2.size).toList(),
-        fragment, true, binSize
+        fragment, unique, binSize
     ),
-    modelFitter, modelClass, states, nullHypothesis
+    MLConstrainedNBHMM.fitter(paths1.size, paths2.size),
+    MLConstrainedNBHMM::class.java,
+    ZLHID.values(), NullHypothesis.of(ZLHID.same())
 ) {
 
-    constructor(
-            genomeQuery: GenomeQuery,
-            paths1: SpanDataPaths,
-            paths2: SpanDataPaths,
-            fragment: Fragment, binSize: Int,
-            modelFitter: Fitter<Model>,
-            modelClass: Class<Model>,
-            states: Array<State>, nullHypothesis: NullHypothesis<State>
-    ): this(
-        genomeQuery, listOf(paths1), listOf(paths2),
-        fragment, binSize,
-        modelFitter, modelClass, states, nullHypothesis
-    )
-
-    override val id: String =
-            reduceIds(paths1.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
-                    listOf("vs") +
-                    paths2.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz }
-                    + listOfNotNull(fragment.nullableInt, binSize).map { it.toString() })
-
+    override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span"
 
     fun computeDirectedDifferencePeaks(fdr: Double,
             gap: Int): Pair<List<Peak>, List<Peak>> {
@@ -98,7 +75,6 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
 
         /**
          * Creates experiment for model-based comparison of binned coverage tracks for given queries.
-         * Not restricted for single query and constrained for multiple queries.
          *
          * @return experiment [SpanDifferentialPeakCallingExperiment]
          */
@@ -107,26 +83,11 @@ class SpanDifferentialPeakCallingExperiment<Model : ClassificationModel, State :
                 paths1: List<SpanDataPaths>,
                 paths2: List<SpanDataPaths>,
                 bin: Int,
-                fragment: Fragment = AutoFragment
-        ): SpanDifferentialPeakCallingExperiment<MLConstrainedNBHMM, ZLHID> {
+                fragment: Fragment,
+                unique: Boolean
+        ): SpanDifferentialPeakCallingExperiment {
             check(paths1.isNotEmpty() && paths2.isNotEmpty()) { "No data" }
-            return if (paths1.size == 1 && paths2.size == 1) {
-                SpanDifferentialPeakCallingExperiment(
-                    genomeQuery, paths1.first(), paths2.first(),
-                    fragment, bin,
-                    MLConstrainedNBHMM.fitter(1, 1),
-                    MLConstrainedNBHMM::class.java,
-                    ZLHID.values(), NullHypothesis.of(ZLHID.same())
-                )
-            } else {
-                SpanDifferentialPeakCallingExperiment(
-                    genomeQuery, paths1, paths2,
-                    fragment, bin,
-                    MLConstrainedNBHMM.fitter(paths1.size, paths2.size),
-                    MLConstrainedNBHMM::class.java,
-                    ZLHID.values(), NullHypothesis.of(ZLHID.same())
-                )
-            }
+            return SpanDifferentialPeakCallingExperiment(genomeQuery, paths1, paths2, fragment, bin, unique)
         }
     }
 }
@@ -141,22 +102,32 @@ data class Span1CompareFitInformation(
         val unique: Boolean,
         override val binSize: Int,
         override val chromosomesSizes: LinkedHashMap<String, Int>
-) : FitInformation {
+) : SpanFitInformation {
 
-    constructor(
-            genomeQuery: GenomeQuery,
-            paths1: List<SpanDataPaths>,
-            paths2: List<SpanDataPaths>,
-            labels1: List<String>,
-            labels2: List<String>,
-            fragment: Fragment,
-            unique: Boolean,
-            binSize: Int
-    ): this(
-        genomeQuery.build, paths1, paths2,
-        labels1, labels2, fragment, unique, binSize,
-        FitInformation.chromSizes(genomeQuery)
+    override val id: String = reduceIds(
+        data1.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
+                listOf("vs") +
+                data2.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
+                listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
     )
+
+    override val dataQuery: Query<Chromosome, DataFrame>
+        get() {
+            val data = data1 + data2
+            val labels = labels1 + labels2
+            return object : CachingQuery<Chromosome, DataFrame>() {
+                val scores = data.map {
+                    CoverageScoresQuery(genomeQuery(), it.treatment, it.control, fragment, binSize, unique)
+                }
+
+                override fun getUncached(input: Chromosome): DataFrame {
+                    return scores.scoresDataFrame(input, labels.toTypedArray())
+                }
+
+                override val id: String
+                    get() = reduceIds(scores.zip(labels).flatMap { (s, l) -> listOf(s.id, l) })
+            }
+        }
 
 
     override fun scoresDataFrame(): Map<Chromosome, DataFrame> {
@@ -180,5 +151,25 @@ data class Span1CompareFitInformation(
 
     companion object {
         const val VERSION: Int = 3
+
+        fun effective(
+                genomeQuery: GenomeQuery,
+                paths1: List<SpanDataPaths>,
+                paths2: List<SpanDataPaths>,
+                labels1: List<String>,
+                labels2: List<String>,
+                fragment: Fragment,
+                unique: Boolean,
+                binSize: Int
+        ): Span1CompareFitInformation {
+            return Span1CompareFitInformation(
+                genomeQuery.build, paths1, paths2, labels1, labels2, fragment, unique, binSize,
+                chromSizes(
+                    SpanModelFitExperiment.effectiveGenomeQuery(
+                        genomeQuery, paths1 + paths2, fragment, unique
+                    )
+                )
+            )
+        }
     }
 }

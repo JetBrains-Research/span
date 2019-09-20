@@ -4,7 +4,6 @@ import kotlinx.support.jdk7.use
 import org.jetbrains.bio.Configuration
 import org.jetbrains.bio.Tests.assertIn
 import org.jetbrains.bio.big.BedEntry
-import org.jetbrains.bio.experiments.fit.SpanModel
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.Location
@@ -443,7 +442,7 @@ LABELS, FDR, GAP options are ignored.
                 }
                 assertIn(
                     "Stored model type (${SpanModel.POISSON_REGRESSION_MIXTURE}) " +
-                        "differs from the command line argument (${SpanModel.NB_HMM})",
+                            "differs from the command line argument (${SpanModel.NB_HMM})",
                     wrongErr
                 )
             }
@@ -591,6 +590,22 @@ LABELS, FDR, GAP options are ignored.
                 assertIn(errorMessage, log)
                 assertIn(errorMessage, out)
                 assertIn(errorMessage, err)
+            }
+        }
+    }
+
+    @Test
+    fun analyzePartiallyEmptyCoverage() {
+        withTempFile("track", ".bed.gz") { path ->
+
+            sampleCoverage(path, GenomeQuery(Genome["to1"], "chr1", "chr2"), BIN, goodQuality = true)
+            println("Saved sampled track file: $path")
+
+            withTempDirectory("work") { dir ->
+                SpanCLA.main(arrayOf("analyze",
+                    "-cs", Genome["to1"].chromSizesPath.toString(),
+                    "-w", dir.toString(),
+                    "-t", path.toString()))
             }
         }
     }

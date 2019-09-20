@@ -2,7 +2,6 @@ package org.jetbrains.bio.span
 
 import org.jetbrains.bio.Configuration
 import org.jetbrains.bio.Tests
-import org.jetbrains.bio.experiments.fit.SpanModel
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.io.BedFormat
 import org.jetbrains.bio.query.reduceIds

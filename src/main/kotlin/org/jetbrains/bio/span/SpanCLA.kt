@@ -304,6 +304,7 @@ compare                         Differential peak calling mode, experimental
                 LOG.info("GENOME: ${genome.build}")
                 LOG.info("FRAGMENT: $fragment")
                 LOG.info("BIN: $bin")
+                val unique = getUnique(options, log = true)
                 LOG.info("FDR: $fdr")
                 LOG.info("GAP: $gap")
                 if (peaksPath != null) {
@@ -327,7 +328,7 @@ compare                         Differential peak calling mode, experimental
                 val coverages1 = treatmentPaths1.map { ReadsQuery(gq, it, fragment = fragment) }
                 val coverages2 = treatmentPaths2.map { ReadsQuery(gq, it, fragment = fragment) }
                 val experiment = SpanDifferentialPeakCallingExperiment.getExperiment(
-                    gq, paths1, paths2, bin, fragment
+                    gq, paths1, paths2, bin, fragment, unique
                 )
 
                 if (peaksPath != null) {
@@ -487,7 +488,7 @@ compare                         Differential peak calling mode, experimental
      * Checks supplied command line options against those stored in the fit information.
      * Configures working directory and genomes path (if provided). Logs the progress.
      */
-    private fun checkFitInformation(options: OptionSet, fitInformation: FitInformation) {
+    private fun checkFitInformation(options: OptionSet, fitInformation: SpanFitInformation) {
         check(fitInformation is SpanAnalyzeFitInformation) {
             "Invalid fit information; expected SpanAnalyzeFitInformation, got ${fitInformation::class.java.name}"
         }
@@ -535,7 +536,7 @@ compare                         Differential peak calling mode, experimental
     )
 
     private fun getBin(
-            options: OptionSet, fitInformation: FitInformation? = null, log: Boolean = false
+            options: OptionSet, fitInformation: SpanFitInformation? = null, log: Boolean = false
     ) = getProperty(
         options.valueOf("bin") as Int?, fitInformation?.binSize, Span.DEFAULT_BIN,
         "bin size", "BIN", log
@@ -679,7 +680,7 @@ compare                         Differential peak calling mode, experimental
      */
     private fun constructPeakCallingExperiment(
             options: OptionSet
-    ): Lazy<SpanModelFitExperiment<ClassificationModel, FitInformation, ZLH>> {
+    ): Lazy<SpanModelFitExperiment<ClassificationModel, SpanFitInformation, ZLH>> {
         val (_, chromSizesPath) = getAndLogWorkDirAndChromSizes(options)
         // option parser guarantees that chrom.sizes are not null here
         val genomeQuery = GenomeQuery(Genome[chromSizesPath!!])
@@ -731,4 +732,10 @@ compare                         Differential peak calling mode, experimental
         val experiment = constructPeakCallingExperiment(options)
         return lazy { experiment.value.results }
     }
+}
+
+enum class SpanModel(val description: String) {
+    NB_HMM("negative binomial HMM"), POISSON_REGRESSION_MIXTURE("Poisson regression mixture");
+
+    override fun toString() = description
 }

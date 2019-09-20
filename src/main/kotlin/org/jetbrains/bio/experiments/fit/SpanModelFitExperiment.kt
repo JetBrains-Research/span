@@ -1,6 +1,5 @@
 package org.jetbrains.bio.experiments.fit
 
-import com.google.common.annotations.VisibleForTesting
 import com.google.common.math.IntMath
 import com.google.gson.*
 import com.google.gson.reflect.TypeToken
@@ -9,16 +8,12 @@ import org.apache.log4j.Logger
 import org.jetbrains.bio.coverage.Fragment
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiment.Experiment
-import org.jetbrains.bio.experiments.fit.SpanModelFitExperiment.Companion.createEffectiveQueries
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
-import org.jetbrains.bio.query.CachingQuery
 import org.jetbrains.bio.query.Query
 import org.jetbrains.bio.query.ReadsQuery
 import org.jetbrains.bio.query.reduceIds
-import org.jetbrains.bio.span.CoverageScoresQuery
-import org.jetbrains.bio.span.scoresDataFrame
 import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.statistics.Preprocessed
@@ -36,11 +31,34 @@ import java.math.RoundingMode
 import java.nio.file.Path
 import java.util.*
 
-interface FitInformation {
+/**
+ * The most common interface for all fit information classes.
+ *
+ * [SpanFitInformation] instance is designed to contain all information necessary to uniquely identify the input
+ * of a Span-like model fitting experiment. For example, [Span1AnalyzeFitInformation] completely describes
+ * the input of the classical `span analyze` command.
+ *
+ * [SpanFitInformation] object is a part of [SpanFitResults], and its type is type parameter
+ * of [SpanModelFitExperiment].
+ *
+ * All Span-like experiments produce a single squashed float array of log null probabilities ("null.npz").
+ * This interface contains methods to squash ([merge]) and unsquash ([split]) the chromosome-wise dataframes.
+ * It can also generate bin start [offsets] for a single chromosome.
+ *
+ * @property build Genome build (assembly).
+ * @property binSize Bin size in bps.
+ * @property chromosomesSizes A map of chromosome name -> chromosome length entries.
+ * @property dataQuery A query that returns adataframe for each chromosome to serve as model input.
+ * @property id A unique string identifier (include some kind of object hash if you compress identifiers). It's used
+ * to generate the model file name if it's not provided. [reduceIds] is a recommended way to implement this property.
+ */
+interface SpanFitInformation {
 
     val build: String
     val binSize: Int
     val chromosomesSizes: LinkedHashMap<String, Int>
+    val dataQuery: Query<Chromosome, DataFrame>
+    val id: String
 
     fun genomeQuery(): GenomeQuery = GenomeQuery(Genome[build, chromosomesSizes], *chromosomesSizes.keys.toTypedArray())
 
@@ -77,9 +95,9 @@ interface FitInformation {
     }
 
     /**
-     * Since all chromosomes are squashed into a single data frame for [SpanModelFitExperiment]
-     * This method computes indices of data frame, for given [chromosome]
-     * See also: [merge] and [split]
+     * Returns boundaries of the squashed dataframe region corresponding to the given [chromosome].
+     *
+     * See also: [merge] and [split].
      */
     fun getChromosomesIndices(chromosome: Chromosome): Pair<Int, Int> {
         checkChromosome(chromosome)
@@ -88,6 +106,11 @@ interface FitInformation {
         return offsetsMap[index] to offsetsMap[index + 1]
     }
 
+    /**
+     * Returns boundaries of the squashed dataframe region corresponding to the given [chromosome].
+     *
+     * See also: [merge] and [split].
+     */
     fun getChromosomesIndices(chromosome: String): Pair<Int, Int> {
         check(chromosome in chromosomesSizes) {
             "Missing chromosome in ${chromosomesSizes.keys.toList()}: $chromosome"
@@ -97,10 +120,26 @@ interface FitInformation {
         return offsetsMap[index] to offsetsMap[index + 1]
     }
 
+    /**
+     * Merges (row-binds) the chromosome-wise dataframes in an unambiguous way.
+     *
+     * Inverse of [split].
+     *
+     * @param statesDataFrame a map of chromosome name -> dataframe entries. Must contain a dataframe with
+     * row number equal to the number of bins on the appropriate chromosome for each chromosome in [chromosomesSizes].
+     */
     fun merge(statesDataFrame: Map<String, DataFrame>): DataFrame {
         return DataFrame.rowBind(chromosomesSizes.keys.sorted().map { statesDataFrame[it]!! }.toTypedArray())
     }
 
+    /**
+     * Splits the squashed dataframe into chromosome-wise parts.
+     *
+     * Inverse of [merge].
+     *
+     * @param genomeQuery Optional smaller [GenomeQuery]. If provided, only requested chromosome-wise dataframes
+     * are returned.
+     */
     fun split(dataFrame: DataFrame, genomeQuery: GenomeQuery?): Map<String, DataFrame> {
         return if (genomeQuery != null) {
             checkGenome(genomeQuery.genome)
@@ -119,15 +158,28 @@ interface FitInformation {
         }
     }
 
+    /**
+     * Save the [SpanFitInformation] object at the given path as JSON.
+     *
+     * Inverse of [load].
+     */
     fun save(path: Path) {
         path.parent.createDirectories()
-        path.bufferedWriter().use { gsonBuilder().create().toJson(this, it) }
+        path.bufferedWriter().use { GSON.toJson(this, it) }
     }
 
+    /**
+     * Generates chromosome-wise dataframes for peak value calculation.
+     *
+     * If the map doesn't contain a specific chromosome, its peak values will be 0.0.
+     */
     fun scoresDataFrame(): Map<Chromosome, DataFrame> = emptyMap()
 
     companion object {
 
+        /**
+         * Generate [SpanFitInformation.chromosomesSizes] instance from a [GenomeQuery]
+         */
         fun chromSizes(genomeQuery: GenomeQuery) =
                 LinkedHashMap<String, Int>().apply {
                     genomeQuery.get().sortedBy { it.name }.forEach { this[it.name] = it.length }
@@ -172,11 +224,10 @@ interface FitInformation {
             }
         }
 
-        fun gsonBuilder(): GsonBuilder =
-                GsonBuilder().setPrettyPrinting().setFieldNamingStrategy(
+        val GSON = GsonBuilder().setPrettyPrinting().setFieldNamingStrategy(
                     GSONUtil.NO_MY_UNDESCORE_NAMING_STRATEGY
                 ).registerTypeAdapterFactory(
-                    GSONUtil.classSpecificFactory(FitInformation::class.java) { gson, factory ->
+                    GSONUtil.classSpecificFactory(SpanFitInformation::class.java) { gson, factory ->
                         GSONUtil.classAndVersionAdapter(
                             gson, factory, "fit.information.fqn", "version"
                         )
@@ -185,12 +236,19 @@ interface FitInformation {
                     object : TypeToken<Fragment>() {}.type, FragmentTypeAdapter
                 ).registerTypeHierarchyAdapter(
                     Path::class.java, PathTypeAdapter
-                )
+                ).create()
 
+        /**
+         * Loads a [SpanFitInformation] instance from a JSON file.
+         *
+         * Inverse of [SpanFitInformation.save]. Since "save" stores the fully-qualified class name,
+         * "load" instantiates the correct class. If this class is not castable to [T],
+         * [IllegalStateException] is thrown.
+         */
         @Suppress("unchecked_cast")
-        fun <T: FitInformation> load(path: Path): T {
+        fun <T: SpanFitInformation> load(path: Path): T {
             val info = path.bufferedReader().use {
-                gsonBuilder().create().fromJson(it, FitInformation::class.java) as T?
+                GSON.fromJson(it, SpanFitInformation::class.java) as T?
             }
             check(info != null) { "Failed to load fit information from $path." }
             return info
@@ -198,8 +256,17 @@ interface FitInformation {
     }
 }
 
+/**
+ * Contains the results of a Span-like model-fitting experiment.
+ *
+ * @property fitInfo The [SpanFitInformation] instance that describes the experiment input.
+ * @property model The [ClassificationModel] that was fitted during the experiment.
+ * @property logNullMemberships The chromosome-wise dataframes of log null probabilities, i.e.
+ * the log probability of each observation under the null hypothesis. Each dataframe should at least contain
+ * a column of floats or doubles labelled [SpanModelFitExperiment.NULL].
+ */
 data class SpanFitResults(
-        val fitInfo: FitInformation,
+        val fitInfo: SpanFitInformation,
         val model: ClassificationModel,
         val logNullMemberships: Map<String, DataFrame>
 ) {
@@ -229,58 +296,47 @@ data class SpanFitResults(
 
 
 /**
- * A generic class for Span (Semi-supervised Peak Analyzer) - tool for analyzing and comparing ChIP-Seq data.
- * Both procedures rely on the Zero Inflated Negative Binomial Restricted Algorithm.
+ * A generic class for Span (Semi-supervised Peak ANalyzer), a tool for analyzing and comparing ChIP-Seq data.
  *
- * It is implemented as [ModelFitExperiment] with different [ClassificationModel] models.
+ * Span can utilize various models ([Model]) and inputs ([FitInfo]),
+ * as reflected by the class's generic and abstract nature.
  *
- * Enrichment
- * - States: [ZLH]
- * - Single replicate: [MLFreeNBHMM] zero-inflated HMM with univariate Negative Binomial emissions
- * - Multi replicates: [MLConstrainedNBHMM] zero-inflated HMM with multidimensional Negative Binomial emissions
+ * The end result of the experiment is the [results] property. It's lazy (won't do any calculation until
+ * actually accessed) and cached (if possible, will be loaded from the previously created file, if not, will
+ * be saved to a file after the computation). The results are saved in a TAR file.
  *
- * Difference
- * - States: [ZLHID]
- * - Any number of replicates: [MLConstrainedNBHMM]
+ * Current implementations:
+ * - [SpanPeakCallingExperiment] -- enrichment analysis (peak calling).
+ *   - States: [ZLH]
+ *   - Fit information: [Span1AnalyzeFitInformation]
+ *   - Single replicate: [MLFreeNBHMM] zero-inflated HMM with univariate negative binomial emissions
+ *   - Multi replicates: [MLConstrainedNBHMM] zero-inflated HMM with multidimensional negative binomial emissions *
+ * - [SpanDifferentialPeakCallingExperiment] -- enrichment comparison (differential peak calling).
+ *   - States: [ZLHID]
+ *   - Fit information: [Span1CompareFitInformation]
+ *   - Any number of replicates: [MLConstrainedNBHMM] zero-inflated HMM with multidimensional
+ *   negative binomial emissions *
+ * - [Span2PeakCallingExperiment] -- enrichment analysis (peak calling).
+ *   - States: [ZLH]
+ *   - Fit information: [Span2FitInformation]
+ *   - Single replicate: [PoissonRegressionMixture] a mixture of Poisson GLMs
+ *
+ * @param fixedModelPath If not null, the experiment will use this path for saving/loading the results. Otherwise,
+ * [defaultModelPath] will be used (it usually depends of [fitInformation] id).
  */
 abstract class SpanModelFitExperiment<
-        out Model : ClassificationModel, out FitInfo: FitInformation, State : Any
+        out Model : ClassificationModel, out FitInfo: SpanFitInformation, State : Any
 > protected constructor(
-        genomeDataQuery: Pair<GenomeQuery, Query<Chromosome, DataFrame>>,
         val fitInformation: FitInfo,
         private val modelFitter: Fitter<Model>,
         private val modelClass: Class<out Model>,
         private val availableStates: Array<State>,
         private val nullHypothesis: NullHypothesis<State>,
-        protected val fixedModelPath: Path? = null
+        private val fixedModelPath: Path? = null
 ) : Experiment("fit") {
 
-    /*constructor(
-            *//** XXX may contain chromosomes without reads, use [genomeQuery] instead. Details: [createEffectiveQueries] *//*
-            externalGenomeQuery: GenomeQuery,
-            paths: List<SpanDataPaths>,
-            mapabilityPath: Path?,
-            labels: List<String>,
-            fragment: Fragment,
-            binSize: Int,
-            modelFitter: Fitter<Model>,
-            modelClass: Class<Model>,
-            availableStates: Array<State>,
-            nullHypothesis: NullHypothesis<State>,
-            unique: Boolean = true,
-            fixedModelPath: Path? = null
-    ) : this(
-        createEffectiveQueries(externalGenomeQuery, paths, labels, fragment, binSize, unique),
-        SpanFitInformation(externalGenomeQuery, paths, mapabilityPath, labels, fragment, unique, binSize),
-        modelFitter, modelClass,
-        availableStates, nullHypothesis,
-        fixedModelPath
-    )*/
-
-    abstract val id: String
-
-    val genomeQuery = genomeDataQuery.first
-    val dataQuery = genomeDataQuery.second
+    val genomeQuery = fitInformation.genomeQuery()
+    val dataQuery = fitInformation.dataQuery
 
     private val preprocessedData: List<Preprocessed<DataFrame>> by lazy {
         genomeQuery.get().sortedBy { it.name }.map { Preprocessed.of(dataQuery.apply(it)) }
@@ -296,9 +352,17 @@ abstract class SpanModelFitExperiment<
         results.logNullMemberships
     }
 
-    // XXX It is important to use get() here, because id is overridden in superclasses
-    protected open val modelPath: Path
-        get() = fixedModelPath ?: experimentPath / "$id.span"
+    /**
+     * A unique path used to store/load results if [fixedModelPath] is null.
+     *
+     * This property is normally implemented through [fitInformation] id.
+     */
+    abstract val defaultModelPath: Path
+
+    /**
+     * We use "get" because we need the actual value of [defaultModelPath] implemented in the descendant class.
+     */
+    private val modelPath get() = fixedModelPath ?: defaultModelPath
 
     private fun calculateModel(): Model {
         return modelFitter.fit(preprocessedData, title = dataQuery.id)
@@ -363,7 +427,7 @@ abstract class SpanModelFitExperiment<
                 // Sanity check: model load
                 ClassificationModel.load<Model>(modelPath)
                 // Sanity check: information load
-                FitInformation.load<FitInformation>(informationPath)
+                SpanFitInformation.load<SpanFitInformation>(informationPath)
                 val logNullMembershipsMap = fitInformation.split(logNullMembershipsDF, genomeQuery)
                 computedResults = SpanFitResults(fitInformation, model, logNullMembershipsMap)
                 Tar.compress(p, modelPath.toFile(), informationPath.toFile(), nullHypothesisPath.toFile())
@@ -389,29 +453,24 @@ abstract class SpanModelFitExperiment<
 
         val LOG: Logger = Logger.getLogger(ModelFitExperiment::class.java)
 
-
-
-        @VisibleForTesting
         /**
-         * Create pair of
-         * 1. Effective genomeQuery, i.e. only chromosomes with some reads on them
-         * 2. Data query required for [ModelFitExperiment]
+         * Retain only the chromosomes for which at least one treatment file has at least one read on them.
          */
-        internal fun createEffectiveQueries(
+        fun effectiveGenomeQuery(
                 genomeQuery: GenomeQuery,
                 paths: List<SpanDataPaths>,
-                labels: List<String>,
                 fragment: Fragment,
-                binSize: Int,
                 unique: Boolean = true
-        ): Pair<GenomeQuery, Query<Chromosome, DataFrame>> {
+        ): GenomeQuery {
             val chromosomes = genomeQuery.get()
             val nonEmptyChromosomes = hashSetOf<Chromosome>()
-            paths.forEach { (t, _) ->
-                val coverage = ReadsQuery(
-                    genomeQuery, t,
-                    unique = unique, fragment = fragment, logFragmentSize = false
-                ).get()
+            paths.forEach { (t, c) ->
+                val coverage = ReadsQuery(genomeQuery, t, unique, fragment, logFragmentSize = false).get()
+                if (c != null) {
+                    // we have to be sure that the control coverage cache is calculated for the full genome query,
+                    // otherwise we can get some very hard-to-catch bugs later
+                    ReadsQuery(genomeQuery, c, unique, fragment, logFragmentSize = false).get()
+                }
                 nonEmptyChromosomes.addAll(chromosomes.filter { coverage.getBothStrandsCoverage(it.range.on(it)) > 0 })
             }
             chromosomes.filter { it !in nonEmptyChromosomes }.forEach {
@@ -422,22 +481,7 @@ abstract class SpanModelFitExperiment<
                 LOG.error(errMessage)
                 throw IllegalStateException(errMessage)
             }
-            val effectiveGenomeQuery = GenomeQuery(
-                genomeQuery.genome,
-                *nonEmptyChromosomes.map { it.name }.toTypedArray()
-            )
-            return effectiveGenomeQuery to object : CachingQuery<Chromosome, DataFrame>() {
-                val scores = paths.map {
-                    CoverageScoresQuery(genomeQuery, it.treatment, it.control, fragment, binSize, unique)
-                }
-
-                override fun getUncached(input: Chromosome): DataFrame {
-                    return scores.scoresDataFrame(input, labels.toTypedArray())
-                }
-
-                override val id: String
-                    get() = reduceIds(scores.zip(labels).flatMap { (s, l) -> listOf(s.id, l) })
-            }
+            return GenomeQuery(genomeQuery.genome, *nonEmptyChromosomes.map { it.name }.toTypedArray())
         }
 
 
@@ -448,7 +492,7 @@ abstract class SpanModelFitExperiment<
                 Tar.decompress(tarPath, dir.toFile())
 
                 LOG.debug("Completed model file decompress and started loading: $tarPath")
-                val info = FitInformation.load<FitInformation>(dir / INFORMATION_JSON)
+                val info = SpanFitInformation.load<SpanFitInformation>(dir / INFORMATION_JSON)
                 // Sanity check
                 genomeQuery?.let { info.checkGenome(it.genome) }
                 val model = ClassificationModel.load<ClassificationModel>(dir / MODEL_JSON)
@@ -467,7 +511,7 @@ data class SpanDataPaths(
         val control: Path?
 )
 
-interface SpanAnalyzeFitInformation : FitInformation {
+interface SpanAnalyzeFitInformation : SpanFitInformation {
     val labels: List<String>
     val data: List<SpanDataPaths>
     val fragment: Fragment
