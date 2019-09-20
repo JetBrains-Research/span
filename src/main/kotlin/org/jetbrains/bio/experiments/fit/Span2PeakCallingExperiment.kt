@@ -89,7 +89,7 @@ data class Span2FitInformation constructor(
         genomeQuery.build, listOf(data), mapabilityPath, fragment, unique, binSize, chromSizes(genomeQuery)
     )
 
-    override val id = reduceIds(
+    override val id get() = reduceIds(
         listOfNotNull(data.single().treatment, data.single().control, mapabilityPath).map { it.stemGz } +
                 listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
     )

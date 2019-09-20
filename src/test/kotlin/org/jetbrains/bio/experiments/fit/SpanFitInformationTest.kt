@@ -60,8 +60,6 @@ class SpanFitInformationTest {
                     100, false, 200
                 )
                 withTempFile("foo", ".tar") { path ->
-                    // note that [info.mapabilityPath] doesn't get serialized, because we don't serialize nulls,
-                    // and we want to keep it that way
                     info.save(path)
                     // Escape Windows separators here
                     assertEquals("""{
@@ -85,7 +83,7 @@ class SpanFitInformationTest {
     "chrM": 1000000,
     "chrX": 1000000
   },
-  "fit.information.fqn": "org.jetbrains.bio.experiments.fit.SpanFitInformation",
+  "fit.information.fqn": "org.jetbrains.bio.experiments.fit.Span1AnalyzeFitInformation",
   "version": 3
 }""".trim().lines(), path.bufferedReader().lines().collect(Collectors.toList()))
                 }
@@ -124,7 +122,7 @@ class SpanFitInformationTest {
     "chrM": 1000000,
     "chrX": 1000000
   },
-  "fit.information.fqn": "org.jetbrains.bio.experiments.fit.SpanFitInformation",  
+  "fit.information.fqn": "org.jetbrains.bio.experiments.fit.Span2FitInformation",  
   "version": 3
 }""")
             }
@@ -134,8 +132,8 @@ class SpanFitInformationTest {
 
     @Test
     fun checkWrongVersion() {
-        expectedEx.expect(IllegalStateException::class.java)
-        expectedEx.expectMessage("expects '${Span1AnalyzeFitInformation.VERSION}' version, but was '100500'")
+        expectedEx.expect(JsonParseException::class.java)
+        expectedEx.expectMessage("expects '${Span1AnalyzeFitInformation.VERSION}' version, but got '100500'")
         withTempFile("foo", ".tar") { path ->
             path.bufferedWriter().use {
                 it.write("""{
@@ -147,7 +145,7 @@ class SpanFitInformationTest {
   "ie6_compatibility": false,
   "enable_quantum_optimization": true,
   "chromosomes_sizes": {},
-  "fit.information.fqn": "org.jetbrains.bio.experiments.fit.SpanFitInformation",  
+  "fit.information.fqn": "org.jetbrains.bio.experiments.fit.Span1AnalyzeFitInformation",  
   "version": 100500
 }""")
             }

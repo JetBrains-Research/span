@@ -112,7 +112,7 @@ data class Span1CompareFitInformation(
         override val chromosomesSizes: LinkedHashMap<String, Int>
 ) : SpanFitInformation {
 
-    override val id: String = reduceIds(
+    override val id get() = reduceIds(
         data1.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
                 listOf("vs") +
                 data2.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +

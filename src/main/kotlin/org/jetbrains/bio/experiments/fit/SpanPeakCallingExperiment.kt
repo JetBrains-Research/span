@@ -119,11 +119,10 @@ data class Span1AnalyzeFitInformation(
         chromSizes(genomeQuery)
     )
 
-    override val id: String =
-            reduceIds(
-                data.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
-                        listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
-            )
+    override val id: String get() = reduceIds(
+        data.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
+                listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
+    )
 
     override val dataQuery: Query<Chromosome, DataFrame>
         get() = object : CachingQuery<Chromosome, DataFrame>() {
