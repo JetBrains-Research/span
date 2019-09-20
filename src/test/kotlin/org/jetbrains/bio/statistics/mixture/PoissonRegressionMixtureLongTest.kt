@@ -30,14 +30,14 @@ class PoissonRegressionMixtureLongTest {
         Tests.assertEquals(
             (original[1] as PoissonRegressionEmissionScheme).regressionCoefficients,
             (fitted[1] as PoissonRegressionEmissionScheme).regressionCoefficients,
-            1E-2
+            5E-2
         )
         Tests.assertEquals(
             (original[2] as PoissonRegressionEmissionScheme).regressionCoefficients,
             (fitted[2] as PoissonRegressionEmissionScheme).regressionCoefficients,
-            1E-2
+            5E-2
         )
-        Tests.assertEquals(original.weights.toDoubleArray(), fitted.weights.toDoubleArray(), 1E-2)
+        Tests.assertEquals(original.weights.toDoubleArray(), fitted.weights.toDoubleArray(), 5E-2)
     }
 
 }
