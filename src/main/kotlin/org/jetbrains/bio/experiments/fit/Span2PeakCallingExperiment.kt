@@ -17,20 +17,11 @@ import org.jetbrains.bio.util.div
 import org.jetbrains.bio.viktor.asF64Array
 import java.nio.file.Path
 
-class Span2PeakCallingExperiment(
-        genomeQuery: GenomeQuery,
-        paths: SpanDataPaths,
-        mapabilityPath: Path?,
-        fragment: Fragment,
-        binSize: Int,
-        unique: Boolean = true,
-        fixedModelPath: Path? = null
+class Span2PeakCallingExperiment private constructor(
+        fitInformation: Span2FitInformation,
+        fixedModelPath: Path?
 ) : SpanModelFitExperiment<PoissonRegressionMixture, Span2FitInformation, ZLH>(
-    Span2FitInformation(
-        genomeQuery, paths,
-        listOfNotNull("y", paths.control?.let { "input" }),
-        mapabilityPath, fragment, unique, binSize
-    ),
+    fitInformation,
     PoissonRegressionMixture.fitter(), PoissonRegressionMixture::class.java,
     ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
     fixedModelPath
@@ -53,10 +44,12 @@ class Span2PeakCallingExperiment(
                 fixedModelPath: Path?
         ): Span2PeakCallingExperiment {
             check(data.size == 1) { "Poisson regression mixture currently accepts a single data track." }
-            return Span2PeakCallingExperiment(
-                genomeQuery, data.single(), mapabilityPath,
-                fragment, binSize, unique, fixedModelPath
+            val fitInformation = Span2FitInformation(
+                genomeQuery, data.single(),
+                listOfNotNull("y", data.single().control?.let { "input" }),
+                mapabilityPath, fragment, unique, binSize
             )
+            return Span2PeakCallingExperiment(fitInformation, fixedModelPath)
         }
     }
 }

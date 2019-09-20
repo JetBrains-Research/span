@@ -25,22 +25,11 @@ import java.nio.file.Path
  * @author Alexey Dievsky
  * @since 10/04/15
  */
-class SpanDifferentialPeakCallingExperiment(
-        genomeQuery: GenomeQuery,
-        paths1: List<SpanDataPaths>,
-        paths2: List<SpanDataPaths>,
-        fragment: Fragment,
-        binSize: Int,
-        unique: Boolean
-): SpanModelFitExperiment<MLConstrainedNBHMM, Span1CompareFitInformation, ZLHID>(
-    Span1CompareFitInformation.effective(
-        genomeQuery,
-        paths1, paths2,
-        MultiLabels.generate(TRACK1_PREFIX, paths1.size).toList(),
-        MultiLabels.generate(TRACK2_PREFIX, paths2.size).toList(),
-        fragment, unique, binSize
-    ),
-    MLConstrainedNBHMM.fitter(paths1.size, paths2.size),
+class SpanDifferentialPeakCallingExperiment private constructor(
+        fitInformation: Span1CompareFitInformation
+) : SpanModelFitExperiment<MLConstrainedNBHMM, Span1CompareFitInformation, ZLHID>(
+    fitInformation,
+    MLConstrainedNBHMM.fitter(fitInformation.data1.size, fitInformation.data2.size),
     MLConstrainedNBHMM::class.java,
     ZLHID.values(), NullHypothesis.of(ZLHID.same())
 ) {
@@ -87,7 +76,14 @@ class SpanDifferentialPeakCallingExperiment(
                 unique: Boolean
         ): SpanDifferentialPeakCallingExperiment {
             check(paths1.isNotEmpty() && paths2.isNotEmpty()) { "No data" }
-            return SpanDifferentialPeakCallingExperiment(genomeQuery, paths1, paths2, fragment, bin, unique)
+            val fitInformation = Span1CompareFitInformation.effective(
+                genomeQuery,
+                paths1, paths2,
+                MultiLabels.generate(TRACK1_PREFIX, paths1.size).toList(),
+                MultiLabels.generate(TRACK2_PREFIX, paths2.size).toList(),
+                fragment, unique, bin
+            )
+            return SpanDifferentialPeakCallingExperiment(fitInformation)
         }
     }
 }

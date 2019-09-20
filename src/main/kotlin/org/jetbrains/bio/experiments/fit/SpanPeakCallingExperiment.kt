@@ -26,23 +26,15 @@ import java.nio.file.Path
  * @author Alexey Dievsky
  * @since 10/04/15
  */
-class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
-        genomeQuery: GenomeQuery,
-        paths: List<SpanDataPaths>,
-        fragment: Fragment,
-        binSize: Int,
-        unique: Boolean,
+class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any> private constructor(
+        fitInformation: Span1AnalyzeFitInformation,
         modelFitter: Fitter<Model>,
         modelClass: Class<Model>,
         states: Array<State>,
         nullHypothesis: NullHypothesis<State>,
         fixedModelPath: Path?
 ) : SpanModelFitExperiment<Model, Span1AnalyzeFitInformation, State>(
-    Span1AnalyzeFitInformation.effective(
-        genomeQuery, paths, MultiLabels.generate(TRACK_PREFIX, paths.size).toList(),
-        fragment, unique, binSize
-    ),
-    modelFitter, modelClass, states, nullHypothesis, fixedModelPath
+    fitInformation, modelFitter, modelClass, states, nullHypothesis, fixedModelPath
 ) {
 
     override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span"
@@ -66,10 +58,13 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
                 fixedModelPath: Path? = null
         ): SpanPeakCallingExperiment<out ClassificationModel, ZLH> {
             check(paths.isNotEmpty()) { "No data" }
+            val fitInformation = Span1AnalyzeFitInformation.effective(
+                genomeQuery, paths, MultiLabels.generate(TRACK_PREFIX, paths.size).toList(),
+                fragment, unique, bin
+            )
             return if (paths.size == 1) {
                 SpanPeakCallingExperiment(
-                    genomeQuery, paths,
-                    fragment, bin, unique,
+                    fitInformation,
                     MLFreeNBHMM.fitter().multiStarted(),
                     MLFreeNBHMM::class.java, ZLH.values(),
                     NullHypothesis.of(ZLH.Z, ZLH.L),
@@ -77,8 +72,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel, State : Any>(
                 )
             } else {
                 SpanPeakCallingExperiment(
-                    genomeQuery, paths,
-                    fragment, bin, unique,
+                    fitInformation,
                     MLConstrainedNBHMM.fitter(paths.size).multiStarted(),
                     MLConstrainedNBHMM::class.java, ZLH.values(),
                     NullHypothesis.of(ZLH.Z, ZLH.L),
