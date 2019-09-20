@@ -99,7 +99,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
 data class Span1AnalyzeFitInformation(
         override val build: String,
         override val data: List<SpanDataPaths>,
-        override val labels: List<String>,
+        val labels: List<String>,
         override val fragment: Fragment,
         override val unique: Boolean,
         override val binSize: Int,

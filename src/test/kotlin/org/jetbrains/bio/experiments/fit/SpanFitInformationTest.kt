@@ -98,7 +98,6 @@ class SpanFitInformationTest {
     fun checkLoad() {
         val info = Span2FitInformation(
             gq, SpanDataPaths("path_to_file".toPath(), "path_to_control".toPath()),
-            listOf("treatment_control"),
             "mapability.bigWig".toPath(), FixedFragment(42), false, 200
         )
         withTempFile("foo", ".tar") { path ->

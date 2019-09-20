@@ -62,9 +62,7 @@ class Span2PeakCallingExperiment private constructor(
         ): Span2PeakCallingExperiment {
             check(data.size == 1) { "Poisson regression mixture currently accepts a single data track." }
             val fitInformation = Span2FitInformation(
-                genomeQuery, data.single(),
-                listOfNotNull("y", data.single().control?.let { "input" }),
-                mapabilityPath, fragment, unique, binSize
+                genomeQuery, data.single(), mapabilityPath, fragment, unique, binSize
             )
             return Span2PeakCallingExperiment(fitInformation, fixedModelPath)
         }
@@ -74,7 +72,6 @@ class Span2PeakCallingExperiment private constructor(
 data class Span2FitInformation constructor(
         override val build: String,
         override val data: List<SpanDataPaths>,
-        override val labels: List<String>,
         val mapabilityPath: Path?,
         override val fragment: Fragment,
         override val unique: Boolean,
@@ -84,13 +81,12 @@ data class Span2FitInformation constructor(
     constructor(
             genomeQuery: GenomeQuery,
             data: SpanDataPaths,
-            labels: List<String>,
             mapabilityPath: Path?,
             fragment: Fragment,
             unique: Boolean,
             binSize: Int
     ): this(
-        genomeQuery.build, listOf(data), labels, mapabilityPath, fragment, unique, binSize, chromSizes(genomeQuery)
+        genomeQuery.build, listOf(data), mapabilityPath, fragment, unique, binSize, chromSizes(genomeQuery)
     )
 
     override val id = reduceIds(

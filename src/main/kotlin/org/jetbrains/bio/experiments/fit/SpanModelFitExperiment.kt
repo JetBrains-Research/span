@@ -512,7 +512,6 @@ data class SpanDataPaths(
 )
 
 interface SpanAnalyzeFitInformation : SpanFitInformation {
-    val labels: List<String>
     val data: List<SpanDataPaths>
     val fragment: Fragment
     val unique: Boolean
