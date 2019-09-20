@@ -48,7 +48,7 @@ import java.util.*
  * @property build Genome build (assembly).
  * @property binSize Bin size in bps.
  * @property chromosomesSizes A map of chromosome name -> chromosome length entries.
- * @property dataQuery A query that returns adataframe for each chromosome to serve as model input.
+ * @property dataQuery A query that returns a dataframe for each chromosome to serve as model input.
  * @property id A unique string identifier (include some kind of object hash if you compress identifiers). It's used
  * to generate the model file name if it's not provided. [reduceIds] is a recommended way to implement this property.
  */
@@ -171,9 +171,10 @@ interface SpanFitInformation {
     /**
      * Generates chromosome-wise dataframes for peak value calculation.
      *
-     * If the map doesn't contain a specific chromosome, its peak values will be 0.0.
+     * If the map doesn't contain a specific chromosome, its peak values will be 0.0, so empty map is a perfectly
+     * acceptable return value for this method.
      */
-    fun scoresDataFrame(): Map<Chromosome, DataFrame> = emptyMap()
+    fun scoresDataFrame(): Map<Chromosome, DataFrame>
 
     companion object {
 

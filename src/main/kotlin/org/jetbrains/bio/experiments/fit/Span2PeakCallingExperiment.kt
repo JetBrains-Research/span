@@ -94,6 +94,8 @@ data class Span2FitInformation constructor(
                 listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
     )
 
+    override fun scoresDataFrame(): Map<Chromosome, DataFrame> = emptyMap()
+
     override val dataQuery: Query<Chromosome, DataFrame>
         get() {
             val genomeQuery = genomeQuery()
