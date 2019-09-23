@@ -25,12 +25,17 @@ class Span2FitInformationTest {
         sanityCheck(mapabilityX, chrX, binSize)
         val genomeMeanMapability = mapabilityX.sum() / mapabilityX.size
         assertTrue(genomeMeanMapability > 0.0, "Total mean mapability was 0.0")
+        /**
+         * Genome mean mapability in the production code is calculated via BigWig summary method,
+         * which is not precise and depends on zoom levels.
+         */
+        val precision = 10.0 / chrX.length
         to1.get().filter { it != chrX }.forEach { chr ->
             val mapability = Span2FitInformation.binnedMapability(chr, path, binSize)
             sanityCheck(mapability, chr, binSize)
             mapability.forEachIndexed { index, value ->
                 Tests.assertEquals(
-                    genomeMeanMapability, value, 1E-6,
+                    genomeMeanMapability, value, precision,
                     "In absence of data, mean mapability $value on $chr at bin $index should be equal " +
                             "to genome mean mapability $genomeMeanMapability"
                 )
