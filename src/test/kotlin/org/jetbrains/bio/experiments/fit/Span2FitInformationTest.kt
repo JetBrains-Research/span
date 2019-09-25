@@ -1,7 +1,7 @@
 package org.jetbrains.bio.experiments.fit
 
 import com.google.common.math.IntMath
-import org.jetbrains.bio.Tests
+import org.apache.commons.math3.util.Precision
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.toQuery
@@ -25,19 +25,19 @@ class Span2FitInformationTest {
         sanityCheck(mapabilityX, chrX, binSize)
         val genomeMeanMapability = mapabilityX.sum() / mapabilityX.size
         assertTrue(genomeMeanMapability > 0.0, "Total mean mapability was 0.0")
-        /**
-         * Genome mean mapability in the production code is calculated via BigWig summary method,
-         * which is not precise and depends on zoom levels.
-         */
+        /*
+            Genome mean mapability in the production code is calculated via BigWig summary method,
+            which is not precise and depends on zoom levels.
+        */
         val precision = 10.0 / chrX.length
         to1.get().filter { it != chrX }.forEach { chr ->
             val mapability = Span2FitInformation.binnedMapability(chr, path, binSize)
             sanityCheck(mapability, chr, binSize)
             mapability.forEachIndexed { index, value ->
-                Tests.assertEquals(
-                    genomeMeanMapability, value, precision,
+                assertTrue(
+                    Precision.equals(genomeMeanMapability, value, precision),
                     "In absence of data, mean mapability $value on $chr at bin $index should be equal " +
-                            "to genome mean mapability $genomeMeanMapability"
+                    "to genome mean mapability $genomeMeanMapability"
                 )
             }
         }
