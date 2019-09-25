@@ -1,14 +1,13 @@
 package org.jetbrains.bio.experiments.fit
 
 import com.google.common.math.IntMath
-import org.apache.commons.math3.util.Precision
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.toQuery
 import org.jetbrains.bio.util.div
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.math.RoundingMode
-import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class Span2FitInformationTest {
@@ -34,10 +33,10 @@ class Span2FitInformationTest {
             val mapability = Span2FitInformation.binnedMapability(chr, path, binSize)
             sanityCheck(mapability, chr, binSize)
             mapability.forEachIndexed { index, value ->
-                assertTrue(
-                    Precision.equals(genomeMeanMapability, value, precision),
+                assertEquals(
                     "In absence of data, mean mapability $value on $chr at bin $index should be equal " +
-                    "to genome mean mapability $genomeMeanMapability"
+                            "to genome mean mapability $genomeMeanMapability",
+                    genomeMeanMapability, value, precision
                 )
             }
         }

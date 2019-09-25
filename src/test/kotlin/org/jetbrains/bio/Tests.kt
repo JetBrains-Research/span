@@ -1,6 +1,6 @@
 package org.jetbrains.bio
 
-import org.apache.commons.math3.util.Precision
+import org.junit.Assert.assertEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -27,10 +27,7 @@ object Tests {
     fun assertEquals(expected: DoubleArray, actual: DoubleArray, precision: Double) {
         assertEquals(expected.size, actual.size, "Array sizes differ")
         expected.zip(actual).forEachIndexed { i, (e, a) ->
-            assertTrue(
-                Precision.equals(e, a, precision),
-                "Arrays differ at position $i: expected $e, actual $a."
-            )
+            assertEquals("Arrays differ at position $i: expected $e, actual $a.", e, a, precision)
         }
     }
 
