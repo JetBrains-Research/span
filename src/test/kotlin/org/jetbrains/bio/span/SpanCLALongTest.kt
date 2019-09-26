@@ -131,7 +131,8 @@ compare                         Differential peak calling mode, experimental
                 val peaksPath = it / "peaks.bed"
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 val (out, _) = Logs.captureLoggingOutput {
-                    SpanCLA.main(arrayOf("compare",
+                    SpanCLA.main(arrayOf(
+                        "compare",
                         "-cs", chromsizes,
                         "--workdir", it.toString(),
                         "-t1", path.toString(),
@@ -139,7 +140,8 @@ compare                         Differential peak calling mode, experimental
                         "--peaks", peaksPath.toString(),
                         "--fdr", FDR.toString(),
                         "--gap", GAP.toString(),
-                        "--threads", THREADS.toString()))
+                        "--threads", THREADS.toString()
+                    ))
                 }
 
                 assertTrue(
@@ -391,6 +393,62 @@ LABELS, FDR, GAP options are ignored.
         }
     }
 
+    /**
+     * Model extension is used to determine the model type.
+     * .span = negative binomial HMM (classic Span)
+     * .span2 = Poisson regression mixture (experimental Span)
+     * any other = error, unrecognized type.
+     * If the model extension contradicts the provided '--type' command line argument, Span should exit with an error.
+     */
+    @Test
+    fun testCustomModelPathWrongExtension() {
+        withTempDirectory("work") { dir ->
+            withTempFile("track", ".bed.gz", dir) { path ->
+                // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
+                sampleCoverage(path, TO, BIN, goodQuality = true)
+
+                val chromsizes = Genome["to1"].chromSizesPath.toString()
+                val invalidModelPath = dir / "custom" / "path" / "model.foo"
+                val (_, invalidErr) = Logs.captureLoggingOutput {
+                    withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
+                        SpanCLA.main(arrayOf(
+                            "analyze",
+                            "-cs", chromsizes,
+                            "--workdir", dir.toString(),
+                            "-t", path.toString(),
+                            "--threads", THREADS.toString(),
+                            "--model", invalidModelPath.toString()
+                        ))
+                    }
+                }
+                assertIn(
+                    "Unrecognized model extension '.foo', should be either '.span' or '.span2'",
+                    invalidErr
+                )
+
+                val wrongModelPath = dir / "custom" / "path" / "model.span2"
+                val (_, wrongErr) = Logs.captureLoggingOutput {
+                    withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
+                        SpanCLA.main(arrayOf(
+                            "analyze",
+                            "-cs", chromsizes,
+                            "--workdir", dir.toString(),
+                            "-t", path.toString(),
+                            "--threads", THREADS.toString(),
+                            "--type", "nbhmm",
+                            "--model", wrongModelPath.toString()
+                        ))
+                    }
+                }
+                assertIn(
+                    "Stored model type (${SpanModel.POISSON_REGRESSION_MIXTURE}) " +
+                            "differs from the command line argument (${SpanModel.NB_HMM})",
+                    wrongErr
+                )
+            }
+        }
+    }
+
 
     @Test
     fun testOutput() {
@@ -422,7 +480,7 @@ LABELS, FDR, GAP options are ignored.
                 assertTrue(
                     format.parse(peaksPath) { parser ->
                         parser.all { entry ->
-                            val coverage = entry.unpack(6, 3).extraFields?.get(0)
+                            val coverage = entry.unpack(6).extraFields?.get(0)
                             return@all coverage != null && coverage != "0.0"
                         }
                     },
@@ -536,12 +594,28 @@ LABELS, FDR, GAP options are ignored.
         }
     }
 
+    @Test
+    fun analyzePartiallyEmptyCoverage() {
+        withTempFile("track", ".bed.gz") { path ->
+
+            sampleCoverage(path, GenomeQuery(Genome["to1"], "chr1", "chr2"), BIN, goodQuality = true)
+            println("Saved sampled track file: $path")
+
+            withTempDirectory("work") { dir ->
+                SpanCLA.main(arrayOf("analyze",
+                    "-cs", Genome["to1"].chromSizesPath.toString(),
+                    "-w", dir.toString(),
+                    "-t", path.toString()))
+            }
+        }
+    }
+
     companion object {
-        private val TO = GenomeQuery(Genome["to1"])
-        private const val BIN = 200
+        internal val TO = GenomeQuery(Genome["to1"])
+        internal const val BIN = 200
         private const val FDR = 1E-10
         private const val GAP = 10
-        private const val THREADS = 1
+        internal const val THREADS = 1
         private const val FRAGMENT = 150
 
         fun assertLinesEqual(expected: String, actual: String) =

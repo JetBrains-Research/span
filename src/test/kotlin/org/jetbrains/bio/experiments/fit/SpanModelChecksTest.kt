@@ -1,7 +1,9 @@
 package org.jetbrains.bio.experiments.fit
 
+import org.jetbrains.bio.statistics.emission.PoissonRegressionEmissionScheme
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
+import org.jetbrains.bio.statistics.mixture.PoissonRegressionMixture
 import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.statistics.state.ZLHID
 import org.jetbrains.bio.viktor.F64Array
@@ -16,7 +18,8 @@ import kotlin.test.assertFails
  * In the names of the tests:
  * - "F" means free model (just one replicate),
  * - "C" means constrained enrichment (>1 replicate),
- * - "D" means difference (1+ replicate vs 1+ replicate).
+ * - "D" means difference (1+ replicate vs 1+ replicate),
+ * - "M" means Poisson regression mixture (just one replicate).
  */
 
 class SpanModelChecksTest {
@@ -254,4 +257,43 @@ class SpanModelChecksTest {
     private fun assertNotFlipped(low: Int, high: Int, means: F64Array, ps: F64Array) {
         assert(means[low] < means[high] || ps[low] < ps[high]) { "Expected states not to flip" }
     }
+
+    @Test
+    fun testNoStatesFlipM() {
+        val regressionCoefficients = arrayOf(
+            doubleArrayOf(-4.0, 1.0),
+            doubleArrayOf(-5.0, 2.0)
+        )
+        val model = PoissonRegressionMixture(
+            F64Array.of(0.5, 0.4, 0.1),
+            listOf("first", "second"),
+            regressionCoefficients
+        )
+        model.flipStatesIfNecessary()
+        assertCorrect(model.weights)
+        assertEquals(regressionCoefficients[0], (model[1] as PoissonRegressionEmissionScheme).regressionCoefficients)
+        assertEquals(regressionCoefficients[1], (model[2] as PoissonRegressionEmissionScheme).regressionCoefficients)
+    }
+
+    @Test
+    fun testFlipM() {
+        val regressionCoefficients = arrayOf(
+            doubleArrayOf(-5.0, 2.0),
+            doubleArrayOf(-4.0, 1.0)
+        )
+        val model = PoissonRegressionMixture(
+            F64Array.of(0.5, 0.1, 0.4),
+            listOf("first", "second"),
+            regressionCoefficients
+        )
+        model.flipStatesIfNecessary()
+        assertCorrect(model.weights)
+        assertEquals(regressionCoefficients[1], (model[1] as PoissonRegressionEmissionScheme).regressionCoefficients)
+        assertEquals(regressionCoefficients[0], (model[2] as PoissonRegressionEmissionScheme).regressionCoefficients)
+    }
+
+    private fun assertCorrect(weights: F64Array) {
+        assert(weights[1] >= weights[2]) { "LOW weight is less than HIGH weight" }
+    }
+
 }

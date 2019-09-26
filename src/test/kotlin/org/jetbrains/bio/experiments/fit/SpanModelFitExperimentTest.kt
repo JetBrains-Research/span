@@ -27,10 +27,10 @@ class SpanModelFitExperimentTest {
         withTempFile("track", ".bed.gz") { path ->
             SpanCLALongTest.sampleCoverage(path, GenomeQuery(Genome["to1"]), 200, goodQuality = true)
             println("Saved sampled track file: $path")
-            val (_, dataQuery) = SpanModelFitExperiment.createEffectiveQueries(
-                GenomeQuery(Genome["to1"]), listOf(path to null),
-                listOf("foo"), AutoFragment, 200
-            )
+            val dataQuery = Span1AnalyzeFitInformation.effective(
+                GenomeQuery(Genome["to1"]), listOf(SpanDataPaths(path, null)),
+                listOf("foo"), AutoFragment, true, 200
+            ).dataQuery
 
             assertTrue(dataQuery.id.startsWith("${path.stemGz}_200_foo#"))
             val df = dataQuery.apply(Chromosome(Genome["to1"], "chr1"))
@@ -48,11 +48,9 @@ class SpanModelFitExperimentTest {
             )
             println("Saved sampled track file: $path")
             val (out, _) = Logs.captureLoggingOutput {
-                val (effectiveGenomeQuery, _) =
-                        SpanModelFitExperiment.createEffectiveQueries(
-                            GenomeQuery(Genome["to1"]),
-                            listOf(path to null), listOf("foo"), AutoFragment, 200
-                        )
+                val effectiveGenomeQuery = SpanModelFitExperiment.effectiveGenomeQuery(
+                    GenomeQuery(Genome["to1"]), listOf(SpanDataPaths(path, null)), AutoFragment, true
+                )
                 assertEquals("[chr1]", effectiveGenomeQuery.get().map { it.name }.toString())
             }
             assertIn("chr2: no reads detected, ignoring", out)
@@ -72,7 +70,7 @@ class SpanModelFitExperimentTest {
             )
             println("Saved sampled track file: $path")
             val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(
-                fullGenomeQuery, listOf(path to null), 200, AutoFragment
+                fullGenomeQuery, listOf(SpanDataPaths(path, null)), 200, AutoFragment
             )
             assertTrue(
                 peakCallingExperiment.results.getPeaks(fullGenomeQuery, 0.05, 0).isNotEmpty(),

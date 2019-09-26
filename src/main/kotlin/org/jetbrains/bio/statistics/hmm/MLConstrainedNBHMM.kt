@@ -2,6 +2,7 @@ package org.jetbrains.bio.statistics.hmm
 
 import org.apache.log4j.Logger
 import org.jetbrains.bio.dataframe.DataFrame
+import org.jetbrains.bio.experiments.fit.flipStatesIfNecessary
 import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.distribution.NegativeBinomialDistribution
@@ -27,12 +28,15 @@ import org.jetbrains.bio.viktor.F64Array
  * @author Oleg Shpynov
  * @since 20/05/14
  */
-class MLConstrainedNBHMM(stateDimensionEmissionMap: Array<IntArray>,
-                         means: DoubleArray, failures: DoubleArray)
-    : MLConstrainedHMM(stateDimensionEmissionMap,
-        F64Array.stochastic(stateDimensionEmissionMap.size),
-        F64Array.stochastic(stateDimensionEmissionMap.size,
-                stateDimensionEmissionMap.size)) {
+class MLConstrainedNBHMM(
+        stateDimensionEmissionMap: Array<IntArray>,
+        means: DoubleArray,
+        failures: DoubleArray
+) : MLConstrainedHMM(
+    stateDimensionEmissionMap,
+    F64Array.stochastic(stateDimensionEmissionMap.size),
+    F64Array.stochastic(stateDimensionEmissionMap.size, stateDimensionEmissionMap.size)
+) {
 
     private val zeroEmissionScheme = ConstantIntegerEmissionScheme(0)
     private val negBinEmissionSchemes = Array(numEmissionSchemes - 1) {
@@ -84,8 +88,13 @@ class MLConstrainedNBHMM(stateDimensionEmissionMap: Array<IntArray>,
          */
         fun fitter(numReplicates: Int): Fitter<MLConstrainedNBHMM> {
             return object : Fitter<MLConstrainedNBHMM> {
-                override fun guess(preprocessed: Preprocessed<DataFrame>, title: String,
-                                   threshold: Double, maxIter: Int, attempt: Int): MLConstrainedNBHMM {
+                override fun guess(
+                        preprocessed: Preprocessed<DataFrame>,
+                        title: String,
+                        threshold: Double,
+                        maxIter: Int,
+                        attempt: Int
+                ): MLConstrainedNBHMM {
                     val df = preprocessed.get()
                     val meanCoverage = DoubleArray(numReplicates)
                     val means = DoubleArray(numReplicates * 2)
@@ -111,8 +120,17 @@ class MLConstrainedNBHMM(stateDimensionEmissionMap: Array<IntArray>,
                         failures[d + numReplicates] = fs
                     }
 
-                    return MLConstrainedNBHMM(ZLH.constraintMap(numReplicates),
-                            means, failures)
+                    return MLConstrainedNBHMM(ZLH.constraintMap(numReplicates), means, failures)
+                }
+
+                override fun fit(
+                        preprocessed: List<Preprocessed<DataFrame>>,
+                        title: String,
+                        threshold: Double,
+                        maxIter: Int,
+                        attempt: Int
+                ) = super.fit(preprocessed, title, threshold, maxIter, attempt).apply {
+                    flipStatesIfNecessary(numReplicates)
                 }
             }
         }
@@ -124,12 +142,21 @@ class MLConstrainedNBHMM(stateDimensionEmissionMap: Array<IntArray>,
          */
         fun fitter(numReplicates1: Int, numReplicates2: Int): Fitter<MLConstrainedNBHMM> {
             return object : Fitter<MLConstrainedNBHMM> {
-                override fun guess(preprocessed: Preprocessed<DataFrame>, title: String,
-                                   threshold: Double, maxIter: Int, attempt: Int): MLConstrainedNBHMM =
-                        guess(listOf(preprocessed), title, threshold, maxIter, attempt)
+                override fun guess(
+                        preprocessed: Preprocessed<DataFrame>,
+                        title: String,
+                        threshold: Double,
+                        maxIter: Int,
+                        attempt: Int
+                ) = guess(listOf(preprocessed), title, threshold, maxIter, attempt)
 
-                override fun guess(preprocessed: List<Preprocessed<DataFrame>>, title: String,
-                                   threshold: Double, maxIter: Int, attempt: Int): MLConstrainedNBHMM {
+                override fun guess(
+                        preprocessed: List<Preprocessed<DataFrame>>,
+                        title: String,
+                        threshold: Double,
+                        maxIter: Int,
+                        attempt: Int
+                ): MLConstrainedNBHMM {
                     val df = DataFrame.rowBind(preprocessed.map { it.get() }.toTypedArray())
                     val means = DoubleArray((numReplicates1 + numReplicates2) * 2)
                     val failures = DoubleArray((numReplicates1 + numReplicates2) * 2)
@@ -173,9 +200,17 @@ class MLConstrainedNBHMM(stateDimensionEmissionMap: Array<IntArray>,
                         failures[d2 + numReplicates1 * 2] = fs
                         failures[d2 + numReplicates2 + numReplicates1 * 2] = fs
                     }
-                    return MLConstrainedNBHMM(
-                            ZLHID.constraintMap(numReplicates1, numReplicates2),
-                            means, failures)
+                    return MLConstrainedNBHMM(ZLHID.constraintMap(numReplicates1, numReplicates2), means, failures)
+                }
+
+                override fun fit(
+                        preprocessed: List<Preprocessed<DataFrame>>,
+                        title: String,
+                        threshold: Double,
+                        maxIter: Int,
+                        attempt: Int
+                ) = super.fit(preprocessed, title, threshold, maxIter, attempt).apply {
+                    flipStatesIfNecessary(numReplicates1, numReplicates2)
                 }
             }
         }

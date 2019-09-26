@@ -196,7 +196,7 @@ chromosome, start, end, name, score, strand, coverage/foldchange, -log(pvalue), 
  * This method doesn't duplicate array while computing, so array gets *modified*,
  * instead of StatUtils.percentile(doubles, percentile)
  */
-private fun DoubleArray.median(): Double {
+fun DoubleArray.median(): Double {
     return object : Percentile(50.0) {
         // force Percentile not to copy scores
         override fun getWorkArray(values: DoubleArray?, begin: Int, length: Int) = this@median
