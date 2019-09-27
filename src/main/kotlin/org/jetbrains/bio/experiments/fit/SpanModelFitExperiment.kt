@@ -59,6 +59,7 @@ interface SpanFitInformation {
     val chromosomesSizes: LinkedHashMap<String, Int>
     val dataQuery: Query<Chromosome, DataFrame>
     val id: String
+    val data: List<SpanDataPaths>
 
     fun genomeQuery(): GenomeQuery = GenomeQuery(Genome[build, chromosomesSizes], *chromosomesSizes.keys.toTypedArray())
 
@@ -513,7 +514,7 @@ data class SpanDataPaths(
 )
 
 interface SpanAnalyzeFitInformation : SpanFitInformation {
-    val data: List<SpanDataPaths>
+    override val data: List<SpanDataPaths>
     val fragment: Fragment
     val unique: Boolean
 }
