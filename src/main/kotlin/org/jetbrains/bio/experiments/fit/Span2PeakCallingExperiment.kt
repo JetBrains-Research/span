@@ -97,7 +97,7 @@ data class Span2FitInformation constructor(
     override fun scoresDataFrame(): Map<Chromosome, DataFrame> {
         val datum = data.single()
         return genomeQuery().get().associateBy({ it }) {
-            DataFrame().with("coverage", binnedCoverageAsInt(
+            DataFrame().with("coverage", binnedCoverage(
                 it,
                 ReadsQuery(genomeQuery(), datum.treatment, unique, fragment, logFragmentSize = false).get(),
                 binSize
@@ -124,8 +124,10 @@ data class Span2FitInformation constructor(
                     get() = reduceIds(listOfNotNull(treatmentCoverage.id, controlCoverage?.id))
 
                 override fun getUncached(input: Chromosome): DataFrame {
-                    val y = binnedCoverageAsInt(input, treatmentCoverage.get(), binSize)
-                    val control = controlCoverage?.let { binnedCoverageAsDouble(input, it.get(), binSize) }
+                    val y = binnedCoverage(input, treatmentCoverage.get(), binSize)
+                    val control = controlCoverage?.let {
+                        binnedCoverage(input, it.get(), binSize).map {  it.toDouble()}.toDoubleArray()
+                    }
                     val gc = CpGContent.binnedMeanCG(input, binSize)
                     val gc2 = (gc.asF64Array() * gc.asF64Array()).data
                     val mapability = mapabilityPath?.let { binnedMapability(input, it, binSize) }
@@ -142,7 +144,7 @@ data class Span2FitInformation constructor(
 
         const val VERSION = 3
 
-        fun binnedCoverageAsInt(chr: Chromosome, coverage: Coverage, binSize: Int): IntArray {
+        fun binnedCoverage(chr: Chromosome, coverage: Coverage, binSize: Int): IntArray {
             val len = (chr.length - 1) / binSize + 1
             val res = IntArray(len)
             for (i in 0 until len - 1) {
@@ -153,20 +155,6 @@ data class Span2FitInformation constructor(
             res[len - 1] = coverage.getBothStrandsCoverage(
                 ChromosomeRange((len - 1) * binSize, chr.length, chr)
             )
-            return res
-        }
-
-        fun binnedCoverageAsDouble(chr: Chromosome, coverage: Coverage, binSize: Int): DoubleArray {
-            val len = (chr.length - 1) / binSize + 1
-            val res = DoubleArray(len)
-            for (i in 0 until len - 1) {
-                res[i] = coverage.getBothStrandsCoverage(
-                    ChromosomeRange(i * binSize, (i + 1) * binSize, chr)
-                ).toDouble()
-            }
-            res[len - 1] = coverage.getBothStrandsCoverage(
-                ChromosomeRange((len - 1) * binSize, chr.length, chr)
-            ).toDouble()
             return res
         }
 
