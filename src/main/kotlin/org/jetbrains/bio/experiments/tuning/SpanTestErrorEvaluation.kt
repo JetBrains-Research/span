@@ -11,6 +11,9 @@ import org.jetbrains.bio.experiment.Experiment
 import org.jetbrains.bio.experiments.fit.SpanDataPaths
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.genome.containers.LocationsMergingList
+import org.jetbrains.bio.io.BedFormat
+import org.jetbrains.bio.io.toLocation
+import org.jetbrains.bio.io.unpack
 import org.jetbrains.bio.span.getPeaks
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.util.div
@@ -41,7 +44,13 @@ class SpanTestErrorEvaluation(
         return builder.build()
     }
 
-    internal data class ProcessingResults(val trainingError: Double, val testError: Double, val fdr: Double, val gap: Int)
+    internal data class ProcessingResults(
+            val trainingError: Double,
+            val testError: Double,
+            val macs2Error: Double,
+            val fdr: Double,
+            val gap: Int
+    )
 
     private fun processTrack(target: String, track: LabelledTrack): Map<Int, List<ProcessingResults>> {
         val name = track.name
@@ -51,6 +60,17 @@ class SpanTestErrorEvaluation(
         val inputPath = dataConfig.tracksMap.entries
                 .filter { it.key.dataType.toDataType() == DataType.CHIP_SEQ && ChipSeqTarget.isInput(it.key.dataType) }
                 .flatMap { it.value }.map { it.second.path }.first()
+        val cellType = name.substring(0, 2)
+        val macs2Path = "/mnt/stripe/aging_paper_website_files/chipseq/Y20O20/peaks" /
+                target /
+                "${cellType}_${name}_${target}_broad1.0E-4_peaks.broadPeak"
+        val macs2Format = BedFormat.from("bed6+3")
+        val macs2Peaks = LocationsMergingList.create(
+            dataConfig.genomeQuery,
+            macs2Format.parse(macs2Path) { bedParser ->
+                bedParser.mapNotNull { it.unpack(macs2Format).toLocation(dataConfig.genomeQuery.genome) }
+            }
+        )
         val results = SpanPeakCallingExperiment.getExperiment(
             dataConfig.genomeQuery,
             listOf(SpanDataPaths(trackPath, inputPath)),
@@ -71,7 +91,11 @@ class SpanTestErrorEvaluation(
                     trainTest.test,
                     LocationsMergingList.create(dataConfig.genomeQuery, peaks.map { it.location })
                 ).error()
-                ProcessingResults(trainError, testError, fdr, gap)
+                val macs2Error = computeErrors(
+                    trainTest.test,
+                    macs2Peaks
+                ).error()
+                ProcessingResults(trainError, testError, macs2Error, fdr, gap)
             }
             res[k] = list
         }
