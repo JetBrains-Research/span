@@ -28,7 +28,7 @@ class SpanTestErrorEvaluation(
         val builder = DataFrameSpec(synchronized = true)
                 .strings("target", "cell")
                 .ints("k", "batch")
-                .doubles("train_error", "test_error", "fdr")
+                .doubles("train_error", "test_error", "macs2_error", "fdr")
                 .ints("gap")
                 .builder()
         val tracks = dataConfig.extractLabelledTracks(target)
@@ -37,7 +37,11 @@ class SpanTestErrorEvaluation(
             val results = processTrack(target, it)
             ks.forEach { k ->
                 results[k]?.forEachIndexed { batch, result ->
-                    builder.add(target, it.name, k, batch, result.trainingError, result.testError, result.fdr, result.gap)
+                    builder.add(
+                        target, it.name, k, batch,
+                        result.trainingError, result.testError, result.macs2Error,
+                        result.fdr, result.gap
+                    )
                 }
             }
         }
