@@ -157,9 +157,6 @@ data class Span1CompareFitInformation(
         }
     }
 
-    override val data: List<SpanDataPaths>
-        get() = throw UnsupportedOperationException("Span1CompareFitInformation#data is not supported")
-
     companion object {
         const val VERSION: Int = 3
 
