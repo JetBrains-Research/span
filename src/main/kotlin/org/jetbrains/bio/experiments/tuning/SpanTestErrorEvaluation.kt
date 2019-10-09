@@ -10,6 +10,7 @@ import org.jetbrains.bio.dataset.toDataType
 import org.jetbrains.bio.experiment.Experiment
 import org.jetbrains.bio.experiments.fit.SpanDataPaths
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment
+import org.jetbrains.bio.genome.Location
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.io.BedFormat
 import org.jetbrains.bio.io.toLocation
@@ -28,7 +29,7 @@ class SpanTestErrorEvaluation(
         val builder = DataFrameSpec(synchronized = true)
                 .strings("target", "cell")
                 .ints("k", "batch")
-                .doubles("train_error", "test_error", "macs2_error", "fdr")
+                .doubles("train_error", "test_error", "macs2_error", "sicer_error", "fdr")
                 .ints("gap")
                 .builder()
         val tracks = dataConfig.extractLabelledTracks(target)
@@ -39,7 +40,7 @@ class SpanTestErrorEvaluation(
                 results[k]?.forEachIndexed { batch, result ->
                     builder.add(
                         target, it.name, k, batch,
-                        result.trainingError, result.testError, result.macs2Error,
+                        result.trainingError, result.testError, result.macs2Error, result.sicerError,
                         result.fdr, result.gap
                     )
                 }
@@ -52,6 +53,7 @@ class SpanTestErrorEvaluation(
             val trainingError: Double,
             val testError: Double,
             val macs2Error: Double,
+            val sicerError: Double,
             val fdr: Double,
             val gap: Int
     )
@@ -66,13 +68,28 @@ class SpanTestErrorEvaluation(
                 .flatMap { it.value }.map { it.second.path }.first()
         val cellType = name.substring(0, 2)
         val macs2Path = "/mnt/stripe/aging_paper_website_files/chipseq/Y20O20/peaks" /
-                target /
+                target / "macs_broad" /
                 "${cellType}_${name}_${target}_broad1.0E-4_peaks.broadPeak"
         val macs2Format = BedFormat.from("bed6+3")
         val macs2Peaks = LocationsMergingList.create(
             dataConfig.genomeQuery,
             macs2Format.parse(macs2Path) { bedParser ->
                 bedParser.mapNotNull { it.unpack(macs2Format).toLocation(dataConfig.genomeQuery.genome) }
+            }
+        )
+        val sicerGap = if (target == "H3K4me3") "200" else "600"
+        val sicerPath = "/mnt/stripe/bio/experiments/configs/Y20O20/benchmark" /
+                target / "sicer/0.01_$sicerGap/${cellType}_${name}_$target-W200-G$sicerGap-FDR0.01-island.bed"
+        val sicerPeaks = LocationsMergingList.create(
+            dataConfig.genomeQuery,
+            BedFormat.auto(sicerPath).parse(sicerPath) { bedParser ->
+                bedParser.mapNotNull {
+                    with(it) {
+                        dataConfig.genomeQuery[chrom]?.let {
+                            Location(start, end, it)
+                        }
+                    }
+                }
             }
         )
         val results = SpanPeakCallingExperiment.getExperiment(
@@ -95,11 +112,9 @@ class SpanTestErrorEvaluation(
                     trainTest.test,
                     LocationsMergingList.create(dataConfig.genomeQuery, peaks.map { it.location })
                 ).error()
-                val macs2Error = computeErrors(
-                    trainTest.test,
-                    macs2Peaks
-                ).error()
-                ProcessingResults(trainError, testError, macs2Error, fdr, gap)
+                val macs2Error = computeErrors(trainTest.test, macs2Peaks).error()
+                val sicerError = computeErrors(trainTest.test, sicerPeaks).error()
+                ProcessingResults(trainError, testError, macs2Error, sicerError, fdr, gap)
             }
             res[k] = list
         }
@@ -110,7 +125,7 @@ class SpanTestErrorEvaluation(
         dataConfig.dataTypes().filter {
             it.toDataType() == DataType.CHIP_SEQ && !ChipSeqTarget.isInput(it)
         }.forEach {
-            processModification(it).save(experimentPath / "$it.tsv")
+            processModification(it).save(experimentPath / "sicer/$it.tsv")
         }
     }
 
