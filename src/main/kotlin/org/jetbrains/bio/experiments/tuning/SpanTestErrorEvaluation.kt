@@ -16,7 +16,9 @@ import org.jetbrains.bio.io.BedFormat
 import org.jetbrains.bio.io.toLocation
 import org.jetbrains.bio.io.unpack
 import org.jetbrains.bio.span.getPeaks
+import org.jetbrains.bio.span.savePeaks
 import org.jetbrains.bio.statistics.distribution.Sampling
+import org.jetbrains.bio.util.createDirectories
 import org.jetbrains.bio.util.div
 import org.jetbrains.bio.util.toPath
 import java.util.concurrent.ConcurrentHashMap
@@ -29,7 +31,7 @@ class SpanTestErrorEvaluation(
         val builder = DataFrameSpec(synchronized = true)
                 .strings("target", "cell")
                 .ints("k", "batch")
-                .doubles("train_error", "test_error", "macs2_error", "sicer_error", "fdr")
+                .doubles("train_error", "test_error", "span_error", "macs2_error", "sicer_error", "fdr")
                 .ints("gap")
                 .builder()
         val tracks = dataConfig.extractLabelledTracks(target)
@@ -40,7 +42,7 @@ class SpanTestErrorEvaluation(
                 results[k]?.forEachIndexed { batch, result ->
                     builder.add(
                         target, it.name, k, batch,
-                        result.trainingError, result.testError, result.macs2Error, result.sicerError,
+                        result.trainingError, result.testError, result.spanError, result.macs2Error, result.sicerError,
                         result.fdr, result.gap
                     )
                 }
@@ -52,6 +54,7 @@ class SpanTestErrorEvaluation(
     internal data class ProcessingResults(
             val trainingError: Double,
             val testError: Double,
+            val spanError: Double,
             val macs2Error: Double,
             val sicerError: Double,
             val fdr: Double,
@@ -97,6 +100,10 @@ class SpanTestErrorEvaluation(
             listOf(SpanDataPaths(trackPath, inputPath)),
             Span.DEFAULT_BIN, AutoFragment
         ).results
+        val spanPeaks = LocationsMergingList.create(
+            dataConfig.genomeQuery,
+            results.getPeaks(dataConfig.genomeQuery, Span.DEFAULT_FDR, Span.DEFAULT_GAP).map { it.location }
+        )
         val res = ConcurrentHashMap<Int, List<ProcessingResults>>()
         ks.toList().parallelStream().forEach { k ->
             println("k: $k")
@@ -107,14 +114,22 @@ class SpanTestErrorEvaluation(
                 )
                 val trainError = errors[optimal].error()
                 val (fdr, gap) = Span.parameters[optimal]
+
                 val peaks = results.getPeaks(dataConfig.genomeQuery, fdr, gap)
+
+                val tunedPeaksPath = experimentPath / "tuned_span_peaks" / "k$k" / "b$batch" /
+                        "${cellType}_${name}_${target}_200_${fdr}_${gap}_peaks.bed"
+                tunedPeaksPath.parent.createDirectories()
+                savePeaks(peaks, tunedPeaksPath)
+
                 val testError = computeErrors(
                     trainTest.test,
                     LocationsMergingList.create(dataConfig.genomeQuery, peaks.map { it.location })
                 ).error()
+                val spanError = computeErrors(trainTest.test, spanPeaks).error()
                 val macs2Error = computeErrors(trainTest.test, macs2Peaks).error()
                 val sicerError = computeErrors(trainTest.test, sicerPeaks).error()
-                ProcessingResults(trainError, testError, macs2Error, sicerError, fdr, gap)
+                ProcessingResults(trainError, testError, spanError, macs2Error, sicerError, fdr, gap)
             }
             res[k] = list
         }
