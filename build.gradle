@@ -128,6 +128,7 @@ shadowJar {
         // Fix log4j:ERROR Could not instantiate class [org.apache.log4j.xml.DOMConfigurator]
         exclude(dependency('log4j:log4j:1.2.17'))
     }
+    zip64 true
 }
 
 jar {
