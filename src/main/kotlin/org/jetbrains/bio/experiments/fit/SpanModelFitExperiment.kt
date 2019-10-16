@@ -11,7 +11,6 @@ import org.jetbrains.bio.experiment.Experiment
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
-import org.jetbrains.bio.query.CachingQuery
 import org.jetbrains.bio.query.Query
 import org.jetbrains.bio.query.ReadsQuery
 import org.jetbrains.bio.query.reduceIds
@@ -232,8 +231,7 @@ interface SpanFitInformation {
                     GSONUtil.classSpecificFactory(SpanFitInformation::class.java) { gson, factory ->
                         GSONUtil.classAndVersionAdapter(
                             gson, factory,
-                            "fit.information.fqn","version",
-                            "org.jetbrains.bio.experiments.fit.FallbackSpanFitInformation"
+                            "fit.information.fqn","version"
                         )
                     }
                 ).registerTypeAdapter(
@@ -257,32 +255,6 @@ interface SpanFitInformation {
             check(info != null) { "Failed to load fit information from $path." }
             return info
         }
-    }
-}
-
-@Suppress("unused")
-data class FallbackSpanFitInformation(
-        override val build: String,
-        override val binSize: Int,
-        override val chromosomesSizes: LinkedHashMap<String, Int>
-): SpanFitInformation {
-
-    override fun scoresDataFrame(): Map<Chromosome, DataFrame> = emptyMap()
-
-    override val dataQuery: Query<Chromosome, DataFrame> get() = object : CachingQuery<Chromosome, DataFrame>() {
-        override val id: String get() = "fallback"
-
-        override fun getUncached(input: Chromosome): DataFrame = DataFrame()
-    }
-
-    override val id: String get() = "fallback"
-
-    override fun equals(other: Any?) =
-            other != null && other is SpanFitInformation &&
-                    build == other.build && binSize == other.binSize && chromosomesSizes == other.chromosomesSizes
-
-    companion object {
-        const val VERSION = 2
     }
 }
 
