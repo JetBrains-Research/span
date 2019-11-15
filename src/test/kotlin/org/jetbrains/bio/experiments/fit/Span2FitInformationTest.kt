@@ -28,7 +28,7 @@ class Span2FitInformationTest {
             Genome mean mapability in the production code is calculated via BigWig summary method,
             which is not precise and depends on zoom levels.
         */
-        val precision = 10.0 / chrX.length
+        val precision = 100.0 / chrX.length
         to1.get().filter { it != chrX }.forEach { chr ->
             val mapability = Span2FitInformation.binnedMapability(chr, path, binSize)
             sanityCheck(mapability, chr, binSize)
