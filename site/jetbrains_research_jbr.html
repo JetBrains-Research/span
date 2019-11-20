@@ -1,0 +1,106 @@
+<p><strong>JBR Genome Browser</strong> is a general purpose genome browser with integrated
+    <a href="tools.html">visual peak calling</a> support.</p>
+<h2>Contents</h2>
+<ul>
+    <li><a href="#jbr-features">Features</a></li>
+    <li><a href="#jbr-system-requirements">System Requirements</a></li>
+    <li><a href="#jbr-downloads">Downloads</a></li>
+    <li><a href="#jbr-installation">Installation</a></li>
+    <li><a href="#jbr-documentation">Documentation</a></li>
+</ul>
+
+<a id="jbr-features"><h2>Features</h2></a>
+<ul>
+    <li>Integrated peaks annotating</li>
+    <li>On-the-fly peak calling using <a href="https://research.jetbrains.org/groups/biolabs/tools/span-peak-analyzer">SPAN</a> models</li>
+    <li>Support for observing multiple genome locations simultaneously</li>
+    <li>Classical genome browser features to view various genome data formats</li>
+    <li>Supported data file formats: BED (including MACS2, SICER peaks), WIG, TDF, BigBed,
+        bigWig
+    </li>
+    <li>Supported sessions formats: JBR *.yaml, IGV *.xml session files</li>
+    <li>Remote URL bigWig/BigBed/BED files support</li>
+    <li>BED track peaks statistics</li>
+    <li>BigWig signal statistics track for multiple locations</li>
+    <li>Optimized for working with large sessions</li>
+</ul>
+
+<a id="jbr-system-requirements"><h2>System Requirements</h2></a>
+<ul>
+    <li>Operation System:
+        <ul>
+            <li> Microsoft Windows 10/8/7/Vista/2003/XP (incl.64-bit)</li>
+            <li> MacOS 10.8.3 or higher</li>
+            <li> Linux. Recommended desktops: GNOME, KDE or UNITY</li>
+        </ul>
+    </li>
+    <li>2 GB RAM minimum</li>
+    <li>1024x768 minimum screen resolution</li>
+</ul>
+<p>Pre-installed Java Runtime isn't required, as it is bundled in JBR Genome Browser
+    distribution.</p>
+
+<a id="jbr-downloads"><h2>Downloads</h2></a>
+<p>JBR Genome Browser (build @BUILD@), released on @DATE@</p>
+<table class="table table-bordered table-nonfluid">
+    <thead class="thead-light">
+    <tr>
+        <th>Download</th>
+        <th>Description</th>
+    </tr>
+    </thead>
+    <tbody>
+    @TABLE@
+    </tbody>
+</table>
+
+<a id="jbr-installation"><h2>Installation</h2></a>
+<p>Download suitable build for your OS from <a href="#jbr-downloads">Downloads</a>
+    section. We recommend choosing 64-bit version if your OS is 64-bit.</p>
+
+<p><b>Windows:</b></p>
+<ul>
+    <li>Unpack the browser @FILENAME-win@ file:
+    <li>Run <code class="code-grey">jbr.exe</code>.</li>
+</ul>
+
+<p><b>MacOS:</b></p>
+<ul>
+    <li>Download the @FILENAME-mac@ macOS Disk Image file</li>
+    <li>Mount it as another disk in your system</li>
+    <li>Copy JBR Genome Browser to your Applications folder</li>
+</ul>
+<p>
+    If you wan't to open multiple JBR instances launch second, third, etc
+    instances using commandline:
+    <code class="code-grey">
+        open -n "/Applications/JBR 1.0.app"
+    </code>
+</p>
+
+<p><b>Linux:</b></p>
+<ul>
+    <li>Unpack the browser @FILENAME-linux@ file using the following command:
+        <br/>
+        <code class="code-grey">tar -xzf @FILENAME-linux@</code>
+    </li>
+    <li>Run <code class="code-grey">jbr.sh</code> from the bin subdirectory.</li>
+</ul>
+
+<a id="jbr-documentation"><h2>Documentation</h2></a>
+<!--<p>-->
+<!--    <mark>TODO: url to PDF file or smth</mark>-->
+<!--</p>-->
+<p><b>Visual Peak Calling Tutorial: </b>
+    <br/>
+    Comprehensive step-by-step tutorial on using integrated
+    peak calling solution is available in
+    <a href="https://artyomovlab.wustl.edu/aging/howto.html">How-To</a> section.
+</p>
+
+<a id="jbr-bugtracker"><h2>Errors Reporting</h2></a>
+    <b>Error reporting</b><br/>
+    Report any errors or comments in the public JBR Genome browser issue <a
+        href="https://github.com/JetBrains-Research/jbr/issues">tracker</a>.
+
+<p><small>Modified @DATE@</small></p>

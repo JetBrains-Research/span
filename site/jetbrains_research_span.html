@@ -1,0 +1,380 @@
+<h1>SPAN Peak Analyzer</h1>
+<pre id="span-ascii" class="code-grey">
++----------------------------------+
+|SPAN Semi-supervised Peak Analyzer|
++----------------------------|/----+
+           ,        ,
+      __.-'|'-.__.-'|'-.__
+    ='=====|========|====='=
+    ~_^~-^~~_~^-^~-~~^_~^~^~^
+</pre>
+<p><strong><br></strong>
+</p>
+
+<strong>SPAN</strong> is a tool for analyzing ChIP-seq / ATAC-seq data supporting ultra-low and single-cell input.
+
+<h2>Contents</h2>
+<ul>
+    <li><a href="#span-features">Features</a></li>
+    <li><a href="#span-installation">Installation</a></li>
+    <li><a href="#span-galaxy">Galaxy</a></li>
+    <li><a href="#span-usage">Usage of SPAN</a></li>
+    <li>
+        <ul>
+            <li><a href="#span-peak-calling">Peak calling</a></li>
+            <li><a href="#span-supervised-peak-calling">Supervised Peak Calling</a></li>
+            <li><a href="#span-model-fitting">Model Fitting</a></li>
+        </ul>
+    </li>
+    <li><a href="#span-output-files">Output Files</a></li>
+    <li><a href="#span-study-cases">Study Cases</a></li>
+    <li><a href="#span-error-reporting">Error reporting</a></li>
+    <li><a href="#span-faq">FAQ</a></li>
+</ul>
+<h2><a id="span-features">Features</a></h2>
+<ul>
+    <li>Part of integrated peak calling <a href="https://artyomovlab.wustl.edu/aging/tools.html">solution</a></li>
+    <li>Works with both conventional and ultra-low-input ChIP-seq data</li>
+    <li>Works with both narrow and wide modifications</li>
+    <li>Works with both single-end and paired-end libraries</li>
+    <li>Fragment size prediction for single-end libraries</li>
+    <li>Capable to process tracks with different signal-to-noise ratio</li>
+    <li>Supports optional control track</li>
+    <li>Supports replicates on model level</li>
+    <li>False Discovery Rate correction</li>
+    <li>Experimental: differential peak calling</li>
+</ul>
+
+<h2><a id="span-installation">Installation</a></h2>
+<p>SPAN Peak Analyzer (build @BUILD@), released on @DATE@</p>
+<table class="table table-bordered table-nonfluid">
+    <thead class="thead-light">
+    <tr>
+        <th>Download
+        </th>
+        <th>Description
+        </th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td><a href="https://download.jetbrains.com/biolabs/span/span-@BUILD@.jar">span-@BUILD@.jar</a>
+        </td>
+        <td> Multi-platform JAR package
+        </td>
+    </tr>
+    </tbody>
+</table>
+
+<p>Requirements:</p>
+<ol>
+    <li>4 GB RAM minimum</li>
+    <li>Download and install <a href="https://www.java.com/en/download/" rel="nofollow">Java 8</a>.</li>
+    <li>Download the <code class="code-grey">&lt;build&gt;.chrom.sizes</code> chromosome sizes of the organism
+        you want to analyze from the UCSC
+        <a href="https://hgdownload.cse.ucsc.edu/downloads.html" rel="nofollow">website</a>.
+        <br>
+        Here is <a href="https://hgdownload.cse.ucsc.edu/goldenPath/hg19/bigZips/hg19.chrom.sizes">the file</a>
+        used in our study.
+    </li>
+</ol>
+
+<h2><a id="span-galaxy">Galaxy</a></h2>
+<p>SPAN is available as tool in the official <a
+        href="https://toolshed.g2.bx.psu.edu/view/jetbrains/span/66b2c9a128ab">ToolShed</a>
+    for <a href="https://galaxyproject.org">Galaxy</a>. You can ask your Galaxy administrator to install it.
+</p>
+
+<h2><a id="span-usage">Usage of SPAN</a></h2>
+<p><code class="code-grey">java -Xmx4G -jar span-@BUILD@.jar [-h] [--version] analyze</code></p>
+<p>
+    Use <code class="code-grey">java</code> <code class="code-grey">-Xmx</code> memory settings to configure memory
+    usage.
+    4 gigabytes are used in examples.
+</p>
+<table class="table table-bordered table-nonfluid">
+    <tbody>
+    <tr>
+        <th>Example of regular peak calling</th>
+        <td class="code-grey">
+            <code style="color:black" id="spanCodePeakCalling">
+                java -Xmx4G -jar span.jar analyze -t ChIP.bam -c Control.bam --cs Chrom.sizes -p Results.peak
+            </code>
+        </td>
+    </tr>
+    <tr>
+        <th>Example of supervised peak calling</th>
+        <td class="code-grey"><code style="color:black" id="spanCodePeakCallingSupervised">
+            java -Xmx4G -jar span.jar analyze -t ChIP.bam -c Control.bam --cs Chrom.sizes -l Labels.bed -p Results.peak
+        </code>
+        </td>
+    </tr>
+    <tr>
+        <th>Example of model fitting</th>
+        <td class="code-grey"><code style="color:black" id="spanCodeModelFitting">
+            java -Xmx4G -jar span.jar analyze -t ChIP.bam -c Control.bam --cs Chrom.sizes
+        </code>
+        </td>
+    </tr>
+    </tbody>
+</table>
+
+<h3><a id="span-peak-calling">Peak calling</a></h3>
+<p>
+    To analyze a single (possibly replicated) biological condition use <code class="code-grey">analyze</code>
+    command.
+</p>
+<p>
+    <strong>-b, --bin BIN_SIZE</strong><br>
+    Peak analysis is performed on read coverage tiled into consequent bins, with size being
+    configurable. Default value
+    is 200bp, approximately the length of one nucleosome.
+</p>
+<p>
+    <strong>-t, --treatment TREATMENT</strong><br>
+    <strong>Required</strong>. ChIP-seq treatment file. Supported formats: BAM, BED,
+    BED.gz or bigWig
+    file. If multiple files
+    are given, treated as replicates.
+    Multiple files should be separated by commas:
+    <code class="code-grey">-t
+        A,B,C
+    </code>. Multiple files are processed as replicates on model level.
+</p>
+<p>
+    <strong>-c, --control CONTROL</strong><br>
+    Control file. Multiple files should be separated by commas. Single control file or
+    separate file per each treatment file required.
+    <br>
+    Follow instructions for <code class="code-grey">-t, --treatment TREATMENT</code>.
+</p>
+<p>
+    <strong>-cs, --chrom.sizes CHROMOSOMES_SIZES</strong><br>
+    <strong>Required</strong>. Chromosome sizes file for genome build used in <code class="code-grey">TREATMENT</code>
+    and
+    <code class="code-grey">CONTROL</code> files.
+    <br>
+    Can be downloaded at <code class="code-grey">https://hgdownload.cse.ucsc.edu/goldenPath/&lt;build&gt;/bigZips/&lt;build&gt;.chrom.sizes</code>
+</p>
+<p>
+    <strong>--fragment FRAGMENT</strong><br>
+    Fragment size. If provided, reads are shifted appropriately. If not provided,
+    the shift is estimated from the data.
+    <br>
+    <code class="code-grey">--fragment 0</code> argument is necessary for ATAC-Seq data processing.
+</p>
+<p>
+    <strong>-k, --keep-dup</strong><br>
+    Keep duplicates. By default SPAN filters out redundant reads, aligned at the same genomic position.<br>
+    <code class="code-grey">--keep-dup</code> argument is necessary for single cell ATAC-Seq data processing.
+</p>
+<p>
+    <strong>-m, --model MODEL</strong><br>
+    This option is used to specify SPAN model path, if not provided, model name is formed by input names and
+    other arguments.
+</p>
+<p>
+    <strong>-p, --peaks PEAKS</strong><br>
+    Resulting peaks file in ENCODE <a
+        href="https://genome.ucsc.edu/FAQ/FAQformat.html#format13">broadPeak</a><sup>*</sup> (BED 6+3) format.
+    If omitted, only model fitting step is performed.
+</p>
+<p>
+    <strong>-f, --fdr FDR</strong><br>
+    Minimum FDR cutoff to call significant regions, default value is <code class="code-grey">1.0E-6</code>.
+    <br>
+    <code class="code-grey">SPAN</code> reports p- and q- values for the
+    null hypothesis that a given bin is not enriched with a histone modification. Peaks are
+    formed from a list of truly
+    (in the FDR sense) enriched bins for the analyzed biological condition by thresholding the Q-value with a
+    cutoff <code class="code-grey">FDR</code> and merging spatially close peaks using <code class="code-grey">GAP</code>
+    option to broad ones. This is
+    equivalent to controlling
+    FDR.
+    <br>q-values are are calculated from p-values using Benjamini-Hochberg procedure.
+</p>
+<p>
+    <strong>-g, --gap GAP</strong><br>
+    Gap size to merge spatially close peaks. Useful for wide histone modifications. Default
+    value is 5, i.e. peaks
+    separated
+    by 5*
+    <code class="code-grey">BIN</code> distance or less are merged.
+</p>
+<p>
+    <strong>--labels LABELS</strong><br>
+    Labels BED file. Used in <a href="https://artyomovlab.wustl.edu/aging/tools.html">semi-supervised peak calling</a>.
+</p>
+<p>
+    <strong>-d, --debug</strong><br>
+    Print all the debug information, used for troubleshooting.
+</p>
+<p>
+    <strong>-q, --quiet</strong><br>
+    Turn off output.
+</p>
+<p>
+    <strong>-w, --workdir PATH</strong><br>
+    Path to the working directory (stores coverage and model caches).
+</p>
+<p>
+    <strong>--threads THREADS</strong><br>
+    Configures parallelism level.<br>
+    <code class="code-grey">SPAN</code> utilizes both multithreading and specialized processor extensions
+    like
+    SSE2, AVX, etc.
+    Parallel computations were performed using open-source library
+    <a href="https://github.com/JetBrains-Research/viktor">viktor</a> for parallel
+    matrices
+    computations in
+    <a href="https://kotlinlang.org/">Kotlin</a> programming language.
+</p>
+<h3>Supervised peak calling</h3>
+<p> When <code class="code-grey">LABELS</code> parameter is given,
+    it is used to optimize peak caller parameters for markup.
+</p>
+
+<h3><a id="span-model-fitting">Model fitting</a></h3>
+<p><code class="code-grey">SPAN</code> workflow consists of several steps:</p>
+<ol>
+    <li>Convert raw reads to tags using user-supplied <code class="code-grey">FRAGMENT</code> parameter
+        or maximum cross-correlation estimate.
+    </li>
+    <li>Compute coverage for all genome tiled into bins of <code class="code-grey">BIN</code>
+        base pairs.
+    </li>
+    <li>Fit 3-state hidden Markov model that classifies bins as <code class="code-grey">ZERO</code>
+        states with no coverage, <code class="code-grey">LOW</code> states of non-specific binding,
+        and
+        <code class="code-grey">HIGH</code> states of the specific binding.
+    </li>
+    <li>Compute posterior <code class="code-grey">HIGH</code> state probability of each bin.</li>
+    <li>Trained model is saved into <code class="code-grey">.span</code> binary format.
+    </li>
+    <li>Peaks are computed using trained model and <code class="code-grey">FDR</code> and
+        <code class="code-grey">GAP</code> parameters.
+    </li>
+    <li>If <code class="code-grey">LABELS</code> are provided, optimal parameters are
+        computed
+        to conform with them.
+    </li>
+</ol>
+<p> Model fitting mode produces trained model file in binary format as output, which can be:</p>
+<ol>
+    <li>visualized directly in <a href="https://research.jetbrains.org/groups/biolabs/tools/jbr-genome-browser" target="_blank">JBR Genome Browser</a>
+    </li>
+    <li>used in integrated peak calling <a href="https://artyomovlab.wustl.edu/aging/tools.html">pipeline</a></li>
+</ol>
+<h2>Output files</h2>
+<ul>
+    <li> If <code class="code-grey">OUTPUT</code> file is given, it will contain predicted and
+        FDR-controlled peaks in
+        the ENCODE
+        <a href="https://genome.ucsc.edu/FAQ/FAQformat.html#format13">broadPeak</a>
+        format, i.e. BED 6+3:
+        <br>
+        <code class="code-line">&lt;chromosome&gt; &lt;peak start&gt; &lt;peak end&gt; &lt;peak
+            name&gt; &lt;score&gt; . &lt;coverage / foldchange&gt; &lt;-log p-value&gt; &lt;-log
+            Q-value&gt;
+        </code>
+        <br/>
+        Same format is used by <a href="https://github.com/taoliu/MACS">MACS2</a> peak caller.
+    <li>
+        <ul>
+            <li>chromosome name</li>
+            <li>start position of peak</li>
+            <li>end position of peak</li>
+            <li>peak name</li>
+            <li>score of the peak, computed as log10(qvalue) * log(peak length). Useful for
+                peak ranking with wide
+                histone modifications.
+            </li>
+            <li>. (represents strand)</li>
+            <li>summary reads coverage in peak averaged over replicates. fold-change in
+                differential mode.
+            </li>
+            <li>-log10(pvalue) of null-hypothesis that given peak is in <code class="code-grey">ZERO</code> or
+                <code class="code-grey">LOW</code> state.
+            </li>
+            <li>-log10(qvalue), calculated from p-values using Benjamini-Hochberg procedure.
+                Median value for merged
+                peak.
+            </li>
+        </ul>
+
+    </li>
+    <li>In case of <code class="code-grey">SPAN</code> model fitting, it produces model file in binary format.
+        <br> NOTE: after model is trained once, it will be reused automatically in other modes.
+    </li>
+</ul>
+
+<h2><a id="span-study-cases">Study Cases</a></h2>
+<p>As a benchmark we applied SPAN peak calling approach to public conventional ChIP-seq
+    datasets as well as to a ULI ChIP-seq dataset.
+</p>
+<p>
+    CD14+ classical monocytes tracks available in ENCODE database were a natural choice for a
+    conventional ChIP-seq
+    dataset.
+    <br>
+    We also used the data from
+    <a href="https://academic.oup.com/bioinformatics/article/33/4/491/2608653">Hocking <i>et
+        al.
+    </i></a>
+    to evaluate <code class="code-grey">SPAN</code>.
+</p>
+<p>
+    <a href="https://www.ncbi.nlm.nih.gov/pubmed/25607992">Chen C <i>et al.</i></a> presented
+    an ultra-low-input
+    micrococcal nuclease-based native ChIP (ULI-NChIP) and sequencing method to generate
+    genome-wide histone mark profiles
+    with high resolution and reproducibility from as few as one thousand cells.
+    We used these tracks to estimate semi-supervised approach in extreme conditions.
+</p>
+<p>
+    <code class="code-grey">SPAN</code> produced high quality peak calling in all of these cases, see <a
+        href="https://artyomovlab.wustl.edu/aging/study_cases.html">report</a>.
+    <br>
+    This suggests that SPAN Peak Analyzer can be used as a general purpose peak calling
+    solution.
+</p>
+
+<h2><a id="span-error-reporting">Error reporting</a></h2>
+<p> Report any errors or comments in the public SPAN issue <a
+        href="https://github.com/JetBrains-Research/span/issues">tracker</a>.
+</p>
+
+<h2><a id="span-faq">FAQ</a></h2>
+<p>
+    Q: What is average running time?
+    <br>
+    A: <code class="code-grey">SPAN</code> is capable of processing single ChIP-Seq track in less than 1 hour on
+    moderate laptop (MacBook
+    Pro 2015).
+</p>
+<p>Q: Which operating systems are supported?
+    <br>
+    A: <code class="code-grey">SPAN</code> is developed in modern <a href="https://kotlinlang.org/?">Kotlin</a>
+    programming language and
+    can be executed on any platform supported by
+    <code class="code-grey">java</code>.
+</p>
+<p>
+    Q: Is differential peak calling supported?
+    <br>
+    A: This is experimental feature, see for details:
+    <code class="code-grey">java -Xmx4G -jar span.jar compare -h</code>
+</p>
+<p>Q: Where is <code class="code-grey">SPAN</code> source code?
+    <br>
+    A: Source code is available on <a href="https://github.com/JetBrains-Research/span">GitHub</a>
+</p>
+<p>Q: Where did you get this lovely span picture?
+    <br>
+    A: From <a href="https://ascii.co.uk/art/bridges" rel="nofollow">ascii.co.uk</a>, it seems
+    the original author goes
+    by the name
+    <code class="code-grey">jgs</code>.
+</p>
+
+<p><small>Modified @DATE@</small></p>
