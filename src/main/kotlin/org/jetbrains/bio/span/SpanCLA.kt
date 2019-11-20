@@ -48,9 +48,7 @@ object SpanCLA {
     init {
         // Load build properties
         val resource = SpanCLA::class.java.getResource("/span.properties")
-        if (resource != null) {
-            resource.openStream().use { System.getProperties().load(it) }
-        }
+        resource?.openStream()?.use { System.getProperties().load(it) }
     }
 
     private fun version() =
