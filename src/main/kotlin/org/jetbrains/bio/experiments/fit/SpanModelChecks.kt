@@ -3,9 +3,11 @@ package org.jetbrains.bio.experiments.fit
 import org.apache.log4j.Logger
 import org.jetbrains.bio.span.SpanCLA
 import org.jetbrains.bio.statistics.emission.NegBinEmissionScheme
+import org.jetbrains.bio.statistics.emission.NegBinRegressionEmissionScheme
 import org.jetbrains.bio.statistics.emission.PoissonRegressionEmissionScheme
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
+import org.jetbrains.bio.statistics.mixture.NegBinRegressionMixture
 import org.jetbrains.bio.statistics.mixture.PoissonRegressionMixture
 
 
@@ -53,6 +55,12 @@ internal fun PoissonRegressionMixture.probabilityFlip(state1: Int, state2: Int) 
     logWeights[state2] = tmp
 }
 
+internal fun NegBinRegressionMixture.probabilityFlip(state1: Int, state2: Int) {
+    val tmp = logWeights[state1]
+    logWeights[state1] = logWeights[state2]
+    logWeights[state2] = tmp
+}
+
 /**
  * Flip states in case when states with HIGH get lower mean than LOW
  */
@@ -61,6 +69,18 @@ internal fun PoissonRegressionMixture.flipStatesIfNecessary() {
     val highScheme = this[2] as PoissonRegressionEmissionScheme
     if (weights[1] < weights[2]){
         LOG.warn("After fitting the model, the weight of LOW state is lower than that of HIGH state.")
+        LOG.warn("This usually indicates that the states were flipped during fitting. We will now flip them back.")
+        this[2] = lowScheme
+        this[1] = highScheme
+        probabilityFlip(1, 2)
+    }
+}
+
+internal fun NegBinRegressionMixture.flipStatesIfNecessary() {
+    val lowScheme = this[1] as NegBinRegressionEmissionScheme
+    val highScheme = this[2] as NegBinRegressionEmissionScheme
+    if (weights[1] < weights[2]) {
+        LOG.warn("After fitting the model, the wight of LOW state is lower than that of HIGH state.")
         LOG.warn("This usually indicates that the states were flipped during fitting. We will now flip them back.")
         this[2] = lowScheme
         this[1] = highScheme

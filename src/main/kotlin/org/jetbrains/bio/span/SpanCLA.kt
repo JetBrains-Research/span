@@ -32,7 +32,7 @@ import java.nio.file.Path
  * Tool for analyzing and comparing ChIP-Seq data.
  * `analyze` and `compare` procedures rely on the Zero Inflated Negative Binomial Restricted Algorithm.
  *
- * There's also an experimental mode `analyze-experimental` that uses Poisson regression mixture.
+ * There's also an experimental mode `analyze-experimental` that uses a regression mixture.
  *
  * @author Oleg Shpynov
  * @since  14/09/15
@@ -423,7 +423,8 @@ compare                         Differential peak calling mode, experimental
                 acceptsAll(
                     listOf("type"),
                     "Model type. Either 'nbhmm' for negative binomial HMM (default), " +
-                            "or 'prm' for Poisson regression mixture (experimental)."
+                            "'prm' for Poisson regression mixture (experimental) " +
+                            "or 'nbrm' for Negative Binomial regression mixture (experimental)."
                 ).withRequiredArg()
             }
         }
@@ -549,6 +550,7 @@ compare                         Differential peak calling mode, experimental
             when (it) {
                 "nbhmm" -> SpanModel.NB_HMM
                 "prm" -> SpanModel.POISSON_REGRESSION_MIXTURE
+                "nbrm" -> SpanModel.NEGBIN_REGRESSION_MIXTURE
                 else -> throw IllegalArgumentException("Unrecognized value for --type command line option: $it")
             }
         },
@@ -556,6 +558,7 @@ compare                         Differential peak calling mode, experimental
             when (it.extension) {
                 "span" -> SpanModel.NB_HMM
                 "span2" -> SpanModel.POISSON_REGRESSION_MIXTURE
+                "span3" -> SpanModel.NEGBIN_REGRESSION_MIXTURE
                 else -> throw IllegalArgumentException(
                     "Unrecognized model extension '.${it.extension}', should be either '.span' or '.span2'."
                 )
@@ -694,7 +697,10 @@ compare                         Differential peak calling mode, experimental
         val mapabilityPath: Path?
         if (experimental) {
             modelType = getModelType(options, modelPath, log = true)
-            mapabilityPath = if (modelType == SpanModel.POISSON_REGRESSION_MIXTURE) {
+            mapabilityPath = if (
+                    modelType == SpanModel.POISSON_REGRESSION_MIXTURE ||
+                    modelType == SpanModel.NEGBIN_REGRESSION_MIXTURE
+            ) {
                 getMapabilityPath(options, log = true)
             } else {
                 null
@@ -717,6 +723,11 @@ compare                         Differential peak calling mode, experimental
                     Span2PeakCallingExperiment.getExperiment(
                         genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath
                     )
+                SpanModel.NEGBIN_REGRESSION_MIXTURE ->
+                    Span3PeakCallingExperiment.getExperiment(
+                        genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath
+                )
+
             }
         }
     }
@@ -750,7 +761,9 @@ compare                         Differential peak calling mode, experimental
 }
 
 enum class SpanModel(val description: String) {
-    NB_HMM("negative binomial HMM"), POISSON_REGRESSION_MIXTURE("Poisson regression mixture");
+    NB_HMM("negative binomial HMM"),
+    POISSON_REGRESSION_MIXTURE("Poisson regression mixture"),
+    NEGBIN_REGRESSION_MIXTURE("Negative Binomial Regression mixture");
 
     override fun toString() = description
 }

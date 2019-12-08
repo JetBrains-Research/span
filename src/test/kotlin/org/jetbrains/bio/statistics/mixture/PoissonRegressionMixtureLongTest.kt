@@ -10,7 +10,6 @@ import kotlin.random.Random
 
 
 class PoissonRegressionMixtureLongTest {
-
     @Test
     fun sampleAndFit() {
         val original = PoissonRegressionMixture(
@@ -39,5 +38,4 @@ class PoissonRegressionMixtureLongTest {
         )
         Tests.assertEquals(original.weights.toDoubleArray(), fitted.weights.toDoubleArray(), 5E-2)
     }
-
 }
