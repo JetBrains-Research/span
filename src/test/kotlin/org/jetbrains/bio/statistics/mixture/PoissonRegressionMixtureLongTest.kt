@@ -10,7 +10,7 @@ import kotlin.random.Random
 
 
 class PoissonRegressionMixtureLongTest {
-
+    /*
     @Test
     fun sampleAndFit() {
         val original = PoissonRegressionMixture(
@@ -25,7 +25,7 @@ class PoissonRegressionMixtureLongTest {
         val df = DataFrame().with("y", IntArray(rows))
                 .with("foo", DoubleArray(rows) { random.nextDouble() })
                 .with("bar", DoubleArray(rows) { random.nextDouble() })
-        original.sample(df, intArrayOf(0))
+        original.sample(Ndf, intArrayOf(0))
         val fitted = PoissonRegressionMixture.fitter().fit(Preprocessed.of(df))
         Tests.assertEquals(
             (original[1] as PoissonRegressionEmissionScheme).regressionCoefficients,
@@ -39,5 +39,5 @@ class PoissonRegressionMixtureLongTest {
         )
         Tests.assertEquals(original.weights.toDoubleArray(), fitted.weights.toDoubleArray(), 5E-2)
     }
-
+*/
 }

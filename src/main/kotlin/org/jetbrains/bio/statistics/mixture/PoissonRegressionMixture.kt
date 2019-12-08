@@ -6,6 +6,7 @@ import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.emission.ConstantIntegerEmissionScheme
 import org.jetbrains.bio.statistics.emission.EmissionScheme
 import org.jetbrains.bio.statistics.emission.PoissonRegressionEmissionScheme
+import org.jetbrains.bio.statistics.hmm.MLFreeHMM
 import org.jetbrains.bio.viktor.F64Array
 import org.jetbrains.bio.viktor.asF64Array
 import kotlin.math.exp
@@ -23,8 +24,10 @@ class PoissonRegressionMixture(
         weights: F64Array,
         covariateLabels: List<String>,
         regressionCoefficients: Array<DoubleArray>
-) : MLFreeMixture(numComponents = 3, numDimensions = 1, weights = weights) {
+) : MLFreeHMM(3, 1)  {
 
+    val logWeights: F64Array = weights.log()
+    val weights: F64Array get() = logWeights.exp()
     private val zeroEmission = ConstantIntegerEmissionScheme(0)
     private val regressionEmissionSchemes = arrayOf(
         PoissonRegressionEmissionScheme(
