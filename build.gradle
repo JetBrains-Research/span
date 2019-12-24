@@ -54,6 +54,7 @@ private String settingsFolder(final String propertyName, final String folderName
     }
 }
 
+// Copy bioinf-commons generateTestOrganism task, because span depends on jar.
 task generateTestOrganism(type: JavaExec, overwrite: true) {
     systemProperty "genomes.path", settingsFolder("genomes.path", "genomes")
 
