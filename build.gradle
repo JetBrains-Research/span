@@ -90,7 +90,7 @@ test {
 }
 
 // Major application version
-version = "0.11.0"
+version = "0.12.0"
 mainClassName = "org.jetbrains.bio.span.SpanCLA"
 
 task processBuildProperties(type: Copy) {

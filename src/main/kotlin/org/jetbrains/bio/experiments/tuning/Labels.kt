@@ -51,10 +51,10 @@ fun DataConfig.extractLabelledTracks(target: String): List<LabelledTrack> {
 }
 
 
-data class PeakAnnotation(override val location: Location,
-                          val type: PeakAnnotationType) : LocationAware, Comparable<PeakAnnotation> {
+data class LocationLabel(override val location: Location,
+                         val type: Label) : LocationAware, Comparable<LocationLabel> {
 
-    override fun compareTo(other: PeakAnnotation): Int = compareValuesBy(this, other, { it.location }, { it.type })
+    override fun compareTo(other: LocationLabel): Int = compareValuesBy(this, other, { it.location }, { it.type })
 
     /**
      * Checks according to [peaks] provided
@@ -62,11 +62,11 @@ data class PeakAnnotation(override val location: Location,
     fun check(peaks: LocationsMergingList): Boolean {
         val intersection = peaks.intersect(location)
         return when (type) {
-            PeakAnnotationType.NO_PEAKS -> intersection.isEmpty()
-            PeakAnnotationType.PEAKS -> intersection.isNotEmpty()
-            PeakAnnotationType.PEAK_START -> intersection.singleOrNull()
+            Label.NO_PEAKS -> intersection.isEmpty()
+            Label.PEAKS -> intersection.isNotEmpty()
+            Label.PEAK_START -> intersection.singleOrNull()
                     ?.let { it.startOffset != location.startOffset } == true
-            PeakAnnotationType.PEAK_END -> intersection.singleOrNull()
+            Label.PEAK_END -> intersection.singleOrNull()
                     ?.let { it.endOffset != location.endOffset } == true
         }
     }
@@ -76,13 +76,13 @@ data class PeakAnnotation(override val location: Location,
                                         type.id, itemRgb = type.color.rgb)
 
     companion object {
-        fun loadLabels(labelPath: Path, genome: Genome): List<PeakAnnotation> {
+        fun loadLabels(labelPath: Path, genome: Genome): List<LocationLabel> {
             val format = BedFormat(BedField.NAME)
             return format.parse(labelPath) { it.toList() }.map {
                 val e = it.unpackRegularFields(format)
-                val type = PeakAnnotationType.from(e.name)
+                val type = Label.from(e.name)
                 requireNotNull(type) { "Unknown type: ${e.name}" }
-                PeakAnnotation(e.toLocation(genome), type)
+                LocationLabel(e.toLocation(genome), type)
             }
         }
     }

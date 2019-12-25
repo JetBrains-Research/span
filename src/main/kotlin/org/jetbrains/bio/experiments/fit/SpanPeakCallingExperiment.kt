@@ -47,6 +47,13 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
     override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span"
 
     companion object {
+
+        const val SPAN_DEFAULT_BIN = 200
+        const val SPAN_DEFAULT_FDR = 1E-6
+        const val SPAN_DEFAULT_GAP = 5
+
+        const val SPAN_REPLICATED_DEFAULT_FDR = 1E-10
+
         const val TRACK_PREFIX = "track_"
 
         /**

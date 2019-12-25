@@ -1,0 +1,165 @@
+package org.jetbrains.bio.experiments.tuning.tools
+
+import org.apache.log4j.Logger
+import org.jetbrains.bio.coverage.AutoFragment
+import org.jetbrains.bio.dataset.*
+import org.jetbrains.bio.experiments.fit.SpanDataPaths
+import org.jetbrains.bio.experiments.fit.SpanFitResults
+import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment
+import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_BIN
+import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_FDR
+import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_GAP
+import org.jetbrains.bio.experiments.tuning.*
+import org.jetbrains.bio.genome.GenomeQuery
+import org.jetbrains.bio.genome.containers.LocationsMergingList
+import org.jetbrains.bio.span.getPeaks
+import org.jetbrains.bio.span.savePeaks
+import org.jetbrains.bio.util.*
+import java.nio.file.Path
+import java.util.concurrent.Callable
+import java.util.concurrent.Executors
+
+object Span : Tool2Tune<Pair<Double, Int>>() {
+
+    private val LOG = Logger.getLogger(Span::class.java)
+
+    private val tuningExecutor = Executors.newWorkStealingPool(parallelismLevel())
+
+    override val id = "span"
+    override val suffix = "_peaks.bed"
+
+    private val FDRS = listOf(0.1, 0.05, 1E-2, 1E-3, 1E-4, 1E-5, SPAN_DEFAULT_FDR, 1E-7, 1E-8, 1E-9, 1E-10)
+
+    val GAPS = listOf(0, 1, 2, SPAN_DEFAULT_GAP, 10)
+
+    override val parameters: List<Pair<Double, Int>> =
+            combineParams(FDRS to FDRS.indexOf(SPAN_DEFAULT_FDR), GAPS to GAPS.indexOf(SPAN_DEFAULT_GAP)).map {
+                it[0] as Double to it[1] as Int
+            }
+
+    override val transform: (Pair<Double, Int>) -> String = { (fdr, gap) -> "${fdr}_${gap}" }
+
+    override fun callPeaks(configuration: DataConfig, p: Path, parameter: Pair<Double, Int>) {
+        throw IllegalStateException("Batch folder peak calling not valid for $id")
+    }
+
+    override fun fileName(cellId: CellId, replicate: String, target: String, parameter: Pair<Double, Int>): String {
+        return "${cellId}_${replicate}_${target}_${SPAN_DEFAULT_BIN}_${parameter.first}_${parameter.second}_peaks.bed"
+    }
+
+    override fun defaultParams(uli: Boolean) = SPAN_DEFAULT_FDR to SPAN_DEFAULT_GAP
+
+    override fun tune(configuration: DataConfig,
+                      path: Path,
+                      target: String,
+                      useInput: Boolean,
+                      saveAllPeaks: Boolean) {
+        if (!checkTuningRequired(configuration, path, target, useInput)) {
+            return
+        }
+        val folder = folder(path, target, useInput)
+        val results = TuningResults()
+        val inputPath = if (useInput) configuration.tracksMap.entries
+                .filter { it.key.dataType.toDataType() == DataType.CHIP_SEQ && ChipSeqTarget.isInput(it.key.dataType) }
+                .flatMap { it.value }.map { it.second.path }.firstOrNull() else null
+        val labelledTracks = configuration.extractLabelledTracks(target)
+
+        labelledTracks.forEach { (cellId, replicate, trackPath, labelsPath) ->
+            val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(configuration.genomeQuery,
+                    listOf(SpanDataPaths(trackPath, inputPath!!)),
+                    SPAN_DEFAULT_BIN, AutoFragment
+            )
+
+            if (saveAllPeaks) {
+                val progress = Progress {
+                    title = "Processing $id $target $cellId $replicate optimal peaks"
+                }.bounded(parameters.size.toLong())
+                parameters.forEach { parameter ->
+                    val peaksPath = folder / transform(parameter) / fileName(cellId, replicate, target, parameter)
+                    peaksPath.checkOrRecalculate(ignoreEmptyFile = true) { (path) ->
+                        savePeaks(peakCallingExperiment.results.getPeaks(configuration.genomeQuery,
+                                parameter.first, parameter.second), path)
+                    }
+                    progress.report()
+                }
+                progress.done()
+            }
+
+            LOG.info("Tuning $id $target $cellId $replicate peaks")
+            val labels = LocationLabel.loadLabels(
+                    labelsPath, configuration.genomeQuery.genome
+            )
+            val (labelErrorsGrid, index) =
+                    tune(peakCallingExperiment.results, labels, "$id $target $cellId $replicate", parameters)
+
+
+            LOG.info("Saving $id $target $cellId $replicate optimal peaks to $folder")
+            cleanup(folder, cellId, replicate)
+            val optimalParameters = parameters[index]
+            val optimalPeaksPath = folder / fileName(cellId, replicate, target, optimalParameters)
+            savePeaks(peakCallingExperiment.results.getPeaks(configuration.genomeQuery,
+                    optimalParameters.first, optimalParameters.second),
+                    optimalPeaksPath)
+
+            labelErrorsGrid.forEachIndexed { i, error ->
+                results.addRecord(replicate, transform(parameters[i]), error, i == index)
+            }
+        }
+
+        results.saveTuningErrors(folder / "${target}_${id}_errors.csv")
+        results.saveOptimalResults(folder / "${target}_${id}_parameters.csv")
+        saveGrid(path, target, useInput)
+    }
+
+    fun tune(
+            results: SpanFitResults,
+            labels: List<LocationLabel>,
+            id: String,
+            parameters: List<Pair<Double, Int>>,
+            cancellableState: CancellableState = CancellableState.current()
+    ): Pair<List<LabelErrors>, Int> {
+        MultitaskProgress.addTask(id, parameters.size.toLong())
+        val tuneResults = tune(results, results.fitInfo.genomeQuery(), labels, id, parameters, cancellableState)
+        MultitaskProgress.finishTask(id)
+        return tuneResults
+    }
+
+
+    fun tune(
+            results: SpanFitResults,
+            genomeQuery: GenomeQuery,
+            labels: List<LocationLabel>,
+            id: String,
+            parameters: List<Pair<Double, Int>>,
+            cancellableState: CancellableState = CancellableState.current()
+    ): Pair<List<LabelErrors>, Int> {
+        val labeledGenomeQuery = GenomeQuery(
+                genomeQuery.genome,
+                *labels.map { it.location.chromosome.name }.distinct().toTypedArray()
+        )
+        // Parallelism is OK here:
+        // 1. getPeaks creates BitterSet per each parameters combination of size
+        // ~ 3*10^9 / 200bp / 8 / 1024 / 1024 ~ 2MB for human genome
+        // 2. List.parallelStream()....collect(Collectors.toList()) guarantees the same order as in original list.
+        // Order is important!
+        val labelErrorsGrid = Array<LabelErrors?>(parameters.size) { null }
+        tuningExecutor.awaitAll(
+                parameters.mapIndexed { index, (fdr, gap) ->
+                    Callable {
+                        cancellableState.checkCanceled()
+                        val peaksOnLabeledGenomeQuery = results.getPeaks(labeledGenomeQuery, fdr, gap)
+                        labelErrorsGrid[index] = computeErrors(labels,
+                                LocationsMergingList.create(labeledGenomeQuery,
+                                        peaksOnLabeledGenomeQuery.map { it.location }.iterator()))
+                        MultitaskProgress.reportTask(id)
+                    }
+                }
+
+        )
+        val minTotalError = labelErrorsGrid.map { it!!.error() }.min()!!
+        // Parameters should return desired order for each tool
+        return labelErrorsGrid.map { it!! } to
+                parameters.indices.first { labelErrorsGrid[it]!!.error() == minTotalError }
+    }
+
+}

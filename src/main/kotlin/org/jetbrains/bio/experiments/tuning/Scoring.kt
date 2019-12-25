@@ -10,7 +10,7 @@ import java.util.*
 /**
  * Simple counter of correct out of all
  */
-internal data class ErrorRate(var total: Int = 0, var correct: Int = 0) {
+data class ErrorRate(var total: Int = 0, var correct: Int = 0) {
 
     fun observe(outcome: Boolean) {
         total++; if (outcome) correct++
@@ -25,24 +25,24 @@ internal data class ErrorRate(var total: Int = 0, var correct: Int = 0) {
 
 
 /**
- * Merging map based error [PeakAnnotation] -> [ErrorRate]
+ * Merging map based error [LocationLabel] -> [ErrorRate]
  */
-class LabelErrors internal constructor(internal val map: MutableMap<PeakAnnotation, ErrorRate> = TreeMap())
-    : MutableMap<PeakAnnotation, ErrorRate> by map {
+class LabelErrors(val map: MutableMap<LocationLabel, ErrorRate> = TreeMap())
+    : MutableMap<LocationLabel, ErrorRate> by map {
 
-    fun error(type: PeakAnnotationType? = null) = 1.0 - correct(type) * 1.0 / total(type)
+    fun error(type: Label? = null) = 1.0 - correct(type) * 1.0 / total(type)
 
-    fun correct(type: PeakAnnotationType?) = filter(type)
+    fun correct(type: Label?) = filter(type)
             .stream()
             .mapToInt { (_, errRate) -> errRate.correct }
             .sum()
 
-    fun total(type: PeakAnnotationType?) = filter(type)
+    fun total(type: Label?) = filter(type)
             .stream()
             .mapToInt { (_, errRate) -> errRate.total }
             .sum()
 
-    private fun filter(type: PeakAnnotationType?) = when (type) {
+    private fun filter(type: Label?) = when (type) {
         null -> map.entries
         else -> map.entries.filter { (ann, _) -> ann.type == type }
     }
@@ -56,7 +56,7 @@ class LabelErrors internal constructor(internal val map: MutableMap<PeakAnnotati
         }
     }
 
-    internal fun observe(label: PeakAnnotation, outcome: Boolean) {
+    fun observe(label: LocationLabel, outcome: Boolean) {
         var ler = map[label]
         if (ler == null) {
             ler = ErrorRate()
@@ -70,7 +70,7 @@ class TuningResultTable {
 
     val names: MutableList<String> = arrayListOf()
     private val parameters: MutableList<String> = arrayListOf()
-    private val errors: Array<MutableList<Double>> = Array(PeakAnnotationType.values().size + 1) {
+    private val errors: Array<MutableList<Double>> = Array(Label.values().size + 1) {
         arrayListOf<Double>()
     }
 
@@ -79,16 +79,16 @@ class TuningResultTable {
     fun addRecord(name: String, parameter: String, labelErrors: LabelErrors) {
         names.add(name)
         parameters.add(parameter)
-        PeakAnnotationType.values().forEachIndexed { i, type -> errors[i].add(labelErrors.error(type)) }
-        errors[PeakAnnotationType.values().size].add(labelErrors.error())
+        Label.values().forEachIndexed { i, type -> errors[i].add(labelErrors.error(type)) }
+        errors[Label.values().size].add(labelErrors.error())
     }
 
     fun print(path: Path) {
         var dataFrame = DataFrame()
                 .with("name", names.toTypedArray())
                 .with("parameter", parameters.toTypedArray())
-                .with("error", errors[PeakAnnotationType.values().size].toDoubleArray())
-        PeakAnnotationType.values().forEachIndexed { i, type ->
+                .with("error", errors[Label.values().size].toDoubleArray())
+        Label.values().forEachIndexed { i, type ->
             dataFrame = dataFrame.with("error_$type", errors[i].toDoubleArray())
         }
         dataFrame.save(path)
@@ -127,7 +127,7 @@ class TuningResults(private val results: TuningResultTable = TuningResultTable()
  * Function to compute Peaks [peaks] vs Labels [labels]
  * @return map like structure
  */
-fun computeErrors(labels: List<PeakAnnotation>, peaks: LocationsMergingList): LabelErrors {
+fun computeErrors(labels: List<LocationLabel>, peaks: LocationsMergingList): LabelErrors {
     val labelErrors = LabelErrors()
     for (label in labels) {
         labelErrors.observe(label, label.check(peaks))

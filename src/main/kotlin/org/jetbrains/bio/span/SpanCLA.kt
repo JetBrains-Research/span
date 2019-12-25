@@ -10,9 +10,12 @@ import org.jetbrains.bio.coverage.AutoFragment
 import org.jetbrains.bio.coverage.FixedFragment
 import org.jetbrains.bio.coverage.Fragment
 import org.jetbrains.bio.experiments.fit.*
-import org.jetbrains.bio.experiments.tuning.PeakAnnotation
-import org.jetbrains.bio.experiments.tuning.Span
+import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_BIN
+import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_FDR
+import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_GAP
+import org.jetbrains.bio.experiments.tuning.LocationLabel
 import org.jetbrains.bio.experiments.tuning.TuningResults
+import org.jetbrains.bio.experiments.tuning.tools.Span
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.PeaksInfo.compute
@@ -174,7 +177,7 @@ compare                         Differential peak calling mode, experimental
                     } else {
                         val results = TuningResults()
                         LOG.info("Loading labels $labelsPath...")
-                        val labels = PeakAnnotation.loadLabels(labelsPath, gq.genome)
+                        val labels = LocationLabel.loadLabels(labelsPath, gq.genome)
                         LOG.info("Tuning model on the loaded labels...")
                         val (labelErrorsGrid, index) = Span.tune(spanResults, labels, "", Span.parameters)
                         LOG.info("Tuning model on the loaded labels complete.")
@@ -389,7 +392,7 @@ compare                         Differential peak calling mode, experimental
                         "If it's the string 'auto', the shift is estimated from the data. (default: auto)"
             ).withRequiredArg().withValuesConvertedBy(FragmentConverter())
             if (bin) {
-                acceptsAll(listOf("b", "bin"), "Bin size. (default: ${Span.DEFAULT_BIN})")
+                acceptsAll(listOf("b", "bin"), "Bin size. (default: ${SPAN_DEFAULT_BIN})")
                         .withRequiredArg()
                         .ofType(Int::class.java)
             }
@@ -398,14 +401,14 @@ compare                         Differential peak calling mode, experimental
                         .availableIf("peaks")
                         .withRequiredArg()
                         .ofType(Double::class.java)
-                        .defaultsTo(Span.DEFAULT_FDR)
+                        .defaultsTo(SPAN_DEFAULT_FDR)
             }
             if (gap) {
                 acceptsAll(listOf("g", "gap"), "Gap size to merge peaks (in bins).")
                         .availableIf("peaks")
                         .withRequiredArg()
                         .ofType(Int::class.java)
-                        .defaultsTo(Span.DEFAULT_GAP)
+                        .defaultsTo(SPAN_DEFAULT_GAP)
             }
             acceptsAll(listOf("w", "workdir"), "Path to the working dir")
                     .withRequiredArg().withValuesConvertedBy(PathConverter.exists())
@@ -536,8 +539,8 @@ compare                         Differential peak calling mode, experimental
     private fun getBin(
             options: OptionSet, fitInformation: SpanFitInformation? = null, log: Boolean = false
     ) = getProperty(
-        options.valueOf("bin") as Int?, fitInformation?.binSize, Span.DEFAULT_BIN,
-        "bin size", "BIN", log
+            options.valueOf("bin") as Int?, fitInformation?.binSize, SPAN_DEFAULT_BIN,
+            "bin size", "BIN", log
     )
 
     private fun getModelType(
