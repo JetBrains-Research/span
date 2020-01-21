@@ -46,7 +46,7 @@ class Span2CLALongTest {
                     val (_, err) = Logs.captureLoggingOutput {
                         SpanCLALongTest.withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
                             SpanCLA.main(arrayOf(
-                                "analyze",
+                                "analyze-experimental",
                                 "-cs", chromsizes,
                                 "--workdir", dir.toString(),
                                 "-t", listOf(pathA, pathB).joinToString(","),
@@ -74,7 +74,7 @@ class Span2CLALongTest {
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 val peaksPath = path.parent / "${path.stem}.peak"
                 val (out, _) = Logs.captureLoggingOutput {
-                    SpanCLA.main(arrayOf("analyze", "-cs", chromsizes,
+                    SpanCLA.main(arrayOf("analyze-experimental", "-cs", chromsizes,
                         "--workdir", it.toString(),
                         "-t", path.toString(),
                         "--threads", SpanCLALongTest.THREADS.toString(),
@@ -117,7 +117,7 @@ class Span2CLALongTest {
 
                     val chromsizes = Genome["to1"].chromSizesPath.toString()
                     SpanCLA.main(arrayOf(
-                        "analyze",
+                        "analyze-experimental",
                         "-cs", chromsizes,
                         "--workdir", dir.toString(),
                         "-t", path.toString(),
@@ -177,7 +177,7 @@ class Span2CLALongTest {
                 val (_, wrongErr) = Logs.captureLoggingOutput {
                     SpanCLALongTest.withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
                         SpanCLA.main(arrayOf(
-                            "analyze",
+                            "analyze-experimental",
                             "-cs", chromsizes,
                             "--workdir", dir.toString(),
                             "-t", path.toString(),

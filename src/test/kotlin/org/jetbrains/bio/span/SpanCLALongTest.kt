@@ -248,10 +248,10 @@ LABELS, FDR, GAP options are ignored.
                     ))
                 }
                 assertIn(
-                    "] WARN Span After fitting the model, emission's parameter p in LOW state", out
+                    "] WARN SpanCLA After fitting the model, emission's parameter p in LOW state", out
                 )
                 assertIn(
-                    "] WARN Span This is generally harmless, but could indicate low quality of data.", out
+                    "] WARN SpanCLA This is generally harmless, but could indicate low quality of data.", out
                 )
             }
         }
@@ -394,11 +394,8 @@ LABELS, FDR, GAP options are ignored.
     }
 
     /**
-     * Model extension is used to determine the model type.
-     * .span = negative binomial HMM (classic Span)
-     * .span2 = Poisson regression mixture (experimental Span)
-     * any other = error, unrecognized type.
-     * If the model extension contradicts the provided '--type' command line argument, Span should exit with an error.
+     * Classical Span only recognizes '.span' model file extension.
+     * Other extensions are reserved for future use.
      */
     @Test
     fun testCustomModelPathWrongExtension() {
@@ -422,11 +419,22 @@ LABELS, FDR, GAP options are ignored.
                     }
                 }
                 assertIn(
-                    "Unrecognized model extension '.foo', should be either '.span' or '.span2'",
+                    "Unrecognized model extension '.foo', should be '.span'.",
                     invalidErr
                 )
+            }
+        }
+    }
 
-                val wrongModelPath = dir / "custom" / "path" / "model.span2"
+    @Test
+    fun testTypeOnlyValidInExperimentalMode() {
+        withTempDirectory("work") { dir ->
+            withTempFile("track", ".bed.gz", dir) { path ->
+                // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
+                sampleCoverage(path, TO, BIN, goodQuality = true)
+
+                val chromsizes = Genome["to1"].chromSizesPath.toString()
+
                 val (_, wrongErr) = Logs.captureLoggingOutput {
                     withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
                         SpanCLA.main(arrayOf(
@@ -435,14 +443,12 @@ LABELS, FDR, GAP options are ignored.
                             "--workdir", dir.toString(),
                             "-t", path.toString(),
                             "--threads", THREADS.toString(),
-                            "--type", "nbhmm",
-                            "--model", wrongModelPath.toString()
+                            "--type", "nbhmm"
                         ))
                     }
                 }
                 assertIn(
-                    "Stored model type (${SpanModel.POISSON_REGRESSION_MIXTURE}) " +
-                            "differs from the command line argument (${SpanModel.NB_HMM})",
+                    "ERROR: type is not a recognized option",
                     wrongErr
                 )
             }

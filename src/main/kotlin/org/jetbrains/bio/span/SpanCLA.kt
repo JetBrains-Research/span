@@ -30,7 +30,9 @@ import java.nio.file.Path
 
 /**
  * Tool for analyzing and comparing ChIP-Seq data.
- * Both procedures rely on the Zero Inflated Negative Binomial Restricted Algorithm.
+ * `analyze` and `compare` procedures rely on the Zero Inflated Negative Binomial Restricted Algorithm.
+ *
+ * There's also an experimental mode `analyze-experimental` that uses Poisson regression mixture.
  *
  * @author Oleg Shpynov
  * @since  14/09/15
@@ -41,8 +43,8 @@ object SpanCLA {
 
     /**
      * Shpynov:
-     * Since [Configuration] allows to configure experimentsPath only once,
-     * SpanCLA fails to setup correct working directory, if launched within the same process.
+     * Since [Configuration] allows configuring experimentsPath only once,
+     * SpanCLA fails to set up correct working directory, if launched within the same process.
      * This is a HACK.
      */
     @VisibleForTesting
@@ -70,6 +72,10 @@ compare                         Differential peak calling mode, experimental
     private const val ANALYZE = "analyze"
     private const val COMPARE = "compare"
 
+    /* the "ANALYZE_EXPERIMENTAL" option is not listed in the help message by design,
+    * since we currently have no conclusive research on whether to use it and in which cases */
+    private const val ANALYZE_EXPERIMENTAL = "analyze-experimental"
+
     @JvmStatic
     fun main(args: Array<String>) {
         if (args.isEmpty()) {
@@ -77,7 +83,8 @@ compare                         Differential peak calling mode, experimental
             System.err.println(HELP)
         } else {
             when (args[0]) {
-                ANALYZE -> analyze(args.copyOfRange(1, args.size))
+                ANALYZE -> analyze(args.copyOfRange(1, args.size), false)
+                ANALYZE_EXPERIMENTAL -> analyze(args.copyOfRange(1, args.size), true)
                 COMPARE -> compare(args.copyOfRange(1, args.size))
 
                 "-?", "-h", "--help" -> println(HELP)
@@ -92,8 +99,8 @@ compare                         Differential peak calling mode, experimental
     }
 
 
-    private fun analyze(params: Array<String>) {
-        with(getOptionParser()) {
+    private fun analyze(params: Array<String>, experimental: Boolean) {
+        with(getOptionParser(experimental)) {
             acceptsAll(listOf("t", "treatment"),
                 "ChIP-seq treatment file. bam, bed or .bed.gz file;\n" +
                         "If multiple files are given, treated as replicates.")
@@ -113,16 +120,17 @@ compare                         Differential peak calling mode, experimental
                     .availableIf("peaks")
                     .withRequiredArg()
                     .withValuesConvertedBy(PathConverter.exists())
-            acceptsAll(listOf("mapability"),
-                "Mapability bigWig file.")
-                    .availableIf("treatment")
-                    .withRequiredArg()
-                    .withValuesConvertedBy(PathConverter.exists())
+            if (experimental) {
+                acceptsAll(listOf("mapability"), "Mapability bigWig file.")
+                        .availableIf("treatment")
+                        .withRequiredArg()
+                        .withValuesConvertedBy(PathConverter.exists())
+            }
 
             parse(params) { options ->
 
                 // this value is lazy to ensure the correct logging order
-                val lazySpanResults = peakCallingResults(options, params)
+                val lazySpanResults = peakCallingResults(options, params, experimental)
 
                 val peaksPath = options.valueOf("peaks") as Path?
                 val labelsPath = options.valueOf("labels") as Path?
@@ -368,11 +376,7 @@ compare                         Differential peak calling mode, experimental
     }
 
 
-    private fun getOptionParser(
-            bin: Boolean = true,
-            fdr: Boolean = true,
-            gap: Boolean = true
-    ): OptionParser = object : OptionParser() {
+    private fun getOptionParser(experimental: Boolean = false): OptionParser = object : OptionParser() {
         init {
             acceptsAll(listOf("d", "debug"), "Print all the debug information, used for troubleshooting.")
             acceptsAll(listOf("q", "quiet"), "Turn off output")
@@ -391,25 +395,20 @@ compare                         Differential peak calling mode, experimental
                 "Fragment size. If it's an integer, reads are shifted appropriately.\n" +
                         "If it's the string 'auto', the shift is estimated from the data. (default: auto)"
             ).withRequiredArg().withValuesConvertedBy(FragmentConverter())
-            if (bin) {
-                acceptsAll(listOf("b", "bin"), "Bin size. (default: ${SPAN_DEFAULT_BIN})")
-                        .withRequiredArg()
-                        .ofType(Int::class.java)
-            }
-            if (fdr) {
-                acceptsAll(listOf("f", "fdr"), "FDR value.")
-                        .availableIf("peaks")
-                        .withRequiredArg()
-                        .ofType(Double::class.java)
-                        .defaultsTo(SPAN_DEFAULT_FDR)
-            }
-            if (gap) {
-                acceptsAll(listOf("g", "gap"), "Gap size to merge peaks (in bins).")
-                        .availableIf("peaks")
-                        .withRequiredArg()
-                        .ofType(Int::class.java)
-                        .defaultsTo(SPAN_DEFAULT_GAP)
-            }
+            acceptsAll(listOf("b", "bin"), "Bin size. (default: ${SPAN_DEFAULT_BIN})")
+                    .withRequiredArg()
+                    .ofType(Int::class.java)
+
+            acceptsAll(listOf("f", "fdr"), "FDR value.")
+                    .availableIf("peaks")
+                    .withRequiredArg()
+                    .ofType(Double::class.java)
+                    .defaultsTo(SPAN_DEFAULT_FDR)
+            acceptsAll(listOf("g", "gap"), "Gap size to merge peaks (in bins).")
+                    .availableIf("peaks")
+                    .withRequiredArg()
+                    .ofType(Int::class.java)
+                    .defaultsTo(SPAN_DEFAULT_GAP)
             acceptsAll(listOf("w", "workdir"), "Path to the working dir")
                     .withRequiredArg().withValuesConvertedBy(PathConverter.exists())
                     .defaultsTo(System.getProperty("user.dir").toPath())
@@ -420,11 +419,13 @@ compare                         Differential peak calling mode, experimental
                     .withOptionalArg()
                     .ofType(Boolean::class.java)
                     .defaultsTo(true)
-            acceptsAll(
-                listOf("type"),
-                "Model type. Either 'nbhmm' for negative binomial HMM (default), " +
-                        "or 'prm' for Poisson regression mixture (experimental)."
-            ).withRequiredArg()
+            if (experimental) {
+                acceptsAll(
+                    listOf("type"),
+                    "Model type. Either 'nbhmm' for negative binomial HMM (default), " +
+                            "or 'prm' for Poisson regression mixture (experimental)."
+                ).withRequiredArg()
+            }
         }
     }
 
@@ -451,33 +452,31 @@ compare                         Differential peak calling mode, experimental
         val modelPath = options.valueOf("model") as Path?
         val workingDir = options.valueOf("workdir") as Path
         // Configure logging
-        val id = if (peaksPath != null) {
-            peaksPath.stemGz
-        } else if (modelPath != null) {
-            modelPath.stemGz
-        } else {
-            // No peaks, no model, generate ID from command-line options.
-            // Option parser guarantees that treatment paths are not empty here.
-            val data = getPaths(options)
-            val ids = listOf(data.map { it.treatment }, data.mapNotNull { it.control }).flatMap { paths ->
-                paths.map { it.stemGz }
-            }.toMutableList()
-            val bin = getBin(options)
-            ids.add(bin.toString())
-            val fragment = getFragment(options)
-            if (fragment is FixedFragment) {
-                ids.add(fragment.size.toString())
-            }
-            val unique = getUnique(options)
-            if (unique) {
-                ids.add("unique")
-            }
-            val labelsPath = options.valueOf("labels") as Path?
-            if (labelsPath != null) {
-                ids.add(labelsPath.stemGz)
-            }
-            reduceIds(ids)
-        }
+        val id = peaksPath?.stemGz ?: if (modelPath != null) {
+                    modelPath.stem
+                } else {
+                    // No peaks, no model, generate ID from command-line options.
+                    // Option parser guarantees that treatment paths are not empty here.
+                    val data = getPaths(options)
+                    val ids = listOf(data.map { it.treatment }, data.mapNotNull { it.control }).flatMap { paths ->
+                        paths.map { it.stemGz }
+                    }.toMutableList()
+                    val bin = getBin(options)
+                    ids.add(bin.toString())
+                    val fragment = getFragment(options)
+                    if (fragment is FixedFragment) {
+                        ids.add(fragment.size.toString())
+                    }
+                    val unique = getUnique(options)
+                    if (unique) {
+                        ids.add("unique")
+                    }
+                    val labelsPath = options.valueOf("labels") as Path?
+                    if (labelsPath != null) {
+                        ids.add(labelsPath.stemGz)
+                    }
+                    reduceIds(ids)
+                }
         val logPath = configureLogging("quiet" in options, "debug" in options, id, workingDir)
 
         LOG.info("SPAN ${version()}")
@@ -487,7 +486,7 @@ compare                         Differential peak calling mode, experimental
 
     /**
      * Checks supplied command line options against those stored in the fit information.
-     * Configures working directory and genomes path (if provided). Logs the progress.
+     * Configures the working directory and genomes path (if provided). Logs the progress.
      */
     private fun checkFitInformation(options: OptionSet, fitInformation: SpanFitInformation) {
         check(fitInformation is SpanAnalyzeFitInformation) {
@@ -539,8 +538,8 @@ compare                         Differential peak calling mode, experimental
     private fun getBin(
             options: OptionSet, fitInformation: SpanFitInformation? = null, log: Boolean = false
     ) = getProperty(
-            options.valueOf("bin") as Int?, fitInformation?.binSize, SPAN_DEFAULT_BIN,
-            "bin size", "BIN", log
+        options.valueOf("bin") as Int?, fitInformation?.binSize, SPAN_DEFAULT_BIN,
+        "bin size", "BIN", log
     )
 
     private fun getModelType(
@@ -680,7 +679,8 @@ compare                         Differential peak calling mode, experimental
      * Logs the progress.
      */
     private fun constructPeakCallingExperiment(
-            options: OptionSet
+            options: OptionSet,
+            experimental: Boolean
     ): Lazy<SpanModelFitExperiment<ClassificationModel, SpanFitInformation, ZLH>> {
         val (_, chromSizesPath) = getAndLogWorkDirAndChromSizes(options)
         // option parser guarantees that chrom.sizes are not null here
@@ -690,11 +690,23 @@ compare                         Differential peak calling mode, experimental
         val fragment = getFragment(options, log = true)
         val unique = getUnique(options, log = true)
         val modelPath = options.valueOf("model") as Path?
-        val modelType = getModelType(options, modelPath, log = true)
-        val mapabilityPath = if (modelType == SpanModel.POISSON_REGRESSION_MIXTURE) {
-            getMapabilityPath(options, log = true)
+        val modelType: SpanModel
+        val mapabilityPath: Path?
+        if (experimental) {
+            modelType = getModelType(options, modelPath, log = true)
+            mapabilityPath = if (modelType == SpanModel.POISSON_REGRESSION_MIXTURE) {
+                getMapabilityPath(options, log = true)
+            } else {
+                null
+            }
         } else {
-            null
+            if (modelPath != null) {
+                require(modelPath.extension == "span") {
+                    "Unrecognized model extension '.${modelPath.extension}', should be '.span'."
+                }
+            }
+            modelType = SpanModel.NB_HMM
+            mapabilityPath = null
         }
 
         return lazy {
@@ -714,7 +726,9 @@ compare                         Differential peak calling mode, experimental
      * Parses and logs most of the command line arguments.
      * Doesn't fit the model; this happens only if .value is invoked
      */
-    private fun peakCallingResults(options: OptionSet, params: Array<String>): Lazy<SpanFitResults> {
+    private fun peakCallingResults(
+            options: OptionSet, params: Array<String>, experimental: Boolean
+    ): Lazy<SpanFitResults> {
         logGeneralInfoAnalyze(options, params)
 
         val modelPath = options.valueOf("model") as Path?
@@ -730,7 +744,7 @@ compare                         Differential peak calling mode, experimental
                 return lazyOf(results)
             }
         }
-        val experiment = constructPeakCallingExperiment(options)
+        val experiment = constructPeakCallingExperiment(options, experimental)
         return lazy { experiment.value.results }
     }
 }
