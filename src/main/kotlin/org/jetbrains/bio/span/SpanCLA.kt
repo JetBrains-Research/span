@@ -421,8 +421,9 @@ compare                         Differential peak calling mode, experimental
                     .defaultsTo(true)
             acceptsAll(
                 listOf("type"),
-                "Model type. Either 'nbhmm' for negative binomial HMM (default), " +
-                        "or 'prm' for Poisson regression mixture (experimental)."
+                "Model type. Either 'nbhmm' for negative binomial HMM (default)," +
+                        " 'prm' for Poisson regression mixture (experimental) " +
+                        "or 'nbrm' for Negative Binomial regression mixture (experimental)."
             ).withRequiredArg()
         }
     }
@@ -549,6 +550,7 @@ compare                         Differential peak calling mode, experimental
             when (it) {
                 "nbhmm" -> SpanModel.NB_HMM
                 "prm" -> SpanModel.POISSON_REGRESSION_MIXTURE
+                "nbrm" -> SpanModel.NEGBIN_REGRESSION_SCHEME
                 else -> throw IllegalArgumentException("Unrecognized value for --type command line option: $it")
             }
         },
@@ -556,6 +558,7 @@ compare                         Differential peak calling mode, experimental
             when (it.extension) {
                 "span" -> SpanModel.NB_HMM
                 "span2" -> SpanModel.POISSON_REGRESSION_MIXTURE
+                "span3" -> SpanModel.NEGBIN_REGRESSION_SCHEME
                 else -> throw IllegalArgumentException(
                     "Unrecognized model extension '.${it.extension}', should be either '.span' or '.span2'."
                 )
@@ -690,7 +693,9 @@ compare                         Differential peak calling mode, experimental
         val unique = getUnique(options, log = true)
         val modelPath = options.valueOf("model") as Path?
         val modelType = getModelType(options, modelPath, log = true)
-        val mapabilityPath = if (modelType == SpanModel.POISSON_REGRESSION_MIXTURE) {
+        val mapabilityPath = if (
+                modelType == SpanModel.POISSON_REGRESSION_MIXTURE ||
+                modelType == SpanModel.NEGBIN_REGRESSION_SCHEME) {
             getMapabilityPath(options, log = true)
         } else {
             null
@@ -704,6 +709,11 @@ compare                         Differential peak calling mode, experimental
                     Span2PeakCallingExperiment.getExperiment(
                         genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath
                     )
+                SpanModel.NEGBIN_REGRESSION_SCHEME ->
+                    Span3PeakCallingExperiment.getExperiment(
+                        genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath
+                )
+
             }
         }
     }
@@ -735,7 +745,9 @@ compare                         Differential peak calling mode, experimental
 }
 
 enum class SpanModel(val description: String) {
-    NB_HMM("negative binomial HMM"), POISSON_REGRESSION_MIXTURE("Poisson regression mixture");
+    NB_HMM("negative binomial HMM"),
+    POISSON_REGRESSION_MIXTURE("Poisson regression mixture"),
+    NEGBIN_REGRESSION_SCHEME("Negative Binomial Regression mixture");
 
     override fun toString() = description
 }
