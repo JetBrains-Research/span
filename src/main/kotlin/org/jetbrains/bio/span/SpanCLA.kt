@@ -564,7 +564,7 @@ compare                         Differential peak calling mode, experimental
                 )
             }
         },
-        SpanModel.NB_HMM,
+        SpanModel.NEGBIN_REGRESSION_SCHEME,
         "model type", "MODEL TYPE", log
     )
 

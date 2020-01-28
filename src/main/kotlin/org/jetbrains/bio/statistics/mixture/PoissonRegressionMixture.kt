@@ -24,10 +24,8 @@ class PoissonRegressionMixture(
         weights: F64Array,
         covariateLabels: List<String>,
         regressionCoefficients: Array<DoubleArray>
-) : MLFreeHMM(3, 1)  {
+) : MLFreeMixture(numComponents = 3, numDimensions = 1, weights = weights) {
 
-    val logWeights: F64Array = weights.log()
-    val weights: F64Array get() = logWeights.exp()
     private val zeroEmission = ConstantIntegerEmissionScheme(0)
     private val regressionEmissionSchemes = arrayOf(
         PoissonRegressionEmissionScheme(
