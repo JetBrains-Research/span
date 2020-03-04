@@ -32,9 +32,9 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
 
     val GAPS = listOf(0, 1, 2, SPAN_DEFAULT_GAP, 10)
 
-    override val parameters: List<Pair<Double, Int>> =
-            combineParams(FDRS to FDRS.indexOf(SPAN_DEFAULT_FDR), GAPS to GAPS.indexOf(SPAN_DEFAULT_GAP)).map {
-                it[0] as Double to it[1] as Int
+    override val parameters =
+            FDRS.sorted().flatMap { fdr ->
+                GAPS.sorted().map { gap -> fdr to gap }
             }
 
     override val transform: (Pair<Double, Int>) -> String = { (fdr, gap) -> "${fdr}_${gap}" }

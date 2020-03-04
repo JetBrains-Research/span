@@ -34,9 +34,9 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
 
     override val transform = Span.transform
 
-    override val parameters: List<Pair<Double, Int>> =
-            combineParams(FDRS to FDRS.indexOf(SPAN_REPLICATED_DEFAULT_FDR), GAPS to GAPS.indexOf(SPAN_DEFAULT_GAP)).map {
-                it[0] as Double to it[1] as Int
+    override val parameters =
+            FDRS.sorted().flatMap { fdr ->
+                GAPS.sorted().map { gap -> fdr to gap }
             }
 
     override fun defaultParams(uli: Boolean) = SPAN_REPLICATED_DEFAULT_FDR to SPAN_DEFAULT_GAP

@@ -148,43 +148,6 @@ abstract class Tool2Tune<T> {
             "${it}_rip.csv".toPath().deleteIfExists()
         }
     }
-
-    companion object {
-        /**
-         * Combines all the combinations of parameters starting from defaults in each params
-         * @param params: pairs of list of params, default value index.
-         */
-        fun combineParams(vararg params: Pair<List<Any>, Int>): List<Array<Any>> {
-            if (params.isEmpty()) {
-                return emptyList()
-            }
-            val result = arrayListOf<Array<Any>>()
-            val tuple = Array<Any>(params.size) { 0 }
-            processIndex(params, 0, tuple, result)
-            return result
-        }
-
-        private fun processIndex(params: Array<out Pair<List<Any>, Int>>,
-                                 index: Int,
-                                 tuple: Array<Any>,
-                                 result: ArrayList<Array<Any>>) {
-            val (paramsI, defaultIndexI) = params[index]
-            var indexOffset = 0
-            while (defaultIndexI + indexOffset in paramsI.indices || defaultIndexI - indexOffset in paramsI.indices) {
-                val pIndex = defaultIndexI + indexOffset
-                if (pIndex in paramsI.indices) {
-                    tuple[index] = paramsI[pIndex]
-                    if (index == params.size - 1) {
-                        result.add(tuple.clone())
-                    } else {
-                        processIndex(params, index + 1, tuple, result)
-                    }
-                }
-                indexOffset = (if (indexOffset <= 0) -indexOffset + 1 else -indexOffset)
-            }
-        }
-
-    }
 }
 
 abstract class ReplicatedTool2Tune<T> : Tool2Tune<T>() {
