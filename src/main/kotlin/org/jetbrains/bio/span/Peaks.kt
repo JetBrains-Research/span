@@ -5,7 +5,6 @@ import com.google.common.cache.CacheBuilder
 import com.google.common.collect.ComparisonChain
 import org.apache.commons.csv.CSVFormat
 import org.apache.commons.math3.stat.descriptive.rank.Percentile
-import org.apache.log4j.Logger
 import org.jetbrains.bio.dataframe.BitterSet
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.fit.*
@@ -15,6 +14,7 @@ import org.jetbrains.bio.statistics.hypothesis.Fdr
 import org.jetbrains.bio.util.CancellableState
 import org.jetbrains.bio.util.bufferedWriter
 import org.jetbrains.bio.viktor.F64Array
+import org.slf4j.LoggerFactory
 import java.nio.file.Path
 import kotlin.math.ln
 import kotlin.math.log10
@@ -47,7 +47,7 @@ data class Peak(val chromosome: Chromosome,
 
 
     companion object {
-        internal val LOG = Logger.getLogger(Peak::class.java)
+        internal val LOG = LoggerFactory.getLogger(Peak::class.java)
     }
 }
 

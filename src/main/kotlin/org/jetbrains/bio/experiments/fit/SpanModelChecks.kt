@@ -1,6 +1,5 @@
 package org.jetbrains.bio.experiments.fit
 
-import org.apache.log4j.Logger
 import org.jetbrains.bio.span.SpanCLA
 import org.jetbrains.bio.statistics.emission.NegBinEmissionScheme
 import org.jetbrains.bio.statistics.emission.NegBinRegressionEmissionScheme
@@ -9,9 +8,10 @@ import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.statistics.mixture.NegBinRegressionMixture
 import org.jetbrains.bio.statistics.mixture.PoissonRegressionMixture
+import org.slf4j.LoggerFactory
 
 
-private val LOG = Logger.getLogger(SpanCLA::class.java)
+private val LOG = LoggerFactory.getLogger(SpanCLA::class.java)
 
 internal fun MLFreeNBHMM.probabilityFlip(state1: Int, state2: Int) {
     for (i in 0..2) {

@@ -1,7 +1,6 @@
 package org.jetbrains.bio.experiments.tuning.tools
 
 import kotlinx.support.jdk7.use
-import org.apache.log4j.Logger
 import org.jetbrains.bio.coverage.AutoFragment
 import org.jetbrains.bio.dataset.ChipSeqTarget
 import org.jetbrains.bio.dataset.DataConfig
@@ -17,12 +16,13 @@ import org.jetbrains.bio.io.BedFormat
 import org.jetbrains.bio.span.getPeaks
 import org.jetbrains.bio.span.savePeaks
 import org.jetbrains.bio.util.*
+import org.slf4j.LoggerFactory
 import java.nio.file.Path
 import kotlin.math.roundToInt
 
 object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
 
-    private val LOG = Logger.getLogger(SpanReplicated::class.java)
+    private val LOG = LoggerFactory.getLogger(SpanReplicated::class.java)
 
     override val id = "span_replicated"
     override val suffix = Span.suffix

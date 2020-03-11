@@ -37,7 +37,12 @@ dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     compile "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
     compile 'org.jetbrains.kotlinx:kotlinx-support-jdk8:0.1'
-    compile 'log4j:log4j:1.2.17'
+
+    // Logging dependencies
+    compile("ch.qos.logback:logback-classic:1.2.3")
+    compile("ch.qos.logback:logback-core:1.2.3")
+    compile "org.slf4j:slf4j-api:1.7.25"
+
 
     // implementation 'com.github.JetBrains-Research:bioinf-commons:master-SNAPSHOT'
     compile 'org.jetbrains.bio:bioinf-commons:0.0.8'
@@ -125,10 +130,6 @@ shadowJar {
     baseName = 'span'
     version = "${version}.${project.buildCounter}"
     classifier = ''
-    minimize {
-        // Fix log4j:ERROR Could not instantiate class [org.apache.log4j.xml.DOMConfigurator]
-        exclude(dependency('log4j:log4j:1.2.17'))
-    }
     zip64 true
 }
 

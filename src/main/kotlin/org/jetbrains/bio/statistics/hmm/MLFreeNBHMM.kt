@@ -1,6 +1,5 @@
 package org.jetbrains.bio.statistics.hmm
 
-import org.apache.log4j.Logger
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.fit.flipStatesIfNecessary
 import org.jetbrains.bio.statistics.Fitter
@@ -11,6 +10,7 @@ import org.jetbrains.bio.statistics.emission.IntegerEmissionScheme
 import org.jetbrains.bio.statistics.emission.NegBinEmissionScheme
 import org.jetbrains.bio.statistics.standardDeviation
 import org.jetbrains.bio.viktor.F64Array
+import org.slf4j.LoggerFactory
 
 /**
  * A zero-inflated HMM with univariate Negative Binomial emissions.
@@ -64,7 +64,7 @@ class MLFreeNBHMM(meanLow: Double, meanHigh: Double, failures: Double) : MLFreeH
         @JvmField
         val VERSION: Int = 1
 
-        private val LOG = Logger.getLogger(MLFreeNBHMM::class.java)
+        private val LOG = LoggerFactory.getLogger(MLFreeNBHMM::class.java)
 
         fun fitter() = object : Fitter<MLFreeNBHMM> {
             override fun guess(preprocessed: Preprocessed<DataFrame>, title: String,

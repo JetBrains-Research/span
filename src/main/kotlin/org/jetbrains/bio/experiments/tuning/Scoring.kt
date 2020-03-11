@@ -1,8 +1,8 @@
 package org.jetbrains.bio.experiments.tuning
 
-import org.apache.log4j.Logger
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.containers.LocationsMergingList
+import org.slf4j.LoggerFactory
 import java.nio.file.Path
 import java.util.*
 
@@ -119,7 +119,7 @@ class TuningResults(private val results: TuningResultTable = TuningResultTable()
     }
 
     companion object {
-        private val LOG = Logger.getLogger(TuningResults::class.java)
+        private val LOG = LoggerFactory.getLogger(TuningResults::class.java)
     }
 }
 

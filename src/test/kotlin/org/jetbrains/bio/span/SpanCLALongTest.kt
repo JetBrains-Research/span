@@ -168,7 +168,7 @@ PEAKS: $peaksPath
 """, out)
                 assertIn("Saved result to $peaksPath", out)
                 // Check model fit has a progress
-                assertIn("] 0.00% (0/100), Elapsed time", out)
+                assertIn("0.00% (0/100), Elapsed time", out)
             }
         }
     }

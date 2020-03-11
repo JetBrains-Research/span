@@ -1,6 +1,5 @@
 package org.jetbrains.bio.experiments.fit
 
-import org.apache.log4j.Logger
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiment.Experiment
 import org.jetbrains.bio.genome.Chromosome
@@ -10,6 +9,7 @@ import org.jetbrains.bio.query.reduceIds
 import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.viktor.F64Array
+import org.slf4j.LoggerFactory
 
 /**
  * A generic experiment for evaluating classification models.
@@ -69,7 +69,7 @@ abstract class ModelFitExperiment<out Model : ClassificationModel, State : Any>(
     }
 
     companion object {
-        val LOG: Logger = Logger.getLogger(ModelFitExperiment::class.java)
+        val LOG = LoggerFactory.getLogger(ModelFitExperiment::class.java)
 
     }
 }

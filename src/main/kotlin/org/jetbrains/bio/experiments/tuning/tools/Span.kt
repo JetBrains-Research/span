@@ -1,6 +1,5 @@
 package org.jetbrains.bio.experiments.tuning.tools
 
-import org.apache.log4j.Logger
 import org.jetbrains.bio.coverage.AutoFragment
 import org.jetbrains.bio.dataset.*
 import org.jetbrains.bio.experiments.fit.SpanDataPaths
@@ -15,13 +14,14 @@ import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.span.getPeaks
 import org.jetbrains.bio.span.savePeaks
 import org.jetbrains.bio.util.*
+import org.slf4j.LoggerFactory
 import java.nio.file.Path
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 
 object Span : Tool2Tune<Pair<Double, Int>>() {
 
-    private val LOG = Logger.getLogger(Span::class.java)
+    private val LOG = LoggerFactory.getLogger(Span::class.java)
 
     private val tuningExecutor = Executors.newWorkStealingPool(parallelismLevel())
 

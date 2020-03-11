@@ -3,8 +3,6 @@ package org.jetbrains.bio.span
 import com.google.common.annotations.VisibleForTesting
 import joptsimple.OptionParser
 import joptsimple.OptionSet
-import org.apache.log4j.Level
-import org.apache.log4j.Logger
 import org.jetbrains.bio.Configuration
 import org.jetbrains.bio.coverage.AutoFragment
 import org.jetbrains.bio.coverage.FixedFragment
@@ -26,6 +24,8 @@ import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.util.*
 import org.jetbrains.bio.util.FileSize.Companion.GB
+import org.slf4j.LoggerFactory
+import org.slf4j.event.Level
 import java.nio.file.Path
 
 /**
@@ -39,7 +39,7 @@ import java.nio.file.Path
  */
 @Suppress("UNCHECKED_CAST")
 object SpanCLA {
-    private val LOG: Logger = Logger.getLogger(SpanCLA::class.java)
+    private val LOG = LoggerFactory.getLogger(SpanCLA::class.java)
 
     /**
      * Shpynov:
@@ -660,13 +660,13 @@ compare                         Differential peak calling mode, experimental
             return null
         }
         val spreadControlPaths = if (commandLineControlPaths.isNotEmpty()) {
-            when {
-                commandLineControlPaths.size == 1 ->
+            when (commandLineControlPaths.size) {
+                1 ->
                     Array(commandLineTreatmentPaths.size) { commandLineControlPaths.single() }.toList()
-                commandLineControlPaths.size == commandLineTreatmentPaths.size -> commandLineControlPaths
+                commandLineTreatmentPaths.size -> commandLineControlPaths
                 else -> throw IllegalArgumentException(
-                    "Expected either: no control files, a single control file, " +
-                            "or as many control files as treatment files."
+                        "Expected either: no control files, a single control file, " +
+                                "or as many control files as treatment files."
                 )
             }
         } else {

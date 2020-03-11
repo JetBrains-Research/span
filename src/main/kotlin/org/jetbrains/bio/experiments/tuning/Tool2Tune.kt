@@ -1,18 +1,18 @@
 package org.jetbrains.bio.experiments.tuning
 
 import kotlinx.support.jdk7.use
-import org.apache.log4j.Logger
 import org.jetbrains.bio.dataset.CellId
 import org.jetbrains.bio.dataset.DataConfig
 import org.jetbrains.bio.experiments.tuning.tools.Span
 import org.jetbrains.bio.util.*
+import org.slf4j.LoggerFactory
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 
 
 abstract class Tool2Tune<T> {
 
-    private val LOG = Logger.getLogger(Tool2Tune::class.java)
+    private val LOG = LoggerFactory.getLogger(Tool2Tune::class.java)
 
     abstract val id: String
 

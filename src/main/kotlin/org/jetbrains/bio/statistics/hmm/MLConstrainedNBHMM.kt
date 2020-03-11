@@ -1,6 +1,5 @@
 package org.jetbrains.bio.statistics.hmm
 
-import org.apache.log4j.Logger
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.fit.flipStatesIfNecessary
 import org.jetbrains.bio.statistics.Fitter
@@ -14,6 +13,7 @@ import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.statistics.state.ZLHID
 import org.jetbrains.bio.statistics.stochastic
 import org.jetbrains.bio.viktor.F64Array
+import org.slf4j.LoggerFactory
 
 /**
  * A HMM with multidimensional Negative Binomial emissions and
@@ -80,7 +80,7 @@ class MLConstrainedNBHMM(
         @JvmField
         val VERSION = 1
 
-        private val LOG = Logger.getLogger(MLConstrainedNBHMM::class.java)
+        private val LOG = LoggerFactory.getLogger(MLConstrainedNBHMM::class.java)
 
         /**
          * The fitter for detecting the presence of ChIP-Seq enrichment based on one or several

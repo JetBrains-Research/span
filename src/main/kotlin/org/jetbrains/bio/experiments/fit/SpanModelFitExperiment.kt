@@ -4,7 +4,6 @@ import com.google.common.math.IntMath
 import com.google.gson.*
 import com.google.gson.reflect.TypeToken
 import kotlinx.support.jdk7.use
-import org.apache.log4j.Logger
 import org.jetbrains.bio.coverage.Fragment
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiment.Experiment
@@ -27,6 +26,7 @@ import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.statistics.state.ZLHID
 import org.jetbrains.bio.util.*
 import org.jetbrains.bio.viktor.F64Array
+import org.slf4j.LoggerFactory
 import java.lang.reflect.Type
 import java.math.RoundingMode
 import java.nio.file.Path
@@ -274,7 +274,7 @@ data class SpanFitResults(
         val logNullMemberships: Map<String, DataFrame>
 ) {
     companion object {
-        internal val LOG = Logger.getLogger(SpanFitResults::class.java)
+        internal val LOG = LoggerFactory.getLogger(SpanFitResults::class.java)
     }
 
     /**
@@ -455,7 +455,7 @@ abstract class SpanModelFitExperiment<
         private const val NULL_NPZ = "null.npz"
         const val NULL = "null"
 
-        val LOG: Logger = Logger.getLogger(ModelFitExperiment::class.java)
+        val LOG = LoggerFactory.getLogger(ModelFitExperiment::class.java)
 
         /**
          * Retain only the chromosomes for which at least one treatment file has at least one read on them.
