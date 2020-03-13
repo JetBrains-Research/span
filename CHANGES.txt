@@ -6,11 +6,10 @@ Here you can see the full list of changes between each release.
 Version 0.12.0
 ----------------
 
-Released on Jan XXth, 2020
+Released on XXX XXth, 2020
 
-- Improved model tuning
-- Fixed multistart
-- Updated SPAN tuning procedure
+- Fixed multistart procedure
+- Switched to SL4J and Backlog logging
 
 Version 0.11.0
 -------------

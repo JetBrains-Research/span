@@ -3,10 +3,7 @@ package org.jetbrains.bio.span
 import com.google.common.annotations.VisibleForTesting
 import joptsimple.OptionParser
 import joptsimple.OptionSet
-import org.jetbrains.bio.Configuration
-import org.jetbrains.bio.coverage.AutoFragment
-import org.jetbrains.bio.coverage.FixedFragment
-import org.jetbrains.bio.coverage.Fragment
+import org.jetbrains.bio.experiment.Configuration
 import org.jetbrains.bio.experiments.fit.*
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_BIN
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_FDR
@@ -17,9 +14,11 @@ import org.jetbrains.bio.experiments.tuning.tools.Span
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.PeaksInfo.compute
-import org.jetbrains.bio.query.ReadsQuery
-import org.jetbrains.bio.query.reduceIds
-import org.jetbrains.bio.query.stemGz
+import org.jetbrains.bio.genome.coverage.AutoFragment
+import org.jetbrains.bio.genome.coverage.FixedFragment
+import org.jetbrains.bio.genome.coverage.Fragment
+import org.jetbrains.bio.genome.query.ReadsQuery
+import org.jetbrains.bio.genome.query.stemGz
 import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.util.*
@@ -102,16 +101,16 @@ compare                         Differential peak calling mode, experimental
     private fun analyze(params: Array<String>, experimental: Boolean) {
         with(getOptionParser(experimental)) {
             acceptsAll(listOf("t", "treatment"),
-                "ChIP-seq treatment file. bam, bed or .bed.gz file;\n" +
-                        "If multiple files are given, treated as replicates.")
+                    "ChIP-seq treatment file. bam, bed or .bed.gz file;\n" +
+                            "If multiple files are given, treated as replicates.")
                     .requiredUnless("model")
                     .withRequiredArg()
                     .withValuesSeparatedBy(",")
                     .withValuesConvertedBy(PathConverter.noCheck())
             acceptsAll(listOf("c", "control"),
-                "Control file. bam, bed or bed.gz file;\n" +
-                        "Single control file or separate file per each\n" +
-                        "treatment file required.")
+                    "Control file. bam, bed or bed.gz file;\n" +
+                            "Single control file or separate file per each\n" +
+                            "treatment file required.")
                     .availableIf("treatment")
                     .withRequiredArg()
                     .withValuesSeparatedBy(",")
@@ -170,15 +169,15 @@ compare                         Differential peak calling mode, experimental
                     if (labelsPath == null) {
                         val peaks = spanResults.getPeaks(gq, fdr, gap)
                         savePeaks(
-                            peaks, peaksPath,
-                            "peak${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
+                                peaks, peaksPath,
+                                "peak${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
                         )
                         LOG.info("Saved result to $peaksPath")
                         val aboutPeaks = compute(
-                            gq,
-                            peaks.map { it.location }.stream(),
-                            peaksPath.toUri(),
-                            fitInfo.data.map { it.treatment }
+                                gq,
+                                peaks.map { it.location }.stream(),
+                                peaksPath.toUri(),
+                                fitInfo.data.map { it.treatment }
                         )
                         val aboutModel = spanResults.about()
                         LOG.info("\n" + (aboutPeaks + aboutModel).map { (k, v) -> "$k: $v" }.joinToString("\n"))
@@ -193,10 +192,10 @@ compare                         Differential peak calling mode, experimental
                         LOG.info("Optimal settings: FDR=$optimalFDR, GAP=$optimalGap")
                         labelErrorsGrid.forEachIndexed { i, error ->
                             results.addRecord(
-                                "result",
-                                Span.transform(Span.parameters[i]),
-                                error,
-                                i == index
+                                    "result",
+                                    Span.transform(Span.parameters[i]),
+                                    error,
+                                    i == index
                             )
                         }
                         results.saveTuningErrors(peaksPath.parent / "${peaksPath.fileName.stem}_errors.csv")
@@ -204,9 +203,9 @@ compare                         Differential peak calling mode, experimental
                                 / "${peaksPath.fileName.stem}_parameters.csv")
                         val peaks = spanResults.getPeaks(gq, optimalFDR, optimalGap)
                         savePeaks(
-                            peaks, peaksPath,
-                            "peak${if (fragment is FixedFragment) "_$fragment" else ""}_" +
-                                    "${bin}_${optimalFDR}_$optimalGap"
+                                peaks, peaksPath,
+                                "peak${if (fragment is FixedFragment) "_$fragment" else ""}_" +
+                                        "${bin}_${optimalFDR}_$optimalGap"
                         )
                         LOG.info("Saved result to $peaksPath")
                     }
@@ -231,29 +230,29 @@ compare                         Differential peak calling mode, experimental
     private fun compare(params: Array<String>) {
         with(getOptionParser()) {
             acceptsAll(listOf("t1", "treatment1"),
-                "ChIP-seq treatment file 1. bam, bed or .bed.gz file;\n" +
-                        "If multiple files are given, treated as replicates.")
+                    "ChIP-seq treatment file 1. bam, bed or .bed.gz file;\n" +
+                            "If multiple files are given, treated as replicates.")
                     .withRequiredArg().required()
                     .withValuesSeparatedBy(",")
                     .withValuesConvertedBy(PathConverter.exists())
             acceptsAll(listOf("c1", "control1"),
-                "Control file 1. bam, bed or .bed.gz file;\n" +
-                        "Single control file or separate file per each\n" +
-                        "treatment file required.")
+                    "Control file 1. bam, bed or .bed.gz file;\n" +
+                            "Single control file or separate file per each\n" +
+                            "treatment file required.")
                     .withRequiredArg()
                     .withValuesSeparatedBy(",")
                     .withValuesConvertedBy(PathConverter.exists())
 
             acceptsAll(listOf("t2", "treatment2"),
-                "ChIP-seq treatment file 2. bam, bed or .bed.gz file;\n" +
-                        "If multiple files are given, treated as replicates.")
+                    "ChIP-seq treatment file 2. bam, bed or .bed.gz file;\n" +
+                            "If multiple files are given, treated as replicates.")
                     .withRequiredArg().required()
                     .withValuesSeparatedBy(",")
                     .withValuesConvertedBy(PathConverter.exists())
             acceptsAll(listOf("c2", "control2"),
-                "Control file 2. bam, bed or .bed.gz file;\n" +
-                        "Single control file or separate file per each\n" +
-                        "treatment file required.")
+                    "Control file 2. bam, bed or .bed.gz file;\n" +
+                            "Single control file or separate file per each\n" +
+                            "treatment file required.")
                     .withRequiredArg()
                     .withValuesSeparatedBy(",")
                     .withValuesConvertedBy(PathConverter.exists())
@@ -286,7 +285,7 @@ compare                         Differential peak calling mode, experimental
                     reduceIds(ids)
                 }
                 val logPath = configureLogging(
-                    "quiet" in options, "debug" in options, id, workingDir
+                        "quiet" in options, "debug" in options, id, workingDir
                 )
 
 
@@ -337,7 +336,7 @@ compare                         Differential peak calling mode, experimental
                 val coverages1 = treatmentPaths1.map { ReadsQuery(gq, it, fragment = fragment) }
                 val coverages2 = treatmentPaths2.map { ReadsQuery(gq, it, fragment = fragment) }
                 val experiment = SpanDifferentialPeakCallingExperiment.getExperiment(
-                    gq, paths1, paths2, bin, fragment, unique
+                        gq, paths1, paths2, bin, fragment, unique
                 )
 
                 if (peaksPath != null) {
@@ -352,8 +351,8 @@ compare                         Differential peak calling mode, experimental
                                         }.average())
                     }
                     savePeaks(
-                        peaks, peaksPath,
-                        "diff${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
+                            peaks, peaksPath,
+                            "diff${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
                     )
                     LOG.info("Saved result to $peaksPath")
                 } else {
@@ -383,17 +382,17 @@ compare                         Differential peak calling mode, experimental
             acceptsAll(listOf("m", "model"), "Path to model file")
                     .withRequiredArg().withValuesConvertedBy(PathConverter.noCheck())
             acceptsAll(
-                listOf("cs", "chrom.sizes"),
-                "Chromosome sizes path, can be downloaded at\n" +
-                        "http://hgdownload.cse.ucsc.edu/goldenPath/<build>/bigZips/<build>.chrom.sizes"
+                    listOf("cs", "chrom.sizes"),
+                    "Chromosome sizes path, can be downloaded at\n" +
+                            "http://hgdownload.cse.ucsc.edu/goldenPath/<build>/bigZips/<build>.chrom.sizes"
             ).requiredUnless("model").withRequiredArg().withValuesConvertedBy(PathConverter.exists())
             acceptsAll(
-                listOf("p", "peaks"), "Path to result peaks file in ENCODE broadPeak (BED 6+3) format"
+                    listOf("p", "peaks"), "Path to result peaks file in ENCODE broadPeak (BED 6+3) format"
             ).withRequiredArg().withValuesConvertedBy(PathConverter.noCheck())
             acceptsAll(
-                listOf("fragment"),
-                "Fragment size. If it's an integer, reads are shifted appropriately.\n" +
-                        "If it's the string 'auto', the shift is estimated from the data. (default: auto)"
+                    listOf("fragment"),
+                    "Fragment size. If it's an integer, reads are shifted appropriately.\n" +
+                            "If it's the string 'auto', the shift is estimated from the data. (default: auto)"
             ).withRequiredArg().withValuesConvertedBy(FragmentConverter())
             acceptsAll(listOf("b", "bin"), "Bin size. (default: ${SPAN_DEFAULT_BIN})")
                     .withRequiredArg()
@@ -421,10 +420,10 @@ compare                         Differential peak calling mode, experimental
                     .defaultsTo(true)
             if (experimental) {
                 acceptsAll(
-                    listOf("type"),
-                    "Model type. Either 'nbhmm' for negative binomial HMM (default), " +
-                            "'prm' for Poisson regression mixture (experimental) " +
-                            "or 'nbrm' for Negative Binomial regression mixture (experimental)."
+                        listOf("type"),
+                        "Model type. Either 'nbhmm' for negative binomial HMM (default), " +
+                                "'prm' for Poisson regression mixture (experimental) " +
+                                "or 'nbrm' for Negative Binomial regression mixture (experimental)."
                 ).withRequiredArg()
             }
         }
@@ -454,30 +453,30 @@ compare                         Differential peak calling mode, experimental
         val workingDir = options.valueOf("workdir") as Path
         // Configure logging
         val id = peaksPath?.stemGz ?: if (modelPath != null) {
-                    modelPath.stem
-                } else {
-                    // No peaks, no model, generate ID from command-line options.
-                    // Option parser guarantees that treatment paths are not empty here.
-                    val data = getPaths(options)
-                    val ids = listOf(data.map { it.treatment }, data.mapNotNull { it.control }).flatMap { paths ->
-                        paths.map { it.stemGz }
-                    }.toMutableList()
-                    val bin = getBin(options)
-                    ids.add(bin.toString())
-                    val fragment = getFragment(options)
-                    if (fragment is FixedFragment) {
-                        ids.add(fragment.size.toString())
-                    }
-                    val unique = getUnique(options)
-                    if (unique) {
-                        ids.add("unique")
-                    }
-                    val labelsPath = options.valueOf("labels") as Path?
-                    if (labelsPath != null) {
-                        ids.add(labelsPath.stemGz)
-                    }
-                    reduceIds(ids)
-                }
+            modelPath.stem
+        } else {
+            // No peaks, no model, generate ID from command-line options.
+            // Option parser guarantees that treatment paths are not empty here.
+            val data = getPaths(options)
+            val ids = listOf(data.map { it.treatment }, data.mapNotNull { it.control }).flatMap { paths ->
+                paths.map { it.stemGz }
+            }.toMutableList()
+            val bin = getBin(options)
+            ids.add(bin.toString())
+            val fragment = getFragment(options)
+            if (fragment is FixedFragment) {
+                ids.add(fragment.size.toString())
+            }
+            val unique = getUnique(options)
+            if (unique) {
+                ids.add("unique")
+            }
+            val labelsPath = options.valueOf("labels") as Path?
+            if (labelsPath != null) {
+                ids.add(labelsPath.stemGz)
+            }
+            reduceIds(ids)
+        }
         val logPath = configureLogging("quiet" in options, "debug" in options, id, workingDir)
 
         LOG.info("SPAN ${version()}")
@@ -499,7 +498,7 @@ compare                         Differential peak calling mode, experimental
         getFragment(options, fitInformation, log = true)
         getUnique(options, fitInformation, log = true)
         if (fitInformation is Span2FitInformation) {
-            getMapabilityPath(options,  fitInformation, log = true)
+            getMapabilityPath(options, fitInformation, log = true)
         }
     }
 
@@ -524,58 +523,58 @@ compare                         Differential peak calling mode, experimental
     private fun getUnique(
             options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null, log: Boolean = false
     ) = !getProperty(
-        if ("keep-dup" in options) options.valueOf("keep-dup") as Boolean else null,
-        fitInformation?.unique?.not(), false,
-        "'keep duplicates' flag", "KEEP DUPLICATES", log
+            if ("keep-dup" in options) options.valueOf("keep-dup") as Boolean else null,
+            fitInformation?.unique?.not(), false,
+            "'keep duplicates' flag", "KEEP DUPLICATES", log
     )
 
     private fun getFragment(
             options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null, log: Boolean = false
     ) = getProperty(
-        options.valueOf("fragment") as Fragment?, fitInformation?.fragment, AutoFragment,
-        "fragment size", "FRAGMENT", log
+            options.valueOf("fragment") as Fragment?, fitInformation?.fragment, AutoFragment,
+            "fragment size", "FRAGMENT", log
     )
 
     private fun getBin(
             options: OptionSet, fitInformation: SpanFitInformation? = null, log: Boolean = false
     ) = getProperty(
-        options.valueOf("bin") as Int?, fitInformation?.binSize, SPAN_DEFAULT_BIN,
-        "bin size", "BIN", log
+            options.valueOf("bin") as Int?, fitInformation?.binSize, SPAN_DEFAULT_BIN,
+            "bin size", "BIN", log
     )
 
     private fun getModelType(
             options: OptionSet, modelPath: Path?, log: Boolean = false
     ) = getProperty(
-        options.valueOf("type")?.let {
-            when (it) {
-                "nbhmm" -> SpanModel.NB_HMM
-                "prm" -> SpanModel.POISSON_REGRESSION_MIXTURE
-                "nbrm" -> SpanModel.NEGBIN_REGRESSION_MIXTURE
-                else -> throw IllegalArgumentException("Unrecognized value for --type command line option: $it")
-            }
-        },
-        modelPath?.let {
-            when (it.extension) {
-                "span" -> SpanModel.NB_HMM
-                "span2" -> SpanModel.POISSON_REGRESSION_MIXTURE
-                "span3" -> SpanModel.NEGBIN_REGRESSION_MIXTURE
-                else -> throw IllegalArgumentException(
-                    "Unrecognized model extension '.${it.extension}', should be either '.span' or '.span2'."
-                )
-            }
-        },
-        SpanModel.NB_HMM,
-        "model type", "MODEL TYPE", log
+            options.valueOf("type")?.let {
+                when (it) {
+                    "nbhmm" -> SpanModel.NB_HMM
+                    "prm" -> SpanModel.POISSON_REGRESSION_MIXTURE
+                    "nbrm" -> SpanModel.NEGBIN_REGRESSION_MIXTURE
+                    else -> throw IllegalArgumentException("Unrecognized value for --type command line option: $it")
+                }
+            },
+            modelPath?.let {
+                when (it.extension) {
+                    "span" -> SpanModel.NB_HMM
+                    "span2" -> SpanModel.POISSON_REGRESSION_MIXTURE
+                    "span3" -> SpanModel.NEGBIN_REGRESSION_MIXTURE
+                    else -> throw IllegalArgumentException(
+                            "Unrecognized model extension '.${it.extension}', should be either '.span' or '.span2'."
+                    )
+                }
+            },
+            SpanModel.NB_HMM,
+            "model type", "MODEL TYPE", log
     )
 
     private fun getMapabilityPath(
             options: OptionSet, fitInfo: Span2FitInformation? = null, log: Boolean = false
     ) = getProperty(
-        options.valueOf("mapability") as Path?,
-        fitInfo?.mapabilityPath,
-        null,
-        "mapability", "MAPABILITY",
-        log
+            options.valueOf("mapability") as Path?,
+            fitInfo?.mapabilityPath,
+            null,
+            "mapability", "MAPABILITY",
+            log
     )
 
     private fun getAndLogWorkDirAndChromSizes(
@@ -624,14 +623,14 @@ compare                         Differential peak calling mode, experimental
         val commandLineControlPaths = options.valuesOf("control") as List<Path>
 
         val commandLinePaths = getCommandLinePaths(
-            commandLineTreatmentPaths, commandLineControlPaths
+                commandLineTreatmentPaths, commandLineControlPaths
         )
 
         val fitInfoPaths = fitInformation?.data
         if (commandLinePaths != null && fitInfoPaths != null && commandLinePaths != fitInfoPaths) {
             throw IllegalStateException(
-                "Stored treatment-control pairs ${fitInfoPaths.joinToString()} differ from the ones inferred " +
-                        "from the command line arguments: ${commandLinePaths.joinToString()}"
+                    "Stored treatment-control pairs ${fitInfoPaths.joinToString()} differ from the ones inferred " +
+                            "from the command line arguments: ${commandLinePaths.joinToString()}"
             )
         }
 
@@ -721,12 +720,12 @@ compare                         Differential peak calling mode, experimental
                     SpanPeakCallingExperiment.getExperiment(genomeQuery, data, bin, fragment, unique, modelPath)
                 SpanModel.POISSON_REGRESSION_MIXTURE ->
                     Span2PeakCallingExperiment.getExperiment(
-                        genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath
+                            genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath
                     )
                 SpanModel.NEGBIN_REGRESSION_MIXTURE ->
                     Span3PeakCallingExperiment.getExperiment(
-                        genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath
-                )
+                            genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath
+                    )
 
             }
         }
@@ -747,8 +746,8 @@ compare                         Differential peak calling mode, experimental
             LOG.info("MODEL: $modelPath")
             if (modelPath.exists && modelPath.size.isNotEmpty()) {
                 LOG.debug(
-                    "Model file $modelPath exists and is not empty, Span will use it to substitute " +
-                            "the missing command line arguments and verify the provided ones."
+                        "Model file $modelPath exists and is not empty, Span will use it to substitute " +
+                                "the missing command line arguments and verify the provided ones."
                 )
                 val results = SpanModelFitExperiment.loadResults(tarPath = modelPath)
                 checkFitInformation(options, results.fitInfo)

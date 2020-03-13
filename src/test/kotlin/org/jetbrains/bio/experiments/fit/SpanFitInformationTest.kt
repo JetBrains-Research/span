@@ -1,9 +1,9 @@
 package org.jetbrains.bio.experiments.fit
 
 import com.google.gson.JsonParseException
-import org.jetbrains.bio.coverage.FixedFragment
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
+import org.jetbrains.bio.genome.coverage.FixedFragment
 import org.jetbrains.bio.util.bufferedReader
 import org.jetbrains.bio.util.bufferedWriter
 import org.jetbrains.bio.util.toPath

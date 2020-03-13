@@ -1,15 +1,14 @@
 package org.jetbrains.bio.experiments.fit
 
-import org.jetbrains.bio.coverage.Fragment
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.fit.SpanFitInformation.Companion.chromSizes
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
-import org.jetbrains.bio.query.CachingQuery
-import org.jetbrains.bio.query.Query
-import org.jetbrains.bio.query.reduceIds
-import org.jetbrains.bio.query.stemGz
+import org.jetbrains.bio.genome.coverage.Fragment
+import org.jetbrains.bio.genome.query.CachingQuery
+import org.jetbrains.bio.genome.query.Query
+import org.jetbrains.bio.genome.query.stemGz
 import org.jetbrains.bio.span.CoverageScoresQuery
 import org.jetbrains.bio.span.Peak
 import org.jetbrains.bio.span.getChromosomePeaks
@@ -19,6 +18,7 @@ import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.state.ZLHID
 import org.jetbrains.bio.util.div
+import org.jetbrains.bio.util.reduceIds
 import java.nio.file.Path
 
 /**
@@ -113,10 +113,10 @@ data class Span1CompareFitInformation(
 ) : SpanFitInformation {
 
     override val id get() = reduceIds(
-        data1.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
-                listOf("vs") +
-                data2.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
-                listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
+            data1.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
+                    listOf("vs") +
+                    data2.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
+                    listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
     )
 
     override val dataQuery: Query<Chromosome, DataFrame>

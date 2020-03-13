@@ -1,7 +1,7 @@
 package org.jetbrains.bio.experiments.fit
 
-import org.jetbrains.bio.coverage.Fragment
 import org.jetbrains.bio.genome.GenomeQuery
+import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.mixture.NegBinRegressionMixture
 import org.jetbrains.bio.statistics.state.ZLH

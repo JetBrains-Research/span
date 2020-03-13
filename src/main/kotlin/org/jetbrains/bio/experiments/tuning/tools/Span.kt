@@ -1,7 +1,5 @@
 package org.jetbrains.bio.experiments.tuning.tools
 
-import org.jetbrains.bio.coverage.AutoFragment
-import org.jetbrains.bio.dataset.*
 import org.jetbrains.bio.experiments.fit.SpanDataPaths
 import org.jetbrains.bio.experiments.fit.SpanFitResults
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment
@@ -11,6 +9,10 @@ import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPA
 import org.jetbrains.bio.experiments.tuning.*
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.LocationsMergingList
+import org.jetbrains.bio.genome.coverage.AutoFragment
+import org.jetbrains.bio.genome.data.Cell
+import org.jetbrains.bio.genome.data.ChipSeqTarget
+import org.jetbrains.bio.genome.data.DataConfig
 import org.jetbrains.bio.span.getPeaks
 import org.jetbrains.bio.span.savePeaks
 import org.jetbrains.bio.util.*
@@ -43,8 +45,8 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
         throw IllegalStateException("Batch folder peak calling not valid for $id")
     }
 
-    override fun fileName(cellId: CellId, replicate: String, target: String, parameter: Pair<Double, Int>): String {
-        return "${cellId}_${replicate}_${target}_${SPAN_DEFAULT_BIN}_${parameter.first}_${parameter.second}_peaks.bed"
+    override fun fileName(cell: Cell, replicate: String, target: String, parameter: Pair<Double, Int>): String {
+        return "${cell}_${replicate}_${target}_${SPAN_DEFAULT_BIN}_${parameter.first}_${parameter.second}_peaks.bed"
     }
 
     override fun defaultParams(uli: Boolean) = SPAN_DEFAULT_FDR to SPAN_DEFAULT_GAP
@@ -60,7 +62,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
         val folder = folder(path, target, useInput)
         val results = TuningResults()
         val inputPath = if (useInput) configuration.tracksMap.entries
-                .filter { it.key.dataType.toDataType() == DataType.CHIP_SEQ && ChipSeqTarget.isInput(it.key.dataType) }
+                .filter { it.key.dataType == "chip-seq" && ChipSeqTarget.isInput(it.key.dataType) }
                 .flatMap { it.value }.map { it.second.path }.firstOrNull() else null
         val labelledTracks = configuration.extractLabelledTracks(target)
 

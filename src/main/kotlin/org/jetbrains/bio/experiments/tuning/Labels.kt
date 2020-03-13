@@ -1,21 +1,21 @@
 package org.jetbrains.bio.experiments.tuning
 
 import org.jetbrains.bio.big.ExtendedBedEntry
-import org.jetbrains.bio.dataset.CellId
-import org.jetbrains.bio.dataset.DataConfig
-import org.jetbrains.bio.dataset.ReplicateDataKey
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.Location
 import org.jetbrains.bio.genome.LocationAware
 import org.jetbrains.bio.genome.containers.LocationsMergingList
-import org.jetbrains.bio.io.BedField
-import org.jetbrains.bio.io.BedFormat
-import org.jetbrains.bio.io.toLocation
-import org.jetbrains.bio.io.unpackRegularFields
+import org.jetbrains.bio.genome.data.Cell
+import org.jetbrains.bio.genome.data.DataConfig
+import org.jetbrains.bio.genome.data.ReplicateDataKey
+import org.jetbrains.bio.genome.format.BedField
+import org.jetbrains.bio.genome.format.BedFormat
+import org.jetbrains.bio.genome.format.toLocation
+import org.jetbrains.bio.genome.format.unpackRegularFields
 import org.jetbrains.bio.util.toPath
 import java.nio.file.Path
 
-data class LabelledTrack(val cellId: CellId,
+data class LabelledTrack(val cell: Cell,
                          val name: String,
                          val trackPath: Path,
                          val labelPath: Path,

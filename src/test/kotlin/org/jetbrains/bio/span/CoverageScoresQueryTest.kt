@@ -1,8 +1,8 @@
 package org.jetbrains.bio.span
 
 import org.apache.commons.math3.util.Precision
-import org.jetbrains.bio.coverage.SingleEndCoverage
 import org.jetbrains.bio.genome.*
+import org.jetbrains.bio.genome.coverage.SingleEndCoverage
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

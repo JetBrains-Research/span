@@ -1,9 +1,9 @@
 package org.jetbrains.bio.experiments.tuning
 
 import kotlinx.support.jdk7.use
-import org.jetbrains.bio.dataset.CellId
-import org.jetbrains.bio.dataset.DataConfig
 import org.jetbrains.bio.experiments.tuning.tools.Span
+import org.jetbrains.bio.genome.data.Cell
+import org.jetbrains.bio.genome.data.DataConfig
 import org.jetbrains.bio.util.*
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
@@ -28,7 +28,7 @@ abstract class Tool2Tune<T> {
 
     abstract fun callPeaks(configuration: DataConfig, p: Path, parameter: T)
 
-    abstract fun fileName(cellId: CellId, replicate: String, target: String, parameter: T): String
+    abstract fun fileName(cell: Cell, replicate: String, target: String, parameter: T): String
 
     abstract fun defaultParams(uli: Boolean): T
 
@@ -75,7 +75,7 @@ abstract class Tool2Tune<T> {
     fun tunedPeaks(configuration: DataConfig,
                    path: Path,
                    target: String,
-                   useInput: Boolean): Map<Pair<CellId, String>, Path> {
+                   useInput: Boolean): Map<Pair<Cell, String>, Path> {
         val folder = folder(path, target, useInput)
         if (folder.notExists) {
             LOG.warn("Folder $target $this $folder doesn't exist")
@@ -84,8 +84,8 @@ abstract class Tool2Tune<T> {
         }
         val labelledTracks = configuration.extractLabelledTracks(target)
         val paths = labelledTracks.map {
-            (it.cellId to it.name) to
-                    findPeakFiles(folder, it.cellId.toString(), it.name).firstOrNull()
+            (it.cell to it.name) to
+                    findPeakFiles(folder, it.cell.toString(), it.name).firstOrNull()
         }
         val existingPaths = paths.filter { it.second != null }.map { (a, b) -> a to b!! }
         if (existingPaths.size != paths.size) {
@@ -141,7 +141,7 @@ abstract class Tool2Tune<T> {
         }
     }
 
-    protected fun cleanup(folder: Path, cellId: CellId, replicate: String) {
+    protected fun cleanup(folder: Path, cellId: Cell, replicate: String) {
         findPeakFiles(folder, cellId.name, replicate).forEach {
             LOG.info("Removing obsolete file $it")
             it.deleteIfExists()
@@ -156,7 +156,7 @@ abstract class ReplicatedTool2Tune<T> : Tool2Tune<T>() {
         throw IllegalStateException("Batch #callPeaks is not available in ${id}")
     }
 
-    override fun fileName(cellId: CellId, replicate: String, target: String, parameter: T): String {
+    override fun fileName(cell: Cell, replicate: String, target: String, parameter: T): String {
         throw IllegalStateException("#fileName is not available in ${id}")
     }
 

@@ -1,18 +1,16 @@
 package org.jetbrains.bio.experiments.tuning.tools
 
 import kotlinx.support.jdk7.use
-import org.jetbrains.bio.coverage.AutoFragment
-import org.jetbrains.bio.dataset.ChipSeqTarget
-import org.jetbrains.bio.dataset.DataConfig
-import org.jetbrains.bio.dataset.DataType
-import org.jetbrains.bio.dataset.toDataType
 import org.jetbrains.bio.experiments.fit.SpanDataPaths
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_BIN
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPAN_REPLICATED_DEFAULT_FDR
 import org.jetbrains.bio.experiments.tuning.*
-import org.jetbrains.bio.io.BedFormat
+import org.jetbrains.bio.genome.coverage.AutoFragment
+import org.jetbrains.bio.genome.data.ChipSeqTarget
+import org.jetbrains.bio.genome.data.DataConfig
+import org.jetbrains.bio.genome.format.BedFormat
 import org.jetbrains.bio.span.getPeaks
 import org.jetbrains.bio.span.savePeaks
 import org.jetbrains.bio.util.*
@@ -98,7 +96,7 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
         // Get all the replicated tracks
         val labelledTracks = configuration.extractLabelledTracks(target)
         val inputPath = configuration.tracksMap.entries
-                .filter { it.key.dataType.toDataType() == DataType.CHIP_SEQ && ChipSeqTarget.isInput(it.key.dataType) }
+                .filter { it.key.dataType == "chip-seq" && ChipSeqTarget.isInput(it.key.dataType) }
                 .flatMap { it.value }.map { it.second.path }.firstOrNull()
 
         val replicatedPeakCallingExperiment = SpanPeakCallingExperiment.getExperiment(

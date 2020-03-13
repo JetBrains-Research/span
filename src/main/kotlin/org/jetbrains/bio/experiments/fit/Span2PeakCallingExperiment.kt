@@ -1,19 +1,23 @@
 package org.jetbrains.bio.experiments.fit
 
 import org.jetbrains.bio.big.BigWigFile
-import org.jetbrains.bio.coverage.Coverage
-import org.jetbrains.bio.coverage.Fragment
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.fit.SpanFitInformation.Companion.chromSizes
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
+import org.jetbrains.bio.genome.coverage.Coverage
+import org.jetbrains.bio.genome.coverage.Fragment
+import org.jetbrains.bio.genome.query.CachingQuery
+import org.jetbrains.bio.genome.query.Query
+import org.jetbrains.bio.genome.query.ReadsQuery
+import org.jetbrains.bio.genome.query.stemGz
 import org.jetbrains.bio.genome.sequence.CpGContent
-import org.jetbrains.bio.query.*
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.mixture.PoissonRegressionMixture
 import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.util.div
+import org.jetbrains.bio.util.reduceIds
 import org.jetbrains.bio.viktor.asF64Array
 import java.nio.file.Path
 
@@ -90,8 +94,8 @@ data class Span2FitInformation constructor(
     )
 
     override val id get() = reduceIds(
-        listOfNotNull(data.single().treatment, data.single().control, mapabilityPath).map { it.stemGz } +
-                listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
+            listOfNotNull(data.single().treatment, data.single().control, mapabilityPath).map { it.stemGz } +
+                    listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
     )
 
     override fun scoresDataFrame(): Map<Chromosome, DataFrame> {
