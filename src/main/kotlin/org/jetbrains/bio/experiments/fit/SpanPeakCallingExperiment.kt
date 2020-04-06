@@ -39,9 +39,12 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
         fitInformation: Span1AnalyzeFitInformation,
         modelFitter: Fitter<Model>,
         modelClass: Class<Model>,
-        fixedModelPath: Path?
+        fixedModelPath: Path?,
+        threshold: Double,
+        maxIter: Int
 ) : SpanModelFitExperiment<Model, Span1AnalyzeFitInformation, ZLH>(
-    fitInformation, modelFitter, modelClass, ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L), fixedModelPath
+        fitInformation, modelFitter, modelClass, ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L), fixedModelPath,
+        threshold, maxIter
 ) {
 
     override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span"
@@ -69,26 +72,44 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
                 bin: Int,
                 fragment: Fragment = AutoFragment,
                 unique: Boolean = true,
-                fixedModelPath: Path? = null
+                fixedModelPath: Path? = null,
+                threshold: Double = Fitter.THRESHOLD,
+                maxIter: Int = Fitter.MAX_ITERATIONS,
+                multistarts: Int = Fitter.MULTISTARTS,
+                multistartIter: Int = Fitter.MULTISTART_ITERATIONS
         ): SpanPeakCallingExperiment<out ClassificationModel> {
             check(paths.isNotEmpty()) { "No data" }
             val fitInformation = Span1AnalyzeFitInformation.effective(
-                genomeQuery, paths, MultiLabels.generate(TRACK_PREFIX, paths.size).toList(),
-                fragment, unique, bin
+                    genomeQuery, paths, MultiLabels.generate(TRACK_PREFIX, paths.size).toList(),
+                    fragment, unique, bin
             )
             return if (paths.size == 1) {
                 SpanPeakCallingExperiment(
-                    fitInformation,
-                    MLFreeNBHMM.fitter().multiStarted(),
-                    MLFreeNBHMM::class.java,
-                    fixedModelPath
+                        fitInformation,
+                        when {
+                            multistarts > 0 ->
+                                MLFreeNBHMM.fitter().multiStarted(multistarts, multistartIter)
+                            else ->
+                                MLFreeNBHMM.fitter()
+                        },
+                        MLFreeNBHMM::class.java,
+                        fixedModelPath,
+                        threshold,
+                        maxIter
                 )
             } else {
                 SpanPeakCallingExperiment(
-                    fitInformation,
-                    MLConstrainedNBHMM.fitter(paths.size).multiStarted(),
-                    MLConstrainedNBHMM::class.java,
-                    fixedModelPath
+                        fitInformation,
+                        when {
+                            multistarts > 0 ->
+                                MLConstrainedNBHMM.fitter(paths.size).multiStarted(multistarts, multistartIter)
+                            else ->
+                                MLConstrainedNBHMM.fitter(paths.size)
+                        },
+                        MLConstrainedNBHMM::class.java,
+                        fixedModelPath,
+                        threshold,
+                        maxIter
                 )
             }
         }
@@ -120,16 +141,17 @@ data class Span1AnalyzeFitInformation(
             fragment: Fragment,
             unique: Boolean,
             binSize: Int
-    ): this(
-        genomeQuery.build, paths,
-        labels, fragment, unique, binSize,
-        chromSizes(genomeQuery)
+    ) : this(
+            genomeQuery.build, paths,
+            labels, fragment, unique, binSize,
+            chromSizes(genomeQuery)
     )
 
-    override val id: String get() = reduceIds(
-            data.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
-                    listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
-    )
+    override val id: String
+        get() = reduceIds(
+                data.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
+                        listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
+        )
 
     override val dataQuery: Query<Chromosome, DataFrame>
         get() = object : CachingQuery<Chromosome, DataFrame>() {
@@ -154,7 +176,7 @@ data class Span1AnalyzeFitInformation(
         if (queries.any { !it.ready }) {
             return emptyMap()
         }
-        return gq.get().associateBy({it}) {
+        return gq.get().associateBy({ it }) {
             queries.scoresDataFrame(it, labels.toTypedArray())
         }
     }
@@ -172,7 +194,7 @@ data class Span1AnalyzeFitInformation(
         ): Span1AnalyzeFitInformation {
             val effectiveGQ = SpanModelFitExperiment.effectiveGenomeQuery(genomeQuery, paths, fragment, unique)
             return Span1AnalyzeFitInformation(
-                effectiveGQ.build, paths, labels, fragment, unique, binSize, chromSizes(effectiveGQ)
+                    effectiveGQ.build, paths, labels, fragment, unique, binSize, chromSizes(effectiveGQ)
             )
         }
     }

@@ -10,6 +10,7 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.PeaksInfo
 import org.jetbrains.bio.genome.coverage.FixedFragment
 import org.jetbrains.bio.genome.query.stemGz
+import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.util.*
 import java.nio.file.Path
 
@@ -37,6 +38,16 @@ object SpanCLAAnalyze {
                     .availableIf("peaks")
                     .withRequiredArg()
                     .withValuesConvertedBy(PathConverter.exists())
+            acceptsAll(listOf("ms", "multistarts"),
+                    "Number of multistart runs using different model initialization. Use 0 to disable")
+                    .withRequiredArg()
+                    .ofType(Int::class.java)
+                    .defaultsTo(Fitter.MULTISTARTS)
+            acceptsAll(listOf("msi", "ms-iterations"), "Number of iterations for each multistart run")
+                    .withRequiredArg()
+                    .ofType(Int::class.java)
+                    .defaultsTo(Fitter.MULTISTART_ITERATIONS)
+
             if (experimental) {
                 acceptsAll(
                         listOf("type"),
@@ -213,6 +224,19 @@ object SpanCLAAnalyze {
         return paths
     }
 
+    internal fun getMultistarts(
+            options: OptionSet, log: Boolean = false
+    ) = SpanCLA.getProperty(
+            options.valueOf("multistarts") as Int?, null, Fitter.MULTISTARTS,
+            "multistarts", "MULTISTARTS", log
+    )
+
+    internal fun getMultistartIterations(
+            options: OptionSet, log: Boolean = false
+    ) = SpanCLA.getProperty(
+            options.valueOf("ms-iterations") as Int?, null, Fitter.MULTISTART_ITERATIONS,
+            "multistart iterations", "MULTISTART ITERATIONS", log
+    )
 
     /**
      * Configure logging and get [SpanFitResults] in a most concise and effective way.
@@ -254,6 +278,10 @@ object SpanCLAAnalyze {
             val bin = SpanCLA.getBin(options, log = true)
             val fragment = SpanCLA.getFragment(options, log = true)
             val unique = SpanCLA.getUnique(options, log = true)
+            val maxIter = SpanCLA.getMaxIter(options, log = true)
+            val multistarts = getMultistarts(options, log = true)
+            val multistartIterations = getMultistartIterations(options, log = true)
+            val threshold = SpanCLA.getThreshold(options, log = true)
             val modelType: SpanModel
             val mapabilityPath: Path?
             if (experimental) {
@@ -273,15 +301,28 @@ object SpanCLAAnalyze {
             return lazy {
                 val experiment = when (modelType) {
                     SpanModel.NB_HMM ->
-                        SpanPeakCallingExperiment.getExperiment(genomeQuery, data, bin, fragment, unique, modelPath)
-                    SpanModel.POISSON_REGRESSION_MIXTURE ->
+                        SpanPeakCallingExperiment.getExperiment(
+                                genomeQuery, data, bin, fragment, unique, modelPath,
+                                threshold, maxIter, multistarts, multistartIterations
+                        )
+                    SpanModel.POISSON_REGRESSION_MIXTURE -> {
+                        if (multistarts > 0) {
+                            SpanCLA.LOG.error("Multistart is not supported for $modelType")
+                        }
                         Span2PeakCallingExperiment.getExperiment(
-                                genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath
+                                genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath,
+                                threshold, maxIter
                         )
-                    SpanModel.NEGBIN_REGRESSION_MIXTURE ->
+                    }
+                    SpanModel.NEGBIN_REGRESSION_MIXTURE -> {
+                        if (multistarts > 0) {
+                            SpanCLA.LOG.error("Multistart is not supported for $modelType")
+                        }
                         Span3PeakCallingExperiment.getExperiment(
-                                genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath
+                                genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath,
+                                threshold, maxIter
                         )
+                    }
 
                 }
                 experiment.results

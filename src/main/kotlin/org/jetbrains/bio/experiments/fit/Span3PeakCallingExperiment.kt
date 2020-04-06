@@ -27,12 +27,15 @@ import java.nio.file.Path
  */
 class Span3PeakCallingExperiment private constructor(
         fitInformation: Span2FitInformation,
-        fixedModelPath: Path?
+        fixedModelPath: Path?,
+        threshold: Double,
+        maxIter: Int
 ) : SpanModelFitExperiment<NegBinRegressionMixture, Span2FitInformation, ZLH>(
         fitInformation,
         NegBinRegressionMixture.fitter(), NegBinRegressionMixture::class.java,
         ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
-        fixedModelPath
+        fixedModelPath,
+        threshold, maxIter
 ) {
 
     override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span2"
@@ -49,13 +52,15 @@ class Span3PeakCallingExperiment private constructor(
                 fragment: Fragment,
                 binSize: Int,
                 unique: Boolean,
-                fixedModelPath: Path?
+                fixedModelPath: Path?,
+                threshold: Double,
+                maxIter: Int
         ): Span3PeakCallingExperiment {
             check(data.size == 1) { "Negative binomial regression mixture currently accepts a single data track." }
             val fitInformation = Span2FitInformation(
                     genomeQuery, data.single(), mapabilityPath, fragment, unique, binSize
             )
-            return Span3PeakCallingExperiment(fitInformation, fixedModelPath)
+            return Span3PeakCallingExperiment(fitInformation, fixedModelPath, threshold, maxIter)
         }
     }
 }

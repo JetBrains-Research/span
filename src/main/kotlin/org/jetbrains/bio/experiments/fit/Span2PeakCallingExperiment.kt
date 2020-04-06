@@ -40,12 +40,15 @@ import java.nio.file.Path
  */
 class Span2PeakCallingExperiment private constructor(
         fitInformation: Span2FitInformation,
-        fixedModelPath: Path?
+        fixedModelPath: Path?,
+        threshold: Double,
+        maxIter: Int
 ) : SpanModelFitExperiment<PoissonRegressionMixture, Span2FitInformation, ZLH>(
-    fitInformation,
-    PoissonRegressionMixture.fitter(), PoissonRegressionMixture::class.java,
-    ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
-    fixedModelPath
+        fitInformation,
+        PoissonRegressionMixture.fitter(), PoissonRegressionMixture::class.java,
+        ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
+        fixedModelPath,
+        threshold, maxIter
 ) {
 
     override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span2"
@@ -62,13 +65,15 @@ class Span2PeakCallingExperiment private constructor(
                 fragment: Fragment,
                 binSize: Int,
                 unique: Boolean,
-                fixedModelPath: Path?
+                fixedModelPath: Path?,
+                threshold: Double,
+                maxIter: Int
         ): Span2PeakCallingExperiment {
             check(data.size == 1) { "Poisson regression mixture currently accepts a single data track." }
             val fitInformation = Span2FitInformation(
                 genomeQuery, data.single(), mapabilityPath, fragment, unique, binSize
             )
-            return Span2PeakCallingExperiment(fitInformation, fixedModelPath)
+            return Span2PeakCallingExperiment(fitInformation, fixedModelPath, threshold, maxIter)
         }
     }
 }

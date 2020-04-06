@@ -38,18 +38,22 @@ import java.nio.file.Path
  * @since 10/04/15
  */
 class SpanDifferentialPeakCallingExperiment private constructor(
-        fitInformation: Span1CompareFitInformation
+        fitInformation: Span1CompareFitInformation,
+        threshold: Double,
+        maxIter: Int
 ) : SpanModelFitExperiment<MLConstrainedNBHMM, Span1CompareFitInformation, ZLHID>(
-    fitInformation,
-    MLConstrainedNBHMM.fitter(fitInformation.data1.size, fitInformation.data2.size),
-    MLConstrainedNBHMM::class.java,
-    ZLHID.values(), NullHypothesis.of(ZLHID.same())
+        fitInformation,
+        MLConstrainedNBHMM.fitter(fitInformation.data1.size, fitInformation.data2.size),
+        MLConstrainedNBHMM::class.java,
+        ZLHID.values(), NullHypothesis.of(ZLHID.same()),
+        threshold = threshold,
+        maxIter = maxIter
 ) {
 
     override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span"
 
     fun computeDirectedDifferencePeaks(fdr: Double,
-            gap: Int): Pair<List<Peak>, List<Peak>> {
+                                       gap: Int): Pair<List<Peak>, List<Peak>> {
         val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
             results.getChromosomePeaks(chromosome, fdr, gap, dataQuery.apply(chromosome))
         }
@@ -85,7 +89,9 @@ class SpanDifferentialPeakCallingExperiment private constructor(
                 paths2: List<SpanDataPaths>,
                 bin: Int,
                 fragment: Fragment,
-                unique: Boolean
+                unique: Boolean,
+                threshold: Double,
+                maxIter: Int
         ): SpanDifferentialPeakCallingExperiment {
             check(paths1.isNotEmpty() && paths2.isNotEmpty()) { "No data" }
             val fitInformation = Span1CompareFitInformation.effective(
@@ -95,7 +101,7 @@ class SpanDifferentialPeakCallingExperiment private constructor(
                 MultiLabels.generate(TRACK2_PREFIX, paths2.size).toList(),
                 fragment, unique, bin
             )
-            return SpanDifferentialPeakCallingExperiment(fitInformation)
+            return SpanDifferentialPeakCallingExperiment(fitInformation, threshold, maxIter)
         }
     }
 }

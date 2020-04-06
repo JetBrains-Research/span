@@ -481,6 +481,10 @@ TREATMENT: $path
 CONTROL: none
 CHROM.SIZES: $chromsizes
 FRAGMENT: auto
+MAX ITERATIONS: 100
+MULTISTARTS: 5
+MULTISTART ITERATIONS: 5
+CONVERGENCE THRESHOLD: 0.1
 """, out)
                 assertFalse("""NO output path given, process model fitting only.
     LABELS, FDR, GAP options are ignored.

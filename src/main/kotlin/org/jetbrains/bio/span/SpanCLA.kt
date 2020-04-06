@@ -13,6 +13,7 @@ import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPA
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
+import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.util.*
 import org.jetbrains.bio.util.FileSize.Companion.GB
 import org.slf4j.LoggerFactory
@@ -166,6 +167,15 @@ compare                         Differential peak calling mode, experimental
                     .withOptionalArg()
                     .ofType(Boolean::class.java)
                     .defaultsTo(true)
+            acceptsAll(listOf("i", "iterations"), "Maximum number of iterations for EM algorithm")
+                    .withRequiredArg()
+                    .ofType(Int::class.java)
+                    .defaultsTo(Fitter.MAX_ITERATIONS)
+            acceptsAll(listOf("tr", "threshold"), "Convergence threshold for EM algorithm, " +
+                    "use --debug option to see detailed info")
+                    .withRequiredArg()
+                    .ofType(Double::class.java)
+                    .defaultsTo(Fitter.THRESHOLD)
         }
     }
 
@@ -222,6 +232,20 @@ compare                         Differential peak calling mode, experimental
     ) = getProperty(
             options.valueOf("bin") as Int?, fitInformation?.binSize, SPAN_DEFAULT_BIN,
             "bin size", "BIN", log
+    )
+
+    internal fun getThreshold(
+            options: OptionSet, log: Boolean = false
+    ) = getProperty(
+            options.valueOf("threshold") as Double?, null, Fitter.THRESHOLD,
+            "convergence threshold", "CONVERGENCE THRESHOLD", log
+    )
+
+    internal fun getMaxIter(
+            options: OptionSet, log: Boolean = false
+    ) = getProperty(
+            options.valueOf("iterations") as Int?, null, Fitter.MAX_ITERATIONS,
+            "max iterations", "MAX ITERATIONS", log
     )
 
     internal fun getAndLogWorkDirAndChromSizes(
@@ -281,3 +305,4 @@ compare                         Differential peak calling mode, experimental
     }
 
 }
+

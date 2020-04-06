@@ -328,14 +328,16 @@ data class SpanFitResults(
  * [defaultModelPath] will be used (it usually depends of [fitInformation] id).
  */
 abstract class SpanModelFitExperiment<
-        out Model : ClassificationModel, out FitInfo: SpanFitInformation, State : Any
-> protected constructor(
+        out Model : ClassificationModel, out FitInfo : SpanFitInformation, State : Any
+        > protected constructor(
         val fitInformation: FitInfo,
         private val modelFitter: Fitter<Model>,
         private val modelClass: Class<out Model>,
         private val availableStates: Array<State>,
         private val nullHypothesis: NullHypothesis<State>,
-        private val fixedModelPath: Path? = null
+        private val fixedModelPath: Path? = null,
+        private val threshold: Double = Fitter.THRESHOLD,
+        private val maxIter: Int = Fitter.MAX_ITERATIONS
 ) : Experiment("fit") {
 
     val genomeQuery = fitInformation.genomeQuery()
@@ -368,7 +370,7 @@ abstract class SpanModelFitExperiment<
     private val modelPath get() = fixedModelPath ?: defaultModelPath
 
     private fun calculateModel(): Model {
-        return modelFitter.fit(preprocessedData, title = dataQuery.id)
+        return modelFitter.fit(preprocessedData, title = dataQuery.id, threshold = threshold, maxIter = maxIter)
     }
 
     private fun calculateStatesDataFrame(model: Model): DataFrame = DataFrame.rowBind(
