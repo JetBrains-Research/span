@@ -158,7 +158,6 @@ CONTROL1: none
 TREATMENT2: $path
 CONTROL2: none
 CHROM.SIZES: $chromsizes
-GENOME: to1
 FRAGMENT: auto
 BIN: $BIN
 FDR: $FDR
@@ -456,7 +455,7 @@ LABELS, FDR, GAP options are ignored.
 
 
     @Test
-    fun testOutput() {
+    fun testAnalyze() {
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
         withTempFile("track", ".bed.gz") { path ->
 
@@ -468,11 +467,21 @@ LABELS, FDR, GAP options are ignored.
                 val peaksPath = path.parent / "${path.stem}.peak"
                 val (out, _) = Logs.captureLoggingOutput {
                     SpanCLA.main(arrayOf("analyze", "-cs", chromsizes,
-                        "--workdir", it.toString(),
-                        "-t", path.toString(),
-                        "--threads", THREADS.toString(),
-                        "--peaks", peaksPath.toString()))
+                            "--workdir", it.toString(),
+                            "-t", path.toString(),
+                            "--threads", THREADS.toString(),
+                            "--peaks", peaksPath.toString()))
                 }
+                assertIn("""SPAN
+COMMAND:
+LOG:
+WORKING DIR: $it
+THREADS: $THREADS
+TREATMENT: $path
+CONTROL: none
+CHROM.SIZES: $chromsizes
+FRAGMENT: auto
+""", out)
                 assertFalse("""NO output path given, process model fitting only.
     LABELS, FDR, GAP options are ignored.
     """ in out)

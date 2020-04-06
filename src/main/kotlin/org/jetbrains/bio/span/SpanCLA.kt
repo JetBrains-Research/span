@@ -4,23 +4,15 @@ import com.google.common.annotations.VisibleForTesting
 import joptsimple.OptionParser
 import joptsimple.OptionSet
 import org.jetbrains.bio.experiment.Configuration
-import org.jetbrains.bio.experiments.fit.*
+import org.jetbrains.bio.experiments.fit.SpanAnalyzeFitInformation
+import org.jetbrains.bio.experiments.fit.SpanDataPaths
+import org.jetbrains.bio.experiments.fit.SpanFitInformation
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_BIN
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_FDR
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_GAP
-import org.jetbrains.bio.experiments.tuning.LocationLabel
-import org.jetbrains.bio.experiments.tuning.TuningResults
-import org.jetbrains.bio.experiments.tuning.tools.Span
 import org.jetbrains.bio.genome.Genome
-import org.jetbrains.bio.genome.GenomeQuery
-import org.jetbrains.bio.genome.PeaksInfo.compute
 import org.jetbrains.bio.genome.coverage.AutoFragment
-import org.jetbrains.bio.genome.coverage.FixedFragment
 import org.jetbrains.bio.genome.coverage.Fragment
-import org.jetbrains.bio.genome.query.ReadsQuery
-import org.jetbrains.bio.genome.query.stemGz
-import org.jetbrains.bio.statistics.ClassificationModel
-import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.util.*
 import org.jetbrains.bio.util.FileSize.Companion.GB
 import org.slf4j.LoggerFactory
@@ -31,14 +23,15 @@ import java.nio.file.Path
  * Tool for analyzing and comparing ChIP-Seq data.
  * `analyze` and `compare` procedures rely on the Zero Inflated Negative Binomial Restricted Algorithm.
  *
- * There's also an experimental mode `analyze-experimental` that uses a regression mixture.
+ * See [SpanCLAAnalyze] for peak calling procedure.
+ * See [SpanCLACompare] for differential peak calling.
  *
  * @author Oleg Shpynov
  * @since  14/09/15
  */
 @Suppress("UNCHECKED_CAST")
 object SpanCLA {
-    private val LOG = LoggerFactory.getLogger(SpanCLA::class.java)
+    internal val LOG = LoggerFactory.getLogger(SpanCLA::class.java)
 
     /**
      * Shpynov:
@@ -55,7 +48,7 @@ object SpanCLA {
         resource?.openStream()?.use { System.getProperties().load(it) }
     }
 
-    private fun version() =
+    internal fun version() =
             "${System.getProperty("span.build.version", "@VERSION@.@build@")} " +
                     "built on ${System.getProperty("span.build.date", "@DATE@")}"
 
@@ -82,9 +75,9 @@ compare                         Differential peak calling mode, experimental
             System.err.println(HELP)
         } else {
             when (args[0]) {
-                ANALYZE -> analyze(args.copyOfRange(1, args.size), false)
-                ANALYZE_EXPERIMENTAL -> analyze(args.copyOfRange(1, args.size), true)
-                COMPARE -> compare(args.copyOfRange(1, args.size))
+                ANALYZE -> SpanCLAAnalyze.analyze(args.copyOfRange(1, args.size), false)
+                ANALYZE_EXPERIMENTAL -> SpanCLAAnalyze.analyze(args.copyOfRange(1, args.size), true)
+                COMPARE -> SpanCLACompare.compare(args.copyOfRange(1, args.size))
 
                 "-?", "-h", "--help" -> println(HELP)
                 "-v", "--version" -> println(version())
@@ -98,123 +91,7 @@ compare                         Differential peak calling mode, experimental
     }
 
 
-    private fun analyze(params: Array<String>, experimental: Boolean) {
-        with(getOptionParser(experimental)) {
-            acceptsAll(listOf("t", "treatment"),
-                    "ChIP-seq treatment file. bam, bed or .bed.gz file;\n" +
-                            "If multiple files are given, treated as replicates.")
-                    .requiredUnless("model")
-                    .withRequiredArg()
-                    .withValuesSeparatedBy(",")
-                    .withValuesConvertedBy(PathConverter.noCheck())
-            acceptsAll(listOf("c", "control"),
-                    "Control file. bam, bed or bed.gz file;\n" +
-                            "Single control file or separate file per each\n" +
-                            "treatment file required.")
-                    .availableIf("treatment")
-                    .withRequiredArg()
-                    .withValuesSeparatedBy(",")
-                    .withValuesConvertedBy(PathConverter.noCheck())
-            acceptsAll(listOf("labels"), "Labels BED file")
-                    .availableIf("peaks")
-                    .withRequiredArg()
-                    .withValuesConvertedBy(PathConverter.exists())
-            if (experimental) {
-                acceptsAll(listOf("mapability"), "Mapability bigWig file.")
-                        .availableIf("treatment")
-                        .withRequiredArg()
-                        .withValuesConvertedBy(PathConverter.exists())
-            }
-
-            parse(params) { options ->
-
-                // this value is lazy to ensure the correct logging order
-                val lazySpanResults = peakCallingResults(options, params, experimental)
-
-                val peaksPath = options.valueOf("peaks") as Path?
-                val labelsPath = options.valueOf("labels") as Path?
-                val gap = options.valueOf("gap") as Int
-                val fdr = options.valueOf("fdr") as Double
-                val threads = options.valueOf("threads") as Int?
-
-                if (peaksPath != null) {
-                    if (labelsPath != null) {
-                        LOG.info("LABELS: $labelsPath")
-                        LOG.info("FDR, GAP options are ignored.")
-                    } else {
-                        LOG.info("FDR: $fdr")
-                        LOG.info("GAP: $gap")
-                    }
-                    LOG.info("PEAKS: $peaksPath")
-                } else {
-                    LOG.info("NO output path given, process model fitting only.")
-                    LOG.info("LABELS, FDR, GAP options are ignored.")
-                }
-
-                configureParallelism(threads)
-                LOG.info("THREADS: ${parallelismLevel()}")
-
-                checkMemory()
-
-                val spanResults = lazySpanResults.value
-                val fitInfo = spanResults.fitInfo
-                check(fitInfo is SpanAnalyzeFitInformation) {
-                    "Expected SpanAnalyzeFitInformation, got ${fitInfo::class.java.name}"
-                }
-                val gq = fitInfo.genomeQuery()
-                val fragment = fitInfo.fragment
-                val bin = fitInfo.binSize
-
-                if (peaksPath != null) {
-                    if (labelsPath == null) {
-                        val peaks = spanResults.getPeaks(gq, fdr, gap)
-                        savePeaks(
-                                peaks, peaksPath,
-                                "peak${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
-                        )
-                        LOG.info("Saved result to $peaksPath")
-                        val aboutPeaks = compute(
-                                gq,
-                                peaks.map { it.location }.stream(),
-                                peaksPath.toUri(),
-                                fitInfo.data.map { it.treatment }
-                        )
-                        val aboutModel = spanResults.about()
-                        LOG.info("\n" + (aboutPeaks + aboutModel).map { (k, v) -> "$k: $v" }.joinToString("\n"))
-                    } else {
-                        val results = TuningResults()
-                        LOG.info("Loading labels $labelsPath...")
-                        val labels = LocationLabel.loadLabels(labelsPath, gq.genome)
-                        LOG.info("Tuning model on the loaded labels...")
-                        val (labelErrorsGrid, index) = Span.tune(spanResults, labels, "", Span.parameters)
-                        LOG.info("Tuning model on the loaded labels complete.")
-                        val (optimalFDR, optimalGap) = Span.parameters[index]
-                        LOG.info("Optimal settings: FDR=$optimalFDR, GAP=$optimalGap")
-                        labelErrorsGrid.forEachIndexed { i, error ->
-                            results.addRecord(
-                                    "result",
-                                    Span.transform(Span.parameters[i]),
-                                    error,
-                                    i == index
-                            )
-                        }
-                        results.saveTuningErrors(peaksPath.parent / "${peaksPath.fileName.stem}_errors.csv")
-                        results.saveOptimalResults(peaksPath.parent
-                                / "${peaksPath.fileName.stem}_parameters.csv")
-                        val peaks = spanResults.getPeaks(gq, optimalFDR, optimalGap)
-                        savePeaks(
-                                peaks, peaksPath,
-                                "peak${if (fragment is FixedFragment) "_$fragment" else ""}_" +
-                                        "${bin}_${optimalFDR}_$optimalGap"
-                        )
-                        LOG.info("Saved result to $peaksPath")
-                    }
-                }
-            }
-        }
-    }
-
-    private fun checkMemory() {
+    internal fun checkMemory() {
         val maxMemory = Runtime.getRuntime().maxMemory()
         // [Shpynov] This is a hack: since -Xmx4G results in about 3.5G max memory available
         // The reason of such a discrepancy is the size of the garbage collector's survivor space.
@@ -227,141 +104,9 @@ compare                         Differential peak calling mode, experimental
     }
 
 
-    private fun compare(params: Array<String>) {
-        with(getOptionParser()) {
-            acceptsAll(listOf("t1", "treatment1"),
-                    "ChIP-seq treatment file 1. bam, bed or .bed.gz file;\n" +
-                            "If multiple files are given, treated as replicates.")
-                    .withRequiredArg().required()
-                    .withValuesSeparatedBy(",")
-                    .withValuesConvertedBy(PathConverter.exists())
-            acceptsAll(listOf("c1", "control1"),
-                    "Control file 1. bam, bed or .bed.gz file;\n" +
-                            "Single control file or separate file per each\n" +
-                            "treatment file required.")
-                    .withRequiredArg()
-                    .withValuesSeparatedBy(",")
-                    .withValuesConvertedBy(PathConverter.exists())
-
-            acceptsAll(listOf("t2", "treatment2"),
-                    "ChIP-seq treatment file 2. bam, bed or .bed.gz file;\n" +
-                            "If multiple files are given, treated as replicates.")
-                    .withRequiredArg().required()
-                    .withValuesSeparatedBy(",")
-                    .withValuesConvertedBy(PathConverter.exists())
-            acceptsAll(listOf("c2", "control2"),
-                    "Control file 2. bam, bed or .bed.gz file;\n" +
-                            "Single control file or separate file per each\n" +
-                            "treatment file required.")
-                    .withRequiredArg()
-                    .withValuesSeparatedBy(",")
-                    .withValuesConvertedBy(PathConverter.exists())
-
-            parse(params) { options ->
-
-                val workingDir = options.valueOf("workdir") as Path
-                val chromSizesPath = options.valueOf("chrom.sizes") as Path
-                val treatmentPaths1 = options.valuesOf("treatment1") as List<Path>
-                val treatmentPaths2 = options.valuesOf("treatment2") as List<Path>
-                val controlPaths1 = options.valuesOf("control1") as List<Path>
-                val controlPaths2 = options.valuesOf("control2") as List<Path>
-                val fragment = getFragment(options, null, log = false)
-                val bin = getBin(options, null, log = false)
-                val gap = options.valueOf("gap") as Int
-                val fdr = options.valueOf("fdr") as Double
-                val peaksPath = options.valueOf("peaks") as Path?
-                val threads = options.valueOf("threads") as Int?
-
-                // Configure logging
-                val id = if (peaksPath != null) {
-                    peaksPath.stemGz
-                } else {
-                    val ids = listOfNotNull(treatmentPaths1, controlPaths1, treatmentPaths2, controlPaths2)
-                            .flatMap { paths -> paths.map { it.stemGz } }.toMutableList()
-                    ids.add(bin.toString())
-                    if (fragment is FixedFragment) {
-                        ids.add(fragment.toString())
-                    }
-                    reduceIds(ids)
-                }
-                val logPath = configureLogging(
-                        "quiet" in options, "debug" in options, id, workingDir
-                )
-
-
-                LOG.info("SPAN ${version()}")
-                LOG.info("COMMAND:\ncompare ${params.joinToString(" ")}")
-                LOG.info("LOG: $logPath")
-                LOG.info("WORKING DIR: $workingDir")
-                LOG.info("TREATMENT1: ${treatmentPaths1.joinToString(", ", transform = Path::toString)}")
-                if (controlPaths1.isNotEmpty()) {
-                    LOG.info("CONTROL1: ${controlPaths1.joinToString(", ", transform = Path::toString)}")
-                } else {
-                    LOG.info("CONTROL1: none")
-                }
-                LOG.info("TREATMENT2: ${treatmentPaths2.joinToString(", ", transform = Path::toString)}")
-                if (controlPaths2.isNotEmpty()) {
-                    LOG.info("CONTROL2: ${controlPaths2.joinToString(", ", transform = Path::toString)}")
-                } else {
-                    LOG.info("CONTROL2: none")
-                }
-                LOG.info("CHROM.SIZES: $chromSizesPath")
-                // Configuration initialization should be configured before any access
-                configurePaths(workingDir, chromSizesPath)
-                val genome = Genome[chromSizesPath]
-                LOG.info("GENOME: ${genome.build}")
-                LOG.info("FRAGMENT: $fragment")
-                LOG.info("BIN: $bin")
-                val unique = getUnique(options, log = true)
-                LOG.info("FDR: $fdr")
-                LOG.info("GAP: $gap")
-                if (peaksPath != null) {
-                    LOG.info("PEAKS: $peaksPath")
-                } else {
-                    LOG.info("BIN: $bin")
-                    LOG.info("NO output path given, process model fitting only.")
-                    LOG.info("LABELS, FDR, GAP options are ignored.")
-                }
-                configureParallelism(threads)
-                LOG.info("THREADS: ${parallelismLevel()}")
-
-                checkMemory()
-
-                val gq = GenomeQuery(genome)
-                val paths1 = getCommandLinePaths(treatmentPaths1, controlPaths1)
-                check(paths1 != null) { "No treatment files provided for set 1, use -t1 option." }
-                val paths2 = getCommandLinePaths(treatmentPaths2, controlPaths2)
-                check(paths2 != null) { "No treatment files provided for set 2, use -t1 option." }
-
-                val coverages1 = treatmentPaths1.map { ReadsQuery(gq, it, fragment = fragment) }
-                val coverages2 = treatmentPaths2.map { ReadsQuery(gq, it, fragment = fragment) }
-                val experiment = SpanDifferentialPeakCallingExperiment.getExperiment(
-                        gq, paths1, paths2, bin, fragment, unique
-                )
-
-                if (peaksPath != null) {
-                    val peaks = experiment.results.getPeaks(experiment.genomeQuery, fdr, gap)
-                    peaks.forEach { peak ->
-                        peak.value =
-                                Math.max(1.0, coverages1.map {
-                                    it.get().getBothStrandsCoverage(peak.range.on(peak.chromosome))
-                                }.average()) /
-                                        Math.max(1.0, coverages2.map {
-                                            it.get().getBothStrandsCoverage(peak.range.on(peak.chromosome))
-                                        }.average())
-                    }
-                    savePeaks(
-                            peaks, peaksPath,
-                            "diff${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
-                    )
-                    LOG.info("Saved result to $peaksPath")
-                } else {
-                    experiment.run()
-                }
-            }
-        }
-    }
-
+    /**
+     * Initialize [Configuration] with given paths
+     */
     private fun configurePaths(outputPath: Path, chromSizesPath: Path?) {
         if (ignoreConfigurePaths) {
             LOG.debug("IGNORE configurePaths")
@@ -375,7 +120,10 @@ compare                         Differential peak calling mode, experimental
     }
 
 
-    private fun getOptionParser(experimental: Boolean = false): OptionParser = object : OptionParser() {
+    /**
+     * Create [OptionParser] common for both [analyze] and [compare] procedures.
+     */
+    internal fun getOptionParser(): OptionParser = object : OptionParser() {
         init {
             acceptsAll(listOf("d", "debug"), "Print all the debug information, used for troubleshooting.")
             acceptsAll(listOf("q", "quiet"), "Turn off output")
@@ -418,19 +166,11 @@ compare                         Differential peak calling mode, experimental
                     .withOptionalArg()
                     .ofType(Boolean::class.java)
                     .defaultsTo(true)
-            if (experimental) {
-                acceptsAll(
-                        listOf("type"),
-                        "Model type. Either 'nbhmm' for negative binomial HMM (default), " +
-                                "'prm' for Poisson regression mixture (experimental) " +
-                                "or 'nbrm' for Negative Binomial regression mixture (experimental)."
-                ).withRequiredArg()
-            }
         }
     }
 
     /**
-     * Returns path to log file.
+     * Configure logging to console / file. Returns path to log file.
      */
     @VisibleForTesting
     internal fun configureLogging(quiet: Boolean, debug: Boolean, id: String, workingDir: Path): Path {
@@ -445,68 +185,10 @@ compare                         Differential peak calling mode, experimental
     }
 
     /**
-     * Configures logging and logs Span version and invocation.
-     */
-    private fun logGeneralInfoAnalyze(options: OptionSet, params: Array<String>) {
-        val peaksPath = options.valueOf("peaks") as Path?
-        val modelPath = options.valueOf("model") as Path?
-        val workingDir = options.valueOf("workdir") as Path
-        // Configure logging
-        val id = peaksPath?.stemGz ?: if (modelPath != null) {
-            modelPath.stem
-        } else {
-            // No peaks, no model, generate ID from command-line options.
-            // Option parser guarantees that treatment paths are not empty here.
-            val data = getPaths(options)
-            val ids = listOf(data.map { it.treatment }, data.mapNotNull { it.control }).flatMap { paths ->
-                paths.map { it.stemGz }
-            }.toMutableList()
-            val bin = getBin(options)
-            ids.add(bin.toString())
-            val fragment = getFragment(options)
-            if (fragment is FixedFragment) {
-                ids.add(fragment.size.toString())
-            }
-            val unique = getUnique(options)
-            if (unique) {
-                ids.add("unique")
-            }
-            val labelsPath = options.valueOf("labels") as Path?
-            if (labelsPath != null) {
-                ids.add(labelsPath.stemGz)
-            }
-            reduceIds(ids)
-        }
-        val logPath = configureLogging("quiet" in options, "debug" in options, id, workingDir)
-
-        LOG.info("SPAN ${version()}")
-        LOG.info("COMMAND:\nanalyze ${params.joinToString(" ")}")
-        LOG.info("LOG: $logPath")
-    }
-
-    /**
-     * Checks supplied command line options against those stored in the fit information.
-     * Configures the working directory and genomes path (if provided). Logs the progress.
-     */
-    private fun checkFitInformation(options: OptionSet, fitInformation: SpanFitInformation) {
-        check(fitInformation is SpanAnalyzeFitInformation) {
-            "Invalid fit information; expected SpanAnalyzeFitInformation, got ${fitInformation::class.java.name}"
-        }
-        getAndLogWorkDirAndChromSizes(options, fitInformation)
-        getPaths(options, fitInformation, log = true)
-        getBin(options, fitInformation, log = true)
-        getFragment(options, fitInformation, log = true)
-        getUnique(options, fitInformation, log = true)
-        if (fitInformation is Span2FitInformation) {
-            getMapabilityPath(options, fitInformation, log = true)
-        }
-    }
-
-    /**
      * Compare the command-line option (null if not given) and stored value (null if not present).
      * Fail if these differ. Return default if both are null. Log the value if [log] is true.
      */
-    private fun <T> getProperty(
+    internal fun <T> getProperty(
             commandLineValue: T?, fitInfoValue: T?, default: T, propertyName: String,
             propertyId: String, log: Boolean
     ): T {
@@ -520,7 +202,7 @@ compare                         Differential peak calling mode, experimental
         return property
     }
 
-    private fun getUnique(
+    internal fun getUnique(
             options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null, log: Boolean = false
     ) = !getProperty(
             if ("keep-dup" in options) options.valueOf("keep-dup") as Boolean else null,
@@ -528,58 +210,23 @@ compare                         Differential peak calling mode, experimental
             "'keep duplicates' flag", "KEEP DUPLICATES", log
     )
 
-    private fun getFragment(
+    internal fun getFragment(
             options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null, log: Boolean = false
     ) = getProperty(
             options.valueOf("fragment") as Fragment?, fitInformation?.fragment, AutoFragment,
             "fragment size", "FRAGMENT", log
     )
 
-    private fun getBin(
+    internal fun getBin(
             options: OptionSet, fitInformation: SpanFitInformation? = null, log: Boolean = false
     ) = getProperty(
             options.valueOf("bin") as Int?, fitInformation?.binSize, SPAN_DEFAULT_BIN,
             "bin size", "BIN", log
     )
 
-    private fun getModelType(
-            options: OptionSet, modelPath: Path?, log: Boolean = false
-    ) = getProperty(
-            options.valueOf("type")?.let {
-                when (it) {
-                    "nbhmm" -> SpanModel.NB_HMM
-                    "prm" -> SpanModel.POISSON_REGRESSION_MIXTURE
-                    "nbrm" -> SpanModel.NEGBIN_REGRESSION_MIXTURE
-                    else -> throw IllegalArgumentException("Unrecognized value for --type command line option: $it")
-                }
-            },
-            modelPath?.let {
-                when (it.extension) {
-                    "span" -> SpanModel.NB_HMM
-                    "span2" -> SpanModel.POISSON_REGRESSION_MIXTURE
-                    "span3" -> SpanModel.NEGBIN_REGRESSION_MIXTURE
-                    else -> throw IllegalArgumentException(
-                            "Unrecognized model extension '.${it.extension}', should be either '.span' or '.span2'."
-                    )
-                }
-            },
-            SpanModel.NB_HMM,
-            "model type", "MODEL TYPE", log
-    )
-
-    private fun getMapabilityPath(
-            options: OptionSet, fitInfo: Span2FitInformation? = null, log: Boolean = false
-    ) = getProperty(
-            options.valueOf("mapability") as Path?,
-            fitInfo?.mapabilityPath,
-            null,
-            "mapability", "MAPABILITY",
-            log
-    )
-
-    private fun getAndLogWorkDirAndChromSizes(
+    internal fun getAndLogWorkDirAndChromSizes(
             options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null
-    ): Pair<Path, Path?> {
+    ): Path? {
         val workingDir = options.valueOf("workdir") as Path
         LOG.info("WORKING DIR: $workingDir")
 
@@ -587,13 +234,11 @@ compare                         Differential peak calling mode, experimental
         configurePaths(workingDir, chromSizesPath)
 
         if (fitInformation != null && chromSizesPath != null) {
-            LOG.info("CHROM.SIZES: $chromSizesPath")
             val genome = Genome[chromSizesPath]
             check(genome.build == fitInformation.build) {
                 "Stored genome build ${genome.build} differs from " +
                         "the one inferred from the chrom.sizes file $chromSizesPath"
             }
-            LOG.info("GENOME: ${genome.build}")
             val chromosomeMap = genome.chromosomeNamesMap
             // we don't check the map equality, since the stored map contains only non-empty chromosomes
             fitInformation.chromosomesSizes.forEach { (name, length) ->
@@ -607,51 +252,10 @@ compare                         Differential peak calling mode, experimental
                 }
             }
         }
-        return workingDir to chromSizesPath
+        return chromSizesPath
     }
 
-    /**
-     * Retrieves the paths (treatment, optional control, and optional mapability)
-     * either from command-line options or from the stored fit information.
-     *
-     * If both are available, checks that they are consistent.
-     */
-    private fun getPaths(
-            options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null, log: Boolean = false
-    ): List<SpanDataPaths> {
-        val commandLineTreatmentPaths = options.valuesOf("treatment") as List<Path>
-        val commandLineControlPaths = options.valuesOf("control") as List<Path>
-
-        val commandLinePaths = getCommandLinePaths(
-                commandLineTreatmentPaths, commandLineControlPaths
-        )
-
-        val fitInfoPaths = fitInformation?.data
-        if (commandLinePaths != null && fitInfoPaths != null && commandLinePaths != fitInfoPaths) {
-            throw IllegalStateException(
-                    "Stored treatment-control pairs ${fitInfoPaths.joinToString()} differ from the ones inferred " +
-                            "from the command line arguments: ${commandLinePaths.joinToString()}"
-            )
-        }
-
-        val paths = commandLinePaths
-                ?: fitInfoPaths
-                ?: throw IllegalStateException("No treatment files and no existing model file provided, exiting.")
-
-        if (log) {
-            LOG.info("TREATMENT: ${paths.map { it.treatment }.joinToString(", ", transform = Path::toString)}")
-            paths.mapNotNull { it.control }.let {
-                if (it.isNotEmpty()) {
-                    LOG.info("CONTROL: ${it.joinToString(", ", transform = Path::toString)}")
-                } else {
-                    LOG.info("CONTROL: none")
-                }
-            }
-        }
-        return paths
-    }
-
-    private fun getCommandLinePaths(
+    internal fun getCommandLinePaths(
             commandLineTreatmentPaths: List<Path>,
             commandLineControlPaths: List<Path>
     ): List<SpanDataPaths>? {
@@ -676,93 +280,4 @@ compare                         Differential peak calling mode, experimental
         }
     }
 
-    /**
-     * Creates the peak calling experiment using the supplied command line arguments.
-     * Logs the progress.
-     */
-    private fun constructPeakCallingExperiment(
-            options: OptionSet,
-            experimental: Boolean
-    ): Lazy<SpanModelFitExperiment<ClassificationModel, SpanFitInformation, ZLH>> {
-        val (_, chromSizesPath) = getAndLogWorkDirAndChromSizes(options)
-        // option parser guarantees that chrom.sizes are not null here
-        val genomeQuery = GenomeQuery(Genome[chromSizesPath!!])
-        val data = getPaths(options, log = true)
-        val bin = getBin(options, log = true)
-        val fragment = getFragment(options, log = true)
-        val unique = getUnique(options, log = true)
-        val modelPath = options.valueOf("model") as Path?
-        val modelType: SpanModel
-        val mapabilityPath: Path?
-        if (experimental) {
-            modelType = getModelType(options, modelPath, log = true)
-            mapabilityPath = if (
-                    modelType == SpanModel.POISSON_REGRESSION_MIXTURE ||
-                    modelType == SpanModel.NEGBIN_REGRESSION_MIXTURE
-            ) {
-                getMapabilityPath(options, log = true)
-            } else {
-                null
-            }
-        } else {
-            if (modelPath != null) {
-                require(modelPath.extension == "span") {
-                    "Unrecognized model extension '.${modelPath.extension}', should be '.span'."
-                }
-            }
-            modelType = SpanModel.NB_HMM
-            mapabilityPath = null
-        }
-
-        return lazy {
-            when (modelType) {
-                SpanModel.NB_HMM ->
-                    SpanPeakCallingExperiment.getExperiment(genomeQuery, data, bin, fragment, unique, modelPath)
-                SpanModel.POISSON_REGRESSION_MIXTURE ->
-                    Span2PeakCallingExperiment.getExperiment(
-                            genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath
-                    )
-                SpanModel.NEGBIN_REGRESSION_MIXTURE ->
-                    Span3PeakCallingExperiment.getExperiment(
-                            genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath
-                    )
-
-            }
-        }
-    }
-
-    /**
-     * Configure logging and get [SpanFitResults] in a most concise and effective way.
-     * Parses and logs most of the command line arguments.
-     * Doesn't fit the model; this happens only if .value is invoked
-     */
-    private fun peakCallingResults(
-            options: OptionSet, params: Array<String>, experimental: Boolean
-    ): Lazy<SpanFitResults> {
-        logGeneralInfoAnalyze(options, params)
-
-        val modelPath = options.valueOf("model") as Path?
-        if (modelPath != null) {
-            LOG.info("MODEL: $modelPath")
-            if (modelPath.exists && modelPath.size.isNotEmpty()) {
-                LOG.debug(
-                        "Model file $modelPath exists and is not empty, Span will use it to substitute " +
-                                "the missing command line arguments and verify the provided ones."
-                )
-                val results = SpanModelFitExperiment.loadResults(tarPath = modelPath)
-                checkFitInformation(options, results.fitInfo)
-                return lazyOf(results)
-            }
-        }
-        val experiment = constructPeakCallingExperiment(options, experimental)
-        return lazy { experiment.value.results }
-    }
-}
-
-enum class SpanModel(val description: String) {
-    NB_HMM("negative binomial HMM"),
-    POISSON_REGRESSION_MIXTURE("Poisson regression mixture"),
-    NEGBIN_REGRESSION_MIXTURE("Negative Binomial Regression mixture");
-
-    override fun toString() = description
 }
