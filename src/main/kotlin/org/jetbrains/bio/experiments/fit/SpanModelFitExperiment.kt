@@ -6,9 +6,7 @@ import com.google.gson.reflect.TypeToken
 import kotlinx.support.jdk7.use
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiment.Experiment
-import org.jetbrains.bio.genome.Chromosome
-import org.jetbrains.bio.genome.Genome
-import org.jetbrains.bio.genome.GenomeQuery
+import org.jetbrains.bio.genome.*
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.genome.query.Query
 import org.jetbrains.bio.genome.query.ReadsQuery
@@ -274,25 +272,29 @@ data class SpanFitResults(
 ) {
     companion object {
         internal val LOG = LoggerFactory.getLogger(SpanFitResults::class.java)
+
+        val CT_SIGNAL_MEAN = TrackAboutDoubleColumnType("Signal mean")
+        val CT_NOISE_MEAN = TrackAboutDoubleColumnType("Noise mean")
+        val CT_SIGNAL_TO_NOISE = TrackAboutDoubleColumnType("Signal to noise")
     }
 
     /**
      * @return Information about fit results including model and other parameters
      */
-    fun about(): Map<String, String> {
+    fun about(): List<TrackAboutMetricValue<*>> {
         return when (model) {
             is MLFreeNBHMM -> {
                 val signalMean = model.means[1]
                 val noiseMean = model.means[0]
-                mapOf(
-                    "Signal mean" to signalMean.toString(),
-                    "Noise mean" to noiseMean.toString(),
-                    "Signal to noise" to ((signalMean + 1e-10) / (noiseMean + 1e-10)).toString()
+                listOf(
+                    CT_SIGNAL_MEAN to signalMean,
+                    CT_NOISE_MEAN to noiseMean,
+                    CT_SIGNAL_TO_NOISE to ((signalMean + 1e-10) / (noiseMean + 1e-10))
                 )
             }
-            is PoissonRegressionMixture -> mapOf("Signal to noise" to model.signalToNoise.toString())
-            is NegBinRegressionMixture -> mapOf("Signal to noise" to model.signalToNoise.toString())
-            else -> emptyMap()
+            is PoissonRegressionMixture -> listOf(CT_SIGNAL_TO_NOISE to model.signalToNoise)
+            is NegBinRegressionMixture -> listOf(CT_SIGNAL_TO_NOISE to model.signalToNoise)
+            else -> emptyList()
         }
     }
 }

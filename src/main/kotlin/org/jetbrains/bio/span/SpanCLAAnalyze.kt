@@ -149,7 +149,9 @@ object SpanCLAAnalyze {
                                 fitInfo.data.map { it.treatment }
                         )
                         val aboutModel = spanResults.about()
-                        SpanCLA.LOG.info("\n" + (aboutPeaks + aboutModel).map { (k, v) -> "$k: $v" }.joinToString("\n"))
+                        SpanCLA.LOG.info("\n" + (aboutPeaks + aboutModel).map { (k, v) ->
+                            "${k.name}: ${k.render(v)}"
+                        }.joinToString("\n"))
                     } else {
                         val results = TuningResults()
                         SpanCLA.LOG.info("Loading labels $labelsPath...")
