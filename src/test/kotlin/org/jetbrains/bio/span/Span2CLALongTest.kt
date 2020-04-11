@@ -86,7 +86,7 @@ class Span2CLALongTest {
     """ in out)
                 Tests.assertIn("100.00% (", out)
                 Tests.assertIn("MODEL TYPE: ${SpanModel.POISSON_REGRESSION_MIXTURE}", out)
-                Tests.assertIn("Track source: $peaksPath", out)
+                Tests.assertIn("Source: $peaksPath", out)
                 Tests.assertIn("FRIP: ", out)
 
                 /* Check that coverage is being generated */

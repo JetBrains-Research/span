@@ -490,7 +490,7 @@ CONVERGENCE THRESHOLD: 0.1
     LABELS, FDR, GAP options are ignored.
     """ in out)
                 assertIn("100.00% (", out)
-                assertIn("Track source: $peaksPath", out)
+                assertIn("Source: $peaksPath", out)
                 assertIn("FRIP: ", out)
 
                 /* Check that coverage is being generated */
