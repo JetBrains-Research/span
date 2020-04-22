@@ -27,7 +27,7 @@ then
 fi;
 
 
-sed -E 's/      "path":/      "treatment":/g;s/  "version": [0-9]+/  "version": 3/;/  "bin_size": /a\  "fit.information.fqn": "org.jetbrains.bio.experiments.fit.Span1AnalyzeFitInformation",' -i "$SPAN_TMP_INFO"
+sed -E 's/      "path":/      "treatment":/g;s/  "version": [0-9]+/  "version": 3/;/  "bin_size": /a\  "fragment": "auto",\n  "fit.information.fqn": "org.jetbrains.bio.experiments.fit.Span1AnalyzeFitInformation",' -i "$SPAN_TMP_INFO"
 
 if [ $# -ge 2 ];
 then
