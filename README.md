@@ -16,6 +16,11 @@ SPAN Peak Analyzer
 **SPAN Peak Analyzer** is a tool for analyzing ChIP-seq data.
 Part of integrated [peak calling](https://artyomovlab.wustl.edu/aging/tools.html) solution.
 
+Latest release
+--------------
+Version 0.12.0.5986 released on Apr 22th, 2020
+https://github.com/JetBrains-Research/span/releases/tag/0.12.0.5096
+
 About
 -----
 
