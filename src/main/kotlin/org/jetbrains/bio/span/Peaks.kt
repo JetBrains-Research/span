@@ -104,7 +104,7 @@ internal fun getChromosomePeaks(
                         })
                 val track2 = coverageDataFrame.partialMean(i, j, coverageDataFrame.labels
                         .filter {
-                            it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX)
+                            it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
                         })
                 // Value if LogFC
                 value = if (track2 != 0.0) ln(track1) - ln(track2) else Double.MAX_VALUE
