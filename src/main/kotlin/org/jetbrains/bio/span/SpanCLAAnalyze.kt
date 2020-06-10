@@ -2,6 +2,9 @@ package org.jetbrains.bio.span
 
 import joptsimple.OptionSet
 import org.jetbrains.bio.experiments.fit.*
+import org.jetbrains.bio.experiments.fit.experimental.Span2FitInformation
+import org.jetbrains.bio.experiments.fit.experimental.Span2PeakCallingExperiment
+import org.jetbrains.bio.experiments.fit.experimental.Span3PeakCallingExperiment
 import org.jetbrains.bio.experiments.tuning.LocationLabel
 import org.jetbrains.bio.experiments.tuning.TuningResults
 import org.jetbrains.bio.experiments.tuning.tools.Span

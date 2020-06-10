@@ -15,6 +15,13 @@ import org.jetbrains.bio.util.exists
 import org.jetbrains.bio.util.reduceIds
 import java.nio.file.Path
 
+/**
+ * Coverage query to reproduce DiffBind-like scores for binned genome.
+ * 1. Reads are computed using [unique] option
+ * 2. Preprocessed reads are converted into tags using [Fragment] option
+ * 3. Control coverage is scaled to match treatment
+ * 4. Resulting score is treatment - scale * control
+ */
 class CoverageScoresQuery(
         val genomeQuery: GenomeQuery,
         private val treatmentPath: Path,
@@ -42,7 +49,7 @@ class CoverageScoresQuery(
     }
 
     private val treatmentCoverage = ReadsQuery(
-        genomeQuery, treatmentPath, unique = unique, fragment = fragment
+            genomeQuery, treatmentPath, unique = unique, fragment = fragment
     )
 
     private val controlCoverage = controlPath?.let {

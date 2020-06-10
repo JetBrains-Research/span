@@ -1,6 +1,7 @@
 package org.jetbrains.bio.experiments.fit
 
 import com.google.gson.JsonParseException
+import org.jetbrains.bio.experiments.fit.experimental.Span2FitInformation
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.FixedFragment
@@ -95,8 +96,8 @@ class SpanFitInformationTest {
     @Test
     fun checkLoad() {
         val info = Span2FitInformation(
-            gq, SpanDataPaths("path_to_file".toPath(), "path_to_control".toPath()),
-            "mapability.bigWig".toPath(), FixedFragment(42), false, 200
+                gq, SpanDataPaths("path_to_file".toPath(), "path_to_control".toPath()),
+                "mapability.bigWig".toPath(), FixedFragment(42), false, 200
         )
         withTempFile("foo", ".tar") { path ->
             path.bufferedWriter().use {
@@ -122,7 +123,7 @@ class SpanFitInformationTest {
     "chrM": 1000000,
     "chrX": 1000000
   },
-  "fit.information.fqn": "org.jetbrains.bio.experiments.fit.Span2FitInformation",  
+  "fit.information.fqn": "org.jetbrains.bio.experiments.fit.experimental.Span2FitInformation",  
   "version": 3
 }""")
             }

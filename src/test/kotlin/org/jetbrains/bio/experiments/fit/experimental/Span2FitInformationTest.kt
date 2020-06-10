@@ -1,4 +1,4 @@
-package org.jetbrains.bio.experiments.fit
+package org.jetbrains.bio.experiments.fit.experimental
 
 import com.google.common.math.IntMath
 import org.jetbrains.bio.genome.Chromosome
