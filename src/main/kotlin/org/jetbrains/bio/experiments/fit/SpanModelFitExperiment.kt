@@ -66,6 +66,9 @@ abstract class SpanModelFitExperiment<
     val genomeQuery = fitInformation.genomeQuery()
     val dataQuery = fitInformation.dataQuery
 
+    /**
+     * Preprocessed data by chromosomes, chromosomes are sorted by name.
+     */
     private val preprocessedData: List<Preprocessed<DataFrame>> by lazy {
         genomeQuery.get().sortedBy { it.name }.map { Preprocessed.of(dataQuery.apply(it)) }
     }
@@ -115,11 +118,20 @@ abstract class SpanModelFitExperiment<
         calculateStatesDataFrame(results.model as Model)
     }
 
+    /**
+     * The [statesDataFrame] contains aggregated information for the whole genome,
+     * this method returns data chunk for given [chromosome].
+     * @return dataframe slice for given chromosome.
+     */
     private fun sliceStatesDataFrame(statesDataFrame: DataFrame, chromosome: Chromosome): DataFrame {
         val (start, end) = fitInformation.getChromosomesIndices(chromosome)
         return statesDataFrame.iloc[start until end]
     }
 
+    /**
+     * Return map state -> f64 array of log probabilities for each position to be in given hidden state.
+     * Membership = Probability here.
+     */
     private fun getLogMemberships(chromosomeStatesDF: DataFrame): Map<State, F64Array> =
             availableStates.associateBy({ it }) { chromosomeStatesDF.f64Array(it.toString()) }
 
