@@ -543,14 +543,6 @@ CONVERGENCE THRESHOLD: 0.1
                     "-fdr", FDR.toString(),
                     "-t", path.toString()
                 ))
-                SpanCLA.main(arrayOf(
-                    "analyze",
-                    "-cs", Genome["to1"].chromSizesPath.toString(),
-                    "-w", dir.toString(),
-                    "--peaks", bedPath.toString(),
-                    "-fdr", FDR.toString(),
-                    "-t", path.toString()
-                ))
                 // Check created bed file
                 assertTrue(
                     Location(1100 * BIN, 1900 * BIN, TO.get().first())
@@ -572,6 +564,53 @@ CONVERGENCE THRESHOLD: 0.1
             }
         }
     }
+
+    @Test
+    fun analyzeSampledEnrichmentReusingModel() {
+        withTempFile("track", ".bed.gz") { path ->
+            val enrichedRegions = genomeMap(TO) {
+                val enriched = BitSet()
+                if (it.name == "chr1") {
+                    enriched.set(1000, 2000)
+                }
+                enriched
+            }
+
+            val zeroRegions = genomeMap(TO) {
+                val zeroes = BitSet()
+                if (it.name == "chr1") {
+                    zeroes[3000] = 4000
+                }
+                zeroes
+            }
+            sampleCoverage(path, TO, BIN, enrichedRegions, zeroRegions, goodQuality = true)
+            println("Saved sampled track file: $path")
+            withTempDirectory("work") { dir ->
+                val bedPath = dir / "result.bed"
+                val modelPath = dir / "model.span"
+                SpanCLA.main(arrayOf(
+                        "analyze",
+                        "-cs", Genome["to1"].chromSizesPath.toString(),
+                        "-w", dir.toString(),
+                        "-m", modelPath.toString(),
+                        "-t", path.toString()
+                ))
+                SpanCLA.main(arrayOf(
+                        "analyze",
+                        "-cs", Genome["to1"].chromSizesPath.toString(),
+                        "-m", modelPath.toString(),
+                        "--peaks", bedPath.toString(),
+                        "-fdr", FDR.toString()
+                ))
+                // Check created bed file
+                assertTrue(
+                        Location(1100 * BIN, 1900 * BIN, TO.get().first()) in LocationsMergingList.load(TO, bedPath),
+                        "Expected location not found in called peaks"
+                )
+            }
+        }
+    }
+
 
     @Test
     fun analyzeEmptyCoverage() {
