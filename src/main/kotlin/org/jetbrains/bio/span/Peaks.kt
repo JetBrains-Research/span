@@ -52,12 +52,6 @@ data class Peak(val chromosome: Chromosome,
 }
 
 /**
- * Compute the mean of total coverage from i-th to j-th bin for given labels.
- */
-internal fun DataFrame.partialMean(from: Int, to: Int, labelArray: List<String> = labels.toList()) =
-        labelArray.map { label -> (from until to).map { getAsInt(it, label) }.sum().toDouble() }.average()
-
-/**
  * The peaks are called in three steps.
  *
  * 1. Firstly, an FDR threshold is applied to the posterior state probabilities.
@@ -69,91 +63,83 @@ internal fun DataFrame.partialMean(from: Int, to: Int, labelArray: List<String> 
  * @param gap enriched bins yielded after FDR control are merged if distance is less or equal than gap.
  * @param coverageDataFrame is used to compute either coverage or log fold change.
  */
-internal fun getChromosomePeaks(
-        logNullMemberships: F64Array,
-        qvalues: F64Array,
-        offsets: IntArray,
-        chromosome: Chromosome,
-        fdr: Double,
-        gap: Int,
-        coverageDataFrame: DataFrame? = null): List<Peak> {
-    val enrichedBins = BitterSet(logNullMemberships.size)
-    0.until(enrichedBins.size()).filter { qvalues[it] < fdr }.forEach(enrichedBins::set)
-
-    return enrichedBins.aggregate(gap).map { (i, j) ->
-        val passedFDR = (i until j).filter { qvalues[it] < fdr }
-        val pvalueLogMedian = DoubleArray(passedFDR.size) { logNullMemberships[passedFDR[it]] }.median()
-        val qvalueMedian = DoubleArray(passedFDR.size) { qvalues[passedFDR[it]] }.median()
-        val start = offsets[i]
-        val end = if (j < offsets.size) offsets[j] else chromosome.length
-        // Score should be proportional to length of peak and average original q-value
-        val score = min(1000.0, (-log10(qvalueMedian) * (1 + ln((end - start).toDouble()))))
-        // Value is either coverage of fold change
-        var value = 0.0
-        if (coverageDataFrame != null) {
-            if (coverageDataFrame.labels.size == 1 ||
-                    coverageDataFrame.labels.all { it.startsWith(SpanPeakCallingExperiment.TRACK_PREFIX) }) {
-                value = coverageDataFrame.partialMean(i, j)
-            } else if (coverageDataFrame.labels.all {
-                        it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX) ||
-                                it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
-                    }) {
-                val track1 = coverageDataFrame.partialMean(i, j, coverageDataFrame.labels
-                        .filter {
-                            it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX)
-                        })
-                val track2 = coverageDataFrame.partialMean(i, j, coverageDataFrame.labels
-                        .filter {
-                            it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
-                        })
-                // Value if LogFC
-                value = if (track2 != 0.0) ln(track1) - ln(track2) else Double.MAX_VALUE
-            } else {
-                Peak.LOG.debug("Failed to compute value for ${coverageDataFrame.labels}")
-            }
-        }
-        Peak(chromosome, start, end,
-                mlogpvalue = -pvalueLogMedian,
-                mlogqvalue = -log10(qvalueMedian),
-                value = value,
-                score = score.toInt())
-    }
-}
-
-
-/**
- * During SPAN models optimizations we iterate over different FDR and GAPs parameters,
- * So Q-values estimation is superfluous for each parameters combination.
- * Use cache with weak values to avoid memory overflow.
- */
-private val f64QValuesCache: Cache<Pair<SpanFitResults, Chromosome>, F64Array> =
-        CacheBuilder.newBuilder().weakValues().build()
-
-
 fun SpanFitResults.getChromosomePeaks(
         chromosome: Chromosome,
         fdr: Double,
         gap: Int,
-        coverageDataFrame: DataFrame? = null
-): List<Peak> =
-        // Check that we have information for requested chromosome
-        if (chromosome.name in fitInfo.chromosomesSizes) {
-            val f64LogNullMemberships =
-                    logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL)
-            val f64QValues = f64QValuesCache.get(this to chromosome) {
-                Fdr.qvalidate(f64LogNullMemberships)
-            }
-            getChromosomePeaks(
-                    f64LogNullMemberships,
-                    f64QValues,
-                    fitInfo.offsets(chromosome),
-                    chromosome, fdr, gap,
-                    coverageDataFrame)
-        } else {
-            SpanFitResults.LOG.debug(
-                    "NO peaks information for chromosome: ${chromosome.name} in fitInfo ${fitInfo.build}")
-            emptyList()
+        coverageDataFrame: DataFrame? = null,
+        nullProbabilityThreshold: Double = 0.2
+): List<Peak> {
+    // Check that we have information for requested chromosome
+    if (chromosome.name in fitInfo.chromosomesSizes) {
+        val f64LogNullMemberships = logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL)
+        val candidateBins = BitterSet(f64LogNullMemberships.size)
+        0.until(candidateBins.size())
+                .filter { f64LogNullMemberships[it] <= ln(nullProbabilityThreshold) }
+                .forEach(candidateBins::set)
+        val candidateIslands = candidateBins.aggregate(gap)
+        if (candidateIslands.isEmpty()) {
+            return emptyList()
         }
+        val islandsLogNullMemberships = F64Array(candidateIslands.size) { islandIndex ->
+            val (i, j) = candidateIslands[islandIndex]
+            val bins = (i until j).filter { f64LogNullMemberships[it] <= nullProbabilityThreshold }
+            DoubleArray(bins.size) { f64LogNullMemberships[bins[it]] }.median() * ln((j - i).toDouble())
+            // This score scheme creates huge bias towards long islands with moderate enrichment level,
+            // which leads to quite small reduce in peaks number for stringent FDR 0.1 = 50K to 1E-20 = 30K
+            // DoubleArray(bins.size) { f64LogNullMemberships[bins[it]] }.sum()
+        }
+        val islandQValues = islandsQValuesCache.get(Triple(this, chromosome, gap)) {
+            Fdr.qvalidate(islandsLogNullMemberships)
+        }
+        val offsets = fitInfo.offsets(chromosome)
+        return candidateIslands.indices
+                .filter { islandQValues[it] < fdr }
+                .map { islandIndex ->
+                    val (i, j) = candidateIslands[islandIndex]
+                    val islandLogNullMembership = islandsLogNullMemberships[islandIndex]
+                    val islandQValue = islandQValues[islandIndex]
+                    val islandStart = offsets[i]
+                    val islandEnd = if (j < offsets.size) offsets[j] else chromosome.length
+                    // Score should be proportional to length of peak and average original q-value
+                    val score = min(1000.0, -log10(islandQValue))
+                    // Value is either coverage of fold change
+                    var value = 0.0
+                    if (coverageDataFrame != null) {
+                        if (coverageDataFrame.labels.size == 1 ||
+                                coverageDataFrame.labels.all {
+                                    it.startsWith(SpanPeakCallingExperiment.TRACK_PREFIX)
+                                }) {
+                            value = coverageDataFrame.partialMean(i, j)
+                        } else if (coverageDataFrame.labels.all {
+                                    it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX) ||
+                                            it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
+                                }) {
+                            val track1 = coverageDataFrame.partialMean(i, j, coverageDataFrame.labels
+                                    .filter {
+                                        it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX)
+                                    })
+                            val track2 = coverageDataFrame.partialMean(i, j, coverageDataFrame.labels
+                                    .filter {
+                                        it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
+                                    })
+                            // Value if LogFC
+                            value = if (track2 != 0.0) ln(track1) - ln(track2) else Double.MAX_VALUE
+                        } else {
+                            Peak.LOG.debug("Failed to compute value for ${coverageDataFrame.labels}")
+                        }
+                    }
+                    Peak(chromosome, islandStart, islandEnd,
+                            mlogpvalue = -islandLogNullMembership,
+                            mlogqvalue = -log10(islandQValue),
+                            value = value,
+                            score = score.toInt())
+                }
+    } else {
+        SpanFitResults.LOG.debug("NO peaks information for chromosome: ${chromosome.name} in fitInfo ${fitInfo.build}")
+        return emptyList()
+    }
+}
 
 fun SpanFitResults.getPeaks(
         genomeQuery: GenomeQuery,
@@ -193,9 +179,22 @@ chromosome, start, end, name, score, strand, coverage/foldchange, -log(pvalue), 
 }
 
 /**
- * This method doesn't duplicate array while computing, so array gets *modified*,
- * instead of StatUtils.percentile(doubles, percentile)
+ * During SPAN models optimizations we iterate over different FDR and GAPs parameters,
+ * So Q-values estimation is superfluous for each parameters combination.
+ * Use cache with weak values to avoid memory overflow.
  */
+private val islandsQValuesCache: Cache<Triple<SpanFitResults, Chromosome, Int>, F64Array> =
+        CacheBuilder.newBuilder().weakValues().build()
+
+/**
+ * Compute the mean of total coverage from i-th to j-th bin for given labels.
+ */
+internal fun DataFrame.partialMean(from: Int, to: Int, labelArray: List<String> = labels.toList()) =
+        labelArray.map { label -> (from until to).map { getAsInt(it, label) }.sum().toDouble() }.average()
+
+/**
+ * This method doesn't duplicate array while computing, so array gets *modified*,
+ * instead of StatUtils.percentile(doubles, percentile) */
 fun DoubleArray.median(): Double {
     return object : Percentile(50.0) {
         // force Percentile not to copy scores
