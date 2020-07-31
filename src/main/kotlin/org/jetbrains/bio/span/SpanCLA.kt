@@ -17,7 +17,6 @@ import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.util.*
 import org.jetbrains.bio.util.FileSize.Companion.GB
 import org.slf4j.LoggerFactory
-import org.slf4j.event.Level
 import java.nio.file.Path
 
 /**
@@ -180,15 +179,9 @@ compare                         Differential peak calling mode, experimental
     }
 
     /**
-     * Configure logging to console / file. Returns path to log file.
+     * Configure logging to file. Returns path to log file.
      */
-    @VisibleForTesting
-    internal fun configureLogging(quiet: Boolean, debug: Boolean, id: String, workingDir: Path): Path {
-        if (quiet) {
-            Logs.quiet()
-        }
-        // Anyway we configure logging to file.
-        Logs.addConsoleAppender(if (debug) Level.DEBUG else Level.INFO)
+    internal fun configureLogFile(workingDir: Path, id: String): Path {
         val logPath = workingDir / "logs" / "$id.log"
         Logs.addLoggingToFile(logPath)
         return logPath

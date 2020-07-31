@@ -9,6 +9,7 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.FixedFragment
 import org.jetbrains.bio.genome.query.stemGz
 import org.jetbrains.bio.util.*
+import org.slf4j.event.Level
 import java.nio.file.Path
 
 object SpanCLACompare {
@@ -43,10 +44,15 @@ object SpanCLACompare {
                     .withValuesSeparatedBy(",")
                     .withValuesConvertedBy(PathConverter.exists())
 
-            SpanCLA.LOG.info("SPAN ${SpanCLA.version()}")
-            SpanCLA.LOG.info("COMMAND:\ncompare ${params.joinToString(" ")}")
 
             parse(params) { options ->
+                if ("quiet" in options) {
+                    Logs.quiet()
+                } else {
+                    Logs.addConsoleAppender(if ("debug" in options) Level.DEBUG else Level.INFO)
+                }
+                SpanCLA.LOG.info("SPAN ${SpanCLA.version()}")
+                SpanCLA.LOG.info("COMMAND: compare ${params.joinToString(" ")}")
 
                 val workingDir = options.valueOf("workdir") as Path
 
@@ -80,7 +86,7 @@ object SpanCLACompare {
                     reduceIds(ids)
                 }
 
-                val logPath = SpanCLA.configureLogging("quiet" in options, "debug" in options, id, workingDir)
+                val logPath = SpanCLA.configureLogFile(workingDir, id)
                 SpanCLA.LOG.info("LOG: $logPath")
 
                 // Call now to preserve correct params logging

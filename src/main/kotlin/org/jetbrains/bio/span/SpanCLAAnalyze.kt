@@ -15,6 +15,7 @@ import org.jetbrains.bio.genome.coverage.FixedFragment
 import org.jetbrains.bio.genome.query.stemGz
 import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.util.*
+import org.slf4j.event.Level
 import java.nio.file.Path
 
 
@@ -64,9 +65,14 @@ object SpanCLAAnalyze {
                         .withValuesConvertedBy(PathConverter.exists())
             }
 
-            SpanCLA.LOG.info("SPAN ${SpanCLA.version()}")
-            SpanCLA.LOG.info("COMMAND:\nanalyze ${params.joinToString(" ")}")
             parse(params) { options ->
+                if ("quiet" in options) {
+                    Logs.quiet()
+                } else {
+                    Logs.addConsoleAppender(if ("debug" in options) Level.DEBUG else Level.INFO)
+                }
+                SpanCLA.LOG.info("SPAN ${SpanCLA.version()}")
+                SpanCLA.LOG.info("COMMAND: analyze ${params.joinToString(" ")}")
 
                 val peaksPath = options.valueOf("peaks") as Path?
                 val modelPath = options.valueOf("model") as Path?
@@ -98,7 +104,7 @@ object SpanCLAAnalyze {
                     reduceIds(ids)
                 }
 
-                val logPath = SpanCLA.configureLogging("quiet" in options, "debug" in options, id, workingDir)
+                val logPath = SpanCLA.configureLogFile(workingDir, id)
                 SpanCLA.LOG.info("LOG: $logPath")
 
                 // Call now to preserve params logging order
