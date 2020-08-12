@@ -18,7 +18,7 @@ Part of integrated [peak calling](https://artyomovlab.wustl.edu/aging/tools.html
 
 Latest release
 --------------
-Version [0.12.0.5096](https://github.com/JetBrains-Research/span/releases/tag/0.12.0.5096) released on Apr 22th, 2020
+Version [0.13.5244](https://github.com/JetBrains-Research/span/releases/tag/0.13.5244) released on Aug 12th, 2020
 
 About
 -----
