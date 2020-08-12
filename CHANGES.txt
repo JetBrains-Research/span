@@ -6,7 +6,7 @@ Here you can see the full list of changes between each release.
 Version 0.13
 ----------------
 
-Released on Aug 10th, 2020
+Released on Aug 12th, 2020
 
 - Bugfixes in log formats
 
