@@ -14,7 +14,7 @@ SPAN Peak Analyzer
     ~_^~-^~~_~^-^~-~~^_~^~^~^
 ```
 **SPAN Peak Analyzer** is a semi-supervised multipurpose peak caller capable of processing a broad range of ChIP-seq, ATAC-seq, and single-cell ATAC-seq datasets that robustly handles multiple replicates and noise by leveraging limited manual annotation information.\
-Part of integrated [peak calling](https://artyomovlab.wustl.edu/aging/tools.html) solution.
+Part of integrated [peak calling](https://research.jetbrains.org/groups/biolabs/projects?project_id=71) solution.
 
 Latest release
 --------------
