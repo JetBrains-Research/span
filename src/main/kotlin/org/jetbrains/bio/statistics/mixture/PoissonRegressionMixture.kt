@@ -1,11 +1,11 @@
 package org.jetbrains.bio.statistics.mixture
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.fit.flipStatesIfNecessary
-import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.emission.ConstantIntegerEmissionScheme
 import org.jetbrains.bio.statistics.emission.EmissionScheme
-import org.jetbrains.bio.statistics.emission.PoissonRegressionEmissionScheme
+import org.jetbrains.bio.statistics.model.Fitter
+import org.jetbrains.bio.statistics.regression.PoissonRegressionEmissionScheme
 import org.jetbrains.bio.viktor.F64Array
 import org.jetbrains.bio.viktor.asF64Array
 import kotlin.math.exp

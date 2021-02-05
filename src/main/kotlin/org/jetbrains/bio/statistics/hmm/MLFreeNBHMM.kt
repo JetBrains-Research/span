@@ -2,12 +2,12 @@ package org.jetbrains.bio.statistics.hmm
 
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.fit.flipStatesIfNecessary
-import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.distribution.NegativeBinomialDistribution
 import org.jetbrains.bio.statistics.emission.ConstantIntegerEmissionScheme
 import org.jetbrains.bio.statistics.emission.IntegerEmissionScheme
 import org.jetbrains.bio.statistics.emission.NegBinEmissionScheme
+import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.statistics.standardDeviation
 import org.jetbrains.bio.viktor.F64Array
 import org.slf4j.LoggerFactory

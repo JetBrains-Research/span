@@ -12,9 +12,9 @@ import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.format.BedFormat
 import org.jetbrains.bio.genome.query.stemGz
-import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
+import org.jetbrains.bio.statistics.model.ClassificationModel
 import org.jetbrains.bio.util.*
 import org.junit.After
 import org.junit.Before

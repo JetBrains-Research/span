@@ -2,9 +2,9 @@ package org.jetbrains.bio.statistics.mixture
 
 import org.jetbrains.bio.Tests
 import org.jetbrains.bio.dataframe.DataFrame
-import org.jetbrains.bio.statistics.Fitter
 import org.jetbrains.bio.statistics.Preprocessed
-import org.jetbrains.bio.statistics.emission.PoissonRegressionEmissionScheme
+import org.jetbrains.bio.statistics.model.Fitter
+import org.jetbrains.bio.statistics.regression.PoissonRegressionEmissionScheme
 import org.jetbrains.bio.viktor.F64Array
 import org.junit.Test
 import kotlin.random.Random

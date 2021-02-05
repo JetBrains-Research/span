@@ -13,7 +13,7 @@ import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPA
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
-import org.jetbrains.bio.statistics.Fitter
+import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.util.*
 import org.jetbrains.bio.util.FileSize.Companion.GB
 import org.slf4j.LoggerFactory

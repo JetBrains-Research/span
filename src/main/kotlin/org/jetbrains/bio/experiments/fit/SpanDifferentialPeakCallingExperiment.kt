@@ -13,9 +13,9 @@ import org.jetbrains.bio.span.CoverageScoresQuery
 import org.jetbrains.bio.span.Peak
 import org.jetbrains.bio.span.getChromosomePeaks
 import org.jetbrains.bio.span.scoresDataFrame
-import org.jetbrains.bio.statistics.MultiLabels
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
+import org.jetbrains.bio.statistics.model.MultiLabels
 import org.jetbrains.bio.statistics.state.ZLHID
 import org.jetbrains.bio.util.div
 import org.jetbrains.bio.util.reduceIds

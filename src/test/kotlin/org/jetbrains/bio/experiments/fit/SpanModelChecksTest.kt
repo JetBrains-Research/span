@@ -1,9 +1,9 @@
 package org.jetbrains.bio.experiments.fit
 
-import org.jetbrains.bio.statistics.emission.PoissonRegressionEmissionScheme
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.statistics.mixture.PoissonRegressionMixture
+import org.jetbrains.bio.statistics.regression.PoissonRegressionEmissionScheme
 import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.statistics.state.ZLHID
 import org.jetbrains.bio.viktor.F64Array

@@ -1,6 +1,7 @@
 package org.jetbrains.bio.statistics.state
 
-import org.jetbrains.bio.statistics.DifferenceType
+import org.jetbrains.bio.statistics.model.DifferenceType
+
 
 /**
  * Zero inflated enrichment status.

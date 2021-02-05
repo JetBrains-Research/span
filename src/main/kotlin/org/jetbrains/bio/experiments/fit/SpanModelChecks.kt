@@ -2,12 +2,12 @@ package org.jetbrains.bio.experiments.fit
 
 import org.jetbrains.bio.span.SpanCLA
 import org.jetbrains.bio.statistics.emission.NegBinEmissionScheme
-import org.jetbrains.bio.statistics.emission.NegBinRegressionEmissionScheme
-import org.jetbrains.bio.statistics.emission.PoissonRegressionEmissionScheme
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.statistics.mixture.NegBinRegressionMixture
 import org.jetbrains.bio.statistics.mixture.PoissonRegressionMixture
+import org.jetbrains.bio.statistics.regression.NegBinRegressionEmissionScheme
+import org.jetbrains.bio.statistics.regression.PoissonRegressionEmissionScheme
 import org.slf4j.LoggerFactory
 
 

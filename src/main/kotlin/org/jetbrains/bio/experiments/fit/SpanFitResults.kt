@@ -3,10 +3,10 @@ package org.jetbrains.bio.experiments.fit
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.TrackAboutDoubleColumnType
 import org.jetbrains.bio.genome.TrackAboutMetricValue
-import org.jetbrains.bio.statistics.ClassificationModel
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.statistics.mixture.NegBinRegressionMixture
 import org.jetbrains.bio.statistics.mixture.PoissonRegressionMixture
+import org.jetbrains.bio.statistics.model.ClassificationModel
 import org.slf4j.LoggerFactory
 
 /**

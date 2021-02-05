@@ -5,8 +5,8 @@ import org.jetbrains.bio.experiment.Experiment
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.query.Query
-import org.jetbrains.bio.statistics.ClassificationModel
-import org.jetbrains.bio.statistics.Fitter
+import org.jetbrains.bio.statistics.model.ClassificationModel
+import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.util.reduceIds
 import org.jetbrains.bio.viktor.F64Array
 import org.slf4j.LoggerFactory

@@ -13,7 +13,7 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.PeaksInfo
 import org.jetbrains.bio.genome.coverage.FixedFragment
 import org.jetbrains.bio.genome.query.stemGz
-import org.jetbrains.bio.statistics.Fitter
+import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.util.*
 import org.slf4j.event.Level
 import java.nio.file.Path

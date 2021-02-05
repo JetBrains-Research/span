@@ -11,12 +11,12 @@ import org.jetbrains.bio.genome.query.Query
 import org.jetbrains.bio.genome.query.stemGz
 import org.jetbrains.bio.span.CoverageScoresQuery
 import org.jetbrains.bio.span.scoresDataFrame
-import org.jetbrains.bio.statistics.ClassificationModel
-import org.jetbrains.bio.statistics.Fitter
-import org.jetbrains.bio.statistics.MultiLabels
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
+import org.jetbrains.bio.statistics.model.ClassificationModel
+import org.jetbrains.bio.statistics.model.Fitter
+import org.jetbrains.bio.statistics.model.MultiLabels
 import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.util.div
 import org.jetbrains.bio.util.reduceIds
