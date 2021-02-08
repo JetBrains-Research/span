@@ -23,8 +23,17 @@ apply plugin: 'com.github.johnrengelman.shadow'
 
 sourceCompatibility = 1.8
 targetCompatibility = sourceCompatibility
-compileKotlin { kotlinOptions.jvmTarget = sourceCompatibility }
-compileTestKotlin { kotlinOptions.jvmTarget = sourceCompatibility }
+compileKotlin {
+    kotlinOptions {
+        jvmTarget = sourceCompatibility
+    }
+}
+compileTestKotlin {
+    kotlinOptions {
+        jvmTarget = sourceCompatibility
+        languageVersion = "1.4"
+    }
+}
 
 repositories {
     maven { url "https://dl.bintray.com/jetbrains-research/maven" }
