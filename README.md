@@ -16,6 +16,10 @@ SPAN Peak Analyzer
 **SPAN Peak Analyzer** is a semi-supervised multipurpose peak caller capable of processing a broad range of ChIP-seq, ATAC-seq, and single-cell ATAC-seq datasets that robustly handles multiple replicates and noise by leveraging limited manual annotation information.\
 Part of integrated [peak calling](https://research.jetbrains.org/groups/biolabs/projects?project_id=71) solution.
 
+Example
+-------
+Step-by-step example with test dataset is available [here](https://github.com/JetBrains-Research/span/wiki).
+
 Latest release
 --------------
 Version [0.13.5244](https://github.com/JetBrains-Research/span/releases/tag/0.13.5244) released on Aug 12th, 2020
