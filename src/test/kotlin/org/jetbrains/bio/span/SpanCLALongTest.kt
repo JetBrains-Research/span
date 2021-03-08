@@ -1,6 +1,7 @@
 package org.jetbrains.bio.span
 
 import kotlinx.support.jdk7.use
+import org.jetbrains.bio.Tests
 import org.jetbrains.bio.Tests.assertIn
 import org.jetbrains.bio.big.BedEntry
 import org.jetbrains.bio.experiment.Configuration
@@ -114,7 +115,11 @@ compare                         Differential peak calling mode, experimental
         val (out, _) = Logs.captureLoggingOutput {
             SpanCLA.main(arrayOf("--version"))
         }
-        assertEquals("@VERSION@.@BUILD@ built on @DATE@", out.trim())
+        // the test is sometimes launched in the assembled JAR, where the @@ tokens have already been substituted
+        Tests.assertMatches(
+            out.trim(),
+            Regex("^([0-9]+\\.[0-9]+|@VERSION@)\\.([0-9]+|@BUILD@) built on ([A-Z][a-z]* [0-9]{2}, [0-9]{4}|@DATE@)$")
+        )
     }
 
 
