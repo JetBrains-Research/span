@@ -4,3 +4,4 @@ pluginManagement {
     }
 }
 
+include 'bioinf-commons'
