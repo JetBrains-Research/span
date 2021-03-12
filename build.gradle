@@ -58,21 +58,8 @@ private String settingsFolder(final String propertyName, final String folderName
     }
 }
 
-// Copy bioinf-commons generateTestOrganism task, because span depends on jar.
-task generateTestOrganism(type: JavaExec, overwrite: true) {
-    systemProperty "genomes.path", settingsFolder("genomes.path", "genomes")
-
-    description "Generates sequences/indexes/genes/etc for test organism"
-    configure {
-        main = "org.jetbrains.bio.genome.TestOrganismDataGenerator"
-        classpath = sourceSets.main.runtimeClasspath
-        enableAssertions = true
-        maxHeapSize = '1024m' // Not much RAM is available on TC agents
-    }
-}
-
 tasks.withType(Test) {
-    dependsOn 'generateTestOrganism'
+    dependsOn 'bioinf-commons:generateTestOrganism'
 
     // Continue execution even if tests for some of the
     // sub-projects failed.
