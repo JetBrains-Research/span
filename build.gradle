@@ -10,16 +10,17 @@ buildscript {
         // In case of issues with cache redirector:
         // jcenter()
     }
-
-    dependencies {
-        classpath 'com.github.jengelman.gradle.plugins:shadow:4.0.2'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-    }
 }
 
-apply plugin: 'kotlin'
+plugins {
+    id 'com.github.johnrengelman.shadow' version '6.1.0'
+    id "com.dorongold.task-tree" version "1.5"
+    id "org.jetbrains.kotlin.jvm" version "$kotlin_version"
+}
+
 apply plugin: 'application'
-apply plugin: 'com.github.johnrengelman.shadow'
+
+mainClassName = "org.jetbrains.bio.span.SpanCLA"
 
 sourceCompatibility = 1.8
 targetCompatibility = sourceCompatibility
@@ -58,24 +59,12 @@ private String settingsFolder(final String propertyName, final String folderName
     }
 }
 
-// Copy bioinf-commons generateTestOrganism task, because span depends on jar.
-task generateTestOrganism(type: JavaExec, overwrite: true) {
-    systemProperty "genomes.path", settingsFolder("genomes.path", "genomes")
+test {
+    dependsOn ':bioinf-commons:generateTestOrganism'
+    dependsOn ':bioinf-commons:test'
 
-    description "Generates sequences/indexes/genes/etc for test organism"
-    configure {
-        main = "org.jetbrains.bio.genome.TestOrganismDataGenerator"
-        classpath = sourceSets.main.runtimeClasspath
-        enableAssertions = true
-        maxHeapSize = '1024m' // Not much RAM is available on TC agents
-    }
-}
+    include '**/*Test.class'
 
-tasks.withType(Test) {
-    dependsOn 'generateTestOrganism'
-
-    // Continue execution even if tests for some of the
-    // sub-projects failed.
     ignoreFailures = true
     maxParallelForks = Runtime.runtime.availableProcessors()
     maxHeapSize = "1024m"
@@ -87,15 +76,8 @@ tasks.withType(Test) {
     systemProperty "teamcity.build.checkoutDir", System.getProperty("teamcity.build.checkoutDir")
 }
 
-test {
-    systemProperty "genomes.path", settingsFolder("genomes.path", "genomes")
-
-    include '**/*Test.class'
-}
-
 // Major application version
 version = "0.13"
-mainClassName = "org.jetbrains.bio.span.SpanCLA"
 
 task processBuildProperties(type: Copy) {
     shadowJar.dependsOn name
@@ -126,10 +108,13 @@ artifacts {
 
 shadowJar {
     // File name: "$baseName-$version-$classifier.jar"
-    baseName = 'span'
-    version = "${version}.${project.buildCounter}"
-    classifier = ''
+    archiveBaseName.set('span')
+    archiveVersion.set("${version}.${project.buildCounter}")
+    archiveClassifier.set('')
     zip64 true
+    mustRunAfter test
+    // umm
+    mustRunAfter clean
 }
 
 jar {
@@ -140,6 +125,10 @@ jar {
     }
 }
 
-task wrapper(type: Wrapper, overwrite: true) {
-    gradleVersion = '4.10'
+clean {
+    dependsOn ':bioinf-commons:clean'
+}
+
+wrapper {
+    gradleVersion = '6.5'
 }
