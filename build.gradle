@@ -10,15 +10,20 @@ buildscript {
         // In case of issues with cache redirector:
         // jcenter()
     }
+
+    dependencies {
+        classpath "com.github.jengelman.gradle.plugins:shadow:6.1.0"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
 }
 
 plugins {
-    id 'com.github.johnrengelman.shadow' version '6.1.0'
     id "com.dorongold.task-tree" version "1.5"
-    id "org.jetbrains.kotlin.jvm" version "$kotlin_version"
 }
 
 apply plugin: 'application'
+apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'kotlin'
 
 mainClassName = "org.jetbrains.bio.span.SpanCLA"
 
