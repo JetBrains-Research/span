@@ -81,7 +81,7 @@ class SpanFitInformationTest {
     "chr1": 10000000,
     "chr2": 1000000,
     "chr3": 1000000,
-    "chrM": 1000000,
+    "chrM": 10000,
     "chrX": 1000000
   },
   "fit.information.fqn": "org.jetbrains.bio.experiments.fit.Span1AnalyzeFitInformation",
@@ -120,7 +120,7 @@ class SpanFitInformationTest {
     "chr1": 10000000,
     "chr2": 1000000,
     "chr3": 1000000,
-    "chrM": 1000000,
+    "chrM": 10000,
     "chrX": 1000000
   },
   "fit.information.fqn": "org.jetbrains.bio.experiments.fit.experimental.Span2FitInformation",  
