@@ -21,6 +21,8 @@ plugins {
     id "com.dorongold.task-tree" version "1.5"
 }
 
+/* We can't use `plugins` block here because of the multi-root setup, since the `plugins` block doesn't allow
+ * specifying a plugin more than once throughout the whole project. */
 apply plugin: 'application'
 apply plugin: 'com.github.johnrengelman.shadow'
 apply plugin: 'kotlin'
