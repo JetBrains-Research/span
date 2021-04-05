@@ -5,6 +5,10 @@ import org.jetbrains.bio.experiments.fit.*
 import org.jetbrains.bio.experiments.fit.experimental.Span2FitInformation
 import org.jetbrains.bio.experiments.fit.experimental.Span2PeakCallingExperiment
 import org.jetbrains.bio.experiments.fit.experimental.Span3PeakCallingExperiment
+import org.jetbrains.bio.experiments.fit.span234.SpanPeakCallingExperimentNBHMM2NZ
+import org.jetbrains.bio.experiments.fit.span234.SpanPeakCallingExperimentNBHMM3NZ
+import org.jetbrains.bio.experiments.fit.span234.SpanPeakCallingExperimentNBHMM4
+import org.jetbrains.bio.experiments.fit.span234.SpanPeakCallingExperimentNBHMM4NZ
 import org.jetbrains.bio.experiments.tuning.LocationLabel
 import org.jetbrains.bio.experiments.tuning.TuningResults
 import org.jetbrains.bio.experiments.tuning.tools.Span
@@ -316,6 +320,29 @@ object SpanCLAAnalyze {
                                 genomeQuery, data, bin, fragment, unique, modelPath,
                                 threshold, maxIter, multistarts, multistartIterations
                         )
+
+                    SpanModel.NB_HMM2_NOZERO ->
+                        SpanPeakCallingExperimentNBHMM2NZ.getExperiment(
+                            genomeQuery, data, bin, fragment, unique, modelPath,
+                            threshold, maxIter, multistarts, multistartIterations
+                        )
+                    SpanModel.NB_HMM3_NOZERO ->
+                        SpanPeakCallingExperimentNBHMM3NZ.getExperiment(
+                            genomeQuery, data, bin, fragment, unique, modelPath,
+                            threshold, maxIter, multistarts, multistartIterations
+                        )
+                    SpanModel.NB_HMM4_NOZERO ->
+                        SpanPeakCallingExperimentNBHMM4NZ.getExperiment(
+                            genomeQuery, data, bin, fragment, unique, modelPath,
+                            threshold, maxIter, multistarts, multistartIterations
+                        )
+
+                    SpanModel.NB_HMM4 ->
+                        SpanPeakCallingExperimentNBHMM4.getExperiment(
+                            genomeQuery, data, bin, fragment, unique, modelPath,
+                            threshold, maxIter, multistarts, multistartIterations
+                        )
+
                     SpanModel.POISSON_REGRESSION_MIXTURE -> {
                         if (multistarts > 0) {
                             SpanCLA.LOG.error("Multistart is not supported for $modelType")
@@ -357,6 +384,12 @@ object SpanCLAAnalyze {
             options.valueOf("type")?.let {
                 when (it) {
                     "nbhmm" -> SpanModel.NB_HMM
+
+                    "nbhmm2nz" -> SpanModel.NB_HMM2_NOZERO
+                    "nbhmm3nz" -> SpanModel.NB_HMM3_NOZERO
+                    "nbhmm4nz" -> SpanModel.NB_HMM4_NOZERO
+                    "nbhmm4" -> SpanModel.NB_HMM4
+
                     "prm" -> SpanModel.POISSON_REGRESSION_MIXTURE
                     "nbrm" -> SpanModel.NEGBIN_REGRESSION_MIXTURE
                     else -> throw IllegalArgumentException("Unrecognized value for --type command line option: $it")
@@ -365,6 +398,12 @@ object SpanCLAAnalyze {
             modelPath?.let {
                 when (it.extension) {
                     "span" -> SpanModel.NB_HMM
+
+                    "spannbhmm2nz" -> SpanModel.NB_HMM2_NOZERO
+                    "spannbhmm3nz" -> SpanModel.NB_HMM3_NOZERO
+                    "spannbhmm4nz" -> SpanModel.NB_HMM4_NOZERO
+                    "spannbhmm4" -> SpanModel.NB_HMM4
+
                     "span2" -> SpanModel.POISSON_REGRESSION_MIXTURE
                     "span3" -> SpanModel.NEGBIN_REGRESSION_MIXTURE
                     else -> throw IllegalArgumentException(
@@ -380,6 +419,12 @@ object SpanCLAAnalyze {
 
 enum class SpanModel(val description: String) {
     NB_HMM("negative binomial HMM"),
+
+    NB_HMM2_NOZERO("negative binomial HMM 2states without zero"),
+    NB_HMM3_NOZERO("negative binomial HMM 3states without zero"),
+    NB_HMM4_NOZERO("negative binomial HMM 4states without zero"),
+    NB_HMM4("negative binomial HMM 4states"),
+
     POISSON_REGRESSION_MIXTURE("Poisson regression mixture"),
     NEGBIN_REGRESSION_MIXTURE("Negative Binomial Regression mixture");
 
