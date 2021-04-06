@@ -59,9 +59,14 @@ object SpanCLAAnalyze {
             if (experimental) {
                 acceptsAll(
                         listOf("type"),
-                        "Model type. Either 'nbhmm' for negative binomial HMM (default), " +
-                                "'prm' for Poisson regression mixture (experimental) " +
-                                "or 'nbrm' for Negative Binomial regression mixture (experimental)."
+                        "Model type.\n" +
+                                "'nbhmm' - negative binomial HMM (default)\n" +
+                                "'prm' - Poisson regression mixture\n" +
+                                "'nbrm' - Negative Binomial regression mixture\n" +
+                                "'nbhmm2nz' - NB_HMM2_NOZERO\n" +
+                                "'nbhmm3nz' - NB_HMM3_NOZERO\n" +
+                                "'nbhmm4nz' - NB_HMM4_NOZERO\n" +
+                                "'nbhmm4' - NB_HMM4."
                 ).withRequiredArg()
                 acceptsAll(listOf("mapability"), "Mapability bigWig file.")
                         .availableIf("treatment")
