@@ -44,11 +44,11 @@ class NBHMM4(means: DoubleArray, failures: Double) : MLFreeHMM(4, 1) {
         NBHMMNZ.flipStatesIfNecessary(negBinEmissionSchemes, logPriorProbabilities, logTransitionProbabilities)
     }
 
-    val means: F64Array get() = F64Array(means.size) { negBinEmissionSchemes[it].mean }
+    val means: F64Array get() = F64Array(3) { negBinEmissionSchemes[it].mean }
 
-    val failures: F64Array get() = F64Array(means.size) { negBinEmissionSchemes[it].failures }
+    val failures: F64Array get() = F64Array(3) { negBinEmissionSchemes[it].failures }
 
-    val successProbabilities: F64Array get() = F64Array(means.size) { negBinEmissionSchemes[it].successProbability }
+    val successProbabilities: F64Array get() = F64Array(3) { negBinEmissionSchemes[it].successProbability }
 
     override fun toString(): String = toStringHelper()
         .add("means", means)
