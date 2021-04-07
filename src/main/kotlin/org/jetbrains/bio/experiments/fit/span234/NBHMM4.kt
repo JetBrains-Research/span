@@ -12,7 +12,6 @@ import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.statistics.standardDeviation
 import org.jetbrains.bio.viktor.F64Array
 import org.slf4j.LoggerFactory
-import kotlin.math.max
 import kotlin.math.pow
 
 class NBHMM4(means: DoubleArray, failures: Double) : MLFreeHMM(4, 1) {
@@ -42,14 +41,14 @@ class NBHMM4(means: DoubleArray, failures: Double) : MLFreeHMM(4, 1) {
 
     override fun fit(preprocessed: List<Preprocessed<DataFrame>>, title: String, threshold: Double, maxIter: Int) {
         super.fit(preprocessed, title, threshold, maxIter)
-        NMHMMNZ.flipStatesIfNecessary(negBinEmissionSchemes, logPriorProbabilities, logTransitionProbabilities)
+        NBHMMNZ.flipStatesIfNecessary(negBinEmissionSchemes, logPriorProbabilities, logTransitionProbabilities)
     }
 
-    val means: F64Array get() = F64Array(2) { negBinEmissionSchemes[it].mean }
+    val means: F64Array get() = F64Array(means.size) { negBinEmissionSchemes[it].mean }
 
-    val failures: F64Array get() = F64Array(2) { negBinEmissionSchemes[it].failures }
+    val failures: F64Array get() = F64Array(means.size) { negBinEmissionSchemes[it].failures }
 
-    val successProbabilities: F64Array get() = F64Array(2) { negBinEmissionSchemes[it].successProbability }
+    val successProbabilities: F64Array get() = F64Array(means.size) { negBinEmissionSchemes[it].successProbability }
 
     override fun toString(): String = toStringHelper()
         .add("means", means)
@@ -89,16 +88,5 @@ class NBHMM4(means: DoubleArray, failures: Double) : MLFreeHMM(4, 1) {
                 return NBHMM4(means, fs)
             }
         }
-
-        /**
-         *
-         * This value is used to propose initial states for mean values of LOW and HIGH states in the model.
-         * Good experiment signal-to-noise ratio is generally 10-30.
-         *
-         * Use multiplier sequence depending on attempt number 1, 2, 1/2, 4, 1/4, etc.
-         * Used for multistart
-         */
-        fun signalToNoise(attempt: Int, snr: Double = 20.0) =
-            max(1.1, snr * 2.0.pow(((attempt + 1) / 2) * (if (attempt % 2 == 1) 1.0 else -1.0)))
     }
 }

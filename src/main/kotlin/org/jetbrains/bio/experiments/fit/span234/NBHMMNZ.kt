@@ -12,7 +12,7 @@ import org.jetbrains.bio.viktor.F64Array
 import org.slf4j.LoggerFactory
 import kotlin.math.pow
 
-open class NMHMMNZ(means: DoubleArray, failures: Double) : MLFreeHMM(means.size, 1) {
+open class NBHMMNZ(means: DoubleArray, failures: Double) : MLFreeHMM(means.size, 1) {
     private val negBinEmissionSchemes: Array<NegBinEmissionScheme> =
         Array(means.size) { NegBinEmissionScheme(means[it], failures) }
 
@@ -25,11 +25,11 @@ open class NMHMMNZ(means: DoubleArray, failures: Double) : MLFreeHMM(means.size,
         flipStatesIfNecessary(negBinEmissionSchemes, logPriorProbabilities, logTransitionProbabilities)
     }
 
-    val means: F64Array get() = F64Array(2) { negBinEmissionSchemes[it].mean }
+    val means: F64Array get() = F64Array(means.size) { negBinEmissionSchemes[it].mean }
 
-    val failures: F64Array get() = F64Array(2) { negBinEmissionSchemes[it].failures }
+    val failures: F64Array get() = F64Array(means.size) { negBinEmissionSchemes[it].failures }
 
-    val successProbabilities: F64Array get() = F64Array(2) { negBinEmissionSchemes[it].successProbability }
+    val successProbabilities: F64Array get() = F64Array(means.size) { negBinEmissionSchemes[it].successProbability }
 
     override fun toString(): String = toStringHelper()
         .add("means", means)
@@ -48,7 +48,7 @@ open class NMHMMNZ(means: DoubleArray, failures: Double) : MLFreeHMM(means.size,
             val sd = emissions.standardDeviation()
             val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, sd * sd)
             val snr = MLFreeNBHMM.signalToNoise(attempt)
-            val means = DoubleArray(n) {mean / snr.pow((n / 2 - it).toDouble()) }
+            val means = DoubleArray(n) { mean / snr.pow((n / 2 - it).toDouble()) }
             LOG.debug("Guess $attempt emissions $means, failures $fs")
             return means to fs
         }
@@ -56,9 +56,11 @@ open class NMHMMNZ(means: DoubleArray, failures: Double) : MLFreeHMM(means.size,
         /**
          * Flip states in case when states with HIGH get lower mean than LOW
          */
-        fun flipStatesIfNecessary(negBinEmissionSchemes: Array<NegBinEmissionScheme>,
-                                          logPriorProbabilities: F64Array,
-                                          logTransitionProbabilities: F64Array) {
+        fun flipStatesIfNecessary(
+            negBinEmissionSchemes: Array<NegBinEmissionScheme>,
+            logPriorProbabilities: F64Array,
+            logTransitionProbabilities: F64Array
+        ) {
             for (i in negBinEmissionSchemes.indices) {
                 for (j in i + 1 until negBinEmissionSchemes.size) {
                     val lowScheme = negBinEmissionSchemes[i]
@@ -85,8 +87,10 @@ open class NMHMMNZ(means: DoubleArray, failures: Double) : MLFreeHMM(means.size,
                         LOG.warn("This usually indicates that the states were flipped during fitting. We will now flip them back.")
                         negBinEmissionSchemes[i] = highScheme
                         negBinEmissionSchemes[j] = lowScheme
-                        probabilityFlip(i, j,
-                            negBinEmissionSchemes, logPriorProbabilities, logTransitionProbabilities)
+                        probabilityFlip(
+                            i, j,
+                            negBinEmissionSchemes, logPriorProbabilities, logTransitionProbabilities
+                        )
                     } else if (meanFlipped || pFlipped) {
                         LOG.warn("This is generally harmless, but could indicate low quality of data.")
                     }
@@ -94,10 +98,12 @@ open class NMHMMNZ(means: DoubleArray, failures: Double) : MLFreeHMM(means.size,
             }
         }
 
-        fun probabilityFlip(state1: Int, state2: Int,
-                            negBinEmissionSchemes: Array<NegBinEmissionScheme>,
-                            logPriorProbabilities: F64Array,
-                            logTransitionProbabilities: F64Array) {
+        fun probabilityFlip(
+            state1: Int, state2: Int,
+            negBinEmissionSchemes: Array<NegBinEmissionScheme>,
+            logPriorProbabilities: F64Array,
+            logTransitionProbabilities: F64Array
+        ) {
             for (i in negBinEmissionSchemes.indices) {
                 val tmp = logTransitionProbabilities[i, state1]
                 logTransitionProbabilities[i, state1] = logTransitionProbabilities[i, state2]

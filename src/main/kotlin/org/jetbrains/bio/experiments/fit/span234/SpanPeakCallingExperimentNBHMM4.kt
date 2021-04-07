@@ -7,7 +7,6 @@ import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
-import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.model.ClassificationModel
 import org.jetbrains.bio.statistics.model.Fitter
@@ -61,11 +60,11 @@ class SpanPeakCallingExperimentNBHMM4<Model : ClassificationModel> private const
                 fitInformation,
                 when {
                     multistarts > 0 ->
-                        MLFreeNBHMM.fitter().multiStarted(multistarts, multistartIter)
+                        NBHMM4.fitter().multiStarted(multistarts, multistartIter)
                     else ->
-                        MLFreeNBHMM.fitter()
+                        NBHMM4.fitter()
                 },
-                MLFreeNBHMM::class.java,
+                NBHMM4::class.java,
                 fixedModelPath,
                 threshold,
                 maxIter
