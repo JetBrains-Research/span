@@ -12,9 +12,9 @@ import org.jetbrains.bio.viktor.F64Array
 import org.slf4j.LoggerFactory
 import kotlin.math.pow
 
-open class NBHMMNZ(means: DoubleArray, failures: Double) : MLFreeHMM(means.size, 1) {
+open class NBHMMNZ(nbMeans: DoubleArray, nbFailures: Double) : MLFreeHMM(nbMeans.size, 1) {
     private val negBinEmissionSchemes: Array<NegBinEmissionScheme> =
-        Array(means.size) { NegBinEmissionScheme(means[it], failures) }
+        Array(nbMeans.size) { NegBinEmissionScheme(nbMeans[it], nbFailures) }
 
     override fun getEmissionScheme(i: Int, d: Int): IntegerEmissionScheme {
         return negBinEmissionSchemes[i]

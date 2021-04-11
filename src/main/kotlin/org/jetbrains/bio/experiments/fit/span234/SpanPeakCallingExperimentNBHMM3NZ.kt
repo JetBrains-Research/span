@@ -80,7 +80,7 @@ enum class LMH {
     H;  // HIGH
 }
 
-class NBHMM3NZ(means: DoubleArray, failures: Double) : NBHMMNZ(means, failures) {
+class NBHMM3NZ(nbMeans: DoubleArray, nbFailures: Double) : NBHMMNZ(nbMeans, nbFailures) {
 
     companion object {
         @Suppress("MayBeConstant", "unused")
