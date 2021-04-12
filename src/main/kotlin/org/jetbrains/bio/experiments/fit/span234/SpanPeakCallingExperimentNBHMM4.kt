@@ -34,7 +34,7 @@ class SpanPeakCallingExperimentNBHMM4<Model : ClassificationModel> private const
     threshold, maxIter
 ) {
 
-    override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span"
+    override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span-nbhmm4"
 
     companion object {
 
