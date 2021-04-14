@@ -57,6 +57,7 @@ object SpanCLAAnalyze {
                     .defaultsTo(Fitter.MULTISTART_ITERATIONS)
 
             if (experimental) {
+                acceptsAll(listOf("islands"), "Call islands")
                 acceptsAll(
                         listOf("type"),
                         "Model type.\n" +
@@ -154,7 +155,11 @@ object SpanCLAAnalyze {
 
                 if (peaksPath != null) {
                     if (labelsPath == null) {
-                        val peaks = spanResults.getPeaks(genomeQuery, fdr, gap)
+                        val peaks = if ("islands" in options) {
+                            spanResults.getIslands(genomeQuery, fdr, gap)
+                        } else {
+                            spanResults.getPeaks(genomeQuery, fdr, gap)
+                        }
                         savePeaks(
                                 peaks, peaksPath,
                                 "peak${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
@@ -171,6 +176,7 @@ object SpanCLAAnalyze {
                             "${k.name}: ${k.render(v)}"
                         }.joinToString("\n"))
                     } else {
+                        check("islands" !in options) {"Islands option is not allowed for tuning"}
                         val results = TuningResults()
                         SpanCLA.LOG.info("Loading labels $labelsPath...")
                         val labels = LocationLabel.loadLabels(labelsPath, genomeQuery.genome)
