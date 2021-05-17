@@ -86,7 +86,7 @@ internal fun getChromosomePeaks(
         val qvalueMedian = DoubleArray(passedFDR.size) { qvalues[passedFDR[it]] }.median()
         val start = offsets[i]
         val end = if (j < offsets.size) offsets[j] else chromosome.length
-        // Score should be proportional to length of peak and average original q-value
+        // Score should be proportional to length of peak and median original q-value
         val score = min(1000.0, (-log10(qvalueMedian) * (1 + ln((end - start).toDouble()))))
         // Value is either coverage of fold change
         var value = 0.0
