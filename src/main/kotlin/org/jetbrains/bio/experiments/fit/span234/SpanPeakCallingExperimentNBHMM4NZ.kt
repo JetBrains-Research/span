@@ -103,7 +103,7 @@ class NBHMM4NZ(nbMeans: DoubleArray, nbFailures: Double) : NBHMMNZ(nbMeans, nbFa
                 preprocessed: List<Preprocessed<DataFrame>>, title: String,
                 threshold: Double, maxIter: Int, attempt: Int
             ): NBHMM4NZ {
-                val (means, fs) = guess(preprocessed, 3, attempt)
+                val (means, fs) = guess(preprocessed, 4, attempt)
                 return NBHMM4NZ(means, fs)
             }
         }
