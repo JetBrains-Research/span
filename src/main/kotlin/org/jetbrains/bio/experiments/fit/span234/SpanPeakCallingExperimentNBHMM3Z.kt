@@ -17,20 +17,22 @@ import org.jetbrains.bio.util.div
 import java.nio.file.Path
 
 /**
+ * - ZERO state
  * - LOW state
+ * - MEDIUM state
  * - HIGH state
  *
  * @author Oleg Shpynov
  */
-class SpanPeakCallingExperimentNBHMM2NZ<Model : ClassificationModel> private constructor(
+class SpanPeakCallingExperimentNBHMM3Z<Model : ClassificationModel> private constructor(
     fitInformation: Span1AnalyzeFitInformation,
     modelFitter: Fitter<Model>,
     modelClass: Class<Model>,
     fixedModelPath: Path?,
     threshold: Double,
     maxIter: Int
-) : SpanModelFitExperiment<Model, Span1AnalyzeFitInformation, LH>(
-    fitInformation, modelFitter, modelClass, LH.values(), NullHypothesis.of(LH.L), fixedModelPath,
+) : SpanModelFitExperiment<Model, Span1AnalyzeFitInformation, ZLMH>(
+    fitInformation, modelFitter, modelClass, ZLMH.values(), NullHypothesis.of(ZLMH.Z, ZLMH.M, ZLMH.L), fixedModelPath,
     threshold, maxIter
 ) {
 
@@ -38,7 +40,7 @@ class SpanPeakCallingExperimentNBHMM2NZ<Model : ClassificationModel> private con
 
     companion object {
 
-        const val MODEL_EXT = "span-nbhmm2nz"
+        const val MODEL_EXT = "span-nbhmm3z"
 
         fun getExperiment(
             genomeQuery: GenomeQuery,
@@ -51,22 +53,22 @@ class SpanPeakCallingExperimentNBHMM2NZ<Model : ClassificationModel> private con
             maxIter: Int = Fitter.MAX_ITERATIONS,
             multistarts: Int = Fitter.MULTISTARTS,
             multistartIter: Int = Fitter.MULTISTART_ITERATIONS
-        ): SpanPeakCallingExperimentNBHMM2NZ<out ClassificationModel> {
+        ): SpanPeakCallingExperimentNBHMM3Z<out ClassificationModel> {
             check(paths.isNotEmpty()) { "No data" }
             val fitInformation = Span1AnalyzeFitInformation.effective(
                 genomeQuery, paths, MultiLabels.generate(SpanPeakCallingExperiment.TRACK_PREFIX, paths.size).toList(),
                 fragment, unique, bin
             )
-            require(paths.size == 1) { "Multiple replicates are not supported by the model" }
-            return SpanPeakCallingExperimentNBHMM2NZ(
+            require(paths.size == 1) { "Multiple replicates are not supported" }
+            return SpanPeakCallingExperimentNBHMM3Z(
                 fitInformation,
                 when {
                     multistarts > 0 ->
-                        NBHMM2NZ.fitter().multiStarted(multistarts, multistartIter)
+                        NBHMM3Z.fitter().multiStarted(multistarts, multistartIter)
                     else ->
-                        NBHMM2NZ.fitter()
+                        NBHMM3Z.fitter()
                 },
-                NBHMM2NZ::class.java,
+                NBHMM3Z::class.java,
                 fixedModelPath,
                 threshold,
                 maxIter
@@ -75,13 +77,14 @@ class SpanPeakCallingExperimentNBHMM2NZ<Model : ClassificationModel> private con
     }
 }
 
-enum class LH {
+enum class ZLMH {
+    Z,  // ZERO
     L,  // LOW
+    M,  // MEDIUM
     H;  // HIGH
 }
 
-
-class NBHMM2NZ(nbMeans: DoubleArray, nbFailures: Double) : NBHMMNZ(nbMeans, nbFailures) {
+class NBHMM3Z(nbMeans: DoubleArray, nbFailures: Double) : NBHMMZ(nbMeans, nbFailures) {
 
     companion object {
         @Suppress("MayBeConstant", "unused")
@@ -90,18 +93,18 @@ class NBHMM2NZ(nbMeans: DoubleArray, nbFailures: Double) : NBHMMNZ(nbMeans, nbFa
         val VERSION: Int = 1
 
 
-        fun fitter() = object : Fitter<NBHMM2NZ> {
+        fun fitter() = object : Fitter<NBHMM3Z> {
             override fun guess(
                 preprocessed: Preprocessed<DataFrame>, title: String,
                 threshold: Double, maxIter: Int, attempt: Int
-            ): NBHMM2NZ = guess(listOf(preprocessed), title, threshold, maxIter, attempt)
+            ): NBHMM3Z = guess(listOf(preprocessed), title, threshold, maxIter, attempt)
 
             override fun guess(
                 preprocessed: List<Preprocessed<DataFrame>>, title: String,
                 threshold: Double, maxIter: Int, attempt: Int
-            ): NBHMM2NZ {
-                val (means, fs) = guess(preprocessed, 2, attempt)
-                return NBHMM2NZ(means, fs)
+            ): NBHMM3Z {
+                val (means, fs) = guess(preprocessed, 3, attempt)
+                return NBHMM3Z(means, fs)
             }
         }
     }

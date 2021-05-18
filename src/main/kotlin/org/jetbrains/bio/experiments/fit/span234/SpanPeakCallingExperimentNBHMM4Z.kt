@@ -1,5 +1,6 @@
 package org.jetbrains.bio.experiments.fit.span234
 
+import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.fit.Span1AnalyzeFitInformation
 import org.jetbrains.bio.experiments.fit.SpanDataPaths
 import org.jetbrains.bio.experiments.fit.SpanModelFitExperiment
@@ -7,6 +8,7 @@ import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
+import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.model.ClassificationModel
 import org.jetbrains.bio.statistics.model.Fitter
@@ -17,26 +19,28 @@ import java.nio.file.Path
 /**
  * - ZERO state
  * - LOW state
- * - MEDIUM state
+ * - MEDIUM 1 state
+ * - MEDIUM 2 state
  * - HIGH state
  *
  * @author Oleg Shpynov
  */
-class SpanPeakCallingExperimentNBHMM4<Model : ClassificationModel> private constructor(
+class SpanPeakCallingExperimentNBHMM4Z<Model : ClassificationModel> private constructor(
     fitInformation: Span1AnalyzeFitInformation,
     modelFitter: Fitter<Model>,
     modelClass: Class<Model>,
     fixedModelPath: Path?,
     threshold: Double,
     maxIter: Int
-) : SpanModelFitExperiment<Model, Span1AnalyzeFitInformation, ZLMH>(
-    fitInformation, modelFitter, modelClass, ZLMH.values(), NullHypothesis.of(ZLMH.Z, ZLMH.M, ZLMH.L), fixedModelPath,
+) : SpanModelFitExperiment<Model, Span1AnalyzeFitInformation, ZLM2H>(
+    fitInformation, modelFitter, modelClass, ZLM2H.values(), NullHypothesis.of(ZLM2H.Z, ZLM2H.M1, ZLM2H.M2, ZLM2H.L), fixedModelPath,
     threshold, maxIter
 ) {
 
-    override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span-nbhmm4"
+    override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.$MODEL_EXT"
 
     companion object {
+        const val MODEL_EXT = "span-nbhmm4z"
 
         fun getExperiment(
             genomeQuery: GenomeQuery,
@@ -49,22 +53,22 @@ class SpanPeakCallingExperimentNBHMM4<Model : ClassificationModel> private const
             maxIter: Int = Fitter.MAX_ITERATIONS,
             multistarts: Int = Fitter.MULTISTARTS,
             multistartIter: Int = Fitter.MULTISTART_ITERATIONS
-        ): SpanPeakCallingExperimentNBHMM4<out ClassificationModel> {
+        ): SpanPeakCallingExperimentNBHMM4Z<out ClassificationModel> {
             check(paths.isNotEmpty()) { "No data" }
             val fitInformation = Span1AnalyzeFitInformation.effective(
                 genomeQuery, paths, MultiLabels.generate(SpanPeakCallingExperiment.TRACK_PREFIX, paths.size).toList(),
                 fragment, unique, bin
             )
             require(paths.size == 1) { "Multiple replicates are not supported" }
-            return SpanPeakCallingExperimentNBHMM4(
+            return SpanPeakCallingExperimentNBHMM4Z(
                 fitInformation,
                 when {
                     multistarts > 0 ->
-                        NBHMM4.fitter().multiStarted(multistarts, multistartIter)
+                        NBHMM4Z.fitter().multiStarted(multistarts, multistartIter)
                     else ->
-                        NBHMM4.fitter()
+                        NBHMM4Z.fitter()
                 },
-                NBHMM4::class.java,
+                NBHMM4Z::class.java,
                 fixedModelPath,
                 threshold,
                 maxIter
@@ -73,9 +77,37 @@ class SpanPeakCallingExperimentNBHMM4<Model : ClassificationModel> private const
     }
 }
 
-enum class ZLMH {
+enum class ZLM2H {
     Z,  // ZERO
     L,  // LOW
-    M,  // MEDIUM
+    M1,  // MEDIUM1
+    M2,  // MEDIUM2
     H;  // HIGH
+}
+
+class NBHMM4Z(nbMeans: DoubleArray, nbFailures: Double) : NBHMMZ(nbMeans, nbFailures) {
+
+    companion object {
+        @Suppress("MayBeConstant", "unused")
+        @Transient
+        @JvmField
+        val VERSION: Int = 1
+
+
+        fun fitter() = object : Fitter<NBHMM4Z> {
+            override fun guess(
+                preprocessed: Preprocessed<DataFrame>, title: String,
+                threshold: Double, maxIter: Int, attempt: Int
+            ): NBHMM4Z = guess(listOf(preprocessed), title, threshold, maxIter, attempt)
+
+            override fun guess(
+                preprocessed: List<Preprocessed<DataFrame>>, title: String,
+                threshold: Double, maxIter: Int, attempt: Int
+            ): NBHMM4Z {
+                val (means, fs) = guess(preprocessed, 4, attempt)
+                return NBHMM4Z(means, fs)
+            }
+        }
+    }
+
 }

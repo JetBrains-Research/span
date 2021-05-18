@@ -35,9 +35,11 @@ class SpanPeakCallingExperimentNBHMM3NZ<Model : ClassificationModel> private con
     threshold, maxIter
 ) {
 
-    override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span-nbhmm3nz"
+    override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.$MODEL_EXT"
 
     companion object {
+
+        const val MODEL_EXT = "span-nbhmm3nz"
 
         fun getExperiment(
             genomeQuery: GenomeQuery,
