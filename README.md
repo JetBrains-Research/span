@@ -20,6 +20,10 @@ ATAC-seq, and single-cell ATAC-seq datasets that robustly handles multiple repli
 manual annotation information.\
 Part of semi-supervised [peak calling](https://artyomovlab.wustl.edu/aging/tools) solution.
 
+**Open Access Paper:** https://doi.org/10.1093/bioinformatics/btab376
+
+**Citation:** Shpynov O, Dievskii A, Chernyatchik R, Tsurinov P, Artyomov MN. Semi-supervised peak calling with SPAN and JBR Genome Browser. Bioinformatics. 2021 May 21.
+
 The Latest release
 --------------
 Version [0.13.5244](https://github.com/JetBrains-Research/span/releases/tag/0.13.5244) released on Aug 12th, 2020.
