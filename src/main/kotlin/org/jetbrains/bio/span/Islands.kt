@@ -2,7 +2,6 @@ package org.jetbrains.bio.span
 
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
-import org.apache.commons.csv.CSVFormat
 import org.jetbrains.bio.dataframe.BitterSet
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.fit.*
@@ -11,9 +10,7 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.statistics.hypothesis.Fdr
 import org.jetbrains.bio.util.CancellableState
-import org.jetbrains.bio.util.bufferedWriter
 import org.jetbrains.bio.viktor.F64Array
-import java.nio.file.Path
 import kotlin.math.ln
 import kotlin.math.log10
 import kotlin.math.min
@@ -133,34 +130,3 @@ fun SpanFitResults.getIslands(
     }
     return genomeQuery.get().flatMap { map[it] }
 }
-
-fun saveIslands(peaks: List<Peak>, path: Path, peakName: String = "") {
-    Peak.LOG.debug(
-        """FORMAT $path:
-chromosome, start, end, name, score, strand, coverage/foldchange, -log(pvalue), -log(qvalue)"""
-    )
-    CSVFormat.TDF.print(path.bufferedWriter()).use { printer ->
-        peaks.sorted().forEachIndexed { i, peak ->
-            /* See MACS2 output format for details https://github.com/taoliu/MACS/ */
-            printer.printRecord(
-                peak.chromosome.name,
-                peak.range.startOffset.toString(),
-                peak.range.endOffset.toString(),
-                "${if (peakName.isNotEmpty()) peakName else "peak"}_${i + 1}",
-                peak.score.toString(),
-                ".",
-                peak.value.toString(),
-                peak.mlogpvalue.toString(),
-                peak.mlogqvalue.toString()
-            )
-        }
-    }
-}
-
-/**
- * During SPAN models optimizations we iterate over different FDR and GAPs parameters,
- * So Q-values estimation is superfluous for each parameters combination.
- * Use cache with weak values to avoid memory overflow.
- */
-private val islandsQValuesCache: Cache<Triple<SpanFitResults, Chromosome, Int>, F64Array> =
-    CacheBuilder.newBuilder().weakValues().build()
