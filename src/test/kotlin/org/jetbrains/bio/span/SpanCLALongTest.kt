@@ -571,6 +571,67 @@ CONVERGENCE THRESHOLD: 0.1
     }
 
     @Test
+    fun analyzeSampledEnrichmentPeaksVsIslands() {
+        withTempFile("track", ".bed.gz") { coveragePath ->
+            val enrichedRegions = genomeMap(TO) {
+                val enriched = BitSet()
+                if (it.name == "chr1") {
+                    enriched.set(1000, 2000)
+                }
+                enriched
+            }
+
+            val zeroRegions = genomeMap(TO) {
+                val zeroes = BitSet()
+                if (it.name == "chr1") {
+                    zeroes[3000] = 4000
+                }
+                zeroes
+            }
+            sampleCoverage(coveragePath, TO, BIN, enrichedRegions, zeroRegions, goodQuality = true)
+            println("Saved sampled track file: $coveragePath")
+
+            withTempDirectory("work") { dir ->
+                val peaksPath = dir / "peaks.bed"
+                SpanCLA.main(arrayOf(
+                    "analyze",
+                    "-cs", Genome["to1"].chromSizesPath.toString(),
+                    "-w", dir.toString(),
+                    "--peaks", peaksPath.toString(),
+                    "-fdr", FDR.toString(),
+                    "-t", coveragePath.toString()
+                ))
+                // Check created bed file
+                val peaksLocations = LocationsMergingList.load(TO, peaksPath)
+                assertTrue(
+                    Location(1100 * BIN, 1900 * BIN, TO.get().first()) in peaksLocations,
+                    "Expected location not found in called peaks"
+                )
+
+                val islandsPath = dir / "islands.bed"
+                SpanCLA.main(arrayOf(
+                    "analyze-experimental",
+                    "--islands",
+                    "-cs", Genome["to1"].chromSizesPath.toString(),
+                    "-w", dir.toString(),
+                    "--peaks", islandsPath.toString(),
+                    "-fdr", FDR.toString(),
+                    "-t", coveragePath.toString()
+                ))
+                // Check created bed file
+                val islandsLocations = LocationsMergingList.load(TO, islandsPath)
+                assertTrue(
+                    Location(1100 * BIN, 1900 * BIN, TO.get().first()) in islandsLocations,
+                    "Expected location not found in called peaks"
+                )
+
+                assertTrue(islandsLocations.toList().size <= peaksLocations.toList().size)
+            }
+        }
+    }
+
+
+    @Test
     fun analyzeSampledEnrichmentReusingModel() {
         withTempFile("track", ".bed.gz") { path ->
             val enrichedRegions = genomeMap(TO) {
@@ -675,10 +736,10 @@ CONVERGENCE THRESHOLD: 0.1
     companion object {
         internal val TO = GenomeQuery(Genome["to1"])
         internal const val BIN = 200
-        private const val FDR = 1E-10
-        private const val GAP = 10
+        private const val FDR = 0.05
+        private const val GAP = 5
         internal const val THREADS = 1
-        private const val FRAGMENT = 150
+        private const val FRAGMENT = 200
 
         fun assertLinesEqual(expected: String, actual: String) =
                 assertEquals(expected.lines(), actual.lines())

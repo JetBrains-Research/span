@@ -16,96 +16,100 @@ import kotlin.math.log10
 import kotlin.math.min
 
 /**
- * The islands are called in three steps.
+ * The islands are called in five steps.
  *
- * Estimate posterior probabilities
- * Pick enriched bins with q-value <= FDR
- * Extend enriched bins into islands with given GAP and other bins, with logMembership <= FDR
- * Assign score to each island proportional to length and peak fdr
+ * 1) Estimate posterior probabilities
+ * 2) Pick bins with probability of H_0 <= nullProbabilityThreshold
+ * 3) Using gap merge bins into islands (before q-values)
+ * 4) Assign score to each island as median(log(ps)) * log(length)
+ * 5) Compute qvalues on scores
  *
  * @param offsets All the data is binarized, so offsets stores positions in base pair.
  * @param fdr is used to limit False Discovery Rate at given level.
  * @param gap enriched bins yielded after FDR control are merged if distance is less or equal than gap.
+ * @param nullProbabilityThreshold threshold to collect candidate islands
  * @param coverageDataFrame is used to compute either coverage or log fold change.
  */
-fun SpanFitResults.getChromosomeIslands(
+internal fun SpanFitResults.getChromosomeIslands(
     logNullMemberships: F64Array,
-    qvalues: F64Array,
     offsets: IntArray,
     chromosome: Chromosome,
     fdr: Double,
     gap: Int,
+    nullProbabilityThreshold: Double,
     coverageDataFrame: DataFrame? = null
 ): List<Peak> {
-    // Check that we have information for requested chromosome
-    if (chromosome.name in fitInfo.chromosomesSizes) {
-        // Mark enriched bins by pvalue
-        val enrichedBins = BitterSet(logNullMemberships.size)
-        0.until(enrichedBins.size()).filter { logNullMemberships[it] < ln(fdr) }.forEach(enrichedBins::set)
-
-        // Aggregate enriched islands, and pick those, which contain enriched bin by fdr
-        return enrichedBins.aggregate(gap)
-            .filter { (i, j) ->
-                (i until j).any { qvalues[it] < fdr }
-            }.map { (i, j) ->
-                val passedFDR = (i until j).filter { qvalues[it] < fdr }
-                val pvalueLogMedian = DoubleArray(passedFDR.size) { logNullMemberships[passedFDR[it]] }.median()
-                val qvalueMedian = DoubleArray(passedFDR.size) { qvalues[passedFDR[it]] }.median()
-                val start = offsets[i]
-                val end = if (j < offsets.size) offsets[j] else chromosome.length
-                // Score should be proportional to length of peak and median of original q-value
-                val score = min(1000.0, (-log10(qvalueMedian) * (1 + ln((end - start).toDouble()))))
-                // Value is either coverage of fold change
-                var value = 0.0
-                if (coverageDataFrame != null) {
-                    if (coverageDataFrame.labels.size == 1 ||
-                        coverageDataFrame.labels.all { it.startsWith(SpanPeakCallingExperiment.TRACK_PREFIX) }
-                    ) {
-                        value = coverageDataFrame.partialMean(i, j)
-                    } else if (coverageDataFrame.labels.all {
-                            it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX) ||
-                                    it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
-                        }) {
-                        val track1 = coverageDataFrame.partialMean(i, j, coverageDataFrame.labels
-                            .filter {
-                                it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX)
-                            })
-                        val track2 = coverageDataFrame.partialMean(i, j, coverageDataFrame.labels
-                            .filter {
-                                it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
-                            })
-                        // Value if LogFC
-                        value = if (track2 != 0.0) ln(track1) - ln(track2) else Double.MAX_VALUE
-                    } else {
-                        Peak.LOG.debug("Failed to compute value for ${coverageDataFrame.labels}")
-                    }
-                }
-                Peak(
-                    chromosome, start, end,
-                    mlogpvalue = -pvalueLogMedian,
-                    mlogqvalue = -log10(qvalueMedian),
-                    value = value,
-                    score = score.toInt()
-                )
-            }
-    } else {
-        SpanFitResults.LOG.debug("NO peaks information for chromosome: ${chromosome.name} in fitInfo ${fitInfo.build}")
+    val candidateBins = BitterSet(logNullMemberships.size)
+    0.until(candidateBins.size())
+        .filter { logNullMemberships[it] <= ln(nullProbabilityThreshold) }
+        .forEach(candidateBins::set)
+    val candidateIslands = candidateBins.aggregate(gap)
+    if (candidateIslands.isEmpty()) {
         return emptyList()
     }
+    val islandsLogNullMemberships = F64Array(candidateIslands.size) { islandIndex ->
+        val (i, j) = candidateIslands[islandIndex]
+        val bins = (i until j).filter { logNullMemberships[it] <= nullProbabilityThreshold }
+        // Don't use SICER scheme as sum(-log(ps)) leads to huge bias towards long islands and
+        // inefficient qvalue filtering. This can influence further qvalues estimation)
+        DoubleArray(bins.size) { logNullMemberships[bins[it]] }.median() * ln((j - i).toDouble())
+    }
+    val islandQValues = islandsQValuesCache.get(Triple(this, chromosome, gap)) {
+        Fdr.qvalidate(islandsLogNullMemberships)
+    }
+    val islands = candidateIslands.indices
+        .filter { islandQValues[it] < fdr }
+        .map { islandIndex ->
+            val (i, j) = candidateIslands[islandIndex]
+            val islandLogNullMembership = islandsLogNullMemberships[islandIndex]
+            val islandQValue = islandQValues[islandIndex]
+            val islandStart = offsets[i]
+            val islandEnd = if (j < offsets.size) offsets[j] else chromosome.length
+            // Score should be proportional to length of peak and average original q-value
+            val score = min(1000.0, -log10(islandQValue))
+            // Value is either coverage of fold change
+            var value = 0.0
+            if (coverageDataFrame != null) {
+                if (coverageDataFrame.labels.size == 1 ||
+                    coverageDataFrame.labels.all {
+                        it.startsWith(SpanPeakCallingExperiment.TRACK_PREFIX)
+                    }
+                ) {
+                    value = coverageDataFrame.partialMean(i, j)
+                } else if (coverageDataFrame.labels.all {
+                        it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX) ||
+                                it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
+                    }) {
+                    val track1 = coverageDataFrame.partialMean(i, j, coverageDataFrame.labels
+                        .filter {
+                            it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX)
+                        })
+                    val track2 = coverageDataFrame.partialMean(i, j, coverageDataFrame.labels
+                        .filter {
+                            it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
+                        })
+                    // Value if LogFC
+                    value = if (track2 != 0.0) ln(track1) - ln(track2) else Double.MAX_VALUE
+                } else {
+                    Peak.LOG.debug("Failed to compute value for ${coverageDataFrame.labels}")
+                }
+            }
+            Peak(
+                chromosome, islandStart, islandEnd,
+                mlogpvalue = -islandLogNullMembership,
+                mlogqvalue = -log10(islandQValue),
+                value = value,
+                score = score.toInt()
+            )
+        }
+    return islands
 }
-
-/**
- * During SPAN models optimizations we iterate over different FDR and GAPs parameters,
- * So Q-values estimation is superfluous for each parameters combination.
- * Use cache with weak values to avoid memory overflow.
- */
-private val f64QValuesCache: Cache<Pair<SpanFitResults, Chromosome>, F64Array> =
-    CacheBuilder.newBuilder().weakValues().build()
 
 fun SpanFitResults.getIslands(
     genomeQuery: GenomeQuery,
     fdr: Double,
     gap: Int,
+    nullProbabilityThreshold: Double,
     cancellableState: CancellableState? = null
 ): List<Peak> {
     val coverage = fitInfo.scoresDataFrame()
@@ -118,11 +122,9 @@ fun SpanFitResults.getIslands(
         if (chromosome.name in fitInfo.chromosomesSizes) {
             val f64LogNullMemberships =
                 logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL)
-            val f64QValues = f64QValuesCache.get(this to chromosome) {
-                Fdr.qvalidate(f64LogNullMemberships)
-            }
             val offsets = fitInfo.offsets(chromosome)
-            getChromosomeIslands(f64LogNullMemberships, f64QValues, offsets, chromosome, fdr, gap, coverage[chromosome])
+            getChromosomeIslands(f64LogNullMemberships, offsets, chromosome,
+                fdr, gap, nullProbabilityThreshold, coverage[chromosome])
         } else {
             SpanFitResults.LOG.debug("NO peaks information for chromosome: ${chromosome.name} in fitInfo ${fitInfo.build}")
             emptyList()
@@ -130,3 +132,11 @@ fun SpanFitResults.getIslands(
     }
     return genomeQuery.get().flatMap { map[it] }
 }
+
+/**
+ * During SPAN models optimizations we iterate over different FDR and GAPs parameters,
+ * So Q-values estimation is superfluous for each parameters combination.
+ * Use cache with weak values to avoid memory overflow.
+ */
+private val islandsQValuesCache: Cache<Triple<SpanFitResults, Chromosome, Int>, F64Array> =
+    CacheBuilder.newBuilder().weakValues().build()

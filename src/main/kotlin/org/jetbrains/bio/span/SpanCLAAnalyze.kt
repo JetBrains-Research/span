@@ -24,53 +24,60 @@ object SpanCLAAnalyze {
 
     internal fun analyze(params: Array<String>, experimental: Boolean) {
         with(SpanCLA.getOptionParser()) {
-            acceptsAll(listOf("t", "treatment"),
-                    "ChIP-seq treatment file. bam, bed or .bed.gz file;\n" +
-                            "If multiple files are given, treated as replicates.")
-                    .requiredUnless("model")
-                    .withRequiredArg()
-                    .withValuesSeparatedBy(",")
-                    .withValuesConvertedBy(PathConverter.noCheck())
-            acceptsAll(listOf("c", "control"),
-                    "Control file. bam, bed or bed.gz file;\n" +
-                            "Single control file or separate file per each\n" +
-                            "treatment file required.")
-                    .availableIf("treatment")
-                    .withRequiredArg()
-                    .withValuesSeparatedBy(",")
-                    .withValuesConvertedBy(PathConverter.noCheck())
-            acceptsAll(listOf("labels"), "Labels BED file")
-                    .availableIf("peaks")
-                    .withRequiredArg()
-                    .withValuesConvertedBy(PathConverter.exists())
-            acceptsAll(listOf("ms", "multistarts"),
-                    "Number of multistart runs using different model initialization. Use 0 to disable")
-                    .withRequiredArg()
-                    .ofType(Int::class.java)
-                    .defaultsTo(Fitter.MULTISTARTS)
+            acceptsAll(
+                listOf("t", "treatment"),
+                "ChIP-seq treatment file. bam, bed or .bed.gz file;\n" +
+                        "If multiple files are given, treated as replicates."
+            )
+                .requiredUnless("model")
+                .withRequiredArg()
+                .withValuesSeparatedBy(",")
+                .withValuesConvertedBy(PathConverter.noCheck())
+            acceptsAll(
+                listOf("c", "control"),
+                "Control file. bam, bed or bed.gz file;\n" +
+                        "Single control file or separate file per each\n" +
+                        "treatment file required."
+            )
+                .availableIf("treatment")
+                .withRequiredArg()
+                .withValuesSeparatedBy(",")
+                .withValuesConvertedBy(PathConverter.noCheck())
+            accepts("labels", "Labels BED file")
+                .availableIf("peaks")
+                .withRequiredArg()
+                .withValuesConvertedBy(PathConverter.exists())
+            acceptsAll(
+                listOf("ms", "multistarts"),
+                "Number of multistart runs using different model initialization. Use 0 to disable"
+            )
+                .withRequiredArg()
+                .ofType(Int::class.java)
+                .defaultsTo(Fitter.MULTISTARTS)
             acceptsAll(listOf("msi", "ms-iterations"), "Number of iterations for each multistart run")
-                    .withRequiredArg()
-                    .ofType(Int::class.java)
-                    .defaultsTo(Fitter.MULTISTART_ITERATIONS)
+                .withRequiredArg()
+                .ofType(Int::class.java)
+                .defaultsTo(Fitter.MULTISTART_ITERATIONS)
 
             if (experimental) {
-                acceptsAll(listOf("islands"), "Call islands")
-                acceptsAll(
-                        listOf("type"),
-                        "Model type.\n" +
-                                "'nbhmm' - negative binomial HMM (default)\n" +
-                                "'prm' - Poisson regression mixture\n" +
-                                "'nbrm' - Negative Binomial regression mixture\n" +
-                                "'nbhmm2nz' - NB_HMM2_NOZERO\n" +
-                                "'nbhmm3nz' - NB_HMM3_NOZERO\n" +
-                                "'nbhmm4nz' - NB_HMM4_NOZERO\n" +
-                                "'nbhmm3z' - NB_HMM3 WITH ZERO\n" +
-                                "'nbhmm4z' - NB_HMM4 WITH ZERO."
+                accepts("islands", "Call islands")
+                accepts(
+                    "type",
+                    "Model type.\n" +
+                            "'nbhmm' - negative binomial HMM (default)\n" +
+                            "'prm' - Poisson regression mixture\n" +
+                            "'nbrm' - Negative Binomial regression mixture\n" +
+                            "'nbhmm2nz' - NB_HMM2_NOZERO\n" +
+                            "'nbhmm3nz' - NB_HMM3_NOZERO\n" +
+                            "'nbhmm4nz' - NB_HMM4_NOZERO\n" +
+                            "'nbhmm3z' - NB_HMM3 WITH ZERO\n" +
+                            "'nbhmm4z' - NB_HMM4 WITH ZERO."
                 ).withRequiredArg()
-                acceptsAll(listOf("mapability"), "Mapability bigWig file.")
-                        .availableIf("treatment")
-                        .withRequiredArg()
-                        .withValuesConvertedBy(PathConverter.exists())
+                accepts("mapability", "Mapability bigWig file.")
+                    .availableIf("treatment")
+                    .withRequiredArg()
+                    .withValuesConvertedBy(PathConverter.exists())
+                accepts("nullProbabilityThreshold", "Islands initial threshold").withRequiredArg()
             }
 
             parse(params) { options ->
@@ -154,27 +161,31 @@ object SpanCLAAnalyze {
                 if (peaksPath != null) {
                     if (labelsPath == null) {
                         val peaks = if ("islands" in options) {
-                            spanResults.getIslands(genomeQuery, fdr, gap)
+                            val nullProbabilityThreshold = if ("nullProbabilityThreshold" in options)
+                                options.valueOf("nullProbabilityThreshold") as Double
+                            else
+                                0.2
+                            spanResults.getIslands(genomeQuery, fdr, gap, nullProbabilityThreshold)
                         } else {
                             spanResults.getPeaks(genomeQuery, fdr, gap)
                         }
                         savePeaks(
-                                peaks, peaksPath,
-                                "peak${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
+                            peaks, peaksPath,
+                            "peak${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
                         )
                         SpanCLA.LOG.info("Saved result to $peaksPath")
                         val aboutPeaks = PeaksInfo.compute(
-                                genomeQuery,
-                                peaks.map { it.location }.stream(),
-                                peaksPath.toUri(),
-                                fitInfo.data.map { it.treatment }
+                            genomeQuery,
+                            peaks.map { it.location }.stream(),
+                            peaksPath.toUri(),
+                            fitInfo.data.map { it.treatment }
                         )
                         val aboutModel = spanResults.about()
                         SpanCLA.LOG.info("\n" + (aboutPeaks + aboutModel).map { (k, v) ->
                             "${k.name}: ${k.render(v)}"
                         }.joinToString("\n"))
                     } else {
-                        check("islands" !in options) {"Islands option is not allowed for tuning"}
+                        check("islands" !in options) { "Islands option is not allowed for tuning" }
                         val results = TuningResults()
                         SpanCLA.LOG.info("Loading labels $labelsPath...")
                         val labels = LocationLabel.loadLabels(labelsPath, genomeQuery.genome)
@@ -185,20 +196,22 @@ object SpanCLAAnalyze {
                         SpanCLA.LOG.info("Optimal settings: FDR=$optimalFDR, GAP=$optimalGap")
                         labelErrorsGrid.forEachIndexed { i, error ->
                             results.addRecord(
-                                    "result",
-                                    Span.transform(Span.parameters[i]),
-                                    error,
-                                    i == index
+                                "result",
+                                Span.transform(Span.parameters[i]),
+                                error,
+                                i == index
                             )
                         }
                         results.saveTuningErrors(peaksPath.parent / "${peaksPath.fileName.stem}_errors.csv")
-                        results.saveOptimalResults(peaksPath.parent
-                                / "${peaksPath.fileName.stem}_parameters.csv")
+                        results.saveOptimalResults(
+                            peaksPath.parent
+                                    / "${peaksPath.fileName.stem}_parameters.csv"
+                        )
                         val peaks = spanResults.getPeaks(genomeQuery, optimalFDR, optimalGap)
                         savePeaks(
-                                peaks, peaksPath,
-                                "peak${if (fragment is FixedFragment) "_$fragment" else ""}_" +
-                                        "${bin}_${optimalFDR}_$optimalGap"
+                            peaks, peaksPath,
+                            "peak${if (fragment is FixedFragment) "_$fragment" else ""}_" +
+                                    "${bin}_${optimalFDR}_$optimalGap"
                         )
                         SpanCLA.LOG.info("Saved result to $peaksPath")
                     }
@@ -214,26 +227,26 @@ object SpanCLAAnalyze {
      * If both are available, checks that they are consistent.
      */
     private fun getAnalyzePaths(
-            options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null, log: Boolean = false
+        options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null, log: Boolean = false
     ): List<SpanDataPaths> {
         val commandLineTreatmentPaths = options.valuesOf("treatment") as List<Path>
         val commandLineControlPaths = options.valuesOf("control") as List<Path>
 
         val commandLinePaths = SpanCLA.getCommandLinePaths(
-                commandLineTreatmentPaths, commandLineControlPaths
+            commandLineTreatmentPaths, commandLineControlPaths
         )
 
         val fitInfoPaths = fitInformation?.data
         if (commandLinePaths != null && fitInfoPaths != null && commandLinePaths != fitInfoPaths) {
             throw IllegalStateException(
-                    "Stored treatment-control pairs ${fitInfoPaths.joinToString()} differ from the ones inferred " +
-                            "from the command line arguments: ${commandLinePaths.joinToString()}"
+                "Stored treatment-control pairs ${fitInfoPaths.joinToString()} differ from the ones inferred " +
+                        "from the command line arguments: ${commandLinePaths.joinToString()}"
             )
         }
 
         val paths = commandLinePaths
-                ?: fitInfoPaths
-                ?: throw IllegalStateException("No treatment files and no existing model file provided, exiting.")
+            ?: fitInfoPaths
+            ?: throw IllegalStateException("No treatment files and no existing model file provided, exiting.")
 
         if (log) {
             SpanCLA.LOG.info("TREATMENT: ${paths.map { it.treatment }.joinToString(", ", transform = Path::toString)}")
@@ -249,17 +262,17 @@ object SpanCLAAnalyze {
     }
 
     internal fun getMultistarts(
-            options: OptionSet, log: Boolean = false
+        options: OptionSet, log: Boolean = false
     ) = SpanCLA.getProperty(
-            options.valueOf("multistarts") as Int?, null, Fitter.MULTISTARTS,
-            "multistarts", "MULTISTARTS", log
+        options.valueOf("multistarts") as Int?, null, Fitter.MULTISTARTS,
+        "multistarts", "MULTISTARTS", log
     )
 
     internal fun getMultistartIterations(
-            options: OptionSet, log: Boolean = false
+        options: OptionSet, log: Boolean = false
     ) = SpanCLA.getProperty(
-            options.valueOf("ms-iterations") as Int?, null, Fitter.MULTISTART_ITERATIONS,
-            "multistart iterations", "MULTISTART ITERATIONS", log
+        options.valueOf("ms-iterations") as Int?, null, Fitter.MULTISTART_ITERATIONS,
+        "multistart iterations", "MULTISTART ITERATIONS", log
     )
 
     /**
@@ -277,8 +290,8 @@ object SpanCLAAnalyze {
         }
         if (modelPath != null && modelPath.exists && modelPath.size.isNotEmpty()) {
             SpanCLA.LOG.debug(
-                    "Model file $modelPath exists and is not empty, Span will use it to substitute " +
-                            "the missing command line arguments and verify the provided ones."
+                "Model file $modelPath exists and is not empty, Span will use it to substitute " +
+                        "the missing command line arguments and verify the provided ones."
             )
             val results = SpanModelFitExperiment.loadResults(tarPath = modelPath)
             check(results.fitInfo is SpanAnalyzeFitInformation) {
@@ -311,8 +324,8 @@ object SpanCLAAnalyze {
             if (experimental) {
                 modelType = getModelType(options, modelPath)
                 mapabilityPath = if (
-                        modelType == SpanModel.POISSON_REGRESSION_MIXTURE ||
-                        modelType == SpanModel.NEGBIN_REGRESSION_MIXTURE
+                    modelType == SpanModel.POISSON_REGRESSION_MIXTURE ||
+                    modelType == SpanModel.NEGBIN_REGRESSION_MIXTURE
                 ) {
                     getMapabilityPath(options, log = true)
                 } else {
@@ -326,8 +339,8 @@ object SpanCLAAnalyze {
                 val experiment = when (modelType) {
                     SpanModel.NB_HMM ->
                         SpanPeakCallingExperiment.getExperiment(
-                                genomeQuery, data, bin, fragment, unique, modelPath,
-                                threshold, maxIter, multistarts, multistartIterations
+                            genomeQuery, data, bin, fragment, unique, modelPath,
+                            threshold, maxIter, multistarts, multistartIterations
                         )
 
                     SpanModel.NB_HMM2_NOZERO ->
@@ -362,8 +375,8 @@ object SpanCLAAnalyze {
                             SpanCLA.LOG.error("Multistart is not supported for $modelType")
                         }
                         Span2PeakCallingExperiment.getExperiment(
-                                genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath,
-                                threshold, maxIter
+                            genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath,
+                            threshold, maxIter
                         )
                     }
                     SpanModel.NEGBIN_REGRESSION_MIXTURE -> {
@@ -371,8 +384,8 @@ object SpanCLAAnalyze {
                             SpanCLA.LOG.error("Multistart is not supported for $modelType")
                         }
                         Span3PeakCallingExperiment.getExperiment(
-                                genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath,
-                                threshold, maxIter
+                            genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath,
+                            threshold, maxIter
                         )
                     }
 
@@ -383,52 +396,52 @@ object SpanCLAAnalyze {
     }
 
     private fun getMapabilityPath(
-            options: OptionSet, fitInfo: Span2FitInformation? = null, log: Boolean = false
+        options: OptionSet, fitInfo: Span2FitInformation? = null, log: Boolean = false
     ) = SpanCLA.getProperty(
-            options.valueOf("mapability") as Path?,
-            fitInfo?.mapabilityPath,
-            null,
-            "mapability", "MAPABILITY",
-            log
+        options.valueOf("mapability") as Path?,
+        fitInfo?.mapabilityPath,
+        null,
+        "mapability", "MAPABILITY",
+        log
     )
 
     private fun getModelType(
-            options: OptionSet, modelPath: Path?
+        options: OptionSet, modelPath: Path?
     ) = SpanCLA.getProperty(
-            options.valueOf("type")?.let {
-                when (it) {
-                    "nbhmm" -> SpanModel.NB_HMM
+        options.valueOf("type")?.let {
+            when (it) {
+                "nbhmm" -> SpanModel.NB_HMM
 
-                    "nbhmm2nz" -> SpanModel.NB_HMM2_NOZERO
-                    "nbhmm3nz" -> SpanModel.NB_HMM3_NOZERO
-                    "nbhmm4nz" -> SpanModel.NB_HMM4_NOZERO
-                    "nbhmm3z" -> SpanModel.NB_HMM3_ZERO
-                    "nbhmm4z" -> SpanModel.NB_HMM4_ZERO
+                "nbhmm2nz" -> SpanModel.NB_HMM2_NOZERO
+                "nbhmm3nz" -> SpanModel.NB_HMM3_NOZERO
+                "nbhmm4nz" -> SpanModel.NB_HMM4_NOZERO
+                "nbhmm3z" -> SpanModel.NB_HMM3_ZERO
+                "nbhmm4z" -> SpanModel.NB_HMM4_ZERO
 
-                    "prm" -> SpanModel.POISSON_REGRESSION_MIXTURE
-                    "nbrm" -> SpanModel.NEGBIN_REGRESSION_MIXTURE
-                    else -> throw IllegalArgumentException("Unrecognized value for --type command line option: $it")
-                }
-            },
-            modelPath?.let {
-                when (it.extension) {
-                    "span" -> SpanModel.NB_HMM
+                "prm" -> SpanModel.POISSON_REGRESSION_MIXTURE
+                "nbrm" -> SpanModel.NEGBIN_REGRESSION_MIXTURE
+                else -> throw IllegalArgumentException("Unrecognized value for --type command line option: $it")
+            }
+        },
+        modelPath?.let {
+            when (it.extension) {
+                "span" -> SpanModel.NB_HMM
 
-                    SpanPeakCallingExperimentNBHMM2NZ.MODEL_EXT -> SpanModel.NB_HMM2_NOZERO
-                    SpanPeakCallingExperimentNBHMM3NZ.MODEL_EXT -> SpanModel.NB_HMM3_NOZERO
-                    SpanPeakCallingExperimentNBHMM4NZ.MODEL_EXT -> SpanModel.NB_HMM4_NOZERO
-                    SpanPeakCallingExperimentNBHMM3Z.MODEL_EXT -> SpanModel.NB_HMM3_ZERO
-                    SpanPeakCallingExperimentNBHMM4Z.MODEL_EXT -> SpanModel.NB_HMM4_ZERO
+                SpanPeakCallingExperimentNBHMM2NZ.MODEL_EXT -> SpanModel.NB_HMM2_NOZERO
+                SpanPeakCallingExperimentNBHMM3NZ.MODEL_EXT -> SpanModel.NB_HMM3_NOZERO
+                SpanPeakCallingExperimentNBHMM4NZ.MODEL_EXT -> SpanModel.NB_HMM4_NOZERO
+                SpanPeakCallingExperimentNBHMM3Z.MODEL_EXT -> SpanModel.NB_HMM3_ZERO
+                SpanPeakCallingExperimentNBHMM4Z.MODEL_EXT -> SpanModel.NB_HMM4_ZERO
 
-                    "span2" -> SpanModel.POISSON_REGRESSION_MIXTURE
-                    "span3" -> SpanModel.NEGBIN_REGRESSION_MIXTURE
-                    else -> throw IllegalArgumentException(
-                            "Unrecognized model extension '.${it.extension}', should be either '.span' or '.span2'."
-                    )
-                }
-            },
-            SpanModel.NB_HMM,
-            "model type", "MODEL TYPE", true
+                "span2" -> SpanModel.POISSON_REGRESSION_MIXTURE
+                "span3" -> SpanModel.NEGBIN_REGRESSION_MIXTURE
+                else -> throw IllegalArgumentException(
+                    "Unrecognized model extension '.${it.extension}', should be either '.span' or '.span2'."
+                )
+            }
+        },
+        SpanModel.NB_HMM,
+        "model type", "MODEL TYPE", true
     )
 
 }

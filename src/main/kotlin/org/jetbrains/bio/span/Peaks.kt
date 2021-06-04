@@ -60,9 +60,9 @@ internal fun DataFrame.partialMean(from: Int, to: Int, labelArray: List<String> 
 /**
  * The peaks are called in three steps.
  *
- * 1. Firstly, an FDR threshold is applied to the posterior state probabilities.
- * 2. Consecutive observations corresponding to H_0 rejections are then merged into ranges.
- * 3. Finally, each range is assigned a qvalue score - median qvalue.
+ * 1) Firstly, an FDR threshold is applied to the posterior state probabilities.
+ * 2) Consecutive observations corresponding to H_0 rejections are then merged into ranges.
+ * 3) Finally, each range is assigned a qvalue score - median qvalue.
  *
  * @param offsets All the data is binarized, so offsets stores positions in base pair.
  * @param fdr is used to limit False Discovery Rate at given level.
@@ -80,7 +80,7 @@ internal fun getChromosomePeaks(
     val enrichedBins = BitterSet(logNullMemberships.size)
     0.until(enrichedBins.size()).filter { qvalues[it] < fdr }.forEach(enrichedBins::set)
 
-    return enrichedBins.aggregate(gap).map { (i, j) ->
+    val peaks = enrichedBins.aggregate(gap).map { (i, j) ->
         val passedFDR = (i until j).filter { qvalues[it] < fdr }
         val pvalueLogMedian = DoubleArray(passedFDR.size) { logNullMemberships[passedFDR[it]] }.median()
         val qvalueMedian = DoubleArray(passedFDR.size) { qvalues[passedFDR[it]] }.median()
@@ -92,32 +92,36 @@ internal fun getChromosomePeaks(
         var value = 0.0
         if (coverageDataFrame != null) {
             if (coverageDataFrame.labels.size == 1 ||
-                    coverageDataFrame.labels.all { it.startsWith(SpanPeakCallingExperiment.TRACK_PREFIX) }) {
+                coverageDataFrame.labels.all { it.startsWith(SpanPeakCallingExperiment.TRACK_PREFIX) }
+            ) {
                 value = coverageDataFrame.partialMean(i, j)
             } else if (coverageDataFrame.labels.all {
-                        it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX) ||
-                                it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
-                    }) {
-                val track1 = coverageDataFrame.partialMean(i, j, coverageDataFrame.labels
-                        .filter {
-                            it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX)
-                        })
-                val track2 = coverageDataFrame.partialMean(i, j, coverageDataFrame.labels
-                        .filter {
+                    it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX) ||
                             it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
-                        })
+                }) {
+                val track1 = coverageDataFrame.partialMean(i, j, coverageDataFrame.labels
+                    .filter {
+                        it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX)
+                    })
+                val track2 = coverageDataFrame.partialMean(i, j, coverageDataFrame.labels
+                    .filter {
+                        it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
+                    })
                 // Value if LogFC
                 value = if (track2 != 0.0) ln(track1) - ln(track2) else Double.MAX_VALUE
             } else {
                 Peak.LOG.debug("Failed to compute value for ${coverageDataFrame.labels}")
             }
         }
-        Peak(chromosome, start, end,
-                mlogpvalue = -pvalueLogMedian,
-                mlogqvalue = -log10(qvalueMedian),
-                value = value,
-                score = score.toInt())
+        Peak(
+            chromosome, start, end,
+            mlogpvalue = -pvalueLogMedian,
+            mlogqvalue = -log10(qvalueMedian),
+            value = value,
+            score = score.toInt()
+        )
     }
+    return peaks
 }
 
 
