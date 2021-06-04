@@ -39,20 +39,25 @@ internal fun SpanFitResults.getChromosomeIslands(
     nullProbabilityThreshold: Double,
     coverageDataFrame: DataFrame? = null
 ): List<Peak> {
+    val logNullProbabilityThreshold = ln(nullProbabilityThreshold)
     val candidateBins = BitterSet(logNullMemberships.size)
     0.until(candidateBins.size())
-        .filter { logNullMemberships[it] <= ln(nullProbabilityThreshold) }
+        .filter { logNullMemberships[it] <= logNullProbabilityThreshold }
         .forEach(candidateBins::set)
     val candidateIslands = candidateBins.aggregate(gap)
     if (candidateIslands.isEmpty()) {
         return emptyList()
     }
+    // Assign p-value like scores to merged peaks using SICER inspired scheme
     val islandsLogNullMemberships = F64Array(candidateIslands.size) { islandIndex ->
+        // SICER scheme sum(-log(ps)) leads to huge bias towards long islands
+        // Use median * log(length)
         val (i, j) = candidateIslands[islandIndex]
-        val bins = (i until j).filter { logNullMemberships[it] <= nullProbabilityThreshold }
-        // Don't use SICER scheme as sum(-log(ps)) leads to huge bias towards long islands and
-        // inefficient qvalue filtering. This can influence further qvalues estimation)
-        DoubleArray(bins.size) { logNullMemberships[bins[it]] }.median() * ln((j - i).toDouble())
+        val medianLogNullMembership = (i until j)
+            .map { logNullMemberships[it] }
+            .filter { it <= logNullProbabilityThreshold }
+            .toDoubleArray().median()
+        medianLogNullMembership * ln((j - i).toDouble())
     }
     val islandQValues = islandsQValuesCache.get(Triple(this, chromosome, gap)) {
         Fdr.qvalidate(islandsLogNullMemberships)
@@ -132,6 +137,9 @@ fun SpanFitResults.getIslands(
     }
     return genomeQuery.get().flatMap { map[it] }
 }
+
+const val SPAN_ISLANDS_DEFAULT_NULL_PROBABILITY = 0.2
+
 
 /**
  * During SPAN models optimizations we iterate over different FDR and GAPs parameters,

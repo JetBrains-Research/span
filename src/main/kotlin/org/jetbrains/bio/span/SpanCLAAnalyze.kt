@@ -77,7 +77,10 @@ object SpanCLAAnalyze {
                     .availableIf("treatment")
                     .withRequiredArg()
                     .withValuesConvertedBy(PathConverter.exists())
-                accepts("nullProbabilityThreshold", "Islands initial threshold").withRequiredArg()
+                accepts("nullProbabilityThreshold", "Candidate islands null probability threshold")
+                    .withRequiredArg()
+                    .ofType(Double::class.java)
+                    .defaultsTo(SPAN_ISLANDS_DEFAULT_NULL_PROBABILITY)
             }
 
             parse(params) { options ->
@@ -161,10 +164,8 @@ object SpanCLAAnalyze {
                 if (peaksPath != null) {
                     if (labelsPath == null) {
                         val peaks = if ("islands" in options) {
-                            val nullProbabilityThreshold = if ("nullProbabilityThreshold" in options)
+                            val nullProbabilityThreshold =
                                 options.valueOf("nullProbabilityThreshold") as Double
-                            else
-                                0.2
                             spanResults.getIslands(genomeQuery, fdr, gap, nullProbabilityThreshold)
                         } else {
                             spanResults.getPeaks(genomeQuery, fdr, gap)
