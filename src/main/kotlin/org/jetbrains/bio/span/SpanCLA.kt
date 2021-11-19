@@ -49,8 +49,8 @@ object SpanCLA {
     }
 
     internal fun version() =
-            "${System.getProperty("span.build.version", "@VERSION@.@build@")} " +
-                    "built on ${System.getProperty("span.build.date", "@DATE@")}"
+        "${System.getProperty("span.build.version", "@VERSION@.@build@")} " +
+                "built on ${System.getProperty("span.build.date", "@DATE@")}"
 
 
     private const val HELP = """
@@ -98,8 +98,10 @@ compare                         Differential peak calling mode, experimental
         // https://stackoverflow.com/questions/23701207/why-do-xmx-and-runtime-maxmemory-not-agree
         // 3.5 works, however use decreased level to be sure.
         if (maxMemory < 3 * GB) {
-            LOG.warn("Recommended memory settings ${FileSize(4 * GB)} are not set. Current settings: ${FileSize(maxMemory)}.\n" +
-                    "Please use java memory option '-Xmx4G' to configure memory available for SPAN.")
+            LOG.warn(
+                "Recommended memory settings ${FileSize(4 * GB)} are not set. Current settings: ${FileSize(maxMemory)}.\n" +
+                        "Please use java memory option '-Xmx4G' to configure memory available for SPAN."
+            )
         }
     }
 
@@ -128,53 +130,55 @@ compare                         Differential peak calling mode, experimental
             acceptsAll(listOf("d", "debug"), "Print all the debug information, used for troubleshooting.")
             acceptsAll(listOf("q", "quiet"), "Turn off output")
             acceptsAll(listOf("m", "model"), "Path to model file")
-                    .withRequiredArg().withValuesConvertedBy(PathConverter.noCheck())
+                .withRequiredArg().withValuesConvertedBy(PathConverter.noCheck())
             acceptsAll(
-                    listOf("cs", "chrom.sizes"),
-                    "Chromosome sizes path, can be downloaded at\n" +
-                            "http://hgdownload.cse.ucsc.edu/goldenPath/<build>/bigZips/<build>.chrom.sizes"
+                listOf("cs", "chrom.sizes"),
+                "Chromosome sizes path, can be downloaded at\n" +
+                        "http://hgdownload.cse.ucsc.edu/goldenPath/<build>/bigZips/<build>.chrom.sizes"
             ).requiredUnless("model").withRequiredArg().withValuesConvertedBy(PathConverter.exists())
             acceptsAll(
-                    listOf("p", "peaks"), "Path to result peaks file in ENCODE broadPeak (BED 6+3) format"
+                listOf("p", "peaks"), "Path to result peaks file in ENCODE broadPeak (BED 6+3) format"
             ).withRequiredArg().withValuesConvertedBy(PathConverter.noCheck())
             acceptsAll(
-                    listOf("fragment"),
-                    "Fragment size. If it's an integer, reads are shifted appropriately.\n" +
-                            "If it's the string 'auto', the shift is estimated from the data. (default: auto)"
+                listOf("fragment"),
+                "Fragment size. If it's an integer, reads are shifted appropriately.\n" +
+                        "If it's the string 'auto', the shift is estimated from the data. (default: auto)"
             ).withRequiredArg().withValuesConvertedBy(FragmentConverter())
             acceptsAll(listOf("b", "bin"), "Bin size. (default: ${SPAN_DEFAULT_BIN})")
-                    .withRequiredArg()
-                    .ofType(Int::class.java)
+                .withRequiredArg()
+                .ofType(Int::class.java)
 
             acceptsAll(listOf("f", "fdr"), "FDR value.")
-                    .availableIf("peaks")
-                    .withRequiredArg()
-                    .ofType(Double::class.java)
-                    .defaultsTo(SPAN_DEFAULT_FDR)
+                .availableIf("peaks")
+                .withRequiredArg()
+                .ofType(Double::class.java)
+                .defaultsTo(SPAN_DEFAULT_FDR)
             acceptsAll(listOf("g", "gap"), "Gap size to merge peaks (in bins).")
-                    .availableIf("peaks")
-                    .withRequiredArg()
-                    .ofType(Int::class.java)
-                    .defaultsTo(SPAN_DEFAULT_GAP)
+                .availableIf("peaks")
+                .withRequiredArg()
+                .ofType(Int::class.java)
+                .defaultsTo(SPAN_DEFAULT_GAP)
             acceptsAll(listOf("w", "workdir"), "Path to the working dir")
-                    .withRequiredArg().withValuesConvertedBy(PathConverter.exists())
-                    .defaultsTo(System.getProperty("user.dir").toPath())
+                .withRequiredArg().withValuesConvertedBy(PathConverter.exists())
+                .defaultsTo(System.getProperty("user.dir").toPath())
             acceptsAll(listOf("threads"), "Parallelism level")
-                    .withRequiredArg()
-                    .ofType(Int::class.java)
+                .withRequiredArg()
+                .ofType(Int::class.java)
             acceptsAll(listOf("k", "keep-dup"), "Keep duplicates")
-                    .withOptionalArg()
-                    .ofType(Boolean::class.java)
-                    .defaultsTo(true)
+                .withOptionalArg()
+                .ofType(Boolean::class.java)
+                .defaultsTo(true)
             acceptsAll(listOf("i", "iterations"), "Maximum number of iterations for EM algorithm")
-                    .withRequiredArg()
-                    .ofType(Int::class.java)
-                    .defaultsTo(Fitter.MAX_ITERATIONS)
-            acceptsAll(listOf("tr", "threshold"), "Convergence threshold for EM algorithm, " +
-                    "use --debug option to see detailed info")
-                    .withRequiredArg()
-                    .ofType(Double::class.java)
-                    .defaultsTo(Fitter.THRESHOLD)
+                .withRequiredArg()
+                .ofType(Int::class.java)
+                .defaultsTo(Fitter.MAX_ITERATIONS)
+            acceptsAll(
+                listOf("tr", "threshold"), "Convergence threshold for EM algorithm, " +
+                        "use --debug option to see detailed info"
+            )
+                .withRequiredArg()
+                .ofType(Double::class.java)
+                .defaultsTo(Fitter.THRESHOLD)
         }
     }
 
@@ -192,8 +196,8 @@ compare                         Differential peak calling mode, experimental
      * Fail if these differ. Return default if both are null. Log the value if [log] is true.
      */
     internal fun <T> getProperty(
-            commandLineValue: T?, fitInfoValue: T?, default: T, propertyName: String,
-            propertyId: String, log: Boolean
+        commandLineValue: T?, fitInfoValue: T?, default: T, propertyName: String,
+        propertyId: String, log: Boolean
     ): T {
         check(fitInfoValue == null || commandLineValue == null || commandLineValue == fitInfoValue) {
             "Stored $propertyName ($fitInfoValue) differs from the command line argument ($commandLineValue)"
@@ -206,43 +210,43 @@ compare                         Differential peak calling mode, experimental
     }
 
     internal fun getUnique(
-            options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null, log: Boolean = false
+        options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null, log: Boolean = false
     ) = !getProperty(
-            if ("keep-dup" in options) options.valueOf("keep-dup") as Boolean else null,
-            fitInformation?.unique?.not(), false,
-            "'keep duplicates' flag", "KEEP DUPLICATES", log
+        if ("keep-dup" in options) options.valueOf("keep-dup") as Boolean else null,
+        fitInformation?.unique?.not(), false,
+        "'keep duplicates' flag", "KEEP DUPLICATES", log
     )
 
     internal fun getFragment(
-            options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null, log: Boolean = false
+        options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null, log: Boolean = false
     ) = getProperty(
-            options.valueOf("fragment") as Fragment?, fitInformation?.fragment, AutoFragment,
-            "fragment size", "FRAGMENT", log
+        options.valueOf("fragment") as Fragment?, fitInformation?.fragment, AutoFragment,
+        "fragment size", "FRAGMENT", log
     )
 
     internal fun getBin(
-            options: OptionSet, fitInformation: SpanFitInformation? = null, log: Boolean = false
+        options: OptionSet, fitInformation: SpanFitInformation? = null, log: Boolean = false
     ) = getProperty(
-            options.valueOf("bin") as Int?, fitInformation?.binSize, SPAN_DEFAULT_BIN,
-            "bin size", "BIN", log
+        options.valueOf("bin") as Int?, fitInformation?.binSize, SPAN_DEFAULT_BIN,
+        "bin size", "BIN", log
     )
 
     internal fun getThreshold(
-            options: OptionSet, log: Boolean = false
+        options: OptionSet, log: Boolean = false
     ) = getProperty(
-            options.valueOf("threshold") as Double?, null, Fitter.THRESHOLD,
-            "convergence threshold", "CONVERGENCE THRESHOLD", log
+        options.valueOf("threshold") as Double?, null, Fitter.THRESHOLD,
+        "convergence threshold", "CONVERGENCE THRESHOLD", log
     )
 
     internal fun getMaxIter(
-            options: OptionSet, log: Boolean = false
+        options: OptionSet, log: Boolean = false
     ) = getProperty(
-            options.valueOf("iterations") as Int?, null, Fitter.MAX_ITERATIONS,
-            "max iterations", "MAX ITERATIONS", log
+        options.valueOf("iterations") as Int?, null, Fitter.MAX_ITERATIONS,
+        "max iterations", "MAX ITERATIONS", log
     )
 
     internal fun getAndLogWorkDirAndChromSizes(
-            options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null
+        options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null
     ): Path? {
         val workingDir = options.valueOf("workdir") as Path
         LOG.info("WORKING DIR: $workingDir")
@@ -273,8 +277,8 @@ compare                         Differential peak calling mode, experimental
     }
 
     internal fun getCommandLinePaths(
-            commandLineTreatmentPaths: List<Path>,
-            commandLineControlPaths: List<Path>
+        commandLineTreatmentPaths: List<Path>,
+        commandLineControlPaths: List<Path>
     ): List<SpanDataPaths>? {
         if (commandLineTreatmentPaths.isEmpty()) {
             return null
@@ -285,8 +289,8 @@ compare                         Differential peak calling mode, experimental
                     Array(commandLineTreatmentPaths.size) { commandLineControlPaths.single() }.toList()
                 commandLineTreatmentPaths.size -> commandLineControlPaths
                 else -> throw IllegalArgumentException(
-                        "Expected either: no control files, a single control file, " +
-                                "or as many control files as treatment files."
+                    "Expected either: no control files, a single control file, " +
+                            "or as many control files as treatment files."
                 )
             }
         } else {

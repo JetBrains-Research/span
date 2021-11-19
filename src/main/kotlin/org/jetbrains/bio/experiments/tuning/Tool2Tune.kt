@@ -40,19 +40,19 @@ abstract class Tool2Tune<T> {
      * Returns folder for given [target] and [tool], takes into account [useInput] in case of [Span]
      */
     fun folder(path: Path, target: String, useInput: Boolean) =
-            (path / target /
-                    (if (this == Span)
-                        "$id${if (!useInput) "_noinput" else ""}"
-                    else
-                        id)).apply {
-                createDirectories()
-            }
+        (path / target /
+                (if (this == Span)
+                    "$id${if (!useInput) "_noinput" else ""}"
+                else
+                    id)).apply {
+            createDirectories()
+        }
 
     fun defaultsFolder(path: Path, target: String, useInput: Boolean, uli: Boolean) =
-            folder(path, target, useInput) / transform(defaultParams(uli))
+        folder(path, target, useInput) / transform(defaultParams(uli))
 
     private fun gridFile(path: Path, target: String, useInput: Boolean) =
-            folder(path, target, useInput) / ".grid"
+        folder(path, target, useInput) / ".grid"
 
     internal fun loadGrid(path: Path, target: String, useInput: Boolean): String? {
         val gridFile = gridFile(path, target, useInput)
@@ -65,17 +65,19 @@ abstract class Tool2Tune<T> {
 
     protected fun saveGrid(path: Path, target: String, useInput: Boolean) {
         gridFile(path, target, useInput)
-                .bufferedWriter(StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
-                .use { it.write(parameters.joinToString(separator = ",", transform = transform)) }
+            .bufferedWriter(StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+            .use { it.write(parameters.joinToString(separator = ",", transform = transform)) }
     }
 
     /**
      * @return map of Pair<cell, replicate> -> path
      */
-    fun tunedPeaks(configuration: DataConfig,
-                   path: Path,
-                   target: String,
-                   useInput: Boolean): Map<Pair<Cell, String>, Path> {
+    fun tunedPeaks(
+        configuration: DataConfig,
+        path: Path,
+        target: String,
+        useInput: Boolean
+    ): Map<Pair<Cell, String>, Path> {
         val folder = folder(path, target, useInput)
         if (folder.notExists) {
             LOG.warn("Folder $target $this $folder doesn't exist")
@@ -90,7 +92,8 @@ abstract class Tool2Tune<T> {
         val existingPaths = paths.filter { it.second != null }.map { (a, b) -> a to b!! }
         if (existingPaths.size != paths.size) {
             LOG.warn("Not all peak files were found for $id and $target at $folder\n" +
-                    "Missing paths for : ${paths.filter { it.second == null }}")
+                    "Missing paths for : ${paths.filter { it.second == null }}"
+            )
         }
         return existingPaths.associate { it }
     }
@@ -99,10 +102,12 @@ abstract class Tool2Tune<T> {
     /**
      * @return true in case when some peaks are missing of [parameters] has changed
      */
-    protected fun checkTuningRequired(configuration: DataConfig,
-                                      path: Path,
-                                      target: String,
-                                      useInput: Boolean): Boolean {
+    protected fun checkTuningRequired(
+        configuration: DataConfig,
+        path: Path,
+        target: String,
+        useInput: Boolean
+    ): Boolean {
         val prefix = "$target $id"
         val existingPeaks = tunedPeaks(configuration, path, target, useInput)
         val labelledTracks = configuration.extractLabelledTracks(target)
@@ -119,11 +124,12 @@ abstract class Tool2Tune<T> {
     }
 
     abstract fun tune(
-            configuration: DataConfig,
-            path: Path,
-            target: String,
-            useInput: Boolean,
-            saveAllPeaks: Boolean)
+        configuration: DataConfig,
+        path: Path,
+        target: String,
+        useInput: Boolean,
+        saveAllPeaks: Boolean
+    )
 
 
     private fun findPeakFiles(folder: Path, cellId: String, donor: String?): List<Path> {

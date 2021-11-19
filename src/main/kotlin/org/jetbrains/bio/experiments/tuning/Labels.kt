@@ -15,12 +15,14 @@ import org.jetbrains.bio.genome.format.unpackRegularFields
 import org.jetbrains.bio.util.toPath
 import java.nio.file.Path
 
-data class LabelledTrack(val cell: Cell,
-                         val name: String,
-                         val trackPath: Path,
-                         val labelPath: Path,
-                         val failed: Boolean,
-                         val testLabelPath: Path? = null)
+data class LabelledTrack(
+    val cell: Cell,
+    val name: String,
+    val trackPath: Path,
+    val labelPath: Path,
+    val failed: Boolean,
+    val testLabelPath: Path? = null
+)
 
 
 private val LABELS_KEY = ReplicateDataKey("labels") {
@@ -39,20 +41,24 @@ private val TEST_LABELS_KEY = ReplicateDataKey("test_labels") {
 fun DataConfig.extractLabelledTracks(target: String): List<LabelledTrack> {
     val auxLabelPath = this[target, LABELS_KEY]
     return tracksMap.entries
-            .filter { it.key.dataType == target }
-            .flatMap { entry -> entry.value.map { it to entry.key } }
-            .filter { auxLabelPath != null || it.first.second[LABELS_KEY] != null }
-            .map { (data, key) ->
-                val customLabelPath = data.second[LABELS_KEY]
-                val testLabelPath = data.second[TEST_LABELS_KEY] ?: this[target, TEST_LABELS_KEY]
-                LabelledTrack(key.cellId, data.first, data.second.path,
-                        customLabelPath ?: auxLabelPath!!, data.second.failedTrack, testLabelPath)
-            }
+        .filter { it.key.dataType == target }
+        .flatMap { entry -> entry.value.map { it to entry.key } }
+        .filter { auxLabelPath != null || it.first.second[LABELS_KEY] != null }
+        .map { (data, key) ->
+            val customLabelPath = data.second[LABELS_KEY]
+            val testLabelPath = data.second[TEST_LABELS_KEY] ?: this[target, TEST_LABELS_KEY]
+            LabelledTrack(
+                key.cellId, data.first, data.second.path,
+                customLabelPath ?: auxLabelPath!!, data.second.failedTrack, testLabelPath
+            )
+        }
 }
 
 
-data class LocationLabel(override val location: Location,
-                         val type: Label) : LocationAware, Comparable<LocationLabel> {
+data class LocationLabel(
+    override val location: Location,
+    val type: Label
+) : LocationAware, Comparable<LocationLabel> {
 
     override fun compareTo(other: LocationLabel): Int = compareValuesBy(this, other, { it.location }, { it.type })
 
@@ -65,15 +71,17 @@ data class LocationLabel(override val location: Location,
             Label.NO_PEAKS -> intersection.isEmpty()
             Label.PEAKS -> intersection.isNotEmpty()
             Label.PEAK_START -> intersection.singleOrNull()
-                    ?.let { it.startOffset != location.startOffset } == true
+                ?.let { it.startOffset != location.startOffset } == true
             Label.PEAK_END -> intersection.singleOrNull()
-                    ?.let { it.endOffset != location.endOffset } == true
+                ?.let { it.endOffset != location.endOffset } == true
         }
     }
 
-    fun asBedEntry() = ExtendedBedEntry(location.chromosome.name,
-                                        location.startOffset, location.endOffset,
-                                        type.id, itemRgb = type.color.rgb)
+    fun asBedEntry() = ExtendedBedEntry(
+        location.chromosome.name,
+        location.startOffset, location.endOffset,
+        type.id, itemRgb = type.color.rgb
+    )
 
     companion object {
         fun loadLabels(labelPath: Path, genome: Genome): List<LocationLabel> {

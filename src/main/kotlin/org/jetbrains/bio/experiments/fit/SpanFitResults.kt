@@ -19,9 +19,9 @@ import org.slf4j.LoggerFactory
  * a column of floats or doubles labelled [SpanModelFitExperiment.NULL].
  */
 data class SpanFitResults(
-        val fitInfo: SpanFitInformation,
-        val model: ClassificationModel,
-        val logNullMemberships: Map<String, DataFrame>
+    val fitInfo: SpanFitInformation,
+    val model: ClassificationModel,
+    val logNullMemberships: Map<String, DataFrame>
 ) {
     companion object {
         internal val LOG = LoggerFactory.getLogger(SpanFitResults::class.java)
@@ -40,9 +40,9 @@ data class SpanFitResults(
                 val signalMean = model.means[1]
                 val noiseMean = model.means[0]
                 listOf(
-                        CT_SIGNAL_MEAN to signalMean,
-                        CT_NOISE_MEAN to noiseMean,
-                        CT_SIGNAL_TO_NOISE to ((signalMean + 1e-10) / (noiseMean + 1e-10))
+                    CT_SIGNAL_MEAN to signalMean,
+                    CT_NOISE_MEAN to noiseMean,
+                    CT_SIGNAL_TO_NOISE to ((signalMean + 1e-10) / (noiseMean + 1e-10))
                 )
             }
             is PoissonRegressionMixture -> listOf(CT_SIGNAL_TO_NOISE to model.signalToNoise)

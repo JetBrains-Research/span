@@ -27,20 +27,20 @@ data class ErrorRate(var total: Int = 0, var correct: Int = 0) {
 /**
  * Merging map based error [LocationLabel] -> [ErrorRate]
  */
-class LabelErrors(val map: MutableMap<LocationLabel, ErrorRate> = TreeMap())
-    : MutableMap<LocationLabel, ErrorRate> by map {
+class LabelErrors(val map: MutableMap<LocationLabel, ErrorRate> = TreeMap()) :
+    MutableMap<LocationLabel, ErrorRate> by map {
 
     fun error(type: Label? = null) = 1.0 - correct(type) * 1.0 / total(type)
 
     fun correct(type: Label?) = filter(type)
-            .stream()
-            .mapToInt { (_, errRate) -> errRate.correct }
-            .sum()
+        .stream()
+        .mapToInt { (_, errRate) -> errRate.correct }
+        .sum()
 
     fun total(type: Label?) = filter(type)
-            .stream()
-            .mapToInt { (_, errRate) -> errRate.total }
-            .sum()
+        .stream()
+        .mapToInt { (_, errRate) -> errRate.total }
+        .sum()
 
     private fun filter(type: Label?) = when (type) {
         null -> map.entries
@@ -74,7 +74,7 @@ class TuningResultTable {
         arrayListOf<Double>()
     }
 
-    fun minError() = errors.mapNotNull { it.min() }.min()
+    fun minError() = errors.mapNotNull { it.minOrNull() }.minOrNull()
 
     fun addRecord(name: String, parameter: String, labelErrors: LabelErrors) {
         names.add(name)
@@ -85,9 +85,9 @@ class TuningResultTable {
 
     fun print(path: Path) {
         var dataFrame = DataFrame()
-                .with("name", names.toTypedArray())
-                .with("parameter", parameters.toTypedArray())
-                .with("error", errors[Label.values().size].toDoubleArray())
+            .with("name", names.toTypedArray())
+            .with("parameter", parameters.toTypedArray())
+            .with("error", errors[Label.values().size].toDoubleArray())
         Label.values().forEachIndexed { i, type ->
             dataFrame = dataFrame.with("error_$type", errors[i].toDoubleArray())
         }
@@ -96,8 +96,10 @@ class TuningResultTable {
 }
 
 
-class TuningResults(private val results: TuningResultTable = TuningResultTable(),
-                    private val optimalResults: TuningResultTable = TuningResultTable()) {
+class TuningResults(
+    private val results: TuningResultTable = TuningResultTable(),
+    private val optimalResults: TuningResultTable = TuningResultTable()
+) {
 
 
     fun addRecord(name: String, parameter: String, error: LabelErrors, optimal: Boolean) {

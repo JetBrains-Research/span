@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory
 import java.util.function.IntSupplier
 
 class NegBinEmissionScheme(mean: Double, failures: Double) :
-        IntegerEmissionScheme, NotDirectlyDeserializable {
+    IntegerEmissionScheme, NotDirectlyDeserializable {
 
     override val degreesOfFreedom: Int = 2
 
@@ -21,8 +21,10 @@ class NegBinEmissionScheme(mean: Double, failures: Double) :
 
     @Transient
     private var logMean: Double = 0.0
+
     @Transient
     private var fLog1MinusPMinusLogGammaF: Double = 0.0
+
     @Transient
     private var logP: Double = 0.0
 
@@ -34,7 +36,7 @@ class NegBinEmissionScheme(mean: Double, failures: Double) :
 
     override fun sampler(): IntSupplier {
         val distribution =
-                NegativeBinomialDistribution(Sampling.RANDOM_DATA_GENERATOR.randomGenerator, mean, failures)
+            NegativeBinomialDistribution(Sampling.RANDOM_DATA_GENERATOR.randomGenerator, mean, failures)
         return IntSupplier { distribution.sample() }
     }
 

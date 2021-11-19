@@ -1,4 +1,5 @@
 package org.jetbrains.bio.statistics.regression
+
 import org.apache.commons.math3.distribution.FDistribution
 import org.apache.commons.math3.linear.*
 import org.jetbrains.bio.dataframe.DataFrame
@@ -22,12 +23,13 @@ import kotlin.math.abs
  * @date 5/25/19
  */
 abstract class IntegerRegressionEmissionScheme(
-        covariateLabels: List<String>, regressionCoefficients: DoubleArray
+    covariateLabels: List<String>, regressionCoefficients: DoubleArray
 ) : EmissionScheme {
     val covariateLabels = covariateLabels.map { it.intern() }
     var regressionCoefficients: DoubleArray = regressionCoefficients
         protected set
-    @Transient var W = DoubleArray(0)
+    @Transient
+    var W = DoubleArray(0)
 
     /**
      * Provides the mean function (also known as the inverted link function), h = g^{-1}.
@@ -94,7 +96,7 @@ abstract class IntegerRegressionEmissionScheme(
      * @return [eta] for easier call chaining.
      */
     open fun meanInPlace(eta: F64Array): F64Array {
-        for(i in 0 until eta.size) {
+        for (i in 0 until eta.size) {
             eta[i] = mean(eta[i])
         }
         return eta
@@ -110,7 +112,7 @@ abstract class IntegerRegressionEmissionScheme(
      * @return [eta] for easier call chaining.
      */
     open fun meanDerivativeInPlace(eta: F64Array): F64Array {
-        for(i in 0 until eta.size) {
+        for (i in 0 until eta.size) {
             eta[i] = meanDerivative(eta[i])
         }
         return eta
@@ -126,7 +128,7 @@ abstract class IntegerRegressionEmissionScheme(
      * @return [mean] for easier call chaining.
      */
     open fun meanVarianceInPlace(mean: F64Array): F64Array {
-        for(i in 0 until mean.size) {
+        for (i in 0 until mean.size) {
             mean[i] = meanVariance(mean[i])
         }
         return mean
@@ -156,7 +158,7 @@ abstract class IntegerRegressionEmissionScheme(
         val countedLink = meanInPlace(eta.copy())
         val countedLinkDerivative = meanDerivativeInPlace(eta.copy())
 
-        eta += (y - countedLink).apply { divAssign(countedLinkDerivative)}
+        eta += (y - countedLink).apply { divAssign(countedLinkDerivative) }
 
         meanVarianceInPlace(countedLink)
 
@@ -168,7 +170,7 @@ abstract class IntegerRegressionEmissionScheme(
     override fun update(df: DataFrame, d: Int, weights: F64Array) {
         val X = generateDesignMatrix(df)
         val yInt = df.sliceAsInt(df.labels[d])
-        val y = DoubleArray (yInt.size) {yInt[it].toDouble()}.asF64Array()
+        val y = DoubleArray(yInt.size) { yInt[it].toDouble() }.asF64Array()
         val iterMax = 5
         val tol = 1e-8
         var beta0 = regressionCoefficients
@@ -192,7 +194,7 @@ abstract class IntegerRegressionEmissionScheme(
      * Extracts the labelled covariates from the supplied dataframe and prepends the intercept column.
      */
     protected fun generateDesignMatrix(df: DataFrame) =
-            WLSRegression.designMatrix(Array(covariateLabels.size) { df.sliceAsDouble(covariateLabels[it]) })
+        WLSRegression.designMatrix(Array(covariateLabels.size) { df.sliceAsDouble(covariateLabels[it]) })
 
     /**
      * Calculates η = Xβ, the linear predictor.
@@ -225,9 +227,9 @@ abstract class IntegerRegressionEmissionScheme(
      * Performs the f-test for the null hypothesis that Rβ = r and returns the p-value.
      */
     fun Ftest(df: DataFrame, d: Int, R: RealMatrix, r: RealVector): Double {
-        val x = Array(covariateLabels.size) {df.sliceAsDouble(covariateLabels[it])}
+        val x = Array(covariateLabels.size) { df.sliceAsDouble(covariateLabels[it]) }
         val yInt = df.sliceAsInt(df.labels[d])
-        val y = DoubleArray (yInt.size) {yInt[it].toDouble()}
+        val y = DoubleArray(yInt.size) { yInt[it].toDouble() }
         val X = WLSRegression.designMatrix(x)
         val residuals = WLSRegression.calculateEta(X, regressionCoefficients).apply { minusAssign(y.asF64Array()) }
         val sigma2 = residuals.dot(W.asF64Array() * residuals) / (X[0].size - X.size)

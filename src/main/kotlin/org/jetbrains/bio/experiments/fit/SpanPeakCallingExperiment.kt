@@ -36,15 +36,15 @@ import java.nio.file.Path
  * @since 10/04/15
  */
 class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor(
-        fitInformation: Span1AnalyzeFitInformation,
-        modelFitter: Fitter<Model>,
-        modelClass: Class<Model>,
-        fixedModelPath: Path?,
-        threshold: Double,
-        maxIter: Int
+    fitInformation: Span1AnalyzeFitInformation,
+    modelFitter: Fitter<Model>,
+    modelClass: Class<Model>,
+    fixedModelPath: Path?,
+    threshold: Double,
+    maxIter: Int
 ) : SpanModelFitExperiment<Model, Span1AnalyzeFitInformation, ZLH>(
-        fitInformation, modelFitter, modelClass, ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L), fixedModelPath,
-        threshold, maxIter
+    fitInformation, modelFitter, modelClass, ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L), fixedModelPath,
+    threshold, maxIter
 ) {
 
     override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span"
@@ -67,49 +67,49 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
          * @return experiment [SpanPeakCallingExperiment]
          */
         fun getExperiment(
-                genomeQuery: GenomeQuery,
-                paths: List<SpanDataPaths>,
-                bin: Int,
-                fragment: Fragment = AutoFragment,
-                unique: Boolean = true,
-                fixedModelPath: Path? = null,
-                threshold: Double = Fitter.THRESHOLD,
-                maxIter: Int = Fitter.MAX_ITERATIONS,
-                multistarts: Int = Fitter.MULTISTARTS,
-                multistartIter: Int = Fitter.MULTISTART_ITERATIONS
+            genomeQuery: GenomeQuery,
+            paths: List<SpanDataPaths>,
+            bin: Int,
+            fragment: Fragment = AutoFragment,
+            unique: Boolean = true,
+            fixedModelPath: Path? = null,
+            threshold: Double = Fitter.THRESHOLD,
+            maxIter: Int = Fitter.MAX_ITERATIONS,
+            multistarts: Int = Fitter.MULTISTARTS,
+            multistartIter: Int = Fitter.MULTISTART_ITERATIONS
         ): SpanPeakCallingExperiment<out ClassificationModel> {
             check(paths.isNotEmpty()) { "No data" }
             val fitInformation = Span1AnalyzeFitInformation.effective(
-                    genomeQuery, paths, MultiLabels.generate(TRACK_PREFIX, paths.size).toList(),
-                    fragment, unique, bin
+                genomeQuery, paths, MultiLabels.generate(TRACK_PREFIX, paths.size).toList(),
+                fragment, unique, bin
             )
             return if (paths.size == 1) {
                 SpanPeakCallingExperiment(
-                        fitInformation,
-                        when {
-                            multistarts > 0 ->
-                                MLFreeNBHMM.fitter().multiStarted(multistarts, multistartIter)
-                            else ->
-                                MLFreeNBHMM.fitter()
-                        },
-                        MLFreeNBHMM::class.java,
-                        fixedModelPath,
-                        threshold,
-                        maxIter
+                    fitInformation,
+                    when {
+                        multistarts > 0 ->
+                            MLFreeNBHMM.fitter().multiStarted(multistarts, multistartIter)
+                        else ->
+                            MLFreeNBHMM.fitter()
+                    },
+                    MLFreeNBHMM::class.java,
+                    fixedModelPath,
+                    threshold,
+                    maxIter
                 )
             } else {
                 SpanPeakCallingExperiment(
-                        fitInformation,
-                        when {
-                            multistarts > 0 ->
-                                MLConstrainedNBHMM.fitter(paths.size).multiStarted(multistarts, multistartIter)
-                            else ->
-                                MLConstrainedNBHMM.fitter(paths.size)
-                        },
-                        MLConstrainedNBHMM::class.java,
-                        fixedModelPath,
-                        threshold,
-                        maxIter
+                    fitInformation,
+                    when {
+                        multistarts > 0 ->
+                            MLConstrainedNBHMM.fitter(paths.size).multiStarted(multistarts, multistartIter)
+                        else ->
+                            MLConstrainedNBHMM.fitter(paths.size)
+                    },
+                    MLConstrainedNBHMM::class.java,
+                    fixedModelPath,
+                    threshold,
+                    maxIter
                 )
             }
         }
@@ -125,32 +125,32 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
  * [labels] refer to the coverage dataframe column labels, not to the supervised learning annotations.
  */
 data class Span1AnalyzeFitInformation(
-        override val build: String,
-        override val data: List<SpanDataPaths>,
-        val labels: List<String>,
-        override val fragment: Fragment,
-        override val unique: Boolean,
-        override val binSize: Int,
-        override val chromosomesSizes: LinkedHashMap<String, Int>
+    override val build: String,
+    override val data: List<SpanDataPaths>,
+    val labels: List<String>,
+    override val fragment: Fragment,
+    override val unique: Boolean,
+    override val binSize: Int,
+    override val chromosomesSizes: LinkedHashMap<String, Int>
 ) : SpanAnalyzeFitInformation {
 
     constructor(
-            genomeQuery: GenomeQuery,
-            paths: List<SpanDataPaths>,
-            labels: List<String>,
-            fragment: Fragment,
-            unique: Boolean,
-            binSize: Int
+        genomeQuery: GenomeQuery,
+        paths: List<SpanDataPaths>,
+        labels: List<String>,
+        fragment: Fragment,
+        unique: Boolean,
+        binSize: Int
     ) : this(
-            genomeQuery.build, paths,
-            labels, fragment, unique, binSize,
-            chromSizes(genomeQuery)
+        genomeQuery.build, paths,
+        labels, fragment, unique, binSize,
+        chromSizes(genomeQuery)
     )
 
     override val id: String
         get() = reduceIds(
-                data.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
-                        listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
+            data.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
+                    listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
         )
 
     override val dataQuery: Query<Chromosome, DataFrame>
@@ -185,16 +185,16 @@ data class Span1AnalyzeFitInformation(
         const val VERSION: Int = 3
 
         fun effective(
-                genomeQuery: GenomeQuery,
-                paths: List<SpanDataPaths>,
-                labels: List<String>,
-                fragment: Fragment,
-                unique: Boolean,
-                binSize: Int
+            genomeQuery: GenomeQuery,
+            paths: List<SpanDataPaths>,
+            labels: List<String>,
+            fragment: Fragment,
+            unique: Boolean,
+            binSize: Int
         ): Span1AnalyzeFitInformation {
             val effectiveGQ = SpanModelFitExperiment.effectiveGenomeQuery(genomeQuery, paths, fragment, unique)
             return Span1AnalyzeFitInformation(
-                    effectiveGQ.build, paths, labels, fragment, unique, binSize, chromSizes(effectiveGQ)
+                effectiveGQ.build, paths, labels, fragment, unique, binSize, chromSizes(effectiveGQ)
             )
         }
     }

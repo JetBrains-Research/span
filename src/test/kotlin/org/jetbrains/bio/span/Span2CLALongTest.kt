@@ -44,14 +44,16 @@ class Span2CLALongTest {
 
                     val (_, err) = Logs.captureLoggingOutput {
                         SpanCLALongTest.withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
-                            SpanCLA.main(arrayOf(
-                                "analyze-experimental",
-                                "-cs", chromsizes,
-                                "--workdir", dir.toString(),
-                                "-t", listOf(pathA, pathB).joinToString(","),
-                                "--threads", SpanCLALongTest.THREADS.toString(),
-                                "--type", "prm"
-                            ))
+                            SpanCLA.main(
+                                arrayOf(
+                                    "analyze-experimental",
+                                    "-cs", chromsizes,
+                                    "--workdir", dir.toString(),
+                                    "-t", listOf(pathA, pathB).joinToString(","),
+                                    "--threads", SpanCLALongTest.THREADS.toString(),
+                                    "--type", "prm"
+                                )
+                            )
                         }
                     }
                     Tests.assertIn("ERROR", err)
@@ -73,17 +75,23 @@ class Span2CLALongTest {
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 val peaksPath = path.parent / "${path.stem}.peak"
                 val (out, _) = Logs.captureLoggingOutput {
-                    SpanCLA.main(arrayOf("analyze-experimental", "-cs", chromsizes,
-                        "--workdir", it.toString(),
-                        "-t", path.toString(),
-                        "--threads", SpanCLALongTest.THREADS.toString(),
-                        "--type", "prm",
-                        "--peaks", peaksPath.toString(),
-                        "--fdr", "0.01"))
+                    SpanCLA.main(
+                        arrayOf(
+                            "analyze-experimental", "-cs", chromsizes,
+                            "--workdir", it.toString(),
+                            "-t", path.toString(),
+                            "--threads", SpanCLALongTest.THREADS.toString(),
+                            "--type", "prm",
+                            "--peaks", peaksPath.toString(),
+                            "--fdr", "0.01"
+                        )
+                    )
                 }
-                assertFalse("""NO output path given, process model fitting only.
+                assertFalse(
+                    """NO output path given, process model fitting only.
     LABELS, FDR, GAP options are ignored.
-    """ in out)
+    """ in out
+                )
                 Tests.assertIn("100.00% (", out)
                 Tests.assertIn("MODEL TYPE: ${SpanModel.POISSON_REGRESSION_MIXTURE}", out)
                 Tests.assertIn("Source: $peaksPath", out)
@@ -112,23 +120,30 @@ class Span2CLALongTest {
                 withTempFile("control", ".bed.gz", dir) { control ->
                     // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
                     SpanCLALongTest.sampleCoverage(path, SpanCLALongTest.TO, SpanCLALongTest.BIN, goodQuality = true)
-                    SpanCLALongTest.sampleCoverage(control, SpanCLALongTest.TO, SpanCLALongTest.BIN, goodQuality = false)
+                    SpanCLALongTest.sampleCoverage(
+                        control,
+                        SpanCLALongTest.TO,
+                        SpanCLALongTest.BIN,
+                        goodQuality = false
+                    )
 
                     val chromsizes = Genome["to1"].chromSizesPath.toString()
-                    SpanCLA.main(arrayOf(
-                        "analyze-experimental",
-                        "-cs", chromsizes,
-                        "--workdir", dir.toString(),
-                        "-t", path.toString(),
-                        "-c", control.toString(),
-                        "--type", "prm",
-                        "--threads", SpanCLALongTest.THREADS.toString()
-                    ))
+                    SpanCLA.main(
+                        arrayOf(
+                            "analyze-experimental",
+                            "-cs", chromsizes,
+                            "--workdir", dir.toString(),
+                            "-t", path.toString(),
+                            "-c", control.toString(),
+                            "--type", "prm",
+                            "--threads", SpanCLALongTest.THREADS.toString()
+                        )
+                    )
 
                     // Check that log file was created correctly
                     assertTrue(
                         (dir / "logs" / "${reduceIds(listOf(path.stemGz, control.stemGz, "200", "unique"))}.log")
-                                .exists,
+                            .exists,
                         "Log file not found"
                     )
 
@@ -138,18 +153,19 @@ class Span2CLALongTest {
                     assertEquals(
                         1,
                         (Configuration.experimentsPath / "cache")
-                                .glob("coverage_${path.stemGz}_unique#*.npz").size
+                            .glob("coverage_${path.stemGz}_unique#*.npz").size
                     )
                     assertEquals(
                         1,
                         (Configuration.experimentsPath / "cache")
-                                .glob("coverage_${control.stemGz}_unique#*.npz").size)
+                            .glob("coverage_${control.stemGz}_unique#*.npz").size
+                    )
                     // Model test
                     assertTrue((Configuration.experimentsPath / "fit").exists)
                     assertEquals(
                         1,
                         (Configuration.experimentsPath / "fit")
-                                .glob("${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}.span2").size
+                            .glob("${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}.span2").size
                     )
                 }
             }
@@ -175,15 +191,17 @@ class Span2CLALongTest {
                 val wrongModelPath = dir / "custom" / "path" / "model.span"
                 val (_, wrongErr) = Logs.captureLoggingOutput {
                     SpanCLALongTest.withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
-                        SpanCLA.main(arrayOf(
-                            "analyze-experimental",
-                            "-cs", chromsizes,
-                            "--workdir", dir.toString(),
-                            "-t", path.toString(),
-                            "--threads", SpanCLALongTest.THREADS.toString(),
-                            "--type", "prm",
-                            "--model", wrongModelPath.toString()
-                        ))
+                        SpanCLA.main(
+                            arrayOf(
+                                "analyze-experimental",
+                                "-cs", chromsizes,
+                                "--workdir", dir.toString(),
+                                "-t", path.toString(),
+                                "--threads", SpanCLALongTest.THREADS.toString(),
+                                "--type", "prm",
+                                "--model", wrongModelPath.toString()
+                            )
+                        )
                     }
                 }
                 Tests.assertIn(

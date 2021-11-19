@@ -1,4 +1,5 @@
 package org.jetbrains.bio.statistics.mixture
+
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.fit.flipStatesIfNecessary
 import org.jetbrains.bio.statistics.Preprocessed
@@ -20,29 +21,29 @@ import kotlin.math.exp
  * @date 1/26/20
  */
 class NegBinRegressionMixture(
-        weights: F64Array,
-        covariateLabels: List<String>,
-        regressionCoefficients: Array<DoubleArray>
-) : MLFreeMixture(numComponents = 3, numDimensions = 1, weights = weights)  {
+    weights: F64Array,
+    covariateLabels: List<String>,
+    regressionCoefficients: Array<DoubleArray>
+) : MLFreeMixture(numComponents = 3, numDimensions = 1, weights = weights) {
 
     private val zeroEmission = ConstantIntegerEmissionScheme(0)
     private val regressionEmissionSchemes = arrayOf(
-            NegBinRegressionEmissionScheme(
-                    covariateLabels = covariateLabels,
-                    regressionCoefficients = regressionCoefficients[0],
-                    failures = 0.0
-            ),
-            NegBinRegressionEmissionScheme(
-                    covariateLabels = covariateLabels,
-                    regressionCoefficients = regressionCoefficients[1],
-                    failures = 0.0
-            )
+        NegBinRegressionEmissionScheme(
+            covariateLabels = covariateLabels,
+            regressionCoefficients = regressionCoefficients[0],
+            failures = 0.0
+        ),
+        NegBinRegressionEmissionScheme(
+            covariateLabels = covariateLabels,
+            regressionCoefficients = regressionCoefficients[1],
+            failures = 0.0
+        )
     )
 
     val signalToNoise
         get() = exp(
-                regressionEmissionSchemes[1].regressionCoefficients[0] -
-                        regressionEmissionSchemes[0].regressionCoefficients[0]
+            regressionEmissionSchemes[1].regressionCoefficients[0] -
+                    regressionEmissionSchemes[0].regressionCoefficients[0]
         )
 
     operator fun get(i: Int) = if (i == 0) zeroEmission else regressionEmissionSchemes[i - 1]
@@ -68,7 +69,9 @@ class NegBinRegressionMixture(
     }
 
     companion object {
-        @Transient @JvmField var VERSION = 1
+        @Transient
+        @JvmField
+        var VERSION = 1
 
         fun fitter() = object : Fitter<NegBinRegressionMixture> {
             /**
@@ -76,11 +79,11 @@ class NegBinRegressionMixture(
              * and that the remaining columns are the double-valued covariates.
              */
             override fun guess(
-                    preprocessed: Preprocessed<DataFrame>,
-                    title: String,
-                    threshold: Double,
-                    maxIter: Int,
-                    attempt: Int
+                preprocessed: Preprocessed<DataFrame>,
+                title: String,
+                threshold: Double,
+                maxIter: Int,
+                attempt: Int
             ) = guess(listOf(preprocessed), title, threshold, maxIter, attempt)
 
             /**
@@ -88,11 +91,11 @@ class NegBinRegressionMixture(
              * and that the remaining columns are the double-valued covariates.
              */
             override fun guess(
-                    preprocessed: List<Preprocessed<DataFrame>>,
-                    title: String,
-                    threshold: Double,
-                    maxIter: Int,
-                    attempt: Int
+                preprocessed: List<Preprocessed<DataFrame>>,
+                title: String,
+                threshold: Double,
+                maxIter: Int,
+                attempt: Int
             ): NegBinRegressionMixture {
                 // Filter out 0s, since they are covered by dedicated ZERO state
                 val emissions = preprocessed.flatMap {
@@ -101,12 +104,12 @@ class NegBinRegressionMixture(
                 check(emissions.isNotEmpty()) { "Model can't be trained on empty coverage, exiting." }
                 val df = preprocessed[0].get()
                 return NegBinRegressionMixture(
-                        doubleArrayOf(1 / 3.0, 1 / 3.0, 1 / 3.0).asF64Array(),
-                        df.labels.drop(1),
-                        arrayOf(
-                                DoubleArray(df.columnsNumber) { 0.0 },
-                                DoubleArray(df.columnsNumber) { if (it == 0) 1.0 else 0.0 }
-                        )
+                    doubleArrayOf(1 / 3.0, 1 / 3.0, 1 / 3.0).asF64Array(),
+                    df.labels.drop(1),
+                    arrayOf(
+                        DoubleArray(df.columnsNumber) { 0.0 },
+                        DoubleArray(df.columnsNumber) { if (it == 0) 1.0 else 0.0 }
+                    )
                 )
             }
         }

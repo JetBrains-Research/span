@@ -48,7 +48,8 @@ class SpanCLALongTest {
         val (_, err) = Logs.captureLoggingOutput {
             SpanCLA.main(arrayOf())
         }
-        assertLinesEqual("""
+        assertLinesEqual(
+            """
 ERROR: No command given; analyze or compare expected.
 
 Option                          Description
@@ -57,7 +58,8 @@ Option                          Description
 -v, --version                   Show version
 analyze                         Peak calling mode
 compare                         Differential peak calling mode, experimental
-""".trim(), err.trim())
+""".trim(), err.trim()
+        )
     }
 
     @Test
@@ -65,7 +67,8 @@ compare                         Differential peak calling mode, experimental
         val (_, err) = Logs.captureLoggingOutput {
             SpanCLA.main(arrayOf("foobar"))
         }
-        assertLinesEqual("""
+        assertLinesEqual(
+            """
 ERROR: Unknown command: foobar; analyze or compare expected.
 
 Option                          Description
@@ -74,7 +77,8 @@ Option                          Description
 -v, --version                   Show version
 analyze                         Peak calling mode
 compare                         Differential peak calling mode, experimental
-""".trim(), err.trim())
+""".trim(), err.trim()
+        )
     }
 
     @Test
@@ -82,7 +86,8 @@ compare                         Differential peak calling mode, experimental
         val (_, err) = Logs.captureLoggingOutput {
             SpanCLA.main(arrayOf("foobar", "quiet"))
         }
-        assertLinesEqual("""
+        assertLinesEqual(
+            """
 ERROR: Unknown command: foobar; analyze or compare expected.
 
 Option                          Description
@@ -91,7 +96,8 @@ Option                          Description
 -v, --version                   Show version
 analyze                         Peak calling mode
 compare                         Differential peak calling mode, experimental
-        """.trim(), err.trim())
+        """.trim(), err.trim()
+        )
     }
 
     @Test
@@ -99,14 +105,16 @@ compare                         Differential peak calling mode, experimental
         val (out, _) = Logs.captureLoggingOutput {
             SpanCLA.main(arrayOf("--help"))
         }
-        assertLinesEqual("""
+        assertLinesEqual(
+            """
 Option                          Description
 ---------------------           -----------
 -?, -h, --help                  Show help
 -v, --version                   Show version
 analyze                         Peak calling mode
 compare                         Differential peak calling mode, experimental
-""".trim(), out.trim())
+""".trim(), out.trim()
+        )
     }
 
 
@@ -135,17 +143,19 @@ compare                         Differential peak calling mode, experimental
                 val peaksPath = it / "peaks.bed"
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 val (out, _) = Logs.captureLoggingOutput {
-                    SpanCLA.main(arrayOf(
-                        "compare",
-                        "-cs", chromsizes,
-                        "--workdir", it.toString(),
-                        "-t1", path.toString(),
-                        "-t2", path.toString(),
-                        "--peaks", peaksPath.toString(),
-                        "--fdr", FDR.toString(),
-                        "--gap", GAP.toString(),
-                        "--threads", THREADS.toString()
-                    ))
+                    SpanCLA.main(
+                        arrayOf(
+                            "compare",
+                            "-cs", chromsizes,
+                            "--workdir", it.toString(),
+                            "-t1", path.toString(),
+                            "-t2", path.toString(),
+                            "--peaks", peaksPath.toString(),
+                            "--fdr", FDR.toString(),
+                            "--gap", GAP.toString(),
+                            "--threads", THREADS.toString()
+                        )
+                    )
                 }
 
                 assertTrue(
@@ -153,7 +163,8 @@ compare                         Differential peak calling mode, experimental
                     "Found differential peaks in identical signals."
                 )
 
-                assertIn("""SPAN
+                assertIn(
+                    """SPAN
 COMMAND:
 LOG:
 WORKING DIR: $it
@@ -168,7 +179,8 @@ BIN: $BIN
 FDR: $FDR
 GAP: $GAP
 PEAKS: $peaksPath
-""", out)
+""", out
+                )
                 assertIn("Saved result to $peaksPath", out)
                 // Check model fit has a progress
                 assertIn("0.00% (0/100), Elapsed time", out)
@@ -185,18 +197,24 @@ PEAKS: $peaksPath
 
             withTempDirectory("work") {
                 val bedPath = it / "peaks.bed"
-                SpanCLA.main(arrayOf("compare",
-                    "-cs", Genome["to1"].chromSizesPath.toString(),
-                    "-w", it.toString(),
-                    "-b", BIN.toString(),
-                    "-g", GAP.toString(),
-                    "-fragment", FRAGMENT.toString(),
-                    "-t1", "$path,$path",
-                    "-t2", "$path,$path,$path",
-                    "--peaks", bedPath.toString(),
-                    "--fdr", FDR.toString()))
-                assertTrue(bedPath.size.isEmpty(),
-                    "Found differential peaks in identical signals.")
+                SpanCLA.main(
+                    arrayOf(
+                        "compare",
+                        "-cs", Genome["to1"].chromSizesPath.toString(),
+                        "-w", it.toString(),
+                        "-b", BIN.toString(),
+                        "-g", GAP.toString(),
+                        "-fragment", FRAGMENT.toString(),
+                        "-t1", "$path,$path",
+                        "-t2", "$path,$path,$path",
+                        "--peaks", bedPath.toString(),
+                        "--fdr", FDR.toString()
+                    )
+                )
+                assertTrue(
+                    bedPath.size.isEmpty(),
+                    "Found differential peaks in identical signals."
+                )
             }
         }
     }
@@ -212,17 +230,21 @@ PEAKS: $peaksPath
             withTempDirectory("work") {
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 val (out, _) = Logs.captureLoggingOutput {
-                    SpanCLA.main(arrayOf(
-                        "analyze",
-                        "-cs", chromsizes,
-                        "--workdir", it.toString(),
-                        "-t", path.toString(),
-                        "--threads", THREADS.toString()
-                    ))
+                    SpanCLA.main(
+                        arrayOf(
+                            "analyze",
+                            "-cs", chromsizes,
+                            "--workdir", it.toString(),
+                            "-t", path.toString(),
+                            "--threads", THREADS.toString()
+                        )
+                    )
                 }
-                assertIn("""NO output path given, process model fitting only.
+                assertIn(
+                    """NO output path given, process model fitting only.
 LABELS, FDR, GAP options are ignored.
-""", out)
+""", out
+                )
                 assertIn(".span: done in ", out)
                 assertIn("Model saved: ", out)
                 assertFalse("Loading model" in out)
@@ -242,13 +264,15 @@ LABELS, FDR, GAP options are ignored.
             withTempDirectory("work") {
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 val (out, _) = Logs.captureLoggingOutput {
-                    SpanCLA.main(arrayOf(
-                        "analyze",
-                        "-cs", chromsizes,
-                        "--workdir", it.toString(),
-                        "-t", path.toString(),
-                        "--threads", THREADS.toString()
-                    ))
+                    SpanCLA.main(
+                        arrayOf(
+                            "analyze",
+                            "-cs", chromsizes,
+                            "--workdir", it.toString(),
+                            "-t", path.toString(),
+                            "--threads", THREADS.toString()
+                        )
+                    )
                 }
                 assertIn(
                     "] WARN SpanCLA After fitting the model, emission's parameter p in LOW state", out
@@ -274,14 +298,16 @@ LABELS, FDR, GAP options are ignored.
                  */
                 Logs.captureLoggingOutput {
                     val oldSystemOut = System.out
-                    SpanCLA.main(arrayOf(
-                        "analyze",
-                        "-cs", chromsizes,
-                        "--workdir", dir.toString(),
-                        "-t", path.toString(),
-                        "--threads", THREADS.toString(),
-                        "-q"
-                    ))
+                    SpanCLA.main(
+                        arrayOf(
+                            "analyze",
+                            "-cs", chromsizes,
+                            "--workdir", dir.toString(),
+                            "-t", path.toString(),
+                            "--threads", THREADS.toString(),
+                            "-q"
+                        )
+                    )
                     /* the best we can do is to check whether any redirection took place */
                     assertNotEquals(
                         oldSystemOut, System.out,
@@ -307,19 +333,21 @@ LABELS, FDR, GAP options are ignored.
                     sampleCoverage(control, TO, BIN, goodQuality = false)
 
                     val chromsizes = Genome["to1"].chromSizesPath.toString()
-                    SpanCLA.main(arrayOf(
-                        "analyze",
-                        "-cs", chromsizes,
-                        "--workdir", dir.toString(),
-                        "-t", path.toString(),
-                        "-c", control.toString(),
-                        "--threads", THREADS.toString()
-                    ))
+                    SpanCLA.main(
+                        arrayOf(
+                            "analyze",
+                            "-cs", chromsizes,
+                            "--workdir", dir.toString(),
+                            "-t", path.toString(),
+                            "-c", control.toString(),
+                            "--threads", THREADS.toString()
+                        )
+                    )
 
                     // Check that log file was created correctly
                     assertTrue(
                         (dir / "logs" / "${reduceIds(listOf(path.stemGz, control.stemGz, "200", "unique"))}.log")
-                                .exists,
+                            .exists,
                         "Log file not found"
                     )
 
@@ -329,18 +357,19 @@ LABELS, FDR, GAP options are ignored.
                     assertEquals(
                         1,
                         (Configuration.experimentsPath / "cache")
-                                .glob("coverage_${path.stemGz}_unique#*.npz").size
+                            .glob("coverage_${path.stemGz}_unique#*.npz").size
                     )
                     assertEquals(
                         1,
                         (Configuration.experimentsPath / "cache")
-                                .glob("coverage_${control.stemGz}_unique#*.npz").size)
+                            .glob("coverage_${control.stemGz}_unique#*.npz").size
+                    )
                     // Model test
                     assertTrue((Configuration.experimentsPath / "fit").exists)
                     assertEquals(
                         1,
                         (Configuration.experimentsPath / "fit")
-                                .glob("${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}.span").size
+                            .glob("${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}.span").size
                     )
                 }
             }
@@ -358,36 +387,43 @@ LABELS, FDR, GAP options are ignored.
 
                     val chromsizes = Genome["to1"].chromSizesPath.toString()
                     val modelPath = dir / "custom" / "path" / "model.span"
-                    SpanCLA.main(arrayOf(
-                        "analyze",
-                        "-cs", chromsizes,
-                        "--workdir", dir.toString(),
-                        "-t", path.toString(),
-                        "-c", control.toString(),
-                        "--threads", THREADS.toString(),
-                        "--model", modelPath.toString()
-                    ))
+                    SpanCLA.main(
+                        arrayOf(
+                            "analyze",
+                            "-cs", chromsizes,
+                            "--workdir", dir.toString(),
+                            "-t", path.toString(),
+                            "-c", control.toString(),
+                            "--threads", THREADS.toString(),
+                            "--model", modelPath.toString()
+                        )
+                    )
                     assertTrue(modelPath.exists, "Model was not created at $modelPath")
                     assertTrue(modelPath.size.isNotEmpty(), "Model file $modelPath is empty")
                     val (reloadOut, reloadErr) = Logs.captureLoggingOutput {
-                        SpanCLA.main(arrayOf(
-                            "analyze",
-                            "--workdir", dir.toString(),
-                            "--threads", THREADS.toString(),
-                            "--model", modelPath.toString()
-                        ))
+                        SpanCLA.main(
+                            arrayOf(
+                                "analyze",
+                                "--workdir", dir.toString(),
+                                "--threads", THREADS.toString(),
+                                "--model", modelPath.toString()
+                            )
+                        )
                     }
                     assertIn("Completed loading model: $modelPath", reloadOut)
                     assertEquals("", reloadErr)
 
                     val (_, invalidErr) = Logs.captureLoggingOutput {
                         withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
-                            SpanCLA.main(arrayOf("analyze",
-                                "--workdir", dir.toString(),
-                                "--threads", THREADS.toString(),
-                                "--model", modelPath.toString(),
-                                "--bin", "137"
-                            ))
+                            SpanCLA.main(
+                                arrayOf(
+                                    "analyze",
+                                    "--workdir", dir.toString(),
+                                    "--threads", THREADS.toString(),
+                                    "--model", modelPath.toString(),
+                                    "--bin", "137"
+                                )
+                            )
                         }
                     }
                     assertIn("Stored bin size (200) differs from the command line argument (137)", invalidErr)
@@ -411,14 +447,16 @@ LABELS, FDR, GAP options are ignored.
                 val invalidModelPath = dir / "custom" / "path" / "model.foo"
                 val (_, invalidErr) = Logs.captureLoggingOutput {
                     withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
-                        SpanCLA.main(arrayOf(
-                            "analyze",
-                            "-cs", chromsizes,
-                            "--workdir", dir.toString(),
-                            "-t", path.toString(),
-                            "--threads", THREADS.toString(),
-                            "--model", invalidModelPath.toString()
-                        ))
+                        SpanCLA.main(
+                            arrayOf(
+                                "analyze",
+                                "-cs", chromsizes,
+                                "--workdir", dir.toString(),
+                                "-t", path.toString(),
+                                "--threads", THREADS.toString(),
+                                "--model", invalidModelPath.toString()
+                            )
+                        )
                     }
                 }
                 assertIn(
@@ -440,14 +478,16 @@ LABELS, FDR, GAP options are ignored.
 
                 val (_, wrongErr) = Logs.captureLoggingOutput {
                     withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
-                        SpanCLA.main(arrayOf(
-                            "analyze",
-                            "-cs", chromsizes,
-                            "--workdir", dir.toString(),
-                            "-t", path.toString(),
-                            "--threads", THREADS.toString(),
-                            "--type", "nbhmm"
-                        ))
+                        SpanCLA.main(
+                            arrayOf(
+                                "analyze",
+                                "-cs", chromsizes,
+                                "--workdir", dir.toString(),
+                                "-t", path.toString(),
+                                "--threads", THREADS.toString(),
+                                "--type", "nbhmm"
+                            )
+                        )
                     }
                 }
                 assertIn(
@@ -471,13 +511,18 @@ LABELS, FDR, GAP options are ignored.
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 val peaksPath = path.parent / "${path.stem}.peak"
                 val (out, _) = Logs.captureLoggingOutput {
-                    SpanCLA.main(arrayOf("analyze", "-cs", chromsizes,
+                    SpanCLA.main(
+                        arrayOf(
+                            "analyze", "-cs", chromsizes,
                             "--workdir", it.toString(),
                             "-t", path.toString(),
                             "--threads", THREADS.toString(),
-                            "--peaks", peaksPath.toString()))
+                            "--peaks", peaksPath.toString()
+                        )
+                    )
                 }
-                assertIn("""SPAN
+                assertIn(
+                    """SPAN
 COMMAND:
 LOG:
 WORKING DIR: $it
@@ -490,10 +535,13 @@ MAX ITERATIONS: 100
 MULTISTARTS: 5
 MULTISTART ITERATIONS: 5
 CONVERGENCE THRESHOLD: 0.1
-""", out)
-                assertFalse("""NO output path given, process model fitting only.
+""", out
+                )
+                assertFalse(
+                    """NO output path given, process model fitting only.
     LABELS, FDR, GAP options are ignored.
-    """ in out)
+    """ in out
+                )
                 assertIn("100.00% (", out)
                 assertIn("Source: $peaksPath", out)
                 assertIn("FRIP: ", out)
@@ -540,14 +588,16 @@ CONVERGENCE THRESHOLD: 0.1
             println("Saved sampled track file: $path")
             withTempDirectory("work") { dir ->
                 val bedPath = dir / "result.bed"
-                SpanCLA.main(arrayOf(
-                    "analyze",
-                    "-cs", Genome["to1"].chromSizesPath.toString(),
-                    "-w", dir.toString(),
-                    "--peaks", bedPath.toString(),
-                    "-fdr", FDR.toString(),
-                    "-t", path.toString()
-                ))
+                SpanCLA.main(
+                    arrayOf(
+                        "analyze",
+                        "-cs", Genome["to1"].chromSizesPath.toString(),
+                        "-w", dir.toString(),
+                        "--peaks", bedPath.toString(),
+                        "-fdr", FDR.toString(),
+                        "-t", path.toString()
+                    )
+                )
                 // Check created bed file
                 assertTrue(
                     Location(1100 * BIN, 1900 * BIN, TO.get().first())
@@ -593,14 +643,16 @@ CONVERGENCE THRESHOLD: 0.1
 
             withTempDirectory("work") { dir ->
                 val peaksPath = dir / "peaks.bed"
-                SpanCLA.main(arrayOf(
-                    "analyze",
-                    "-cs", Genome["to1"].chromSizesPath.toString(),
-                    "-w", dir.toString(),
-                    "--peaks", peaksPath.toString(),
-                    "-fdr", FDR.toString(),
-                    "-t", coveragePath.toString()
-                ))
+                SpanCLA.main(
+                    arrayOf(
+                        "analyze",
+                        "-cs", Genome["to1"].chromSizesPath.toString(),
+                        "-w", dir.toString(),
+                        "--peaks", peaksPath.toString(),
+                        "-fdr", FDR.toString(),
+                        "-t", coveragePath.toString()
+                    )
+                )
                 // Check created bed file
                 val peaksLocations = LocationsMergingList.load(TO, peaksPath)
                 assertTrue(
@@ -609,15 +661,17 @@ CONVERGENCE THRESHOLD: 0.1
                 )
 
                 val islandsPath = dir / "islands.bed"
-                SpanCLA.main(arrayOf(
-                    "analyze-experimental",
-                    "--islands",
-                    "-cs", Genome["to1"].chromSizesPath.toString(),
-                    "-w", dir.toString(),
-                    "--peaks", islandsPath.toString(),
-                    "-fdr", FDR.toString(),
-                    "-t", coveragePath.toString()
-                ))
+                SpanCLA.main(
+                    arrayOf(
+                        "analyze-experimental",
+                        "--islands",
+                        "-cs", Genome["to1"].chromSizesPath.toString(),
+                        "-w", dir.toString(),
+                        "--peaks", islandsPath.toString(),
+                        "-fdr", FDR.toString(),
+                        "-t", coveragePath.toString()
+                    )
+                )
                 // Check created bed file
                 val islandsLocations = LocationsMergingList.load(TO, islandsPath)
                 assertTrue(
@@ -654,24 +708,28 @@ CONVERGENCE THRESHOLD: 0.1
             withTempDirectory("work") { dir ->
                 val bedPath = dir / "result.bed"
                 val modelPath = dir / "model.span"
-                SpanCLA.main(arrayOf(
+                SpanCLA.main(
+                    arrayOf(
                         "analyze",
                         "-cs", Genome["to1"].chromSizesPath.toString(),
                         "-w", dir.toString(),
                         "-m", modelPath.toString(),
                         "-t", path.toString()
-                ))
-                SpanCLA.main(arrayOf(
+                    )
+                )
+                SpanCLA.main(
+                    arrayOf(
                         "analyze",
                         "-cs", Genome["to1"].chromSizesPath.toString(),
                         "-m", modelPath.toString(),
                         "--peaks", bedPath.toString(),
                         "-fdr", FDR.toString()
-                ))
+                    )
+                )
                 // Check created bed file
                 assertTrue(
-                        Location(1100 * BIN, 1900 * BIN, TO.get().first()) in LocationsMergingList.load(TO, bedPath),
-                        "Expected location not found in called peaks"
+                    Location(1100 * BIN, 1900 * BIN, TO.get().first()) in LocationsMergingList.load(TO, bedPath),
+                    "Expected location not found in called peaks"
                 )
             }
         }
@@ -698,10 +756,14 @@ CONVERGENCE THRESHOLD: 0.1
                 /* Turn suppressExit on, otherwise Span would call System.exit */
                 val (out, err) = Logs.captureLoggingOutput {
                     withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
-                        SpanCLA.main(arrayOf("analyze",
-                            "-cs", Genome["to1"].chromSizesPath.toString(),
-                            "-w", dir.toString(),
-                            "-t", path.toString()))
+                        SpanCLA.main(
+                            arrayOf(
+                                "analyze",
+                                "-cs", Genome["to1"].chromSizesPath.toString(),
+                                "-w", dir.toString(),
+                                "-t", path.toString()
+                            )
+                        )
                     }
                 }
 
@@ -725,10 +787,14 @@ CONVERGENCE THRESHOLD: 0.1
             println("Saved sampled track file: $path")
 
             withTempDirectory("work") { dir ->
-                SpanCLA.main(arrayOf("analyze",
-                    "-cs", Genome["to1"].chromSizesPath.toString(),
-                    "-w", dir.toString(),
-                    "-t", path.toString()))
+                SpanCLA.main(
+                    arrayOf(
+                        "analyze",
+                        "-cs", Genome["to1"].chromSizesPath.toString(),
+                        "-w", dir.toString(),
+                        "-t", path.toString()
+                    )
+                )
             }
         }
     }
@@ -742,28 +808,30 @@ CONVERGENCE THRESHOLD: 0.1
         private const val FRAGMENT = 200
 
         fun assertLinesEqual(expected: String, actual: String) =
-                assertEquals(expected.lines(), actual.lines())
+            assertEquals(expected.lines(), actual.lines())
 
         fun sampleCoverage(path: Path, genomeQuery: GenomeQuery, bin: Int, goodQuality: Boolean) =
-                sampleCoverage(
-                    path,
-                    genomeQuery, bin,
-                    genomeMap(genomeQuery) { BitSet() },
-                    genomeMap(genomeQuery) { BitSet() },
-                    goodQuality
-                )
+            sampleCoverage(
+                path,
+                genomeQuery, bin,
+                genomeMap(genomeQuery) { BitSet() },
+                genomeMap(genomeQuery) { BitSet() },
+                goodQuality
+            )
 
         fun sampleCoverage(
-                path: Path,
-                genomeQuery: GenomeQuery, bin: Int,
-                fulls: GenomeMap<BitSet>, zeroes: GenomeMap<BitSet>,
-                goodQuality: Boolean
+            path: Path,
+            genomeQuery: GenomeQuery, bin: Int,
+            fulls: GenomeMap<BitSet>, zeroes: GenomeMap<BitSet>,
+            goodQuality: Boolean
         ) {
-            withResource(SpanCLALongTest::class.java,
+            withResource(
+                SpanCLALongTest::class.java,
                 if (goodQuality)
                     "GSM646345_H1_H3K4me3_rep1_hg19_model.json"
                 else
-                    "yd6_k27ac_failed_model.json") { modelPath ->
+                    "yd6_k27ac_failed_model.json"
+            ) { modelPath ->
                 val model = ClassificationModel.load<MLFreeNBHMM>(modelPath)
                 model.logPriorProbabilities[0] = Double.NEGATIVE_INFINITY
                 BedFormat().print(path).use {

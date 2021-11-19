@@ -1,4 +1,5 @@
 package org.jetbrains.bio.statistics.mixture
+
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.fit.flipStatesIfNecessary
 import org.jetbrains.bio.statistics.Preprocessed
@@ -20,9 +21,9 @@ import kotlin.math.exp
  * @date 5/25/19
  */
 class PoissonRegressionMixture(
-        weights: F64Array,
-        covariateLabels: List<String>,
-        regressionCoefficients: Array<DoubleArray>
+    weights: F64Array,
+    covariateLabels: List<String>,
+    regressionCoefficients: Array<DoubleArray>
 ) : MLFreeMixture(numComponents = 3, numDimensions = 1, weights = weights) {
 
     private val zeroEmission = ConstantIntegerEmissionScheme(0)
@@ -66,7 +67,9 @@ class PoissonRegressionMixture(
     }
 
     companion object {
-        @Transient @JvmField var VERSION = 1
+        @Transient
+        @JvmField
+        var VERSION = 1
 
         fun fitter() = object : Fitter<PoissonRegressionMixture> {
             /**
@@ -74,11 +77,11 @@ class PoissonRegressionMixture(
              * and that the remaining columns are the double-valued covariates.
              */
             override fun guess(
-                    preprocessed: Preprocessed<DataFrame>,
-                    title: String,
-                    threshold: Double,
-                    maxIter: Int,
-                    attempt: Int
+                preprocessed: Preprocessed<DataFrame>,
+                title: String,
+                threshold: Double,
+                maxIter: Int,
+                attempt: Int
             ) = guess(listOf(preprocessed), title, threshold, maxIter, attempt)
 
             /**
@@ -86,11 +89,11 @@ class PoissonRegressionMixture(
              * and that the remaining columns are the double-valued covariates.
              */
             override fun guess(
-                    preprocessed: List<Preprocessed<DataFrame>>,
-                    title: String,
-                    threshold: Double,
-                    maxIter: Int,
-                    attempt: Int
+                preprocessed: List<Preprocessed<DataFrame>>,
+                title: String,
+                threshold: Double,
+                maxIter: Int,
+                attempt: Int
             ): PoissonRegressionMixture {
                 // Filter out 0s, since they are covered by dedicated ZERO state
                 val emissions = preprocessed.flatMap {

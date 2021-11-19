@@ -40,7 +40,7 @@ class SpanFitInformationTest {
     @Test
     fun checkGenomeQueryOrder() {
         Span1AnalyzeFitInformation(
-            GenomeQuery(Genome["to1"], "chr1", "chr2"), emptyList(), emptyList(), 100, true,  200
+            GenomeQuery(Genome["to1"], "chr1", "chr2"), emptyList(), emptyList(), 100, true, 200
         ).checkGenome(Genome["to1"])
     }
 
@@ -62,7 +62,8 @@ class SpanFitInformationTest {
                 withTempFile("foo", ".tar") { path ->
                     info.save(path)
                     // Escape Windows separators here
-                    assertEquals("""{
+                    assertEquals(
+                        """{
   "build": "to1",
   "data": [
     {
@@ -85,7 +86,8 @@ class SpanFitInformationTest {
   },
   "fit.information.fqn": "org.jetbrains.bio.experiments.fit.Span1AnalyzeFitInformation",
   "version": 3
-}""".trim().lines(), path.bufferedReader().lines().collect(Collectors.toList()))
+}""".trim().lines(), path.bufferedReader().lines().collect(Collectors.toList())
+                    )
                 }
                 assertEquals(listOf("chr1", "chr2", "chr3", "chrM", "chrX"), info.chromosomesSizes.keys.toList())
             }
@@ -95,12 +97,13 @@ class SpanFitInformationTest {
     @Test
     fun checkLoad() {
         val info = Span2FitInformation(
-                gq, SpanDataPaths("path_to_file".toPath(), "path_to_control".toPath()),
-                "mapability.bigWig".toPath(), FixedFragment(42), false, 200
+            gq, SpanDataPaths("path_to_file".toPath(), "path_to_control".toPath()),
+            "mapability.bigWig".toPath(), FixedFragment(42), false, 200
         )
         withTempFile("foo", ".tar") { path ->
             path.bufferedWriter().use {
-                it.write("""{
+                it.write(
+                    """{
   "build": "to1",
   "data": [
     {
@@ -124,7 +127,8 @@ class SpanFitInformationTest {
   },
   "fit.information.fqn": "org.jetbrains.bio.experiments.fit.experimental.Span2FitInformation",  
   "version": 3
-}""")
+}"""
+                )
             }
             assertEquals(info, SpanFitInformation.load(path))
         }
@@ -136,7 +140,8 @@ class SpanFitInformationTest {
         expectedEx.expectMessage("expects '${Span1AnalyzeFitInformation.VERSION}' version, but got '100500'")
         withTempFile("foo", ".tar") { path ->
             path.bufferedWriter().use {
-                it.write("""{
+                it.write(
+                    """{
   "build": "to1",
   "data": [],
   "labels": [],
@@ -147,7 +152,8 @@ class SpanFitInformationTest {
   "chromosomes_sizes": {},
   "fit.information.fqn": "org.jetbrains.bio.experiments.fit.Span1AnalyzeFitInformation",  
   "version": 100500
-}""")
+}"""
+                )
             }
             SpanFitInformation.load<SpanFitInformation>(path)
         }
@@ -200,7 +206,7 @@ class SpanFitInformationTest {
             expectedEx.expectMessage("Version field (version) is missing")
             path.bufferedWriter().use {
                 it.write(
-"""{
+                    """{
   "foo": "bar",
   "baz": [],
   "fit.information.fqn": "org.jetbrains.bio.experiments.fit.SpanFitInformation"
@@ -267,12 +273,12 @@ class SpanFitInformationTest {
  * Simplified instance construction for tests.
  */
 internal operator fun Span1AnalyzeFitInformation.Companion.invoke(
-        genomeQuery: GenomeQuery,
-        paths: List<SpanDataPaths>,
-        labels: List<String>,
-        fragment: Int,
-        unique: Boolean,
-        binSize: Int
+    genomeQuery: GenomeQuery,
+    paths: List<SpanDataPaths>,
+    labels: List<String>,
+    fragment: Int,
+    unique: Boolean,
+    binSize: Int
 ): Span1AnalyzeFitInformation = Span1AnalyzeFitInformation(
     genomeQuery, paths, labels, FixedFragment(fragment), unique, binSize
 )

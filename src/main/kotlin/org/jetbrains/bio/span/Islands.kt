@@ -128,8 +128,10 @@ fun SpanFitResults.getIslands(
             val f64LogNullMemberships =
                 logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL)
             val offsets = fitInfo.offsets(chromosome)
-            getChromosomeIslands(f64LogNullMemberships, offsets, chromosome,
-                fdr, gap, nullProbabilityThreshold, coverage[chromosome])
+            getChromosomeIslands(
+                f64LogNullMemberships, offsets, chromosome,
+                fdr, gap, nullProbabilityThreshold, coverage[chromosome]
+            )
         } else {
             SpanFitResults.LOG.debug("NO peaks information for chromosome: ${chromosome.name} in fitInfo ${fitInfo.build}")
             emptyList()

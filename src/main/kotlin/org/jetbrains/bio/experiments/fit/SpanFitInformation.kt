@@ -64,11 +64,11 @@ interface SpanFitInformation {
     }
 
     private fun offsetsMap(): IntArray =
-            (listOf(0) + chromosomesSizes.keys.sorted().map {
-                IntMath.divide(chromosomesSizes[it]!!, binSize, RoundingMode.CEILING)
-            }).toIntArray().let {
-                Arrays.parallelPrefix(it) { a, b -> a + b }; it
-            }
+        (listOf(0) + chromosomesSizes.keys.sorted().map {
+            IntMath.divide(chromosomesSizes[it]!!, binSize, RoundingMode.CEILING)
+        }).toIntArray().let {
+            Arrays.parallelPrefix(it) { a, b -> a + b }; it
+        }
 
 
     /**
@@ -130,17 +130,17 @@ interface SpanFitInformation {
         return if (genomeQuery != null) {
             checkGenome(genomeQuery.genome)
             genomeQuery.get()
-                    .filter { it.name in chromosomesSizes }
-                    .map { chromosome ->
-                        val (start, end) = getChromosomesIndices(chromosome)
-                        chromosome.name to dataFrame.iloc[start until end]
-                    }.toMap()
+                .filter { it.name in chromosomesSizes }
+                .map { chromosome ->
+                    val (start, end) = getChromosomesIndices(chromosome)
+                    chromosome.name to dataFrame.iloc[start until end]
+                }.toMap()
         } else {
             chromosomesSizes.keys
-                    .map { chromosome ->
-                        val (start, end) = getChromosomesIndices(chromosome)
-                        chromosome to dataFrame.iloc[start until end]
-                    }.toMap()
+                .map { chromosome ->
+                    val (start, end) = getChromosomesIndices(chromosome)
+                    chromosome to dataFrame.iloc[start until end]
+                }.toMap()
         }
     }
 
@@ -168,20 +168,20 @@ interface SpanFitInformation {
          * Generate [SpanFitInformation.chromosomesSizes] instance from a [GenomeQuery]
          */
         fun chromSizes(genomeQuery: GenomeQuery) =
-                LinkedHashMap<String, Int>().apply {
-                    genomeQuery.get().sortedBy { it.name }.forEach { this[it.name] = it.length }
-                }
+            LinkedHashMap<String, Int>().apply {
+                genomeQuery.get().sortedBy { it.name }.forEach { this[it.name] = it.length }
+            }
 
         object FragmentTypeAdapter : JsonSerializer<Fragment>, JsonDeserializer<Fragment> {
 
             override fun serialize(
-                    src: Fragment, typeOfSrc: Type,
-                    context: JsonSerializationContext
+                src: Fragment, typeOfSrc: Type,
+                context: JsonSerializationContext
             ): JsonElement = context.serialize(src.toString())
 
             override fun deserialize(
-                    json: JsonElement, typeOfT: Type,
-                    context: JsonDeserializationContext
+                json: JsonElement, typeOfT: Type,
+                context: JsonDeserializationContext
             ): Fragment {
                 val str = context.deserialize<String>(json, object : TypeToken<String>() {}.type)
                 try {
@@ -195,13 +195,13 @@ interface SpanFitInformation {
         object PathTypeAdapter : JsonSerializer<Path>, JsonDeserializer<Path> {
 
             override fun serialize(
-                    src: Path, typeOfSrc: Type,
-                    context: JsonSerializationContext
+                src: Path, typeOfSrc: Type,
+                context: JsonSerializationContext
             ): JsonElement = JsonPrimitive(src.toString())
 
             override fun deserialize(
-                    json: JsonElement, typeOfT: Type,
-                    context: JsonDeserializationContext
+                json: JsonElement, typeOfT: Type,
+                context: JsonDeserializationContext
             ): Path {
                 try {
                     return json.asString.toPath()
@@ -212,18 +212,18 @@ interface SpanFitInformation {
         }
 
         val GSON = GsonBuilder().setPrettyPrinting().setFieldNamingStrategy(
-                GSONUtil.NO_MY_UNDESCORE_NAMING_STRATEGY
+            GSONUtil.NO_MY_UNDESCORE_NAMING_STRATEGY
         ).registerTypeAdapterFactory(
-                GSONUtil.classSpecificFactory(SpanFitInformation::class.java) { gson, factory ->
-                    GSONUtil.classAndVersionAdapter(
-                            gson, factory,
-                            "fit.information.fqn", "version"
-                    )
-                }
+            GSONUtil.classSpecificFactory(SpanFitInformation::class.java) { gson, factory ->
+                GSONUtil.classAndVersionAdapter(
+                    gson, factory,
+                    "fit.information.fqn", "version"
+                )
+            }
         ).registerTypeAdapter(
-                object : TypeToken<Fragment>() {}.type, FragmentTypeAdapter
+            object : TypeToken<Fragment>() {}.type, FragmentTypeAdapter
         ).registerTypeHierarchyAdapter(
-                Path::class.java, PathTypeAdapter
+            Path::class.java, PathTypeAdapter
         ).create()
 
         /**

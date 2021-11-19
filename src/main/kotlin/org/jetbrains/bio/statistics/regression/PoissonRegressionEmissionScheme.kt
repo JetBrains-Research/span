@@ -15,8 +15,8 @@ import kotlin.math.exp
  * @date 5/25/19
  */
 class PoissonRegressionEmissionScheme(
-        covariateLabels: List<String>,
-        regressionCoefficients: DoubleArray
+    covariateLabels: List<String>,
+    regressionCoefficients: DoubleArray
 ) : IntegerRegressionEmissionScheme(covariateLabels, regressionCoefficients) {
 
     override fun mean(eta: Double) = exp(eta)

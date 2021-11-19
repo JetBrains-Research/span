@@ -26,13 +26,15 @@ import kotlin.math.min
  * @param mlogqvalue -log10(qvalue)
  * @param score A score between 0 and 1000
  */
-data class Peak(val chromosome: Chromosome,
-                val startOffset: Int,
-                val endOffset: Int,
-                val mlogpvalue: Double,
-                val mlogqvalue: Double,
-                var value: Double = 0.0,
-                val score: Int) : Comparable<Peak>, LocationAware {
+data class Peak(
+    val chromosome: Chromosome,
+    val startOffset: Int,
+    val endOffset: Int,
+    val mlogpvalue: Double,
+    val mlogqvalue: Double,
+    var value: Double = 0.0,
+    val score: Int
+) : Comparable<Peak>, LocationAware {
     val range: Range
         get() = Range(startOffset, endOffset)
 
@@ -40,10 +42,10 @@ data class Peak(val chromosome: Chromosome,
         get() = Location(startOffset, endOffset, chromosome, Strand.PLUS)
 
     override fun compareTo(other: Peak) = ComparisonChain.start()
-            .compare(chromosome.name, other.chromosome.name)
-            .compare(startOffset, other.startOffset)
-            .compare(endOffset, other.endOffset)
-            .result()
+        .compare(chromosome.name, other.chromosome.name)
+        .compare(startOffset, other.startOffset)
+        .compare(endOffset, other.endOffset)
+        .result()
 
 
     companion object {
@@ -55,7 +57,7 @@ data class Peak(val chromosome: Chromosome,
  * Compute the mean of total coverage from i-th to j-th bin for given labels.
  */
 internal fun DataFrame.partialMean(from: Int, to: Int, labelArray: List<String> = labels.toList()) =
-        labelArray.map { label -> (from until to).map { getAsInt(it, label) }.sum().toDouble() }.average()
+    labelArray.map { label -> (from until to).map { getAsInt(it, label) }.sum().toDouble() }.average()
 
 /**
  * The peaks are called in three steps.
@@ -70,13 +72,14 @@ internal fun DataFrame.partialMean(from: Int, to: Int, labelArray: List<String> 
  * @param coverageDataFrame is used to compute either coverage or log fold change.
  */
 internal fun getChromosomePeaks(
-        logNullMemberships: F64Array,
-        qvalues: F64Array,
-        offsets: IntArray,
-        chromosome: Chromosome,
-        fdr: Double,
-        gap: Int,
-        coverageDataFrame: DataFrame? = null): List<Peak> {
+    logNullMemberships: F64Array,
+    qvalues: F64Array,
+    offsets: IntArray,
+    chromosome: Chromosome,
+    fdr: Double,
+    gap: Int,
+    coverageDataFrame: DataFrame? = null
+): List<Peak> {
     val enrichedBins = BitterSet(logNullMemberships.size)
     0.until(enrichedBins.size()).filter { qvalues[it] < fdr }.forEach(enrichedBins::set)
 
@@ -131,39 +134,41 @@ internal fun getChromosomePeaks(
  * Use cache with weak values to avoid memory overflow.
  */
 private val f64QValuesCache: Cache<Pair<SpanFitResults, Chromosome>, F64Array> =
-        CacheBuilder.newBuilder().weakValues().build()
+    CacheBuilder.newBuilder().weakValues().build()
 
 
 fun SpanFitResults.getChromosomePeaks(
-        chromosome: Chromosome,
-        fdr: Double,
-        gap: Int,
-        coverageDataFrame: DataFrame? = null
+    chromosome: Chromosome,
+    fdr: Double,
+    gap: Int,
+    coverageDataFrame: DataFrame? = null
 ): List<Peak> =
-        // Check that we have information for requested chromosome
-        if (chromosome.name in fitInfo.chromosomesSizes) {
-            val f64LogNullMemberships =
-                    logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL)
-            val f64QValues = f64QValuesCache.get(this to chromosome) {
-                Fdr.qvalidate(f64LogNullMemberships)
-            }
-            getChromosomePeaks(
-                    f64LogNullMemberships,
-                    f64QValues,
-                    fitInfo.offsets(chromosome),
-                    chromosome, fdr, gap,
-                    coverageDataFrame)
-        } else {
-            SpanFitResults.LOG.debug(
-                    "NO peaks information for chromosome: ${chromosome.name} in fitInfo ${fitInfo.build}")
-            emptyList()
+    // Check that we have information for requested chromosome
+    if (chromosome.name in fitInfo.chromosomesSizes) {
+        val f64LogNullMemberships =
+            logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL)
+        val f64QValues = f64QValuesCache.get(this to chromosome) {
+            Fdr.qvalidate(f64LogNullMemberships)
         }
+        getChromosomePeaks(
+            f64LogNullMemberships,
+            f64QValues,
+            fitInfo.offsets(chromosome),
+            chromosome, fdr, gap,
+            coverageDataFrame
+        )
+    } else {
+        SpanFitResults.LOG.debug(
+            "NO peaks information for chromosome: ${chromosome.name} in fitInfo ${fitInfo.build}"
+        )
+        emptyList()
+    }
 
 fun SpanFitResults.getPeaks(
-        genomeQuery: GenomeQuery,
-        fdr: Double,
-        gap: Int,
-        cancellableState: CancellableState? = null
+    genomeQuery: GenomeQuery,
+    fdr: Double,
+    gap: Int,
+    cancellableState: CancellableState? = null
 ): List<Peak> {
     val coverage = fitInfo.scoresDataFrame()
     if (coverage.isEmpty()) {
@@ -177,21 +182,24 @@ fun SpanFitResults.getPeaks(
 }
 
 fun savePeaks(peaks: List<Peak>, path: Path, peakName: String = "") {
-    Peak.LOG.debug("""FORMAT $path:
-chromosome, start, end, name, score, strand, coverage/foldchange, -log(pvalue), -log(qvalue)""")
+    Peak.LOG.debug(
+        """FORMAT $path:
+chromosome, start, end, name, score, strand, coverage/foldchange, -log(pvalue), -log(qvalue)"""
+    )
     CSVFormat.TDF.print(path.bufferedWriter()).use { printer ->
         peaks.sorted().forEachIndexed { i, peak ->
             /* See MACS2 output format for details https://github.com/taoliu/MACS/ */
             printer.printRecord(
-                    peak.chromosome.name,
-                    peak.range.startOffset.toString(),
-                    peak.range.endOffset.toString(),
-                    "${if (peakName.isNotEmpty()) peakName else "peak"}_${i + 1}",
-                    peak.score.toString(),
-                    ".",
-                    peak.value.toString(),
-                    peak.mlogpvalue.toString(),
-                    peak.mlogqvalue.toString())
+                peak.chromosome.name,
+                peak.range.startOffset.toString(),
+                peak.range.endOffset.toString(),
+                "${if (peakName.isNotEmpty()) peakName else "peak"}_${i + 1}",
+                peak.score.toString(),
+                ".",
+                peak.value.toString(),
+                peak.mlogpvalue.toString(),
+                peak.mlogqvalue.toString()
+            )
         }
     }
 }

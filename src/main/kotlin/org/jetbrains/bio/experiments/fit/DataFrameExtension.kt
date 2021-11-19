@@ -13,11 +13,11 @@ fun F64Array.toFloatArray(): FloatArray {
 
 // Support loading states to file as [Float], see #1163
 fun DataFrame.f64Array(column: String): F64Array =
-        when {
-            this[column] is DoubleColumn -> this.sliceAsDouble(column).asF64Array()
-            this[column] is FloatColumn -> {
-                val floats = this.sliceAsFloat(column)
-                DoubleArray(floats.size) { floats[it].toDouble() }.asF64Array()
-            }
-            else -> throw IllegalStateException("Expected Doubles or Floats: $column")
+    when {
+        this[column] is DoubleColumn -> this.sliceAsDouble(column).asF64Array()
+        this[column] is FloatColumn -> {
+            val floats = this.sliceAsFloat(column)
+            DoubleArray(floats.size) { floats[it].toDouble() }.asF64Array()
         }
+        else -> throw IllegalStateException("Expected Doubles or Floats: $column")
+    }

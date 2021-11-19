@@ -29,8 +29,9 @@ open class NBHMMNZ(nbMeans: DoubleArray, nbFailures: Double) : MLFreeHMM(nbMeans
 
     val failures: F64Array get() = F64Array(negBinEmissionSchemes.size) { negBinEmissionSchemes[it].failures }
 
-    val successProbabilities: F64Array get() =
-        F64Array(negBinEmissionSchemes.size) { negBinEmissionSchemes[it].successProbability }
+    val successProbabilities: F64Array
+        get() =
+            F64Array(negBinEmissionSchemes.size) { negBinEmissionSchemes[it].successProbability }
 
     override fun toString(): String = toStringHelper()
         .add("means", means)

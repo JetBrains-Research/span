@@ -29,9 +29,9 @@ import org.slf4j.LoggerFactory
  * @since 20/05/14
  */
 class MLConstrainedNBHMM(
-        stateDimensionEmissionMap: Array<IntArray>,
-        means: DoubleArray,
-        failures: DoubleArray
+    stateDimensionEmissionMap: Array<IntArray>,
+    means: DoubleArray,
+    failures: DoubleArray
 ) : MLConstrainedHMM(
     stateDimensionEmissionMap,
     F64Array.stochastic(stateDimensionEmissionMap.size),
@@ -70,9 +70,9 @@ class MLConstrainedNBHMM(
     }
 
     override fun toString(): String = toStringHelper()
-            .add("means", means)
-            .add("failures", failures)
-            .toString()
+        .add("means", means)
+        .add("failures", failures)
+        .toString()
 
     companion object {
         @Suppress("unused", "MayBeConstant")
@@ -89,11 +89,11 @@ class MLConstrainedNBHMM(
         fun fitter(numReplicates: Int): Fitter<MLConstrainedNBHMM> {
             return object : Fitter<MLConstrainedNBHMM> {
                 override fun guess(
-                        preprocessed: Preprocessed<DataFrame>,
-                        title: String,
-                        threshold: Double,
-                        maxIter: Int,
-                        attempt: Int
+                    preprocessed: Preprocessed<DataFrame>,
+                    title: String,
+                    threshold: Double,
+                    maxIter: Int,
+                    attempt: Int
                 ): MLConstrainedNBHMM {
                     val df = preprocessed.get()
                     val meanCoverage = DoubleArray(numReplicates)
@@ -124,11 +124,11 @@ class MLConstrainedNBHMM(
                 }
 
                 override fun fit(
-                        preprocessed: List<Preprocessed<DataFrame>>,
-                        title: String,
-                        threshold: Double,
-                        maxIter: Int,
-                        attempt: Int
+                    preprocessed: List<Preprocessed<DataFrame>>,
+                    title: String,
+                    threshold: Double,
+                    maxIter: Int,
+                    attempt: Int
                 ) = super.fit(preprocessed, title, threshold, maxIter, attempt).apply {
                     flipStatesIfNecessary(numReplicates)
                 }
@@ -143,19 +143,19 @@ class MLConstrainedNBHMM(
         fun fitter(numReplicates1: Int, numReplicates2: Int): Fitter<MLConstrainedNBHMM> {
             return object : Fitter<MLConstrainedNBHMM> {
                 override fun guess(
-                        preprocessed: Preprocessed<DataFrame>,
-                        title: String,
-                        threshold: Double,
-                        maxIter: Int,
-                        attempt: Int
+                    preprocessed: Preprocessed<DataFrame>,
+                    title: String,
+                    threshold: Double,
+                    maxIter: Int,
+                    attempt: Int
                 ) = guess(listOf(preprocessed), title, threshold, maxIter, attempt)
 
                 override fun guess(
-                        preprocessed: List<Preprocessed<DataFrame>>,
-                        title: String,
-                        threshold: Double,
-                        maxIter: Int,
-                        attempt: Int
+                    preprocessed: List<Preprocessed<DataFrame>>,
+                    title: String,
+                    threshold: Double,
+                    maxIter: Int,
+                    attempt: Int
                 ): MLConstrainedNBHMM {
                     val df = DataFrame.rowBind(preprocessed.map { it.get() }.toTypedArray())
                     val means = DoubleArray((numReplicates1 + numReplicates2) * 2)
@@ -204,11 +204,11 @@ class MLConstrainedNBHMM(
                 }
 
                 override fun fit(
-                        preprocessed: List<Preprocessed<DataFrame>>,
-                        title: String,
-                        threshold: Double,
-                        maxIter: Int,
-                        attempt: Int
+                    preprocessed: List<Preprocessed<DataFrame>>,
+                    title: String,
+                    threshold: Double,
+                    maxIter: Int,
+                    attempt: Int
                 ) = super.fit(preprocessed, title, threshold, maxIter, attempt).apply {
                     flipStatesIfNecessary(numReplicates1, numReplicates2)
                 }

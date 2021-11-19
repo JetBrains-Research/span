@@ -72,7 +72,7 @@ object WLSRegression {
             }
         }
         // fill the upper half
-        XTWX.indices.forEach { i -> XTWX.indices.forEach { j -> if (i < j) XTWX[i][j] = XTWX[j][i] }}
+        XTWX.indices.forEach { i -> XTWX.indices.forEach { j -> if (i < j) XTWX[i][j] = XTWX[j][i] } }
         return (LUDecomposition(Array2DRowRealMatrix(XTWX)).solver.inverse as Array2DRowRealMatrix).dataRef
     }
 }

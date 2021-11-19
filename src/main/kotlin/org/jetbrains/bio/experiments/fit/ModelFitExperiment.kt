@@ -19,18 +19,18 @@ import org.slf4j.LoggerFactory
  * @since 12/09/13
  */
 abstract class ModelFitExperiment<out Model : ClassificationModel, State : Any>(
-        val genomeQuery: GenomeQuery,
-        protected val dataQuery: Query<Chromosome, DataFrame>,
-        protected val modelFitter: Fitter<Model>,
-        private val modelClass: Class<out Model>,
-        protected val availableStates: Array<State>)
-    : Experiment("fit") {
+    val genomeQuery: GenomeQuery,
+    protected val dataQuery: Query<Chromosome, DataFrame>,
+    protected val modelFitter: Fitter<Model>,
+    private val modelClass: Class<out Model>,
+    protected val availableStates: Array<State>
+) : Experiment("fit") {
 
     open val id: String
         get() {
-            val model = modelClass.simpleName.replace(Regex("[^A-Z0-9]"), "").toLowerCase()
+            val model = modelClass.simpleName.replace(Regex("[^A-Z0-9]"), "").lowercase()
             require(availableStates.isNotEmpty())
-            val states = availableStates[0].javaClass.simpleName.replace(Regex("[^A-Z0-9]"), "").toLowerCase()
+            val states = availableStates[0].javaClass.simpleName.replace(Regex("[^A-Z0-9]"), "").lowercase()
             return reduceIds(listOf(genomeQuery.id, model, states, dataQuery.id))
         }
 
@@ -49,14 +49,14 @@ abstract class ModelFitExperiment<out Model : ClassificationModel, State : Any>(
     fun getStates(chromosome: Chromosome): List<State> {
         val statesMap = availableStates.associateBy { it.toString() }
         return getStatesDataFrame(chromosome).sliceAsObj<String>("state")
-                .map { statesMap[it]!! }
+            .map { statesMap[it]!! }
     }
 
     fun getLogMemberships(chromosome: Chromosome): Map<State, F64Array> =
-            getLogMemberships(getStatesDataFrame(chromosome))
+        getLogMemberships(getStatesDataFrame(chromosome))
 
     protected fun getLogMemberships(chromosomeStatesDF: DataFrame): Map<State, F64Array> =
-            availableStates.associateBy({ it }) { chromosomeStatesDF.f64Array(it.toString()) }
+        availableStates.associateBy({ it }) { chromosomeStatesDF.f64Array(it.toString()) }
 
     override fun doCalculations() {
         // IMPORTANT: since we have 2 types of experiments:

@@ -26,9 +26,11 @@ class SpanModelChecksTest {
 
     @Test
     fun testFirstStateFlipD() {
-        val model = MLConstrainedNBHMM(ZLHID.constraintMap(3, 2),
-                doubleArrayOf(12.0, 8.0, 10.0, 1.0, 4.0, 3.0, 0.5, 0.25, 0.4, 8.0),
-                doubleArrayOf(2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 0.4, 2.0))
+        val model = MLConstrainedNBHMM(
+            ZLHID.constraintMap(3, 2),
+            doubleArrayOf(12.0, 8.0, 10.0, 1.0, 4.0, 3.0, 0.5, 0.25, 0.4, 8.0),
+            doubleArrayOf(2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 0.4, 2.0)
+        )
         /* there is no simple way to create a model with the specified
          * transition probabilities, so we set them manually */
         val logTransitionProbabilities = initTransitionProbsD(model)
@@ -50,9 +52,11 @@ class SpanModelChecksTest {
 
     @Test
     fun testSecondStateFlipD() {
-        val model = MLConstrainedNBHMM(ZLHID.constraintMap(2, 3),
-                doubleArrayOf(5.0, 0.25, 4.0, 8.0, 12.0, 8.0, 10.0, 1.0, 4.0, 3.0),
-                doubleArrayOf(15.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0))
+        val model = MLConstrainedNBHMM(
+            ZLHID.constraintMap(2, 3),
+            doubleArrayOf(5.0, 0.25, 4.0, 8.0, 12.0, 8.0, 10.0, 1.0, 4.0, 3.0),
+            doubleArrayOf(15.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0)
+        )
         /* there is no simple way to create a model with the specified
          * transition probabilities, so we set them manually */
         val logTransitionProbabilities = initTransitionProbsD(model)
@@ -74,9 +78,11 @@ class SpanModelChecksTest {
 
     @Test
     fun testTwoStatesFlipD() {
-        val model = MLConstrainedNBHMM(ZLHID.constraintMap(2, 3),
-                doubleArrayOf(4.0, 8.0, 0.5, 0.25, 12.0, 8.0, 10.0, 1.0, 4.0, 3.0),
-                doubleArrayOf(2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0))
+        val model = MLConstrainedNBHMM(
+            ZLHID.constraintMap(2, 3),
+            doubleArrayOf(4.0, 8.0, 0.5, 0.25, 12.0, 8.0, 10.0, 1.0, 4.0, 3.0),
+            doubleArrayOf(2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0)
+        )
         val logTransitionProbabilities = initTransitionProbsD(model)
         model.flipStatesIfNecessary(2, 3)
         val means = model.means
@@ -125,9 +131,11 @@ class SpanModelChecksTest {
 
     @Test
     fun testNoStatesFlipD() {
-        val model = MLConstrainedNBHMM(ZLHID.constraintMap(2, 3),
-                doubleArrayOf(0.5, 8.0, 4.0, 8.0, 1.0, 4.0, 3.0, 12.0, 8.0, 10.0),
-                doubleArrayOf(2.0, 12.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0))
+        val model = MLConstrainedNBHMM(
+            ZLHID.constraintMap(2, 3),
+            doubleArrayOf(0.5, 8.0, 4.0, 8.0, 1.0, 4.0, 3.0, 12.0, 8.0, 10.0),
+            doubleArrayOf(2.0, 12.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0)
+        )
         val logTransitionProbabilities = initTransitionProbsD(model)
         model.flipStatesIfNecessary(2, 3)
         val means = model.means
@@ -146,18 +154,22 @@ class SpanModelChecksTest {
 
     @Test
     fun testFittingErrorD() {
-        val model = MLConstrainedNBHMM(ZLHID.constraintMap(2, 3),
-                doubleArrayOf(4.0, 0.25, 0.5, 8.0, 1.0, 12.0, 3.0, 4.0, 8.0, 10.0),
-                doubleArrayOf(2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0))
+        val model = MLConstrainedNBHMM(
+            ZLHID.constraintMap(2, 3),
+            doubleArrayOf(4.0, 0.25, 0.5, 8.0, 1.0, 12.0, 3.0, 4.0, 8.0, 10.0),
+            doubleArrayOf(2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0)
+        )
         initTransitionProbsD(model)
         assertFails { model.flipStatesIfNecessary(2, 3) }
     }
 
     @Test
     fun testStateFlipC() {
-        val model = MLConstrainedNBHMM(ZLH.constraintMap(3),
-                doubleArrayOf(12.0, 8.0, 10.0, 1.0, 4.0, 3.0),
-                doubleArrayOf(2.0, 2.0, 2.0, 2.0, 2.0, 2.0))
+        val model = MLConstrainedNBHMM(
+            ZLH.constraintMap(3),
+            doubleArrayOf(12.0, 8.0, 10.0, 1.0, 4.0, 3.0),
+            doubleArrayOf(2.0, 2.0, 2.0, 2.0, 2.0, 2.0)
+        )
         val logTransitionProbabilities = initTransitionProbsC(model)
         model.flipStatesIfNecessary(3)
         val means = model.means
@@ -186,9 +198,11 @@ class SpanModelChecksTest {
 
     @Test
     fun testNoStatesFlipC() {
-        val model = MLConstrainedNBHMM(ZLH.constraintMap(3),
-                doubleArrayOf(15.0, 4.0, 3.0, 12.0, 8.0, 10.0),
-                doubleArrayOf(15.0, 2.0, 2.0, 2.0, 2.0, 2.0))
+        val model = MLConstrainedNBHMM(
+            ZLH.constraintMap(3),
+            doubleArrayOf(15.0, 4.0, 3.0, 12.0, 8.0, 10.0),
+            doubleArrayOf(15.0, 2.0, 2.0, 2.0, 2.0, 2.0)
+        )
         val logTransitionProbabilities = initTransitionProbsC(model)
         model.flipStatesIfNecessary(3)
         val means = model.means
@@ -203,9 +217,11 @@ class SpanModelChecksTest {
 
     @Test
     fun testFittingErrorC() {
-        val model = MLConstrainedNBHMM(ZLH.constraintMap(3),
-                doubleArrayOf(1.0, 8.0, 3.0, 12.0, 4.0, 10.0),
-                doubleArrayOf(2.0, 2.0, 2.0, 2.0, 2.0, 2.0))
+        val model = MLConstrainedNBHMM(
+            ZLH.constraintMap(3),
+            doubleArrayOf(1.0, 8.0, 3.0, 12.0, 4.0, 10.0),
+            doubleArrayOf(2.0, 2.0, 2.0, 2.0, 2.0, 2.0)
+        )
         initTransitionProbsC(model)
         assertFails { model.flipStatesIfNecessary(3) }
     }

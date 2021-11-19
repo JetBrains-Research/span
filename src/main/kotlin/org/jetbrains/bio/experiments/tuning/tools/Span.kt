@@ -35,9 +35,9 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
     val GAPS = listOf(0, 1, 2, SPAN_DEFAULT_GAP, 10)
 
     override val parameters =
-            FDRS.sorted().flatMap { fdr ->
-                GAPS.sorted().map { gap -> fdr to gap }
-            }
+        FDRS.sorted().flatMap { fdr ->
+            GAPS.sorted().map { gap -> fdr to gap }
+        }
 
     override val transform: (Pair<Double, Int>) -> String = { (fdr, gap) -> "${fdr}_${gap}" }
 
@@ -51,25 +51,28 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
 
     override fun defaultParams(uli: Boolean) = SPAN_DEFAULT_FDR to SPAN_DEFAULT_GAP
 
-    override fun tune(configuration: DataConfig,
-                      path: Path,
-                      target: String,
-                      useInput: Boolean,
-                      saveAllPeaks: Boolean) {
+    override fun tune(
+        configuration: DataConfig,
+        path: Path,
+        target: String,
+        useInput: Boolean,
+        saveAllPeaks: Boolean
+    ) {
         if (!checkTuningRequired(configuration, path, target, useInput)) {
             return
         }
         val folder = folder(path, target, useInput)
         val results = TuningResults()
         val inputPath = if (useInput) configuration.tracksMap.entries
-                .filter { it.key.dataType == "chip-seq" && ChipSeqTarget.isInput(it.key.dataType) }
-                .flatMap { it.value }.map { it.second.path }.firstOrNull() else null
+            .filter { it.key.dataType == "chip-seq" && ChipSeqTarget.isInput(it.key.dataType) }
+            .flatMap { it.value }.map { it.second.path }.firstOrNull() else null
         val labelledTracks = configuration.extractLabelledTracks(target)
 
         labelledTracks.forEach { (cellId, replicate, trackPath, labelsPath) ->
-            val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(configuration.genomeQuery,
-                    listOf(SpanDataPaths(trackPath, inputPath!!)),
-                    SPAN_DEFAULT_BIN, AutoFragment
+            val peakCallingExperiment = SpanPeakCallingExperiment.getExperiment(
+                configuration.genomeQuery,
+                listOf(SpanDataPaths(trackPath, inputPath!!)),
+                SPAN_DEFAULT_BIN, AutoFragment
             )
 
             if (saveAllPeaks) {
@@ -79,8 +82,12 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
                 parameters.forEach { parameter ->
                     val peaksPath = folder / transform(parameter) / fileName(cellId, replicate, target, parameter)
                     peaksPath.checkOrRecalculate(ignoreEmptyFile = true) { (path) ->
-                        savePeaks(peakCallingExperiment.results.getPeaks(configuration.genomeQuery,
-                                parameter.first, parameter.second), path)
+                        savePeaks(
+                            peakCallingExperiment.results.getPeaks(
+                                configuration.genomeQuery,
+                                parameter.first, parameter.second
+                            ), path
+                        )
                     }
                     progress.report()
                 }
@@ -89,19 +96,23 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
 
             LOG.info("Tuning $id $target $cellId $replicate peaks")
             val labels = LocationLabel.loadLabels(
-                    labelsPath, configuration.genomeQuery.genome
+                labelsPath, configuration.genomeQuery.genome
             )
             val (labelErrorsGrid, index) =
-                    tune(peakCallingExperiment.results, labels, "$id $target $cellId $replicate", parameters)
+                tune(peakCallingExperiment.results, labels, "$id $target $cellId $replicate", parameters)
 
 
             LOG.info("Saving $id $target $cellId $replicate optimal peaks to $folder")
             cleanup(folder, cellId, replicate)
             val optimalParameters = parameters[index]
             val optimalPeaksPath = folder / fileName(cellId, replicate, target, optimalParameters)
-            savePeaks(peakCallingExperiment.results.getPeaks(configuration.genomeQuery,
-                    optimalParameters.first, optimalParameters.second),
-                    optimalPeaksPath)
+            savePeaks(
+                peakCallingExperiment.results.getPeaks(
+                    configuration.genomeQuery,
+                    optimalParameters.first, optimalParameters.second
+                ),
+                optimalPeaksPath
+            )
 
             labelErrorsGrid.forEachIndexed { i, error ->
                 results.addRecord(replicate, transform(parameters[i]), error, i == index)
@@ -114,11 +125,11 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
     }
 
     fun tune(
-            results: SpanFitResults,
-            labels: List<LocationLabel>,
-            id: String,
-            parameters: List<Pair<Double, Int>>,
-            cancellableState: CancellableState = CancellableState.current()
+        results: SpanFitResults,
+        labels: List<LocationLabel>,
+        id: String,
+        parameters: List<Pair<Double, Int>>,
+        cancellableState: CancellableState = CancellableState.current()
     ): Pair<List<LabelErrors>, Int> {
         MultitaskProgress.addTask(id, parameters.size.toLong())
         val tuneResults = tune(results, results.fitInfo.genomeQuery(), labels, id, parameters, cancellableState)
@@ -128,16 +139,16 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
 
 
     fun tune(
-            results: SpanFitResults,
-            genomeQuery: GenomeQuery,
-            labels: List<LocationLabel>,
-            id: String,
-            parameters: List<Pair<Double, Int>>,
-            cancellableState: CancellableState = CancellableState.current()
+        results: SpanFitResults,
+        genomeQuery: GenomeQuery,
+        labels: List<LocationLabel>,
+        id: String,
+        parameters: List<Pair<Double, Int>>,
+        cancellableState: CancellableState = CancellableState.current()
     ): Pair<List<LabelErrors>, Int> {
         val labeledGenomeQuery = GenomeQuery(
-                genomeQuery.genome,
-                *labels.map { it.location.chromosome.name }.distinct().toTypedArray()
+            genomeQuery.genome,
+            *labels.map { it.location.chromosome.name }.distinct().toTypedArray()
         )
         // Parallelism is OK here:
         // 1. getPeaks creates BitterSet per each parameters combination of size
@@ -146,19 +157,21 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
         // Order is important!
         val labelErrorsGrid = Array<LabelErrors?>(parameters.size) { null }
         tuningExecutor.awaitAll(
-                parameters.mapIndexed { index, (fdr, gap) ->
-                    Callable {
-                        cancellableState.checkCanceled()
-                        val peaksOnLabeledGenomeQuery = results.getPeaks(labeledGenomeQuery, fdr, gap)
-                        labelErrorsGrid[index] = computeErrors(labels,
-                                LocationsMergingList.create(labeledGenomeQuery,
-                                        peaksOnLabeledGenomeQuery.map { it.location }.iterator()))
-                        MultitaskProgress.reportTask(id)
-                    }
+            parameters.mapIndexed { index, (fdr, gap) ->
+                Callable {
+                    cancellableState.checkCanceled()
+                    val peaksOnLabeledGenomeQuery = results.getPeaks(labeledGenomeQuery, fdr, gap)
+                    labelErrorsGrid[index] = computeErrors(labels,
+                        LocationsMergingList.create(labeledGenomeQuery,
+                            peaksOnLabeledGenomeQuery.map { it.location }.iterator()
+                        )
+                    )
+                    MultitaskProgress.reportTask(id)
                 }
+            }
 
         )
-        val minTotalError = labelErrorsGrid.map { it!!.error() }.min()!!
+        val minTotalError = labelErrorsGrid.map { it!!.error() }.minOrNull()!!
         // Parameters should return desired order for each tool
         return labelErrorsGrid.map { it!! } to
                 parameters.indices.first { labelErrorsGrid[it]!!.error() == minTotalError }

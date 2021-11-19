@@ -74,7 +74,8 @@ class SpanModelFitExperimentTest {
             )
             assertTrue(
                 peakCallingExperiment.results.getPeaks(fullGenomeQuery, 0.05, 0).isNotEmpty(),
-                "Expected peak set not to be empty.")
+                "Expected peak set not to be empty."
+            )
         }
     }
 

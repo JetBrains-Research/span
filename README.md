@@ -22,7 +22,8 @@ Part of semi-supervised [peak calling](https://artyomovlab.wustl.edu/aging/tools
 
 **Open Access Paper:** https://doi.org/10.1093/bioinformatics/btab376
 
-**Citation:** Shpynov O, Dievskii A, Chernyatchik R, Tsurinov P, Artyomov MN. Semi-supervised peak calling with SPAN and JBR Genome Browser. Bioinformatics. 2021 May 21.
+**Citation:** Shpynov O, Dievskii A, Chernyatchik R, Tsurinov P, Artyomov MN. Semi-supervised peak calling with SPAN and
+JBR Genome Browser. Bioinformatics. 2021 May 21.
 
 The Latest release
 --------------
@@ -179,8 +180,7 @@ FAQ
 * Q: Which operating systems are supported?<br>
   A: SPAN is developed in modern Kotlin programming language and can be executed on any platform supported by java.
 * Q: Where did you get this lovely span picture?<br>
-  A: From [ascii.co.uk](https://ascii.co.uk), the original author goes by
-  the name jgs.
+  A: From [ascii.co.uk](https://ascii.co.uk), the original author goes by the name jgs.
 
 Errors Reporting
 -----------------

@@ -19,9 +19,9 @@ import kotlin.math.ln
  * @date 9/13/19
  */
 class NegBinRegressionEmissionScheme(
-        covariateLabels: List<String>,
-        regressionCoefficients: DoubleArray,
-        failures: Double
+    covariateLabels: List<String>,
+    regressionCoefficients: DoubleArray,
+    failures: Double
 ) : IntegerRegressionEmissionScheme(covariateLabels, regressionCoefficients) {
 
     var failures = failures

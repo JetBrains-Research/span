@@ -25,22 +25,24 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
     override val id = "span_replicated"
     override val suffix = Span.suffix
 
-    private val FDRS = listOf(0.05, 0.01, 1E-4, 1E-6, 1E-8, SPAN_REPLICATED_DEFAULT_FDR,
-            1E-20, 1E-40, 1E-60, 1E-80, 1E-100)
+    private val FDRS = listOf(
+        0.05, 0.01, 1E-4, 1E-6, 1E-8, SPAN_REPLICATED_DEFAULT_FDR,
+        1E-20, 1E-40, 1E-60, 1E-80, 1E-100
+    )
 
     private val GAPS = Span.GAPS
 
     override val transform = Span.transform
 
     override val parameters =
-            FDRS.sorted().flatMap { fdr ->
-                GAPS.sorted().map { gap -> fdr to gap }
-            }
+        FDRS.sorted().flatMap { fdr ->
+            GAPS.sorted().map { gap -> fdr to gap }
+        }
 
     override fun defaultParams(uli: Boolean) = SPAN_REPLICATED_DEFAULT_FDR to SPAN_DEFAULT_GAP
 
     fun fileName(target: String, parameter: Pair<Double, Int>) =
-            "${target}_${SPAN_DEFAULT_BIN}_${parameter.first}_${parameter.second}_peaks.bed"
+        "${target}_${SPAN_DEFAULT_BIN}_${parameter.first}_${parameter.second}_peaks.bed"
 
     override fun findReplicatedPeaks(path: Path, target: String, useInput: Boolean): Path {
         val peaks = findReplicatedFiles(path, target, useInput)
@@ -82,11 +84,12 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
     }
 
     override fun tune(
-            configuration: DataConfig,
-            path: Path,
-            target: String,
-            useInput: Boolean,
-            saveAllPeaks: Boolean) {
+        configuration: DataConfig,
+        path: Path,
+        target: String,
+        useInput: Boolean,
+        saveAllPeaks: Boolean
+    ) {
 
         if (!checkTuningReplicatedRequired(path, target, useInput)) {
             return
@@ -96,13 +99,13 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
         // Get all the replicated tracks
         val labelledTracks = configuration.extractLabelledTracks(target)
         val inputPath = configuration.tracksMap.entries
-                .filter { it.key.dataType == "chip-seq" && ChipSeqTarget.isInput(it.key.dataType) }
-                .flatMap { it.value }.map { it.second.path }.firstOrNull()
+            .filter { it.key.dataType == "chip-seq" && ChipSeqTarget.isInput(it.key.dataType) }
+            .flatMap { it.value }.map { it.second.path }.firstOrNull()
 
         val replicatedPeakCallingExperiment = SpanPeakCallingExperiment.getExperiment(
-                configuration.genomeQuery,
-                labelledTracks.map(LabelledTrack::trackPath).map { SpanDataPaths(it, inputPath) },
-                SPAN_DEFAULT_BIN, AutoFragment
+            configuration.genomeQuery,
+            labelledTracks.map(LabelledTrack::trackPath).map { SpanDataPaths(it, inputPath) },
+            SPAN_DEFAULT_BIN, AutoFragment
         )
 
         if (saveAllPeaks) {
@@ -113,9 +116,13 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
             parameters.forEach { parameter ->
                 val peaksPath = folder / transform(parameter) / fileName(target, parameter)
                 peaksPath.checkOrRecalculate(ignoreEmptyFile = true) { (p) ->
-                    savePeaks(replicatedPeakCallingExperiment.results.getPeaks(configuration.genomeQuery,
-                            parameter.first, parameter.second),
-                            p)
+                    savePeaks(
+                        replicatedPeakCallingExperiment.results.getPeaks(
+                            configuration.genomeQuery,
+                            parameter.first, parameter.second
+                        ),
+                        p
+                    )
                 }
                 progress.report()
             }
@@ -128,9 +135,13 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
         val (labelErrorsGrid, index) = Span.tune(replicatedPeakCallingExperiment.results, labels, target, parameters)
 
         LOG.info("Saving $target optimal $id peaks to $folder")
-        savePeaks(replicatedPeakCallingExperiment.results.getPeaks(configuration.genomeQuery,
-                parameters[index].first, parameters[index].second),
-                folder / fileName(target, parameters[index]))
+        savePeaks(
+            replicatedPeakCallingExperiment.results.getPeaks(
+                configuration.genomeQuery,
+                parameters[index].first, parameters[index].second
+            ),
+            folder / fileName(target, parameters[index])
+        )
 
         val results = TuningResults()
         labelErrorsGrid.forEachIndexed { i, error ->

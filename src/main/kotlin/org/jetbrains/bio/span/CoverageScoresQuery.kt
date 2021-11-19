@@ -23,21 +23,21 @@ import java.nio.file.Path
  * 4. Resulting score is treatment - scale * control
  */
 class CoverageScoresQuery(
-        val genomeQuery: GenomeQuery,
-        private val treatmentPath: Path,
-        private val controlPath: Path?,
-        val fragment: Fragment,
-        val binSize: Int,
-        val unique: Boolean = true
-): CachingQuery<Chromosome, IntArray>() {
+    val genomeQuery: GenomeQuery,
+    private val treatmentPath: Path,
+    private val controlPath: Path?,
+    val fragment: Fragment,
+    val binSize: Int,
+    val unique: Boolean = true
+) : CachingQuery<Chromosome, IntArray>() {
 
 
     override val id: String
         get() = reduceIds(
-                listOfNotNull(
-                        treatmentPath.stemGz, controlPath?.stemGz, fragment.nullableInt,
-                        binSize, if (!unique) "keepdup" else null
-                ).map { it.toString() }
+            listOfNotNull(
+                treatmentPath.stemGz, controlPath?.stemGz, fragment.nullableInt,
+                binSize, if (!unique) "keepdup" else null
+            ).map { it.toString() }
         )
 
     override val description: String
@@ -49,7 +49,7 @@ class CoverageScoresQuery(
     }
 
     private val treatmentCoverage = ReadsQuery(
-            genomeQuery, treatmentPath, unique = unique, fragment = fragment
+        genomeQuery, treatmentPath, unique = unique, fragment = fragment
     )
 
     private val controlCoverage = controlPath?.let {
@@ -76,9 +76,11 @@ class CoverageScoresQuery(
 
     companion object {
 
-        internal fun computeScale(genomeQuery: GenomeQuery,
-                                  treatmentCoverage: Coverage,
-                                  controlCoverage: Coverage): Double {
+        internal fun computeScale(
+            genomeQuery: GenomeQuery,
+            treatmentCoverage: Coverage,
+            controlCoverage: Coverage
+        ): Double {
             val conditionSize = genomeQuery.get().map {
                 treatmentCoverage.getCoverage(it.range.on(it).on(Strand.PLUS)).toLong() +
                         treatmentCoverage.getCoverage(it.range.on(it).on(Strand.MINUS)).toLong()
@@ -94,21 +96,27 @@ class CoverageScoresQuery(
          * Returns the scores of a given [chromosome] sliced into binSizes with [binSize] width.
          * Score is precisely [Coverage] within bins if no control given, or DiffBind-like score.
          */
-        internal fun computeScores(chromosome: Chromosome,
-                                   treatmentCoverage: Coverage,
-                                   controlCoverage: Coverage?,
-                                   binSize: Int,
-                                   scale: Double): IntArray {
+        internal fun computeScores(
+            chromosome: Chromosome,
+            treatmentCoverage: Coverage,
+            controlCoverage: Coverage?,
+            binSize: Int,
+            scale: Double
+        ): IntArray {
             return chromosome.range.slice(binSize).mapToInt { b ->
                 val plusStrandBin = b.on(chromosome, Strand.PLUS)
                 val minusStrandBin = b.on(chromosome, Strand.MINUS)
                 if (controlCoverage != null) {
-                    val plusStrandScore = Math.max(0,
-                            treatmentCoverage.getCoverage(plusStrandBin) -
-                                    Math.ceil(controlCoverage.getCoverage(plusStrandBin) * scale).toInt())
-                    val minusStrandScore = Math.max(0,
-                            treatmentCoverage.getCoverage(minusStrandBin) -
-                                    Math.ceil(controlCoverage.getCoverage(minusStrandBin) * scale).toInt())
+                    val plusStrandScore = Math.max(
+                        0,
+                        treatmentCoverage.getCoverage(plusStrandBin) -
+                                Math.ceil(controlCoverage.getCoverage(plusStrandBin) * scale).toInt()
+                    )
+                    val minusStrandScore = Math.max(
+                        0,
+                        treatmentCoverage.getCoverage(minusStrandBin) -
+                                Math.ceil(controlCoverage.getCoverage(minusStrandBin) * scale).toInt()
+                    )
                     return@mapToInt plusStrandScore + minusStrandScore
                 } else {
                     return@mapToInt treatmentCoverage.getBothStrandsCoverage(b.on(chromosome))

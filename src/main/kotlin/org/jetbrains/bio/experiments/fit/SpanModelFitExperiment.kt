@@ -53,14 +53,14 @@ import java.nio.file.Path
 abstract class SpanModelFitExperiment<
         out Model : ClassificationModel, out FitInfo : SpanFitInformation, State : Any
         > protected constructor(
-        val fitInformation: FitInfo,
-        private val modelFitter: Fitter<Model>,
-        private val modelClass: Class<out Model>,
-        private val availableStates: Array<State>,
-        private val nullHypothesis: NullHypothesis<State>,
-        private val fixedModelPath: Path? = null,
-        private val threshold: Double = Fitter.THRESHOLD,
-        private val maxIter: Int = Fitter.MAX_ITERATIONS
+    val fitInformation: FitInfo,
+    private val modelFitter: Fitter<Model>,
+    private val modelClass: Class<out Model>,
+    private val availableStates: Array<State>,
+    private val nullHypothesis: NullHypothesis<State>,
+    private val fixedModelPath: Path? = null,
+    private val threshold: Double = Fitter.THRESHOLD,
+    private val maxIter: Int = Fitter.MAX_ITERATIONS
 ) : Experiment("fit") {
 
     val genomeQuery = fitInformation.genomeQuery()
@@ -109,9 +109,11 @@ abstract class SpanModelFitExperiment<
                 df = df.with(state.toString(), f64Array.toFloatArray())
             }
             df = df.with("state", model.predict(preprocessed)
-                    .map { availableStates[it].toString() }.toTypedArray())
+                .map { availableStates[it].toString() }.toTypedArray()
+            )
             df
-        }.toTypedArray())
+        }.toTypedArray()
+    )
 
     private val statesDataFrame: DataFrame by lazy {
         @Suppress("UNCHECKED_CAST")
@@ -133,7 +135,7 @@ abstract class SpanModelFitExperiment<
      * Membership = Probability here.
      */
     private fun getLogMemberships(chromosomeStatesDF: DataFrame): Map<State, F64Array> =
-            availableStates.associateBy({ it }) { chromosomeStatesDF.f64Array(it.toString()) }
+        availableStates.associateBy({ it }) { chromosomeStatesDF.f64Array(it.toString()) }
 
     /**
      * Compute and save [SpanFitResults], i.e. fit information, trained model and null hypothesis probabilities.
@@ -197,10 +199,10 @@ abstract class SpanModelFitExperiment<
          * Retain only the chromosomes for which at least one treatment file has at least one read on them.
          */
         fun effectiveGenomeQuery(
-                genomeQuery: GenomeQuery,
-                paths: List<SpanDataPaths>,
-                fragment: Fragment,
-                unique: Boolean = true
+            genomeQuery: GenomeQuery,
+            paths: List<SpanDataPaths>,
+            fragment: Fragment,
+            unique: Boolean = true
         ): GenomeQuery {
             val chromosomes = genomeQuery.get()
             val nonEmptyChromosomes = hashSetOf<Chromosome>()

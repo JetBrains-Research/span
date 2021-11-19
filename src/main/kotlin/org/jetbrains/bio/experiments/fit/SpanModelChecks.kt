@@ -67,7 +67,7 @@ internal fun NegBinRegressionMixture.probabilityFlip(state1: Int, state2: Int) {
 internal fun PoissonRegressionMixture.flipStatesIfNecessary() {
     val lowScheme = this[1] as PoissonRegressionEmissionScheme
     val highScheme = this[2] as PoissonRegressionEmissionScheme
-    if (weights[1] < weights[2]){
+    if (weights[1] < weights[2]) {
         LOG.warn("After fitting the model, the weight of LOW state is lower than that of HIGH state.")
         LOG.warn("This usually indicates that the states were flipped during fitting. We will now flip them back.")
         this[2] = lowScheme
@@ -101,12 +101,16 @@ internal fun MLFreeNBHMM.flipStatesIfNecessary() {
     val meanFlipped = meanLow > meanHigh
     val pFlipped = pLow > pHigh
     if (meanFlipped) {
-        LOG.warn("After fitting the model, mean emission in LOW state ($meanLow) is higher than " +
-                "mean emission in HIGH state ($meanHigh).")
+        LOG.warn(
+            "After fitting the model, mean emission in LOW state ($meanLow) is higher than " +
+                    "mean emission in HIGH state ($meanHigh)."
+        )
     }
     if (pFlipped) {
-        LOG.warn("After fitting the model, emission's parameter p in LOW state ($pLow) is higher than " +
-                "emission's parameter p in HIGH state ($pHigh).")
+        LOG.warn(
+            "After fitting the model, emission's parameter p in LOW state ($pLow) is higher than " +
+                    "emission's parameter p in HIGH state ($pHigh)."
+        )
     }
     if (meanFlipped && pFlipped) {
         LOG.warn("This usually indicates that the states were flipped during fitting. We will now flip them back.")
@@ -130,8 +134,10 @@ internal fun MLConstrainedNBHMM.flipStatesIfNecessary(tracks: Int) {
         LOG.error("Irrecoverable fitting error")
         LOG.error("means: $means")
         LOG.error("ps: $ps")
-        LOG.error("track(s) " + switchNeeded.joinToString(transform = Int::toString)
-                + " contradict track(s) " + switchNotNeeded.joinToString(transform = Int::toString))
+        LOG.error(
+            "track(s) " + switchNeeded.joinToString(transform = Int::toString)
+                    + " contradict track(s) " + switchNotNeeded.joinToString(transform = Int::toString)
+        )
         throw IllegalStateException("Irrecoverable fitting error")
     }
     if (switchNeeded.isNotEmpty()) {
@@ -155,23 +161,27 @@ internal fun MLConstrainedNBHMM.flipStatesIfNecessary(tracks1: Int, tracks2: Int
     val switchNeeded1 = (0 until tracks1).filter { means[it] > means[it + tracks1] && ps[it] > ps[it + tracks1] }
     val switchNotNeeded1 = (0 until tracks1).filter { means[it] < means[it + tracks1] && ps[it] < ps[it + tracks1] }
     val switchNeeded2 = (2 * tracks1 until 2 * tracks1 + tracks2)
-            .filter { means[it] > means[it + tracks2] && ps[it] > ps[it + tracks2] }
+        .filter { means[it] > means[it + tracks2] && ps[it] > ps[it + tracks2] }
     val switchNotNeeded2 = (2 * tracks1 until 2 * tracks1 + tracks2)
-            .filter { means[it] < means[it + tracks2] && ps[it] < ps[it + tracks2] }
+        .filter { means[it] < means[it + tracks2] && ps[it] < ps[it + tracks2] }
     if (switchNeeded1.isNotEmpty() && switchNotNeeded1.isNotEmpty()) {
         LOG.error("Irrecoverable fitting error")
         LOG.error("means: $means")
         LOG.error("ps: $ps")
-        LOG.error("track(s) " + switchNeeded1.joinToString(transform = Int::toString)
-                + " contradict track(s) " + switchNotNeeded1.joinToString(transform = Int::toString))
+        LOG.error(
+            "track(s) " + switchNeeded1.joinToString(transform = Int::toString)
+                    + " contradict track(s) " + switchNotNeeded1.joinToString(transform = Int::toString)
+        )
         throw IllegalStateException("Irrecoverable fitting error")
     }
     if (switchNeeded2.isNotEmpty() && switchNotNeeded2.isNotEmpty()) {
         LOG.error("Irrecoverable fitting error")
         LOG.error("means: $means")
         LOG.error("ps: $ps")
-        LOG.error("track(s) " + switchNeeded2.joinToString(transform = Int::toString)
-                + " contradict track(s) " + switchNotNeeded2.joinToString(transform = Int::toString))
+        LOG.error(
+            "track(s) " + switchNeeded2.joinToString(transform = Int::toString)
+                    + " contradict track(s) " + switchNotNeeded2.joinToString(transform = Int::toString)
+        )
         throw IllegalStateException("Irrecoverable fitting error")
     }
     if (switchNeeded1.isNotEmpty()) {

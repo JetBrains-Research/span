@@ -38,22 +38,24 @@ import java.nio.file.Path
  * @since 10/04/15
  */
 class SpanDifferentialPeakCallingExperiment private constructor(
-        fitInformation: Span1CompareFitInformation,
-        threshold: Double,
-        maxIter: Int
+    fitInformation: Span1CompareFitInformation,
+    threshold: Double,
+    maxIter: Int
 ) : SpanModelFitExperiment<MLConstrainedNBHMM, Span1CompareFitInformation, ZLHID>(
-        fitInformation,
-        MLConstrainedNBHMM.fitter(fitInformation.data1.size, fitInformation.data2.size),
-        MLConstrainedNBHMM::class.java,
-        ZLHID.values(), NullHypothesis.of(ZLHID.same()),
-        threshold = threshold,
-        maxIter = maxIter
+    fitInformation,
+    MLConstrainedNBHMM.fitter(fitInformation.data1.size, fitInformation.data2.size),
+    MLConstrainedNBHMM::class.java,
+    ZLHID.values(), NullHypothesis.of(ZLHID.same()),
+    threshold = threshold,
+    maxIter = maxIter
 ) {
 
     override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span"
 
-    fun computeDirectedDifferencePeaks(fdr: Double,
-                                       gap: Int): Pair<List<Peak>, List<Peak>> {
+    fun computeDirectedDifferencePeaks(
+        fdr: Double,
+        gap: Int
+    ): Pair<List<Peak>, List<Peak>> {
         val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
             results.getChromosomePeaks(chromosome, fdr, gap, dataQuery.apply(chromosome))
         }
@@ -63,7 +65,8 @@ class SpanDifferentialPeakCallingExperiment private constructor(
             val states = getStatesDataFrame(chromosome)
             map[chromosome].forEach {
                 if (states.getAsFloat(it.startOffset / fitInformation.binSize, ZLHID.D.name) >
-                        states.getAsFloat(it.startOffset / fitInformation.binSize, ZLHID.I.name)) {
+                    states.getAsFloat(it.startOffset / fitInformation.binSize, ZLHID.I.name)
+                ) {
                     highLow.add(it)
                 } else {
                     lowHigh.add(it)
@@ -84,14 +87,14 @@ class SpanDifferentialPeakCallingExperiment private constructor(
          * @return experiment [SpanDifferentialPeakCallingExperiment]
          */
         fun getExperiment(
-                genomeQuery: GenomeQuery,
-                paths1: List<SpanDataPaths>,
-                paths2: List<SpanDataPaths>,
-                bin: Int,
-                fragment: Fragment,
-                unique: Boolean,
-                threshold: Double,
-                maxIter: Int
+            genomeQuery: GenomeQuery,
+            paths1: List<SpanDataPaths>,
+            paths2: List<SpanDataPaths>,
+            bin: Int,
+            fragment: Fragment,
+            unique: Boolean,
+            threshold: Double,
+            maxIter: Int
         ): SpanDifferentialPeakCallingExperiment {
             check(paths1.isNotEmpty() && paths2.isNotEmpty()) { "No data" }
             val fitInformation = Span1CompareFitInformation.effective(
@@ -107,23 +110,24 @@ class SpanDifferentialPeakCallingExperiment private constructor(
 }
 
 data class Span1CompareFitInformation(
-        override val build: String,
-        val data1: List<SpanDataPaths>,
-        val data2: List<SpanDataPaths>,
-        val labels1: List<String>,
-        val labels2: List<String>,
-        val fragment: Fragment,
-        val unique: Boolean,
-        override val binSize: Int,
-        override val chromosomesSizes: LinkedHashMap<String, Int>
+    override val build: String,
+    val data1: List<SpanDataPaths>,
+    val data2: List<SpanDataPaths>,
+    val labels1: List<String>,
+    val labels2: List<String>,
+    val fragment: Fragment,
+    val unique: Boolean,
+    override val binSize: Int,
+    override val chromosomesSizes: LinkedHashMap<String, Int>
 ) : SpanFitInformation {
 
-    override val id get() = reduceIds(
+    override val id
+        get() = reduceIds(
             data1.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
                     listOf("vs") +
                     data2.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
                     listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
-    )
+        )
 
     override val dataQuery: Query<Chromosome, DataFrame>
         get() {
@@ -155,7 +159,7 @@ data class Span1CompareFitInformation(
         if (queries1.any { !it.ready } || queries2.any { !it.ready }) {
             return emptyMap()
         }
-        return gq.get().associateBy({it}) {
+        return gq.get().associateBy({ it }) {
             DataFrame.columnBind(
                 queries1.scoresDataFrame(it, labels1.toTypedArray()),
                 queries2.scoresDataFrame(it, labels2.toTypedArray())
@@ -167,14 +171,14 @@ data class Span1CompareFitInformation(
         const val VERSION: Int = 3
 
         fun effective(
-                genomeQuery: GenomeQuery,
-                paths1: List<SpanDataPaths>,
-                paths2: List<SpanDataPaths>,
-                labels1: List<String>,
-                labels2: List<String>,
-                fragment: Fragment,
-                unique: Boolean,
-                binSize: Int
+            genomeQuery: GenomeQuery,
+            paths1: List<SpanDataPaths>,
+            paths2: List<SpanDataPaths>,
+            labels1: List<String>,
+            labels2: List<String>,
+            fragment: Fragment,
+            unique: Boolean,
+            binSize: Int
         ): Span1CompareFitInformation {
             return Span1CompareFitInformation(
                 genomeQuery.build, paths1, paths2, labels1, labels2, fragment, unique, binSize,

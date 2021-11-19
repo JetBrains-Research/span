@@ -28,16 +28,16 @@ import java.nio.file.Path
  * - HIGH state employs another negative binomial GLM with the covariates listed above
  */
 class Span3PeakCallingExperiment private constructor(
-        fitInformation: Span2FitInformation,
-        fixedModelPath: Path?,
-        threshold: Double,
-        maxIter: Int
+    fitInformation: Span2FitInformation,
+    fixedModelPath: Path?,
+    threshold: Double,
+    maxIter: Int
 ) : SpanModelFitExperiment<NegBinRegressionMixture, Span2FitInformation, ZLH>(
-        fitInformation,
-        NegBinRegressionMixture.fitter(), NegBinRegressionMixture::class.java,
-        ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
-        fixedModelPath,
-        threshold, maxIter
+    fitInformation,
+    NegBinRegressionMixture.fitter(), NegBinRegressionMixture::class.java,
+    ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
+    fixedModelPath,
+    threshold, maxIter
 ) {
 
     override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span2"
@@ -48,19 +48,19 @@ class Span3PeakCallingExperiment private constructor(
          * Contains a check that a single treatment-control pair was provided.
          */
         fun getExperiment(
-                genomeQuery: GenomeQuery,
-                data: List<SpanDataPaths>,
-                mapabilityPath: Path?,
-                fragment: Fragment,
-                binSize: Int,
-                unique: Boolean,
-                fixedModelPath: Path?,
-                threshold: Double,
-                maxIter: Int
+            genomeQuery: GenomeQuery,
+            data: List<SpanDataPaths>,
+            mapabilityPath: Path?,
+            fragment: Fragment,
+            binSize: Int,
+            unique: Boolean,
+            fixedModelPath: Path?,
+            threshold: Double,
+            maxIter: Int
         ): Span3PeakCallingExperiment {
             check(data.size == 1) { "Negative binomial regression mixture currently accepts a single data track." }
             val fitInformation = Span2FitInformation(
-                    genomeQuery, data.single(), mapabilityPath, fragment, unique, binSize
+                genomeQuery, data.single(), mapabilityPath, fragment, unique, binSize
             )
             return Span3PeakCallingExperiment(fitInformation, fixedModelPath, threshold, maxIter)
         }

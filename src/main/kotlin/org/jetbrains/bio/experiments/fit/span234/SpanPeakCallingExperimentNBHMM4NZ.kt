@@ -32,8 +32,14 @@ class SpanPeakCallingExperimentNBHMM4NZ<Model : ClassificationModel> private con
     threshold: Double,
     maxIter: Int
 ) : SpanModelFitExperiment<Model, Span1AnalyzeFitInformation, AZLMH>(
-    fitInformation, modelFitter, modelClass, AZLMH.values(), NullHypothesis.of(AZLMH.A, AZLMH.L, AZLMH.M), fixedModelPath,
-    threshold, maxIter
+    fitInformation,
+    modelFitter,
+    modelClass,
+    AZLMH.values(),
+    NullHypothesis.of(AZLMH.A, AZLMH.L, AZLMH.M),
+    fixedModelPath,
+    threshold,
+    maxIter
 ) {
 
     override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.$MODEL_EXT"

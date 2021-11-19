@@ -23,8 +23,9 @@ import org.slf4j.LoggerFactory
 class MLFreeNBHMM(meanLow: Double, meanHigh: Double, failures: Double) : MLFreeHMM(3, 1) {
     private val zeroEmission: ConstantIntegerEmissionScheme = ConstantIntegerEmissionScheme(0)
     private val negBinEmissionSchemes: Array<NegBinEmissionScheme> = arrayOf(
-            NegBinEmissionScheme(meanLow, failures),
-            NegBinEmissionScheme(meanHigh, failures))
+        NegBinEmissionScheme(meanLow, failures),
+        NegBinEmissionScheme(meanHigh, failures)
+    )
 
     override fun getEmissionScheme(i: Int, d: Int): IntegerEmissionScheme {
         return if (i == 0) zeroEmission else negBinEmissionSchemes[i - 1]
@@ -54,9 +55,9 @@ class MLFreeNBHMM(meanLow: Double, meanHigh: Double, failures: Double) : MLFreeH
     val successProbabilities: F64Array get() = F64Array(2) { negBinEmissionSchemes[it].successProbability }
 
     override fun toString(): String = toStringHelper()
-            .add("means", means)
-            .add("failures", failures)
-            .toString()
+        .add("means", means)
+        .add("failures", failures)
+        .toString()
 
     companion object {
         @Suppress("MayBeConstant", "unused")
@@ -67,12 +68,16 @@ class MLFreeNBHMM(meanLow: Double, meanHigh: Double, failures: Double) : MLFreeH
         private val LOG = LoggerFactory.getLogger(MLFreeNBHMM::class.java)
 
         fun fitter() = object : Fitter<MLFreeNBHMM> {
-            override fun guess(preprocessed: Preprocessed<DataFrame>, title: String,
-                               threshold: Double, maxIter: Int, attempt: Int): MLFreeNBHMM =
-                    guess(listOf(preprocessed), title, threshold, maxIter, attempt)
+            override fun guess(
+                preprocessed: Preprocessed<DataFrame>, title: String,
+                threshold: Double, maxIter: Int, attempt: Int
+            ): MLFreeNBHMM =
+                guess(listOf(preprocessed), title, threshold, maxIter, attempt)
 
-            override fun guess(preprocessed: List<Preprocessed<DataFrame>>, title: String,
-                               threshold: Double, maxIter: Int, attempt: Int): MLFreeNBHMM {
+            override fun guess(
+                preprocessed: List<Preprocessed<DataFrame>>, title: String,
+                threshold: Double, maxIter: Int, attempt: Int
+            ): MLFreeNBHMM {
                 // Filter out 0s, since they are covered by dedicated ZERO state
                 val emissions = preprocessed.flatMap {
                     it.get().let { df -> df.sliceAsInt(df.labels.first()).toList() }
@@ -99,6 +104,6 @@ class MLFreeNBHMM(meanLow: Double, meanHigh: Double, failures: Double) : MLFreeH
          * Used for multistart
          */
         fun signalToNoise(attempt: Int) =
-                Math.max(1.1, 20 * Math.pow(2.0, ((attempt + 1) / 2) * (if (attempt % 2 == 1) 1.0 else -1.0)))
+            Math.max(1.1, 20 * Math.pow(2.0, ((attempt + 1) / 2) * (if (attempt % 2 == 1) 1.0 else -1.0)))
     }
 }

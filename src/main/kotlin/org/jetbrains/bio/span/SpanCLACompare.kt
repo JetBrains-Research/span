@@ -16,33 +16,41 @@ object SpanCLACompare {
 
     internal fun compare(params: Array<String>) {
         with(SpanCLA.getOptionParser()) {
-            acceptsAll(listOf("t1", "treatment1"),
-                    "ChIP-seq treatment file 1. bam, bed or .bed.gz file;\n" +
-                            "If multiple files are given, treated as replicates.")
-                    .withRequiredArg().required()
-                    .withValuesSeparatedBy(",")
-                    .withValuesConvertedBy(PathConverter.exists())
-            acceptsAll(listOf("c1", "control1"),
-                    "Control file 1. bam, bed or .bed.gz file;\n" +
-                            "Single control file or separate file per each\n" +
-                            "treatment file required.")
-                    .withRequiredArg()
-                    .withValuesSeparatedBy(",")
-                    .withValuesConvertedBy(PathConverter.exists())
+            acceptsAll(
+                listOf("t1", "treatment1"),
+                "ChIP-seq treatment file 1. bam, bed or .bed.gz file;\n" +
+                        "If multiple files are given, treated as replicates."
+            )
+                .withRequiredArg().required()
+                .withValuesSeparatedBy(",")
+                .withValuesConvertedBy(PathConverter.exists())
+            acceptsAll(
+                listOf("c1", "control1"),
+                "Control file 1. bam, bed or .bed.gz file;\n" +
+                        "Single control file or separate file per each\n" +
+                        "treatment file required."
+            )
+                .withRequiredArg()
+                .withValuesSeparatedBy(",")
+                .withValuesConvertedBy(PathConverter.exists())
 
-            acceptsAll(listOf("t2", "treatment2"),
-                    "ChIP-seq treatment file 2. bam, bed or .bed.gz file;\n" +
-                            "If multiple files are given, treated as replicates.")
-                    .withRequiredArg().required()
-                    .withValuesSeparatedBy(",")
-                    .withValuesConvertedBy(PathConverter.exists())
-            acceptsAll(listOf("c2", "control2"),
-                    "Control file 2. bam, bed or .bed.gz file;\n" +
-                            "Single control file or separate file per each\n" +
-                            "treatment file required.")
-                    .withRequiredArg()
-                    .withValuesSeparatedBy(",")
-                    .withValuesConvertedBy(PathConverter.exists())
+            acceptsAll(
+                listOf("t2", "treatment2"),
+                "ChIP-seq treatment file 2. bam, bed or .bed.gz file;\n" +
+                        "If multiple files are given, treated as replicates."
+            )
+                .withRequiredArg().required()
+                .withValuesSeparatedBy(",")
+                .withValuesConvertedBy(PathConverter.exists())
+            acceptsAll(
+                listOf("c2", "control2"),
+                "Control file 2. bam, bed or .bed.gz file;\n" +
+                        "Single control file or separate file per each\n" +
+                        "treatment file required."
+            )
+                .withRequiredArg()
+                .withValuesSeparatedBy(",")
+                .withValuesConvertedBy(PathConverter.exists())
 
 
             parse(params) { options ->
@@ -110,8 +118,8 @@ object SpanCLACompare {
                 if (peaksPath != null) {
                     val peaks = differentialPeakCallingResults.getPeaks(genomeQuery, fdr, gap)
                     savePeaks(
-                            peaks, peaksPath,
-                            "diff${if (fragment is FixedFragment) "_$fragment" else ""}_${binSize}_${fdr}_${gap}"
+                        peaks, peaksPath,
+                        "diff${if (fragment is FixedFragment) "_$fragment" else ""}_${binSize}_${fdr}_${gap}"
                     )
                     SpanCLA.LOG.info("Saved result to $peaksPath")
                 }
@@ -124,7 +132,10 @@ object SpanCLACompare {
      * Retrieves the paths (treatment1, optional control1), (treatment2, optional control2)
      * Checks that they are consistent.
      */
-    private fun getComparePaths(options: OptionSet, log: Boolean = false): Pair<List<SpanDataPaths>, List<SpanDataPaths>> {
+    private fun getComparePaths(
+        options: OptionSet,
+        log: Boolean = false
+    ): Pair<List<SpanDataPaths>, List<SpanDataPaths>> {
         val treatmentPaths1 = options.valuesOf("treatment1") as List<Path>
         val treatmentPaths2 = options.valuesOf("treatment2") as List<Path>
         val controlPaths1 = options.valuesOf("control1") as List<Path>
@@ -168,8 +179,8 @@ object SpanCLACompare {
         val threshold = SpanCLA.getThreshold(options, log = true)
         return lazy {
             val experiment = SpanDifferentialPeakCallingExperiment.getExperiment(
-                    genomeQuery, data1, data2, bin, fragment, unique,
-                    threshold, maxIter
+                genomeQuery, data1, data2, bin, fragment, unique,
+                threshold, maxIter
             )
             experiment.results
         }

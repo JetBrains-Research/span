@@ -20,39 +20,47 @@ import org.jetbrains.bio.viktor.asF64Array
 import java.nio.file.Path
 
 data class Span2FitInformation constructor(
-        override val build: String,
-        override val data: List<SpanDataPaths>,
-        val mapabilityPath: Path?,
-        override val fragment: Fragment,
-        override val unique: Boolean,
-        override val binSize: Int,
-        override val chromosomesSizes: LinkedHashMap<String, Int>
+    override val build: String,
+    override val data: List<SpanDataPaths>,
+    val mapabilityPath: Path?,
+    override val fragment: Fragment,
+    override val unique: Boolean,
+    override val binSize: Int,
+    override val chromosomesSizes: LinkedHashMap<String, Int>
 ) : SpanAnalyzeFitInformation {
     constructor(
-            genomeQuery: GenomeQuery,
-            data: SpanDataPaths,
-            mapabilityPath: Path?,
-            fragment: Fragment,
-            unique: Boolean,
-            binSize: Int
+        genomeQuery: GenomeQuery,
+        data: SpanDataPaths,
+        mapabilityPath: Path?,
+        fragment: Fragment,
+        unique: Boolean,
+        binSize: Int
     ) : this(
-            genomeQuery.build, listOf(data), mapabilityPath, fragment, unique, binSize, SpanFitInformation.chromSizes(genomeQuery)
+        genomeQuery.build,
+        listOf(data),
+        mapabilityPath,
+        fragment,
+        unique,
+        binSize,
+        SpanFitInformation.chromSizes(genomeQuery)
     )
 
     override val id
         get() = reduceIds(
-                listOfNotNull(data.single().treatment, data.single().control, mapabilityPath).map { it.stemGz } +
-                        listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
+            listOfNotNull(data.single().treatment, data.single().control, mapabilityPath).map { it.stemGz } +
+                    listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
         )
 
     override fun scoresDataFrame(): Map<Chromosome, DataFrame> {
         val datum = data.single()
         return genomeQuery().get().associateBy({ it }) {
-            DataFrame().with("coverage", binnedCoverage(
+            DataFrame().with(
+                "coverage", binnedCoverage(
                     it,
                     ReadsQuery(genomeQuery(), datum.treatment, unique, fragment, logFragmentSize = false).get(),
                     binSize
-            ))
+                )
+            )
         }
 
     }
@@ -65,7 +73,7 @@ data class Span2FitInformation constructor(
             return object : CachingQuery<Chromosome, DataFrame>() {
 
                 private val treatmentCoverage = ReadsQuery(
-                        genomeQuery, datum.treatment, unique, fragment, logFragmentSize = false
+                    genomeQuery, datum.treatment, unique, fragment, logFragmentSize = false
                 )
                 private val controlCoverage = datum.control?.let {
                     ReadsQuery(genomeQuery, it, unique, fragment, logFragmentSize = false)
@@ -100,11 +108,11 @@ data class Span2FitInformation constructor(
             val res = IntArray(len)
             for (i in 0 until len - 1) {
                 res[i] = coverage.getBothStrandsCoverage(
-                        ChromosomeRange(i * binSize, (i + 1) * binSize, chr)
+                    ChromosomeRange(i * binSize, (i + 1) * binSize, chr)
                 )
             }
             res[len - 1] = coverage.getBothStrandsCoverage(
-                    ChromosomeRange((len - 1) * binSize, chr.length, chr)
+                ChromosomeRange((len - 1) * binSize, chr.length, chr)
             )
             return res
         }
