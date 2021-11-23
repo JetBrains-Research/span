@@ -33,6 +33,7 @@ import java.nio.file.Path
  * - HIGH state employs `high_d` emission for each dimension `d`
  *
  * @author Alexey Dievsky
+ * @author Oleg Shpynov
  * @since 10/04/15
  */
 class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor(
@@ -52,10 +53,10 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
     companion object {
 
         const val SPAN_DEFAULT_BIN = 200
-        const val SPAN_DEFAULT_FDR = 1E-6
-        const val SPAN_DEFAULT_GAP = 5
+        const val SPAN_DEFAULT_FDR = 0.05
+        const val SPAN_DEFAULT_GAP = 10
 
-        const val SPAN_REPLICATED_DEFAULT_FDR = 1E-10
+        const val SPAN_REPLICATED_DEFAULT_FDR = 1e-6
 
         const val TRACK_PREFIX = "track_"
 
