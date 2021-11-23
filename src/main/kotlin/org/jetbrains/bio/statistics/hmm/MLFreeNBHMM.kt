@@ -83,10 +83,14 @@ class MLFreeNBHMM(meanLow: Double, meanHigh: Double, failures: Double) : MLFreeH
                 val emissions = preprocessed.flatMap {
                     it.get().let { df -> df.sliceAsInt(df.labels.first()).toList() }
                 }.filter { it != 0 }.toIntArray()
+                LOG.debug("Non-zero emissions ${emissions.size}")
                 check(emissions.isNotEmpty()) { "Model can't be trained on empty coverage, exiting." }
                 val mean = emissions.average()
                 val sd = emissions.standardDeviation()
-                val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, sd * sd)
+                LOG.debug("Emissions mean $mean\t variance ${sd * sd}")
+                // NegativeBinomialDistribution requires variance greater than mean, tweak variance if required.
+                // Otherwise, failures will be set to +Inf and won't be updated during EM steps.
+                val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, max(1.1 * mean, sd * sd))
                 val snr = multiStartSignalToNoise(attempt)
                 val meanLow = mean / sqrt(snr)
                 val meanHigh = mean * sqrt(snr)
