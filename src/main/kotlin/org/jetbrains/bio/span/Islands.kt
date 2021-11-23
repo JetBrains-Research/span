@@ -12,9 +12,9 @@ import org.jetbrains.bio.statistics.hypothesis.BenjaminiHochberg
 import org.jetbrains.bio.statistics.hypothesis.StofferLiptakTest
 import org.jetbrains.bio.util.CancellableState
 import org.jetbrains.bio.viktor.F64Array
-import kotlin.math.floor
 import kotlin.math.ln
 import kotlin.math.log10
+import kotlin.math.min
 
 /**
  * The islands are called in five steps.
@@ -42,10 +42,13 @@ fun SpanFitResults.getIslands(
         cancellableState?.checkCanceled()
         // Check that we have information for requested chromosome
         if (chromosome.name in fitInfo.chromosomesSizes) {
-            val f64LogNullMemberships = logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL)
-            val offsets = fitInfo.offsets(chromosome)
             getChromosomeIslands(
-                f64LogNullMemberships, offsets, chromosome, fdr, gap, coverageDataFrame = coverage[chromosome]
+                logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL),
+                fitInfo.offsets(chromosome),
+                chromosome,
+                fdr,
+                gap,
+                coverageDataFrame = coverage[chromosome]
             )
         } else {
             SpanFitResults.LOG.debug(
@@ -67,31 +70,28 @@ internal fun SpanFitResults.getChromosomeIslands(
     coverageDataFrame: DataFrame? = null
 ): List<Peak> {
     // Compute candidate bins and islands
-    val candidateBins = BitterSet(logNullMemberships.size)
-    val lnFdr = ln(fdr)
-    0.until(candidateBins.size())
-        .filter { logNullMemberships[it] <= lnFdr }
-        .forEach(candidateBins::set)
+    val nullMemberships = logNullMemberships.exp()
+    val candidateBins = BitterSet(logNullMemberships.size).apply {
+        0.until(size()).filter { nullMemberships[it] <= fdr }.forEach(::set)
+    }
     val candidateIslands = candidateBins.aggregate(gap)
+    Peak.LOG.debug(
+        "$chromosome: candidate bins ${candidateBins.cardinality()}/${logNullMemberships.size}, " +
+                "islands ${candidateIslands.size}"
+    )
     if (candidateIslands.isEmpty()) {
         return emptyList()
     }
-    val nullMemberships = logNullMemberships.exp()
-    val stofferLiptakTest = ISLANDS_STOFFER_LIPTAK_CACHE.get(Triple(this, chromosome, gap)) {
+    val stofferLiptakTest = ISLANDS_STOFFER_LIPTAK_CACHE.get(this to chromosome) {
         StofferLiptakTest(nullMemberships.data)
     }
-
-    val islandsPValues = ISLANDS_PVALUES_CACHE.get(Triple(this, chromosome, gap)) {
-        // Apply Stoffer-Liptak test to correct dependence between consequent p-values
-        F64Array(candidateIslands.size) { islandIndex ->
-            val (i, j) = candidateIslands[islandIndex]
-            stofferLiptakTest.combine(DoubleArray(j - i) { nullMemberships[it + i] })
-        }
+    // Apply Stoffer-Liptak test to correct dependence between consequent p-values
+    val islandsPValues = F64Array(candidateIslands.size) { islandIndex ->
+        val (i, j) = candidateIslands[islandIndex]
+        val pValues = IntRange(i, j).map { nullMemberships[it] }.filter { it <= fdr }.toDoubleArray()
+        stofferLiptakTest.combine(pValues)
     }
-    val islandQValues = ISLANDS_QVALUES_CACHE.get(Triple(this, chromosome, gap)) {
-        BenjaminiHochberg.adjust(islandsPValues)
-    }
-    val minIslandQValues = islandQValues.min()
+    val islandQValues = BenjaminiHochberg.adjust(islandsPValues)
     val islands = candidateIslands.indices
         .filter { islandQValues[it] < fdr }
         .map { islandIndex ->
@@ -101,7 +101,7 @@ internal fun SpanFitResults.getChromosomeIslands(
             val islandStart = offsets[i]
             val islandEnd = if (j < offsets.size) offsets[j] else chromosome.length
             // Score should be proportional original q-value
-            val score = floor(1000.0 * log10(islandQValue) / log10(minIslandQValues)).toInt()
+            val score = min(1000.0, - 10 * log10(islandQValue)).toInt()
             // Value is either coverage of fold change
             var value = 0.0
             if (coverageDataFrame != null) {
@@ -137,20 +137,13 @@ internal fun SpanFitResults.getChromosomeIslands(
                 score = score
             )
         }
+    Peak.LOG.debug("$chromosome\tIslands after StofferLiptak & BH ${islands.size}/${candidateIslands.size}")
     return islands
 }
-
 
 /**
  * During SPAN models optimizations we iterate over different FDR and GAPs parameters,
  * Using caches with weak values to avoid memory overflow.
  */
-
-private val ISLANDS_STOFFER_LIPTAK_CACHE: Cache<Triple<SpanFitResults, Chromosome, Int>, StofferLiptakTest> =
-    CacheBuilder.newBuilder().weakValues().build()
-
-private val ISLANDS_PVALUES_CACHE: Cache<Triple<SpanFitResults, Chromosome, Int>, F64Array> =
-    CacheBuilder.newBuilder().weakValues().build()
-
-private val ISLANDS_QVALUES_CACHE: Cache<Triple<SpanFitResults, Chromosome, Int>, F64Array> =
+private val ISLANDS_STOFFER_LIPTAK_CACHE: Cache<Pair<SpanFitResults, Chromosome>, StofferLiptakTest> =
     CacheBuilder.newBuilder().weakValues().build()
