@@ -19,9 +19,9 @@ import kotlin.math.min
 /**
  * The peaks are called in three steps.
  *
- * 1) Firstly, an FDR threshold is applied to the posterior state probabilities.
- * 2) Consecutive observations corresponding to H_0 rejections are then merged into ranges.
- * 3) Finally, each range is assigned a qvalue score - median qvalue.
+ * 1) Firstly, an FDR threshold is applied to the posterior state probabilities
+ * 2) Consecutive enriched bins are merged into peaks.
+ * 3) Finally, each peak is assigned a qvalue score - median qvalue
  *
  * @param fdr is used to limit False Discovery Rate at given level.
  * @param gap enriched bins yielded after FDR control are merged if distance is less or equal than gap.
@@ -43,18 +43,42 @@ fun SpanFitResults.getPeaks(
     return genomeQuery.get().flatMap { map[it] }
 }
 
-internal fun getChromosomePeaks(
+fun SpanFitResults.getChromosomePeaks(
+    chromosome: Chromosome,
+    fdr: Double,
+    gap: Int,
+    coverageDataFrame: DataFrame? = null
+): List<Peak> =
+    // Check that we have information for requested chromosome
+    if (chromosome.name in fitInfo.chromosomesSizes) {
+        getChromosomePeaks(
+            logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL),
+            fitInfo.offsets(chromosome),
+            chromosome, fdr, gap,
+            coverageDataFrame
+        )
+    } else {
+        SpanFitResults.LOG.debug(
+            "NO peaks information for chromosome: ${chromosome.name} in fitInfo ${fitInfo.build}"
+        )
+        emptyList()
+    }
+
+internal fun SpanFitResults.getChromosomePeaks(
     logNullMemberships: F64Array,
-    qvalues: F64Array,
     offsets: IntArray,
     chromosome: Chromosome,
     fdr: Double,
     gap: Int,
     coverageDataFrame: DataFrame? = null
 ): List<Peak> {
-    val enrichedBins = BitterSet(logNullMemberships.size)
-    0.until(enrichedBins.size()).filter { qvalues[it] < fdr }.forEach(enrichedBins::set)
-
+    val qvalues = PEAKS_QVALUES_CACHE.get(this to chromosome) {
+        Fdr.qvalidate(logNullMemberships)
+    }
+    val enrichedBins = BitterSet(logNullMemberships.size).apply {
+        0.until(size()).filter { qvalues[it] < fdr }.forEach(::set)
+    }
+    Peak.LOG.debug("$chromosome: candidate bins ${enrichedBins.cardinality()}/${logNullMemberships.size}")
     val peaks = enrichedBins.aggregate(gap).map { (i, j) ->
         val passedFDR = (i until j).filter { qvalues[it] < fdr }
         val pvalueLogMedian = DoubleArray(passedFDR.size) { logNullMemberships[passedFDR[it]] }.median()
@@ -96,36 +120,10 @@ internal fun getChromosomePeaks(
             score = score
         )
     }
+    Peak.LOG.debug("$chromosome: peaks ${peaks.size}")
     return peaks
 }
 
-
-internal fun SpanFitResults.getChromosomePeaks(
-    chromosome: Chromosome,
-    fdr: Double,
-    gap: Int,
-    coverageDataFrame: DataFrame? = null
-): List<Peak> =
-    // Check that we have information for requested chromosome
-    if (chromosome.name in fitInfo.chromosomesSizes) {
-        val f64LogNullMemberships =
-            logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL)
-        val f64QValues = PEAKS_QVALUES_CACHE.get(this to chromosome) {
-            Fdr.qvalidate(f64LogNullMemberships)
-        }
-        getChromosomePeaks(
-            f64LogNullMemberships,
-            f64QValues,
-            fitInfo.offsets(chromosome),
-            chromosome, fdr, gap,
-            coverageDataFrame
-        )
-    } else {
-        SpanFitResults.LOG.debug(
-            "NO peaks information for chromosome: ${chromosome.name} in fitInfo ${fitInfo.build}"
-        )
-        emptyList()
-    }
 
 /**
  * During SPAN models optimizations we iterate over different FDR and GAPs parameters,
