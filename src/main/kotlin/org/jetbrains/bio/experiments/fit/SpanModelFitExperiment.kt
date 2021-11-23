@@ -149,30 +149,37 @@ abstract class SpanModelFitExperiment<
         modelPath.checkOrRecalculate("Model fit") { (p) ->
             withTempDirectory(modelPath.stem) { dir ->
                 val modelPath = dir / MODEL_JSON
+                LOG.info("Computing data model")
                 val model = calculateModel()
                 model.save(modelPath)
+                LOG.debug("Model saved to $modelPath")
+                ClassificationModel.load<Model>(modelPath)
+                LOG.debug("Sanity check: model loaded")
 
                 val informationPath = dir / INFORMATION_JSON
                 fitInformation.save(informationPath)
+                LOG.debug("Fit information saved to $informationPath")
+                SpanFitInformation.load<SpanFitInformation>(informationPath)
+                LOG.debug("Sanity check: information loaded")
 
                 val statesDataFrame = calculateStatesDataFrame(model)
                 val chromosomeToDataFrameMap = genomeQuery.get().associate {
+                    LOG.debug("Computing null hypothesis log memberships for $it")
                     val logMemberships = getLogMemberships(sliceStatesDataFrame(statesDataFrame, it))
                     val logNullMemberships = nullHypothesis.apply(logMemberships)
+                    LOG.debug("Done null hypothesis log memberships for $it")
                     // Convert [Double] to [Float] to save space, see #1163
                     it.name to DataFrame().with(NULL, logNullMemberships.toFloatArray())
                 }
                 val logNullMembershipsDF = fitInformation.merge(chromosomeToDataFrameMap)
                 val nullHypothesisPath = dir / NULL_NPZ
                 logNullMembershipsDF.save(nullHypothesisPath)
+                LOG.debug("LogNullMemberships saved to $nullHypothesisPath")
 
-                // Sanity check: model load
-                ClassificationModel.load<Model>(modelPath)
-                // Sanity check: information load
-                SpanFitInformation.load<SpanFitInformation>(informationPath)
                 val logNullMembershipsMap = fitInformation.split(logNullMembershipsDF, genomeQuery)
                 computedResults = SpanFitResults(fitInformation, model, logNullMembershipsMap)
                 Tar.compress(p, modelPath.toFile(), informationPath.toFile(), nullHypothesisPath.toFile())
+                LOG.info("Saved model files to $p")
             }
         }
         return if (computedResults != null) {
