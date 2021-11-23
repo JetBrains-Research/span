@@ -13,8 +13,8 @@ import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.data.Cell
 import org.jetbrains.bio.genome.data.ChipSeqTarget
 import org.jetbrains.bio.genome.data.DataConfig
+import org.jetbrains.bio.span.Peak
 import org.jetbrains.bio.span.getPeaks
-import org.jetbrains.bio.span.savePeaks
 import org.jetbrains.bio.util.*
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
@@ -82,7 +82,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
                 parameters.forEach { parameter ->
                     val peaksPath = folder / transform(parameter) / fileName(cellId, replicate, target, parameter)
                     peaksPath.checkOrRecalculate(ignoreEmptyFile = true) { (path) ->
-                        savePeaks(
+                        Peak.savePeaks(
                             peakCallingExperiment.results.getPeaks(
                                 configuration.genomeQuery,
                                 parameter.first, parameter.second
@@ -106,7 +106,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
             cleanup(folder, cellId, replicate)
             val optimalParameters = parameters[index]
             val optimalPeaksPath = folder / fileName(cellId, replicate, target, optimalParameters)
-            savePeaks(
+            Peak.savePeaks(
                 peakCallingExperiment.results.getPeaks(
                     configuration.genomeQuery,
                     optimalParameters.first, optimalParameters.second
@@ -161,8 +161,10 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
                 Callable {
                     cancellableState.checkCanceled()
                     val peaksOnLabeledGenomeQuery = results.getPeaks(labeledGenomeQuery, fdr, gap)
-                    labelErrorsGrid[index] = computeErrors(labels,
-                        LocationsMergingList.create(labeledGenomeQuery,
+                    labelErrorsGrid[index] = computeErrors(
+                        labels,
+                        LocationsMergingList.create(
+                            labeledGenomeQuery,
                             peaksOnLabeledGenomeQuery.map { it.location }.iterator()
                         )
                     )
@@ -171,7 +173,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
             }
 
         )
-        val minTotalError = labelErrorsGrid.map { it!!.error() }.minOrNull()!!
+        val minTotalError = labelErrorsGrid.minOf { it!!.error() }
         // Parameters should return desired order for each tool
         return labelErrorsGrid.map { it!! } to
                 parameters.indices.first { labelErrorsGrid[it]!!.error() == minTotalError }

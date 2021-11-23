@@ -2,7 +2,6 @@ package org.jetbrains.bio.span
 
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
-import org.jetbrains.bio.dataframe.BitRange
 import org.jetbrains.bio.dataframe.BitterSet
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.fit.*
@@ -13,22 +12,52 @@ import org.jetbrains.bio.statistics.hypothesis.BenjaminiHochberg
 import org.jetbrains.bio.statistics.hypothesis.StofferLiptakTest
 import org.jetbrains.bio.util.CancellableState
 import org.jetbrains.bio.viktor.F64Array
-import kotlin.math.*
+import kotlin.math.floor
+import kotlin.math.ln
+import kotlin.math.log10
 
 /**
  * The islands are called in five steps.
  *
  * 1) Estimate posterior probabilities
- * 2) Pick bins with probability of H_0 <= nullProbabilityThreshold
- * 3) Using gap merge bins into islands
+ * 2) Pick candidate bins with probability of H_0 <= fdr alpha
+ * 3) Using gap merge bins into candidate islands
  * 4) Assign p-value to each island using Stoffer-Liptak test
  * 5) Compute qvalues on islands p-values
  *
- * @param offsets All the data is binned, so offsets stores positions in base pair.
  * @param fdr is used to limit False Discovery Rate at given level.
  * @param gap enriched bins yielded after FDR control are merged if distance is less or equal than gap.
- * @param coverageDataFrame is used to compute either coverage or log fold change.
  */
+fun SpanFitResults.getIslands(
+    genomeQuery: GenomeQuery,
+    fdr: Double,
+    gap: Int,
+    cancellableState: CancellableState? = null
+): List<Peak> {
+    val coverage = fitInfo.scoresDataFrame()
+    if (coverage.isEmpty()) {
+        SpanFitResults.LOG.debug("No coverage caches present, peak scores won't be computed.")
+    }
+    val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
+        cancellableState?.checkCanceled()
+        // Check that we have information for requested chromosome
+        if (chromosome.name in fitInfo.chromosomesSizes) {
+            val f64LogNullMemberships = logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL)
+            val offsets = fitInfo.offsets(chromosome)
+            getChromosomeIslands(
+                f64LogNullMemberships, offsets, chromosome, fdr, gap, coverageDataFrame = coverage[chromosome]
+            )
+        } else {
+            SpanFitResults.LOG.debug(
+                "NO peaks information for chromosome: ${chromosome.name} in fitInfo ${fitInfo.build}"
+            )
+            emptyList()
+        }
+    }
+    return genomeQuery.get().flatMap { map[it] }
+}
+
+
 internal fun SpanFitResults.getChromosomeIslands(
     logNullMemberships: F64Array,
     offsets: IntArray,
@@ -111,34 +140,6 @@ internal fun SpanFitResults.getChromosomeIslands(
     return islands
 }
 
-fun SpanFitResults.getIslands(
-    genomeQuery: GenomeQuery,
-    fdr: Double,
-    gap: Int,
-    cancellableState: CancellableState? = null
-): List<Peak> {
-    val coverage = fitInfo.scoresDataFrame()
-    if (coverage.isEmpty()) {
-        SpanFitResults.LOG.debug("No coverage caches present, peak scores won't be computed.")
-    }
-    val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
-        cancellableState?.checkCanceled()
-        // Check that we have information for requested chromosome
-        if (chromosome.name in fitInfo.chromosomesSizes) {
-            val f64LogNullMemberships =
-                logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL)
-            val offsets = fitInfo.offsets(chromosome)
-            getChromosomeIslands(
-                f64LogNullMemberships, offsets, chromosome,
-                fdr, gap, coverage[chromosome]
-            )
-        } else {
-            SpanFitResults.LOG.debug("NO peaks information for chromosome: ${chromosome.name} in fitInfo ${fitInfo.build}")
-            emptyList()
-        }
-    }
-    return genomeQuery.get().flatMap { map[it] }
-}
 
 /**
  * During SPAN models optimizations we iterate over different FDR and GAPs parameters,

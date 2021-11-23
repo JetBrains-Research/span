@@ -164,7 +164,7 @@ object SpanCLAAnalyze {
                         } else {
                             spanResults.getPeaks(genomeQuery, fdr, gap)
                         }
-                        savePeaks(
+                        Peak.savePeaks(
                             peaks, peaksPath,
                             "peak${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
                         )
@@ -203,7 +203,7 @@ object SpanCLAAnalyze {
                                     / "${peaksPath.fileName.stem}_parameters.csv"
                         )
                         val peaks = spanResults.getPeaks(genomeQuery, optimalFDR, optimalGap)
-                        savePeaks(
+                        Peak.savePeaks(
                             peaks, peaksPath,
                             "peak${if (fragment is FixedFragment) "_$fragment" else ""}_" +
                                     "${bin}_${optimalFDR}_$optimalGap"

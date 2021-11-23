@@ -11,8 +11,8 @@ import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.data.ChipSeqTarget
 import org.jetbrains.bio.genome.data.DataConfig
 import org.jetbrains.bio.genome.format.BedFormat
+import org.jetbrains.bio.span.Peak
 import org.jetbrains.bio.span.getPeaks
-import org.jetbrains.bio.span.savePeaks
 import org.jetbrains.bio.util.*
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
@@ -116,7 +116,7 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
             parameters.forEach { parameter ->
                 val peaksPath = folder / transform(parameter) / fileName(target, parameter)
                 peaksPath.checkOrRecalculate(ignoreEmptyFile = true) { (p) ->
-                    savePeaks(
+                    Peak.savePeaks(
                         replicatedPeakCallingExperiment.results.getPeaks(
                             configuration.genomeQuery,
                             parameter.first, parameter.second
@@ -135,7 +135,7 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
         val (labelErrorsGrid, index) = Span.tune(replicatedPeakCallingExperiment.results, labels, target, parameters)
 
         LOG.info("Saving $target optimal $id peaks to $folder")
-        savePeaks(
+        Peak.savePeaks(
             replicatedPeakCallingExperiment.results.getPeaks(
                 configuration.genomeQuery,
                 parameters[index].first, parameters[index].second

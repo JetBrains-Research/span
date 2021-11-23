@@ -117,7 +117,7 @@ object SpanCLACompare {
                 val genomeQuery = differentialPeakCallingResults.fitInfo.genomeQuery()
                 if (peaksPath != null) {
                     val peaks = differentialPeakCallingResults.getPeaks(genomeQuery, fdr, gap)
-                    savePeaks(
+                    Peak.savePeaks(
                         peaks, peaksPath,
                         "diff${if (fragment is FixedFragment) "_$fragment" else ""}_${binSize}_${fdr}_${gap}"
                     )
