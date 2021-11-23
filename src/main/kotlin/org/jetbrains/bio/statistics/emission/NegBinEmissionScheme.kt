@@ -3,11 +3,13 @@ package org.jetbrains.bio.statistics.emission
 import org.apache.commons.math3.special.Gamma
 import org.jetbrains.bio.statistics.MoreMath
 import org.jetbrains.bio.statistics.distribution.NegativeBinomialDistribution
+import org.jetbrains.bio.statistics.distribution.NegativeBinomialDistribution.Companion.estimateVariance
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.statistics.gson.NotDirectlyDeserializable
 import org.jetbrains.bio.viktor.F64Array
 import org.slf4j.LoggerFactory
 import java.util.function.IntSupplier
+import kotlin.math.ln
 
 class NegBinEmissionScheme(mean: Double, failures: Double) :
     IntegerEmissionScheme, NotDirectlyDeserializable {
@@ -53,18 +55,18 @@ class NegBinEmissionScheme(mean: Double, failures: Double) :
     override fun update(sample: IntArray, weights: F64Array) {
         mean = weights.dot(sample) / weights.sum()
         failures = NegativeBinomialDistribution.fitNumberOfFailures(sample, weights, mean, failures)
-        LOG.debug("Mean $mean\tFailures $failures")
+        LOG.debug("Mean $mean\tFailures $failures\tVariance ${estimateVariance(mean, failures)}")
         updateTransients()
     }
 
     override fun updateTransients() {
-        logMean = Math.log(mean)
+        logMean = ln(mean)
         val p = successProbability
-        logP = Math.log(p)
+        logP = ln(p)
         fLog1MinusPMinusLogGammaF = if (failures.isInfinite()) {
             0.0
         } else {
-            failures * Math.log(1.0 - p) - Gamma.logGamma(failures)
+            failures * ln(1.0 - p) - Gamma.logGamma(failures)
         }
     }
 

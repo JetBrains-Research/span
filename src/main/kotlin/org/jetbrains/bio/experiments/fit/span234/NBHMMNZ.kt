@@ -49,7 +49,7 @@ open class NBHMMNZ(nbMeans: DoubleArray, nbFailures: Double) : MLFreeHMM(nbMeans
             val mean = emissions.average()
             val sd = emissions.standardDeviation()
             val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, sd * sd)
-            val snr = MLFreeNBHMM.signalToNoise(attempt)
+            val snr = MLFreeNBHMM.multiStartSignalToNoise(attempt)
             val means = DoubleArray(n) { mean / snr.pow((n / 2 - it).toDouble()) }
             LOG.debug("Guess $attempt emissions $means, failures $fs")
             return means to fs

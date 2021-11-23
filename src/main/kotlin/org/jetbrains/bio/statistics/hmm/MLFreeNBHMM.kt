@@ -11,6 +11,7 @@ import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.statistics.standardDeviation
 import org.jetbrains.bio.viktor.F64Array
 import org.slf4j.LoggerFactory
+import kotlin.math.*
 
 /**
  * A zero-inflated HMM with univariate Negative Binomial emissions.
@@ -86,24 +87,22 @@ class MLFreeNBHMM(meanLow: Double, meanHigh: Double, failures: Double) : MLFreeH
                 val mean = emissions.average()
                 val sd = emissions.standardDeviation()
                 val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, sd * sd)
-                val snr = signalToNoise(attempt)
-                val meanLow = mean / Math.sqrt(snr)
-                val meanHigh = mean * Math.sqrt(snr)
-                LOG.debug("Guess $attempt emissions mean $mean\tsd $sd")
-                LOG.debug("Guess $attempt init meanLow $meanLow\tmeanHigh $meanHigh\tfailures $fs")
+                val snr = multiStartSignalToNoise(attempt)
+                val meanLow = mean / sqrt(snr)
+                val meanHigh = mean * sqrt(snr)
+                LOG.debug("Guess $attempt\temissions mean $mean\tsd $sd\tsnr $snr")
+                LOG.debug("Guess $attempt\tinit meanLow $meanLow\tmeanHigh $meanHigh\tfailures $fs")
                 return MLFreeNBHMM(meanLow, meanHigh, fs)
             }
         }
 
         /**
-         *
-         * This value is used to propose initial states for mean values of LOW and HIGH states in the model.
+         * Propose initial signal-to-noise ration in multistart runs.
          * Good experiment signal-to-noise ratio is generally 10-30.
-         *
-         * Use multiplier sequence depending on attempt number 1, 2, 1/2, 4, 1/4, etc.
-         * Used for multistart
+         * [snr] and [multiplier] as used to yield the sequence of values
+         * snr, snr / multiplier, snr * multiplier, snr / multiplier^2, snr * multiplier^2, ...
          */
-        fun signalToNoise(attempt: Int) =
-            Math.max(1.1, 20 * Math.pow(2.0, ((attempt + 1) / 2) * (if (attempt % 2 == 1) 1.0 else -1.0)))
+        fun multiStartSignalToNoise(attempt: Int, snr: Double = 20.0, multiplier: Double = 2.0, min: Double = 1.1) =
+            max(min, snr * multiplier.pow(floor((attempt + 1) / 2.0) * (-1.0).pow(attempt + 1)))
     }
 }

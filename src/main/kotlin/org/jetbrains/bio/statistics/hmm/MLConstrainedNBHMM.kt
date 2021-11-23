@@ -107,7 +107,7 @@ class MLConstrainedNBHMM(
                         }
                         val mean = values.average()
                         val sd = values.standardDeviation()
-                        val snr = MLFreeNBHMM.signalToNoise(attempt)
+                        val snr = MLFreeNBHMM.multiStartSignalToNoise(attempt)
                         val meanLow = mean / Math.sqrt(snr)
                         val meanHigh = mean * Math.sqrt(snr)
                         val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, sd * sd)
@@ -169,7 +169,7 @@ class MLConstrainedNBHMM(
                         }
                         val mean = values.average()
                         val sd = values.standardDeviation()
-                        val snr = MLFreeNBHMM.signalToNoise(attempt)
+                        val snr = MLFreeNBHMM.multiStartSignalToNoise(attempt)
                         val meanLow = mean / Math.sqrt(snr)
                         val meanHigh = mean * Math.sqrt(snr)
                         val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, sd * sd)
@@ -189,7 +189,7 @@ class MLConstrainedNBHMM(
                         }
                         val mean = values.average()
                         val sd = values.standardDeviation()
-                        val snr = MLFreeNBHMM.signalToNoise(attempt)
+                        val snr = MLFreeNBHMM.multiStartSignalToNoise(attempt)
                         val meanLow = mean / Math.sqrt(snr)
                         val meanHigh = mean * Math.sqrt(snr)
                         val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, sd * sd)
