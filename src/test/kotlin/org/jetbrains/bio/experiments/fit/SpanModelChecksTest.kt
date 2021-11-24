@@ -228,7 +228,7 @@ class SpanModelChecksTest {
 
     @Test
     fun testStateFlipF() {
-        val model = MLFreeNBHMM(8.0, 3.0, 2.0)
+        val model = MLFreeNBHMM(8.0, 3.0, 2.0, 2.0)
         val logTransitionProbabilities = initTransitionProbsF(model)
         model.flipStatesIfNecessary()
         val means = model.means
@@ -255,7 +255,7 @@ class SpanModelChecksTest {
 
     @Test
     fun testNoStatesFlipF() {
-        val model = MLFreeNBHMM(8.0, 3.0, 2.0)
+        val model = MLFreeNBHMM(8.0, 3.0, 2.0, 2.0)
         val logTransitionProbabilities = initTransitionProbsF(model)
         model.flipStatesIfNecessary()
         val means = model.means

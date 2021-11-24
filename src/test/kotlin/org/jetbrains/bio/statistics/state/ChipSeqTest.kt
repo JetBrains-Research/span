@@ -58,7 +58,7 @@ class ChipSeqTest {
     @Test
     fun testModel() {
         val zhlConstraints = ZLH.constraintMap(1)
-        val free = MLFreeNBHMM(0.5, 5.0, 1.0)
+        val free = MLFreeNBHMM(0.5, 5.0, 1.0, 1.0)
         assertIs(free[zhlConstraints[ZLH.Z.ordinal][0]], ConstantIntegerEmissionScheme::class.java)
         assertIs(free[zhlConstraints[ZLH.L.ordinal][0]], NegBinEmissionScheme::class.java)
         assertIs(free[zhlConstraints[ZLH.H.ordinal][0]], NegBinEmissionScheme::class.java)

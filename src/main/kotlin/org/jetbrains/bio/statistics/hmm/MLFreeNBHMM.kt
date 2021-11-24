@@ -21,11 +21,11 @@ import kotlin.math.*
  * @author Oleg Shpynov
  * @since 25/05/15
  */
-class MLFreeNBHMM(meanLow: Double, meanHigh: Double, failures: Double) : MLFreeHMM(3, 1) {
+class MLFreeNBHMM(meanLow: Double, meanHigh: Double, failuresLow: Double, failuresHigh: Double) : MLFreeHMM(3, 1) {
     private val zeroEmission: ConstantIntegerEmissionScheme = ConstantIntegerEmissionScheme(0)
     private val negBinEmissionSchemes: Array<NegBinEmissionScheme> = arrayOf(
-        NegBinEmissionScheme(meanLow, failures),
-        NegBinEmissionScheme(meanHigh, failures)
+        NegBinEmissionScheme(meanLow, failuresLow),
+        NegBinEmissionScheme(meanHigh, failuresHigh)
     )
 
     override fun getEmissionScheme(i: Int, d: Int): IntegerEmissionScheme {
@@ -92,11 +92,14 @@ class MLFreeNBHMM(meanLow: Double, meanHigh: Double, failures: Double) : MLFreeH
                 // Otherwise, failures will be set to +Inf and won't be updated during EM steps.
                 val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, max(1.1 * mean, sd * sd))
                 val snr = multiStartSignalToNoise(attempt)
-                val meanLow = mean / sqrt(snr)
-                val meanHigh = mean * sqrt(snr)
+                val lowMean = mean / sqrt(snr)
+                val highMean = mean * sqrt(snr)
+                val lowFailures = fs * sqrt(snr)
+                val highFailures = fs / sqrt(snr)
                 LOG.debug("Guess $attempt\temissions mean $mean\tsd $sd\tsnr $snr")
-                LOG.debug("Guess $attempt\tinit meanLow $meanLow\tmeanHigh $meanHigh\tfailures $fs")
-                return MLFreeNBHMM(meanLow, meanHigh, fs)
+                LOG.debug("Guess $attempt\tinit LOW mean/failures $lowMean/$lowFailures, " +
+                        "HIGH mean/failures $highMean/$highFailures")
+                return MLFreeNBHMM(lowMean, highMean, lowFailures, highFailures)
             }
         }
 

@@ -84,7 +84,7 @@ enum class ZLMH {
     H;  // HIGH
 }
 
-class NBHMM3Z(nbMeans: DoubleArray, nbFailures: Double) : NBHMMZ(nbMeans, nbFailures) {
+class NBHMM3Z(nbMeans: DoubleArray, nbFailures: DoubleArray) : NBHMMZ(nbMeans, nbFailures) {
 
     companion object {
         @Suppress("MayBeConstant", "unused")
@@ -103,8 +103,8 @@ class NBHMM3Z(nbMeans: DoubleArray, nbFailures: Double) : NBHMMZ(nbMeans, nbFail
                 preprocessed: List<Preprocessed<DataFrame>>, title: String,
                 threshold: Double, maxIter: Int, attempt: Int
             ): NBHMM3Z {
-                val (means, fs) = guess(preprocessed, 3, attempt)
-                return NBHMM3Z(means, fs)
+                val (means, failures) = guess(preprocessed, 3, attempt)
+                return NBHMM3Z(means, failures)
             }
         }
     }

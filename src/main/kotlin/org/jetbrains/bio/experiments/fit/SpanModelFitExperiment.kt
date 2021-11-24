@@ -163,15 +163,16 @@ abstract class SpanModelFitExperiment<
                 LOG.debug("Sanity check: information loaded")
 
                 val statesDataFrame = calculateStatesDataFrame(model)
+                LOG.debug("Computing null hypothesis log memberships")
                 val chromosomeToDataFrameMap = genomeQuery.get().associate {
-                    LOG.debug("Computing null hypothesis log memberships for $it")
                     val logMemberships = getLogMemberships(sliceStatesDataFrame(statesDataFrame, it))
                     val logNullMemberships = nullHypothesis.apply(logMemberships)
-                    LOG.debug("Done null hypothesis log memberships for $it")
                     // Convert [Double] to [Float] to save space, see #1163
                     it.name to DataFrame().with(NULL, logNullMemberships.toFloatArray())
                 }
                 val logNullMembershipsDF = fitInformation.merge(chromosomeToDataFrameMap)
+                LOG.debug("Done null hypothesis log memberships")
+
                 val nullHypothesisPath = dir / NULL_NPZ
                 logNullMembershipsDF.save(nullHypothesisPath)
                 LOG.debug("LogNullMemberships saved to $nullHypothesisPath")
