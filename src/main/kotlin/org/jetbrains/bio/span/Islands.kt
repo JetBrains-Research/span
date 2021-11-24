@@ -20,18 +20,22 @@ import kotlin.math.min
  * The islands are called in five steps.
  *
  * 1) Estimate posterior probabilities
- * 2) Pick candidate bins with probability of H_0 <= fdr alpha
+ * 2) Pick candidate bins with probability of H_0 <= alpha * multiplier
  * 3) Using gap merge bins into candidate islands
  * 4) Assign p-value to each island using Stoffer-Liptak test
- * 5) Compute qvalues on islands p-values
+ * 5) Compute qvalues on islands p-values, filter by alpha
  *
  * @param fdr is used to limit False Discovery Rate at given level.
  * @param gap enriched bins yielded after FDR control are merged if distance is less or equal than gap.
+ * @param multiplier is used to
+ * 1) Return broad peaks in case of broad modifications even for strict FDR settings
+ * 2) Mitigate the problem when number of peaks for strict FDR is much bigger than for relaxed FDR
  */
 fun SpanFitResults.getIslands(
     genomeQuery: GenomeQuery,
     fdr: Double,
     gap: Int,
+    multiplier: Double = 1e2,
     cancellableState: CancellableState? = null
 ): List<Peak> {
     val coverage = fitInfo.scoresDataFrame()
@@ -48,6 +52,7 @@ fun SpanFitResults.getIslands(
                 chromosome,
                 fdr,
                 gap,
+                multiplier,
                 coverageDataFrame = coverage[chromosome]
             )
         } else {
@@ -67,35 +72,38 @@ internal fun SpanFitResults.getChromosomeIslands(
     chromosome: Chromosome,
     fdr: Double,
     gap: Int,
+    multiplier: Double,
     coverageDataFrame: DataFrame? = null
 ): List<Peak> {
     // Compute candidate bins and islands
     val nullMemberships = logNullMemberships.exp()
     val candidateBins = BitterSet(logNullMemberships.size).apply {
-        0.until(size()).filter { nullMemberships[it] <= fdr }.forEach(::set)
+        0.until(size()).filter { nullMemberships[it] <= min(0.1, fdr * multiplier) }.forEach(::set)
     }
-    val candidateIslands = candidateBins.aggregate(gap)
     Peak.LOG.debug(
-        "$chromosome: candidate bins ${candidateBins.cardinality()}/${logNullMemberships.size}, " +
-                "islands ${candidateIslands.size}"
+        "$chromosome: candidate bins ${candidateBins.cardinality()}/${logNullMemberships.size}"
     )
-    if (candidateIslands.isEmpty()) {
+    val candidateIslands = candidateBins.aggregate(gap)
+    val filteredIslands = candidateIslands.filter {
+        (i, j) -> (i until j).any { nullMemberships[it] <= fdr }
+    }
+    if (filteredIslands.isEmpty()) {
         return emptyList()
     }
     val stofferLiptakTest = ISLANDS_STOFFER_LIPTAK_CACHE.get(this to chromosome) {
         StofferLiptakTest(nullMemberships.data)
     }
     // Apply Stoffer-Liptak test to correct dependence between consequent p-values
-    val islandsPValues = F64Array(candidateIslands.size) { islandIndex ->
-        val (i, j) = candidateIslands[islandIndex]
-        val pValues = IntRange(i, j).map { nullMemberships[it] }.filter { it <= fdr }.toDoubleArray()
+    val islandsPValues = F64Array(filteredIslands.size) { islandIndex ->
+        val (i, j) = filteredIslands[islandIndex]
+        val pValues = (i until j).map { nullMemberships[it] }.filter { it <= fdr }.toDoubleArray()
         stofferLiptakTest.combine(pValues)
     }
     val islandQValues = BenjaminiHochberg.adjust(islandsPValues)
-    val islands = candidateIslands.indices
+    val resultIslands = filteredIslands.indices
         .filter { islandQValues[it] < fdr }
         .map { islandIndex ->
-            val (i, j) = candidateIslands[islandIndex]
+            val (i, j) = filteredIslands[islandIndex]
             val islandPValue = islandsPValues[islandIndex]
             val islandQValue = islandQValues[islandIndex]
             val islandStart = offsets[i]
@@ -137,8 +145,9 @@ internal fun SpanFitResults.getChromosomeIslands(
                 score = score
             )
         }
-    Peak.LOG.debug("$chromosome\tIslands after StofferLiptak & BH ${islands.size}/${candidateIslands.size}")
-    return islands
+    Peak.LOG.debug("$chromosome: islands result/filtered/candidate " +
+            "${resultIslands.size}/${filteredIslands.size}/${candidateIslands.size}")
+    return resultIslands
 }
 
 /**
