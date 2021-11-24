@@ -183,7 +183,8 @@ PEAKS: $peaksPath
                 )
                 assertIn("Saved result to $peaksPath", out)
                 // Check model fit has a progress
-                assertIn("0.00% (0/100), Elapsed time", out)
+                assertIn("0.00% (0/20), Elapsed time", out)
+                assertIn("100.00% (", out)
             }
         }
     }
@@ -531,10 +532,10 @@ TREATMENT: $path
 CONTROL: none
 CHROM.SIZES: $chromsizes
 FRAGMENT: auto
-MAX ITERATIONS: 100
+MAX ITERATIONS: 20
 MULTISTARTS: 5
-MULTISTART ITERATIONS: 5
-CONVERGENCE THRESHOLD: 0.1
+MULTISTART ITERATIONS: 2
+CONVERGENCE THRESHOLD: 1
 """, out
                 )
                 assertFalse(
