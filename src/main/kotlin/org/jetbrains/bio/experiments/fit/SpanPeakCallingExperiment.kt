@@ -8,8 +8,9 @@ import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.genome.query.CachingQuery
 import org.jetbrains.bio.genome.query.Query
-import org.jetbrains.bio.span.CoverageScoresQuery
-import org.jetbrains.bio.span.scoresDataFrame
+import org.jetbrains.bio.span.coverage.BinnedCoverageScoresQuery
+import org.jetbrains.bio.span.coverage.CoverageScoresQuery
+import org.jetbrains.bio.span.coverage.binsScoresDataFrame
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
@@ -25,7 +26,7 @@ import java.nio.file.Path
 /**
  * Corresponds to Span `analyze --type nbhmm` invocation.
  *
- * For each treatment-control pair, we compute binned DiffBind-like scores (see [CoverageScoresQuery] for details).
+ * For each treatment-control pair, we compute binned DiffBind-like scores (see [BinnedCoverageScoresQuery] for details).
  * These scores are used as the input for a three-state multidimensional negative binomial HMM.
  * For each dimension `d`, there are two negative binomial distributions, low_d and high_d.
  * - ZERO state corresponds to zero emissions for all dimensions
@@ -157,11 +158,19 @@ data class Span1AnalyzeFitInformation(
     override val dataQuery: Query<Chromosome, DataFrame>
         get() = object : CachingQuery<Chromosome, DataFrame>() {
             val scores = data.map {
-                CoverageScoresQuery(genomeQuery(), it.treatment, it.control, fragment, binSize, unique)
+                BinnedCoverageScoresQuery(
+                    CoverageScoresQuery(
+                        genomeQuery(),
+                        it.treatment,
+                        it.control,
+                        fragment,
+                        unique
+                    ), binSize
+                )
             }
 
             override fun getUncached(input: Chromosome): DataFrame {
-                return scores.scoresDataFrame(input, labels.toTypedArray())
+                return scores.binsScoresDataFrame(input, labels.toTypedArray())
             }
 
             override val id: String
@@ -172,13 +181,16 @@ data class Span1AnalyzeFitInformation(
     override fun scoresDataFrame(): Map<Chromosome, DataFrame> {
         val gq = genomeQuery()
         val queries = data.map {
-            CoverageScoresQuery(gq, it.treatment, it.control, fragment, binSize, unique)
+            BinnedCoverageScoresQuery(
+                CoverageScoresQuery(genomeQuery(), it.treatment, it.control, fragment, unique),
+                binSize
+            )
         }
         if (queries.any { !it.ready }) {
             return emptyMap()
         }
         return gq.get().associateBy({ it }) {
-            queries.scoresDataFrame(it, labels.toTypedArray())
+            queries.binsScoresDataFrame(it, labels.toTypedArray())
         }
     }
 
