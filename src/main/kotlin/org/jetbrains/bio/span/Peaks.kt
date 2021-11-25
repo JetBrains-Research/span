@@ -88,30 +88,7 @@ internal fun SpanFitResults.getChromosomePeaks(
         // Score should be proportional to length of peak and median original q-value
         val score = min(1000.0, (-log10(qvalueMedian) * (1 + ln((end - start).toDouble())))).toInt()
         // Value is either coverage of fold change
-        var value = 0.0
-        if (coverageDataFrame != null) {
-            if (coverageDataFrame.labels.size == 1 ||
-                coverageDataFrame.labels.all { it.startsWith(SpanPeakCallingExperiment.TRACK_PREFIX) }
-            ) {
-                value = coverageDataFrame.partialMean(i, j)
-            } else if (coverageDataFrame.labels.all {
-                    it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX) ||
-                            it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
-                }) {
-                val track1 = coverageDataFrame.partialMean(i, j, coverageDataFrame.labels
-                    .filter {
-                        it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX)
-                    })
-                val track2 = coverageDataFrame.partialMean(i, j, coverageDataFrame.labels
-                    .filter {
-                        it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
-                    })
-                // Value if LogFC
-                value = if (track2 != 0.0) ln(track1) - ln(track2) else Double.MAX_VALUE
-            } else {
-                Peak.LOG.debug("Failed to compute value for ${coverageDataFrame.labels}")
-            }
-        }
+        val value = peakValue(coverageDataFrame, i, j)
         Peak(
             chromosome, start, end,
             mlogpvalue = -pvalueLogMedian,
@@ -122,6 +99,38 @@ internal fun SpanFitResults.getChromosomePeaks(
     }
     Peak.LOG.debug("$chromosome: peaks ${peaks.size}")
     return peaks
+}
+
+/** Compute peak value - either coverage or fold change. */
+internal fun peakValue(
+    coverageDataFrame: DataFrame?,
+    i: Int,
+    j: Int
+): Double {
+    if (coverageDataFrame != null) {
+        if (coverageDataFrame.labels.size == 1 ||
+            coverageDataFrame.labels.all { it.startsWith(SpanPeakCallingExperiment.TRACK_PREFIX) }
+        ) {
+            return coverageDataFrame.partialMean(i, j)
+        } else if (coverageDataFrame.labels.all {
+                it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX) ||
+                        it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
+            }) {
+            val track1 = coverageDataFrame.partialMean(
+                i, j, coverageDataFrame.labels
+                    .filter {
+                        it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX)
+                    })
+            val track2 = coverageDataFrame.partialMean(
+                i, j, coverageDataFrame.labels
+                    .filter {
+                        it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
+                    })
+            // Value if LogFC
+            return if (track2 != 0.0) ln(track1) - ln(track2) else Double.MAX_VALUE
+        }
+    }
+    return 0.0
 }
 
 

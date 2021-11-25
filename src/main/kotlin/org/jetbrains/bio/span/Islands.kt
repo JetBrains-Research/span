@@ -12,7 +12,6 @@ import org.jetbrains.bio.statistics.hypothesis.BenjaminiHochberg
 import org.jetbrains.bio.statistics.hypothesis.StofferLiptakTest
 import org.jetbrains.bio.util.CancellableState
 import org.jetbrains.bio.viktor.F64Array
-import kotlin.math.ln
 import kotlin.math.log10
 import kotlin.math.min
 
@@ -99,50 +98,22 @@ internal fun SpanFitResults.getChromosomeIslands(
         val pValues = (i until j).map { nullMemberships[it] }.filter { it <= fdr }.toDoubleArray()
         stofferLiptakTest.combine(pValues)
     }
+
     val islandQValues = BenjaminiHochberg.adjust(islandsPValues)
     val resultIslands = filteredIslands.indices
         .filter { islandQValues[it] < fdr }
         .map { islandIndex ->
             val (i, j) = filteredIslands[islandIndex]
-            val islandPValue = islandsPValues[islandIndex]
-            val islandQValue = islandQValues[islandIndex]
-            val islandStart = offsets[i]
-            val islandEnd = if (j < offsets.size) offsets[j] else chromosome.length
-            // Score should be proportional original q-value
-            val score = min(1000.0, - 10 * log10(islandQValue)).toInt()
-            // Value is either coverage of fold change
-            var value = 0.0
-            if (coverageDataFrame != null) {
-                if (coverageDataFrame.labels.size == 1 ||
-                    coverageDataFrame.labels.all {
-                        it.startsWith(SpanPeakCallingExperiment.TRACK_PREFIX)
-                    }
-                ) {
-                    value = coverageDataFrame.partialMean(i, j)
-                } else if (coverageDataFrame.labels.all {
-                        it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX) ||
-                                it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
-                    }) {
-                    val track1 = coverageDataFrame.partialMean(i, j, coverageDataFrame.labels
-                        .filter {
-                            it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX)
-                        })
-                    val track2 = coverageDataFrame.partialMean(i, j, coverageDataFrame.labels
-                        .filter {
-                            it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
-                        })
-                    // Value if LogFC
-                    value = if (track2 != 0.0) ln(track1) - ln(track2) else Double.MAX_VALUE
-                } else {
-                    Peak.LOG.debug("Failed to compute value for ${coverageDataFrame.labels}")
-                }
-            }
             Peak(
-                chromosome, islandStart, islandEnd,
-                mlogpvalue = -log10(islandPValue),
-                mlogqvalue = -log10(islandQValue),
-                value = value,
-                score = score
+                chromosome = chromosome,
+                startOffset = offsets[i],
+                endOffset = if (j < offsets.size) offsets[j] else chromosome.length,
+                mlogpvalue = -log10(islandsPValues[islandIndex]),
+                mlogqvalue = -log10(islandQValues[islandIndex]),
+                // Value is either coverage of fold change
+                value = peakValue(coverageDataFrame, i, j),
+                // Score should be proportional original q-value
+                score = min(1000.0, -10 * log10(islandQValues[islandIndex])).toInt()
             )
         }
     Peak.LOG.debug("$chromosome: islands result/filtered/candidate " +
