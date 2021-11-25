@@ -8,7 +8,6 @@ import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.genome.query.CachingQuery
 import org.jetbrains.bio.genome.query.Query
-import org.jetbrains.bio.genome.query.stemGz
 import org.jetbrains.bio.span.CoverageScoresQuery
 import org.jetbrains.bio.span.scoresDataFrame
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
@@ -20,6 +19,7 @@ import org.jetbrains.bio.statistics.model.MultiLabels
 import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.util.div
 import org.jetbrains.bio.util.reduceIds
+import org.jetbrains.bio.util.stemGz
 import java.nio.file.Path
 
 /**

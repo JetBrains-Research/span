@@ -5,10 +5,10 @@ import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.AutoFragment
-import org.jetbrains.bio.genome.query.stemGz
 import org.jetbrains.bio.span.SpanCLALongTest
 import org.jetbrains.bio.span.getPeaks
 import org.jetbrains.bio.util.Logs
+import org.jetbrains.bio.util.stemGz
 import org.jetbrains.bio.util.withTempFile
 import org.junit.Test
 import java.util.*

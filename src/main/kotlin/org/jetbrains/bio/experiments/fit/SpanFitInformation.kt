@@ -130,17 +130,15 @@ interface SpanFitInformation {
         return if (genomeQuery != null) {
             checkGenome(genomeQuery.genome)
             genomeQuery.get()
-                .filter { it.name in chromosomesSizes }
-                .map { chromosome ->
+                .filter { it.name in chromosomesSizes }.associate { chromosome ->
                     val (start, end) = getChromosomesIndices(chromosome)
                     chromosome.name to dataFrame.iloc[start until end]
-                }.toMap()
+                }
         } else {
-            chromosomesSizes.keys
-                .map { chromosome ->
-                    val (start, end) = getChromosomesIndices(chromosome)
-                    chromosome to dataFrame.iloc[start until end]
-                }.toMap()
+            chromosomesSizes.keys.associateWith { chromosome ->
+                val (start, end) = getChromosomesIndices(chromosome)
+                dataFrame.iloc[start until end]
+            }
         }
     }
 
@@ -211,7 +209,7 @@ interface SpanFitInformation {
             }
         }
 
-        val GSON = GsonBuilder().setPrettyPrinting().setFieldNamingStrategy(
+        val GSON: Gson = GsonBuilder().setPrettyPrinting().setFieldNamingStrategy(
             GSONUtil.NO_MY_UNDESCORE_NAMING_STRATEGY
         ).registerTypeAdapterFactory(
             GSONUtil.classSpecificFactory(SpanFitInformation::class.java) { gson, factory ->

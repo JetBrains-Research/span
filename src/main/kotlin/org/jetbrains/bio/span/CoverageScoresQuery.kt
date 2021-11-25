@@ -10,10 +10,13 @@ import org.jetbrains.bio.genome.coverage.Coverage
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.genome.query.CachingQuery
 import org.jetbrains.bio.genome.query.ReadsQuery
-import org.jetbrains.bio.genome.query.stemGz
 import org.jetbrains.bio.util.exists
 import org.jetbrains.bio.util.reduceIds
+import org.jetbrains.bio.util.stemGz
 import java.nio.file.Path
+import kotlin.math.ceil
+import kotlin.math.max
+import kotlin.math.min
 
 /**
  * Coverage query to reproduce DiffBind-like scores for binned genome.
@@ -64,7 +67,7 @@ class CoverageScoresQuery(
         else
             0.0
         return@lazy genomeMap(genomeQuery, parallel = true) {
-            computeScores(it, treatmentCoverage, controlCoverage, binSize, scale)
+            computeBinnedScores(it, treatmentCoverage, controlCoverage, binSize, scale)
         }
     }
 
@@ -76,50 +79,53 @@ class CoverageScoresQuery(
 
     companion object {
 
+        /**
+         * Compute multiplier to scale control coverage to match treatment
+         */
         internal fun computeScale(
             genomeQuery: GenomeQuery,
             treatmentCoverage: Coverage,
             controlCoverage: Coverage
         ): Double {
-            val conditionSize = genomeQuery.get().map {
+            val conditionSize = genomeQuery.get().sumOf {
                 treatmentCoverage.getCoverage(it.range.on(it).on(Strand.PLUS)).toLong() +
                         treatmentCoverage.getCoverage(it.range.on(it).on(Strand.MINUS)).toLong()
-            }.sum()
-            val controlSize = genomeQuery.get().map {
+            }
+            val controlSize = genomeQuery.get().sumOf {
                 controlCoverage.getCoverage(it.range.on(it).on(Strand.PLUS)).toLong() +
                         controlCoverage.getCoverage(it.range.on(it).on(Strand.MINUS)).toLong()
-            }.sum()
-            return Math.min(1.0, conditionSize.toDouble() / controlSize)
+            }
+            return min(1.0, conditionSize.toDouble() / controlSize)
         }
 
         /**
          * Returns the scores of a given [chromosome] sliced into binSizes with [binSize] width.
          * Score is precisely [Coverage] within bins if no control given, or DiffBind-like score.
          */
-        internal fun computeScores(
+        internal fun computeBinnedScores(
             chromosome: Chromosome,
             treatmentCoverage: Coverage,
             controlCoverage: Coverage?,
             binSize: Int,
             scale: Double
         ): IntArray {
-            return chromosome.range.slice(binSize).mapToInt { b ->
-                val plusStrandBin = b.on(chromosome, Strand.PLUS)
-                val minusStrandBin = b.on(chromosome, Strand.MINUS)
+            return chromosome.range.slice(binSize).mapToInt { bin ->
+                val plusStrandBin = bin.on(chromosome, Strand.PLUS)
+                val minusStrandBin = bin.on(chromosome, Strand.MINUS)
                 if (controlCoverage != null) {
-                    val plusStrandScore = Math.max(
+                    val plusStrandScore = max(
                         0,
                         treatmentCoverage.getCoverage(plusStrandBin) -
-                                Math.ceil(controlCoverage.getCoverage(plusStrandBin) * scale).toInt()
+                                ceil(controlCoverage.getCoverage(plusStrandBin) * scale).toInt()
                     )
-                    val minusStrandScore = Math.max(
+                    val minusStrandScore = max(
                         0,
                         treatmentCoverage.getCoverage(minusStrandBin) -
-                                Math.ceil(controlCoverage.getCoverage(minusStrandBin) * scale).toInt()
+                                ceil(controlCoverage.getCoverage(minusStrandBin) * scale).toInt()
                     )
                     return@mapToInt plusStrandScore + minusStrandScore
                 } else {
-                    return@mapToInt treatmentCoverage.getBothStrandsCoverage(b.on(chromosome))
+                    return@mapToInt treatmentCoverage.getBothStrandsCoverage(bin.on(chromosome))
                 }
             }.toArray()
         }

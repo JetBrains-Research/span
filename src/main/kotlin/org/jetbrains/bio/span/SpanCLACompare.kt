@@ -7,7 +7,6 @@ import org.jetbrains.bio.experiments.fit.SpanFitResults
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.FixedFragment
-import org.jetbrains.bio.genome.query.stemGz
 import org.jetbrains.bio.util.*
 import org.slf4j.event.Level
 import java.nio.file.Path

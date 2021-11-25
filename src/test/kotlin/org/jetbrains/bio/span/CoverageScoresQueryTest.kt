@@ -25,17 +25,17 @@ class CoverageScoresQueryTest {
 
         assertEquals(
             listOf(0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1),
-            CoverageScoresQuery.computeScores(chromosome1, cond, null, 1, 0.0).toList().subList(0, 16)
+            CoverageScoresQuery.computeBinnedScores(chromosome1, cond, null, 1, 0.0).toList().subList(0, 16)
         )
 
         assertEquals(
             listOf(0, 2, 0, 1, 0, 1, 0, 0, 0, 0),
-            CoverageScoresQuery.computeScores(chromosome1, cond, control, 3, 1.0).toList().subList(0, 10)
+            CoverageScoresQuery.computeBinnedScores(chromosome1, cond, control, 3, 1.0).toList().subList(0, 10)
         )
 
         assertEquals(
             listOf(2, 0, 0, 1, 0),
-            CoverageScoresQuery.computeScores(chromosome1, cond, control, 5, 0.5).toList().subList(0, 5)
+            CoverageScoresQuery.computeBinnedScores(chromosome1, cond, control, 5, 0.5).toList().subList(0, 5)
         )
     }
 
@@ -586,7 +586,7 @@ class CoverageScoresQueryTest {
 
         assertEquals(
             expectedScores.toList(),
-            CoverageScoresQuery.computeScores(
+            CoverageScoresQuery.computeBinnedScores(
                 chromosome1,
                 treatmentBuilder.build(unique = true),
                 controlBuilder.build(unique = true), bin, scale
@@ -606,7 +606,7 @@ class CoverageScoresQueryTest {
             .build(unique = false)
         assertEquals(
             listOf(0, 0, 1, 0),
-            CoverageScoresQuery.computeScores(chromosome1, cond, control, 5, 1.0).toList().subList(0, 4)
+            CoverageScoresQuery.computeBinnedScores(chromosome1, cond, control, 5, 1.0).toList().subList(0, 4)
         )
     }
 }

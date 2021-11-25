@@ -4,7 +4,6 @@ import org.jetbrains.bio.Tests
 import org.jetbrains.bio.experiment.Configuration
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.format.BedFormat
-import org.jetbrains.bio.genome.query.stemGz
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.util.*
 import org.junit.After

@@ -13,9 +13,9 @@ import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.genome.query.CachingQuery
 import org.jetbrains.bio.genome.query.Query
 import org.jetbrains.bio.genome.query.ReadsQuery
-import org.jetbrains.bio.genome.query.stemGz
 import org.jetbrains.bio.genome.sequence.CpGContent
 import org.jetbrains.bio.util.reduceIds
+import org.jetbrains.bio.util.stemGz
 import org.jetbrains.bio.viktor.asF64Array
 import java.nio.file.Path
 
