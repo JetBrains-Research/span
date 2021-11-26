@@ -2,6 +2,7 @@ package org.jetbrains.bio.span
 
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
+import org.jetbrains.bio.dataframe.BitRange
 import org.jetbrains.bio.dataframe.BitterSet
 import org.jetbrains.bio.experiments.fit.SpanFitResults
 import org.jetbrains.bio.experiments.fit.SpanModelFitExperiment
@@ -14,7 +15,9 @@ import org.jetbrains.bio.statistics.hypothesis.BenjaminiHochberg
 import org.jetbrains.bio.statistics.hypothesis.StofferLiptakTest
 import org.jetbrains.bio.util.CancellableState
 import org.jetbrains.bio.viktor.F64Array
+import kotlin.math.floor
 import kotlin.math.log10
+import kotlin.math.max
 import kotlin.math.min
 
 /**
@@ -62,7 +65,6 @@ fun SpanFitResults.getIslands(
     return genomeQuery.get().flatMap { map[it] }
 }
 
-
 internal fun SpanFitResults.getChromosomeIslands(
     logNullMemberships: F64Array,
     offsets: IntArray,
@@ -79,7 +81,11 @@ internal fun SpanFitResults.getChromosomeIslands(
     Peak.LOG.debug(
         "$chromosome: candidate bins ${candidateBins.cardinality()}/${logNullMemberships.size}"
     )
-    val candidateIslands = candidateBins.aggregate(gap)
+    // Extend candidate islands by half gap
+    val halfGap = floor(gap / 2.0).toInt()
+    val candidateIslands = candidateBins.aggregate(gap).map {
+        (i, j) -> BitRange(max(0, i - halfGap), min(offsets.size, j + halfGap))
+    }
     val filteredIslands = candidateIslands.filter { (i, j) ->
         (i until j).any { nullMemberships[it] <= fdr }
     }
@@ -97,29 +103,95 @@ internal fun SpanFitResults.getChromosomeIslands(
     }
 
     val islandQValues = BenjaminiHochberg.adjust(islandsPValues)
-    val resultIslands = filteredIslands.indices
-        .filter { islandQValues[it] < fdr }
+    val resultIslands = filteredIslands.indices.filter { islandQValues[it] < fdr }
+    var clipStart = 0L
+    var clipEnd = 0L
+    val clippedIslands = resultIslands.indices
         .map { islandIndex ->
             val (i, j) = filteredIslands[islandIndex]
             val start = offsets[i]
             val end = if (j < offsets.size) offsets[j] else chromosome.length
+            // Optimize length
+            val (clippedStart, clippedEnd) = clipIsland(start, end) { s: Int, e: Int ->
+                val score = fitInfo.score(ChromosomeRange(s, e, chromosome))
+                score
+            }
+            clipStart += (clippedStart - start)
+            clipEnd += (end - clippedEnd)
             Peak(
                 chromosome = chromosome,
-                startOffset = start,
-                endOffset = end,
+                startOffset = clippedStart,
+                endOffset = clippedEnd,
                 mlogpvalue = -log10(islandsPValues[islandIndex]),
                 mlogqvalue = -log10(islandQValues[islandIndex]),
                 // Value is either coverage of fold change
-                value = fitInfo.score(ChromosomeRange(start, end, chromosome)),
+                value = fitInfo.score(ChromosomeRange(clippedStart, clippedEnd, chromosome)),
                 // Score should be proportional original q-value
                 score = min(1000.0, -10 * log10(islandQValues[islandIndex])).toInt()
             )
         }
     Peak.LOG.debug(
         "$chromosome: islands result/filtered/candidate " +
-                "${resultIslands.size}/${filteredIslands.size}/${candidateIslands.size}"
+                "${clippedIslands.size}/${filteredIslands.size}/${candidateIslands.size} " +
+                "average clip start/end " +
+                "${clipStart.toDouble() / max(1, clippedIslands.size)}/${clipEnd.toDouble() / max(1, clippedIslands.size)}"
     )
-    return resultIslands
+    return clippedIslands
+}
+
+
+private val CLIP_PERCENTS = intArrayOf(1, 2, 3, 5, 10)
+
+private const val MAX_CLIP_PERCENT = 25
+
+/**
+ * Optimization function.
+ * Tries to reduce range by [CLIP_PERCENTS] percent from both sides in cycle increasing [score].
+ * Maximum clip is configured by [MAX_CLIP_PERCENT]
+ */
+internal fun clipIsland(start: Int, end: Int, score: (Int, Int) -> (Double)): Pair<Int, Int> {
+    val length = end - start
+    // Try to change left boundary
+    val maxStart = start + (MAX_CLIP_PERCENT / 100.0 * length).toInt()
+    var currentStart = start
+    var step = 0
+    var currentScore = score(start, end) / length
+    while (step >= 0 && currentStart <= maxStart) {
+        val newStart = currentStart + (CLIP_PERCENTS[step] / 100.0 * length).toInt()
+        if (newStart > maxStart) {
+            step -= 1
+            continue
+        }
+        val newScore = score(newStart, end) / (end - newStart)
+        if (newScore > currentScore) {
+            currentStart = newStart
+            currentScore = newScore
+            step = min(step + 1, CLIP_PERCENTS.size - 1)
+        } else {
+            step -= 1
+        }
+    }
+    // Try to change right boundary
+    val minEnd = end - (MAX_CLIP_PERCENT / 100.0 * length).toInt()
+    var currentEnd = end
+    step = 0
+    currentScore = score(start, end) / length
+    while (step >= 0 && currentEnd >= minEnd) {
+        val newEnd = currentEnd - (CLIP_PERCENTS[step] / 100.0 * length).toInt()
+        if (newEnd < minEnd) {
+            step -= 1
+            continue
+        }
+        val newScore = score(start, newEnd) / (newEnd - start)
+        if (newScore > currentScore) {
+            currentEnd = newEnd
+            currentScore = newScore
+            step = min(step + 1, CLIP_PERCENTS.size - 1)
+        } else {
+            step -= 1
+        }
+    }
+    return currentStart to currentEnd
 }
 
 /**
