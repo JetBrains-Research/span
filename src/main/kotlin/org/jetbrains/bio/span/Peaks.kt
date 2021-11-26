@@ -7,6 +7,7 @@ import org.jetbrains.bio.dataframe.BitterSet
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.fit.*
 import org.jetbrains.bio.genome.Chromosome
+import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.statistics.hypothesis.Fdr
@@ -32,13 +33,10 @@ fun SpanFitResults.getPeaks(
     gap: Int,
     cancellableState: CancellableState? = null
 ): List<Peak> {
-    val coverage = fitInfo.scoresDataFrame()
-    if (coverage.isEmpty()) {
-        SpanFitResults.LOG.debug("No coverage caches present, peak scores won't be computed.")
-    }
+    fitInfo.prepareScores()
     val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
         cancellableState?.checkCanceled()
-        getChromosomePeaks(chromosome, fdr, gap, coverage[chromosome])
+        getChromosomePeaks(chromosome, fdr, gap)
     }
     return genomeQuery.get().flatMap { map[it] }
 }
@@ -46,8 +44,7 @@ fun SpanFitResults.getPeaks(
 fun SpanFitResults.getChromosomePeaks(
     chromosome: Chromosome,
     fdr: Double,
-    gap: Int,
-    coverageDataFrame: DataFrame? = null
+    gap: Int
 ): List<Peak> =
     // Check that we have information for requested chromosome
     if (chromosome.name in fitInfo.chromosomesSizes) {
@@ -55,7 +52,6 @@ fun SpanFitResults.getChromosomePeaks(
             logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL),
             fitInfo.offsets(chromosome),
             chromosome, fdr, gap,
-            coverageDataFrame
         )
     } else {
         SpanFitResults.LOG.debug(
@@ -70,7 +66,6 @@ internal fun SpanFitResults.getChromosomePeaks(
     chromosome: Chromosome,
     fdr: Double,
     gap: Int,
-    coverageDataFrame: DataFrame? = null
 ): List<Peak> {
     val qvalues = PEAKS_QVALUES_CACHE.get(this to chromosome) {
         Fdr.qvalidate(logNullMemberships)
@@ -88,7 +83,7 @@ internal fun SpanFitResults.getChromosomePeaks(
         // Score should be proportional to length of peak and median original q-value
         val score = min(1000.0, (-log10(qvalueMedian) * (1 + ln((end - start).toDouble())))).toInt()
         // Value is either coverage of fold change
-        val value = peakValue(coverageDataFrame, i, j)
+        val value = fitInfo.score(ChromosomeRange(start, end, chromosome))
         Peak(
             chromosome, start, end,
             mlogpvalue = -pvalueLogMedian,
@@ -99,38 +94,6 @@ internal fun SpanFitResults.getChromosomePeaks(
     }
     Peak.LOG.debug("$chromosome: peaks ${peaks.size}")
     return peaks
-}
-
-/** Compute peak value - either coverage or fold change. */
-internal fun peakValue(
-    coverageDataFrame: DataFrame?,
-    i: Int,
-    j: Int
-): Double {
-    if (coverageDataFrame != null) {
-        if (coverageDataFrame.labels.size == 1 ||
-            coverageDataFrame.labels.all { it.startsWith(SpanPeakCallingExperiment.TRACK_PREFIX) }
-        ) {
-            return coverageDataFrame.partialMean(i, j)
-        } else if (coverageDataFrame.labels.all {
-                it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX) ||
-                        it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
-            }) {
-            val track1 = coverageDataFrame.partialMean(
-                i, j, coverageDataFrame.labels
-                    .filter {
-                        it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK1_PREFIX)
-                    })
-            val track2 = coverageDataFrame.partialMean(
-                i, j, coverageDataFrame.labels
-                    .filter {
-                        it.startsWith(SpanDifferentialPeakCallingExperiment.TRACK2_PREFIX)
-                    })
-            // Value if LogFC
-            return if (track2 != 0.0) ln(track1) - ln(track2) else Double.MAX_VALUE
-        }
-    }
-    return 0.0
 }
 
 

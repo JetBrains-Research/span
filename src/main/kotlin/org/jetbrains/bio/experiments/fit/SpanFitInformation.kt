@@ -6,6 +6,7 @@ import com.google.gson.reflect.TypeToken
 import kotlinx.support.jdk7.use
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.Chromosome
+import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.Fragment
@@ -30,23 +31,41 @@ import java.util.*
  * All Span-like experiments produce a single squashed float array of log null probabilities ("null.npz").
  * This interface contains methods to squash ([merge]) and unsquash ([split]) the chromosome-wise dataframes.
  * It can also generate bin start [offsets] for a single chromosome.
- *
- * @property build Genome build (assembly).
- * @property binSize Bin size in bps.
- * @property chromosomesSizes A map of chromosome name -> chromosome length entries.
- * @property dataQuery A query that returns a dataframe for each chromosome to serve as model input.
- * @property id A unique string identifier (include some kind of object hash if you compress identifiers). It's used
- * to generate the model file name if it's not provided. [reduceIds] is a recommended way to implement this property.
  */
 interface SpanFitInformation {
 
-    val build: String
-    val binSize: Int
-    val chromosomesSizes: LinkedHashMap<String, Int>
-    val dataQuery: Query<Chromosome, DataFrame>
+    /**
+     * A unique string identifier (include some kind of object hash if you compress identifiers). It's used
+     * to generate the model file name if it's not provided. [reduceIds] is a recommended way to implement this property.
+     */
     val id: String
 
-    fun genomeQuery(): GenomeQuery = GenomeQuery(Genome[build, chromosomesSizes], *chromosomesSizes.keys.toTypedArray())
+    /** Genome build. */
+    val build: String
+
+    /** Bin size in base pairs. */
+    val binSize: Int
+
+    /** A map of chromosome name -> chromosome length entries. */
+    val chromosomesSizes: LinkedHashMap<String, Int>
+
+    /** A query that returns a dataframe for each chromosome to serve as model input. */
+    val dataQuery: Query<Chromosome, DataFrame>
+
+
+    /**
+     * Prepares scores for [score] function, initialize required queries.
+     */
+    fun prepareScores()
+
+    /**
+     * Generate range score, it can be either coverage for analyze experiment or log2 fold change for difference.
+     * Call [prepareScores] beforehand!
+     */
+    fun score(chromosomeRange: ChromosomeRange): Double
+
+    fun genomeQuery(): GenomeQuery =
+        GenomeQuery(Genome[build, chromosomesSizes], *chromosomesSizes.keys.toTypedArray())
 
     fun checkGenome(genome: Genome) {
         check(this.build == genome.build) {
@@ -59,10 +78,14 @@ interface SpanFitInformation {
             "Missing chromosome in ${chromosomesSizes.keys.toList()}: ${chromosome.name}"
         }
         check(chromosome.length == chromosomesSizes[chromosome.name]) {
-            "Wrong chromosome ${chromosome.name} size, expected ${chromosomesSizes[chromosome.name]}, got: ${chromosome.length}"
+            "Wrong chromosome ${chromosome.name} size, " +
+                    "expected ${chromosomesSizes[chromosome.name]}, got: ${chromosome.length}"
         }
     }
 
+    /**
+     * Offsets map is used to store all chromosome information into single array.
+     */
     private fun offsetsMap(): IntArray =
         (listOf(0) + chromosomesSizes.keys.sorted().map {
             IntMath.divide(chromosomesSizes[it]!!, binSize, RoundingMode.CEILING)
@@ -72,7 +95,7 @@ interface SpanFitInformation {
 
 
     /**
-     * Creates binned offsets for [chromosome] using [binSize]
+     * Creates binned offsets for [chromosome] using [binSize].
      */
     fun offsets(chromosome: Chromosome): IntArray {
         checkGenome(chromosome.genome)
@@ -151,14 +174,6 @@ interface SpanFitInformation {
         path.parent.createDirectories()
         path.bufferedWriter().use { GSON.toJson(this, it) }
     }
-
-    /**
-     * Generates chromosome-wise dataframes for peak value calculation.
-     *
-     * If the map doesn't contain a specific chromosome, its peak values will be 0.0, so empty map is a perfectly
-     * acceptable return value for this method.
-     */
-    fun scoresDataFrame(): Map<Chromosome, DataFrame>
 
     companion object {
 

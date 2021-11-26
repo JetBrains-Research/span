@@ -27,7 +27,8 @@ class CoverageScoresQuery(
     private val treatmentPath: Path,
     private val controlPath: Path?,
     val fragment: Fragment,
-    val unique: Boolean = true
+    val unique: Boolean = true,
+    val showLibraryInfo: Boolean = true,
 ) : Query<ChromosomeRange, Int> {
 
     override val id: String
@@ -42,11 +43,11 @@ class CoverageScoresQuery(
                 "Fragment: $fragment, Keep-dup: ${!unique}"
 
     private val treatmentCoverage = ReadsQuery(
-        genomeQuery, treatmentPath, unique = unique, fragment = fragment
+        genomeQuery, treatmentPath, unique, fragment, showLibraryInfo = showLibraryInfo
     )
 
     private val controlCoverage = controlPath?.let {
-        ReadsQuery(genomeQuery, it, unique = unique, fragment = fragment)
+        ReadsQuery(genomeQuery, it, unique, fragment, showLibraryInfo = showLibraryInfo)
     }
 
     /**

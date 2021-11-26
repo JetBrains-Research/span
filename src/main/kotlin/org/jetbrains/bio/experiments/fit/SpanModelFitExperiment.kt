@@ -17,6 +17,7 @@ import org.jetbrains.bio.statistics.state.ZLH
 import org.jetbrains.bio.statistics.state.ZLHID
 import org.jetbrains.bio.util.*
 import org.jetbrains.bio.viktor.F64Array
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
 
@@ -201,7 +202,7 @@ abstract class SpanModelFitExperiment<
         private const val NULL_NPZ = "null.npz"
         const val NULL = "null"
 
-        val LOG = LoggerFactory.getLogger(ModelFitExperiment::class.java)
+        val LOG: Logger = LoggerFactory.getLogger(ModelFitExperiment::class.java)
 
         /**
          * Retain only the chromosomes for which at least one treatment file has at least one read on them.
@@ -215,11 +216,11 @@ abstract class SpanModelFitExperiment<
             val chromosomes = genomeQuery.get()
             val nonEmptyChromosomes = hashSetOf<Chromosome>()
             paths.forEach { (t, c) ->
-                val coverage = ReadsQuery(genomeQuery, t, unique, fragment, logFragmentSize = false).get()
+                val coverage = ReadsQuery(genomeQuery, t, unique, fragment, showLibraryInfo = false).get()
                 if (c != null) {
                     // we have to be sure that the control coverage cache is calculated for the full genome query,
                     // otherwise we can get some very hard-to-catch bugs later
-                    ReadsQuery(genomeQuery, c, unique, fragment, logFragmentSize = false).get()
+                    ReadsQuery(genomeQuery, c, unique, fragment).get()
                 }
                 nonEmptyChromosomes.addAll(chromosomes.filter { coverage.getBothStrandsCoverage(it.range.on(it)) > 0 })
             }

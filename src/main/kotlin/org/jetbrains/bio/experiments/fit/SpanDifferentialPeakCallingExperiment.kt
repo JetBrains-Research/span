@@ -1,8 +1,10 @@
 package org.jetbrains.bio.experiments.fit
 
+import com.google.common.math.DoubleMath.log2
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.fit.SpanFitInformation.Companion.chromSizes
 import org.jetbrains.bio.genome.Chromosome
+import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.Fragment
@@ -58,7 +60,7 @@ class SpanDifferentialPeakCallingExperiment private constructor(
         gap: Int
     ): Pair<List<Peak>, List<Peak>> {
         val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
-            results.getChromosomePeaks(chromosome, fdr, gap, dataQuery.apply(chromosome))
+            results.getChromosomePeaks(chromosome, fdr, gap)
         }
         val highLow = arrayListOf<Peak>()
         val lowHigh = arrayListOf<Peak>()
@@ -136,7 +138,15 @@ data class Span1CompareFitInformation(
             val labels = labels1 + labels2
             return object : CachingQuery<Chromosome, DataFrame>() {
                 val scores = data.map {
-                    BinnedCoverageScoresQuery(CoverageScoresQuery(genomeQuery(), it.treatment, it.control, fragment, unique), binSize)
+                    BinnedCoverageScoresQuery(
+                        CoverageScoresQuery(
+                            genomeQuery(),
+                            it.treatment,
+                            it.control,
+                            fragment,
+                            unique
+                        ), binSize
+                    )
                 }
 
                 override fun getUncached(input: Chromosome): DataFrame {
@@ -148,23 +158,31 @@ data class Span1CompareFitInformation(
             }
         }
 
+    @Transient
+    private lateinit var scoreQueries1: List<CoverageScoresQuery>
 
-    override fun scoresDataFrame(): Map<Chromosome, DataFrame> {
-        val gq = genomeQuery()
-        val queries1 = data1.map {
-            BinnedCoverageScoresQuery(CoverageScoresQuery(genomeQuery(), it.treatment, it.control, fragment, unique), binSize)
+    @Transient
+    private lateinit var scoreQueries2: List<CoverageScoresQuery>
+
+    override fun prepareScores() {
+        scoreQueries1 = data1.map {
+            CoverageScoresQuery(genomeQuery(), it.treatment, it.control, fragment, unique, showLibraryInfo = false)
         }
-        val queries2 = data2.map {
-            BinnedCoverageScoresQuery(CoverageScoresQuery(genomeQuery(), it.treatment, it.control, fragment, unique), binSize)
+        scoreQueries2 = data2.map {
+            CoverageScoresQuery(genomeQuery(), it.treatment, it.control, fragment, unique, showLibraryInfo = false)
         }
-        if (queries1.any { !it.ready } || queries2.any { !it.ready }) {
-            return emptyMap()
-        }
-        return gq.get().associateBy({ it }) {
-            DataFrame.columnBind(
-                queries1.binsScoresDataFrame(it, labels1.toTypedArray()),
-                queries2.binsScoresDataFrame(it, labels2.toTypedArray())
-            )
+    }
+
+    /**
+     * Return log2 fold change of average summary coverage across data
+     */
+    override fun score(chromosomeRange: ChromosomeRange): Double {
+        return if (scoreQueries1.all { it.ready } && scoreQueries2.all { it.ready }) {
+            val score1 = scoreQueries1.sumOf { it.apply(chromosomeRange) }.toDouble() / scoreQueries1.size
+            val score2 = scoreQueries2.sumOf { it.apply(chromosomeRange) }.toDouble() / scoreQueries2.size
+            if (score2 != 0.0) log2(score1) - log2(score2) else Double.MAX_VALUE
+        } else {
+            0.0
         }
     }
 

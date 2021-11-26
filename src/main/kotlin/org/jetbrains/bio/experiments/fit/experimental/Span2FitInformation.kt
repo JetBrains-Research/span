@@ -14,6 +14,7 @@ import org.jetbrains.bio.genome.query.CachingQuery
 import org.jetbrains.bio.genome.query.Query
 import org.jetbrains.bio.genome.query.ReadsQuery
 import org.jetbrains.bio.genome.sequence.CpGContent
+import org.jetbrains.bio.span.coverage.CoverageScoresQuery
 import org.jetbrains.bio.util.reduceIds
 import org.jetbrains.bio.util.stemGz
 import org.jetbrains.bio.viktor.asF64Array
@@ -51,20 +52,6 @@ data class Span2FitInformation constructor(
                     listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
         )
 
-    override fun scoresDataFrame(): Map<Chromosome, DataFrame> {
-        val datum = data.single()
-        return genomeQuery().get().associateBy({ it }) {
-            DataFrame().with(
-                "coverage", binnedCoverage(
-                    it,
-                    ReadsQuery(genomeQuery(), datum.treatment, unique, fragment, logFragmentSize = false).get(),
-                    binSize
-                )
-            )
-        }
-
-    }
-
     override val dataQuery: Query<Chromosome, DataFrame>
         get() {
             val genomeQuery = genomeQuery()
@@ -73,10 +60,10 @@ data class Span2FitInformation constructor(
             return object : CachingQuery<Chromosome, DataFrame>() {
 
                 private val treatmentCoverage = ReadsQuery(
-                    genomeQuery, datum.treatment, unique, fragment, logFragmentSize = false
+                    genomeQuery, datum.treatment, unique, fragment, showLibraryInfo = false
                 )
                 private val controlCoverage = datum.control?.let {
-                    ReadsQuery(genomeQuery, it, unique, fragment, logFragmentSize = false)
+                    ReadsQuery(genomeQuery, it, unique, fragment, showLibraryInfo = false)
                 }
 
                 override val id: String
@@ -98,6 +85,22 @@ data class Span2FitInformation constructor(
                 }
             }
         }
+
+    @Transient
+    private lateinit var scoreQuery: CoverageScoresQuery
+
+    override fun prepareScores() {
+        scoreQuery =
+            CoverageScoresQuery(
+                genomeQuery(), data.single().treatment, data.single().control,
+                fragment, unique, showLibraryInfo = false
+            )
+    }
+
+    /**
+     * Return coverage.
+     */
+    override fun score(chromosomeRange: ChromosomeRange): Double = scoreQuery.apply(chromosomeRange).toDouble()
 
     companion object {
 

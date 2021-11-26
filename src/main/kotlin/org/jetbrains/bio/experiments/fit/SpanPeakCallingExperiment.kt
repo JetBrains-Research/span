@@ -3,6 +3,7 @@ package org.jetbrains.bio.experiments.fit
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiments.fit.SpanFitInformation.Companion.chromSizes
 import org.jetbrains.bio.genome.Chromosome
+import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
@@ -177,20 +178,23 @@ data class Span1AnalyzeFitInformation(
                 get() = reduceIds(scores.zip(labels).flatMap { (s, l) -> listOf(s.id, l) })
         }
 
+    @Transient
+    private lateinit var scoreQueries: List<CoverageScoresQuery>
 
-    override fun scoresDataFrame(): Map<Chromosome, DataFrame> {
-        val gq = genomeQuery()
-        val queries = data.map {
-            BinnedCoverageScoresQuery(
-                CoverageScoresQuery(genomeQuery(), it.treatment, it.control, fragment, unique),
-                binSize
-            )
+    override fun prepareScores() {
+        scoreQueries = data.map {
+            CoverageScoresQuery(genomeQuery(), it.treatment, it.control, fragment, unique, showLibraryInfo = false)
         }
-        if (queries.any { !it.ready }) {
-            return emptyMap()
-        }
-        return gq.get().associateBy({ it }) {
-            queries.binsScoresDataFrame(it, labels.toTypedArray())
+    }
+
+    /**
+     * Returns summary coverage averaged by tracks
+     */
+    override fun score(chromosomeRange: ChromosomeRange): Double {
+        return if (scoreQueries.all { it.ready }) {
+            scoreQueries.sumOf { it.apply(chromosomeRange) }.toDouble() / scoreQueries.size
+        } else {
+            0.0
         }
     }
 

@@ -3,9 +3,11 @@ package org.jetbrains.bio.span
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
 import org.jetbrains.bio.dataframe.BitterSet
-import org.jetbrains.bio.dataframe.DataFrame
-import org.jetbrains.bio.experiments.fit.*
+import org.jetbrains.bio.experiments.fit.SpanFitResults
+import org.jetbrains.bio.experiments.fit.SpanModelFitExperiment
+import org.jetbrains.bio.experiments.fit.f64Array
 import org.jetbrains.bio.genome.Chromosome
+import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.statistics.hypothesis.BenjaminiHochberg
@@ -37,10 +39,7 @@ fun SpanFitResults.getIslands(
     multiplier: Double = 1e2,
     cancellableState: CancellableState? = null
 ): List<Peak> {
-    val coverage = fitInfo.scoresDataFrame()
-    if (coverage.isEmpty()) {
-        SpanFitResults.LOG.debug("No coverage caches present, peak scores won't be computed.")
-    }
+    fitInfo.prepareScores()
     val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
         cancellableState?.checkCanceled()
         // Check that we have information for requested chromosome
@@ -51,8 +50,7 @@ fun SpanFitResults.getIslands(
                 chromosome,
                 fdr,
                 gap,
-                multiplier,
-                coverageDataFrame = coverage[chromosome]
+                multiplier
             )
         } else {
             SpanFitResults.LOG.debug(
@@ -72,7 +70,6 @@ internal fun SpanFitResults.getChromosomeIslands(
     fdr: Double,
     gap: Int,
     multiplier: Double,
-    coverageDataFrame: DataFrame? = null
 ): List<Peak> {
     // Compute candidate bins and islands
     val nullMemberships = logNullMemberships.exp()
@@ -83,8 +80,8 @@ internal fun SpanFitResults.getChromosomeIslands(
         "$chromosome: candidate bins ${candidateBins.cardinality()}/${logNullMemberships.size}"
     )
     val candidateIslands = candidateBins.aggregate(gap)
-    val filteredIslands = candidateIslands.filter {
-        (i, j) -> (i until j).any { nullMemberships[it] <= fdr }
+    val filteredIslands = candidateIslands.filter { (i, j) ->
+        (i until j).any { nullMemberships[it] <= fdr }
     }
     if (filteredIslands.isEmpty()) {
         return emptyList()
@@ -104,20 +101,24 @@ internal fun SpanFitResults.getChromosomeIslands(
         .filter { islandQValues[it] < fdr }
         .map { islandIndex ->
             val (i, j) = filteredIslands[islandIndex]
+            val start = offsets[i]
+            val end = if (j < offsets.size) offsets[j] else chromosome.length
             Peak(
                 chromosome = chromosome,
-                startOffset = offsets[i],
-                endOffset = if (j < offsets.size) offsets[j] else chromosome.length,
+                startOffset = start,
+                endOffset = end,
                 mlogpvalue = -log10(islandsPValues[islandIndex]),
                 mlogqvalue = -log10(islandQValues[islandIndex]),
                 // Value is either coverage of fold change
-                value = peakValue(coverageDataFrame, i, j),
+                value = fitInfo.score(ChromosomeRange(start, end, chromosome)),
                 // Score should be proportional original q-value
                 score = min(1000.0, -10 * log10(islandQValues[islandIndex])).toInt()
             )
         }
-    Peak.LOG.debug("$chromosome: islands result/filtered/candidate " +
-            "${resultIslands.size}/${filteredIslands.size}/${candidateIslands.size}")
+    Peak.LOG.debug(
+        "$chromosome: islands result/filtered/candidate " +
+                "${resultIslands.size}/${filteredIslands.size}/${candidateIslands.size}"
+    )
     return resultIslands
 }
 
