@@ -188,11 +188,12 @@ abstract class SpanModelFitExperiment<
             LOG.info("Model saved: $modelPath")
             computedResults!!
         } else {
-            loadResults(genomeQuery, modelPath).apply {
-                check(fitInfo == fitInformation) {
-                    "Wrong model information: expected $fitInformation, but got $fitInfo"
-                }
+            val loadedResults = loadResults(genomeQuery, modelPath)
+            val loadedFitInfo = loadedResults.fitInfo
+            check(loadedFitInfo == fitInformation) {
+                "Wrong model information: expected $fitInformation, but got $loadedFitInfo"
             }
+            loadedResults
         }
     }
 
