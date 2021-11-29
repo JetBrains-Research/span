@@ -60,6 +60,8 @@ object SpanCLAAnalyze {
 
             if (experimental) {
                 accepts("islands", "Call islands")
+                accepts("noclip", "Don't clip islands to improve density")
+
                 accepts(
                     "type",
                     "Model type.\n" +
@@ -159,7 +161,7 @@ object SpanCLAAnalyze {
                 if (peaksPath != null) {
                     if (labelsPath == null) {
                         val peaks = if ("islands" in options) {
-                            spanResults.getIslands(genomeQuery, fdr, gap)
+                            spanResults.getIslands(genomeQuery, fdr, gap, noclip = "noclip" in options)
                         } else {
                             spanResults.getPeaks(genomeQuery, fdr, gap)
                         }

@@ -34,12 +34,14 @@ import kotlin.math.min
  * @param multiplier is used to
  * 1) Return broad peaks in case of broad modifications even for strict FDR settings
  * 2) Mitigate the problem when number of peaks for strict FDR is much bigger than for relaxed FDR
+ * @param noclip Do not clip islands to increase density when true
  */
 fun SpanFitResults.getIslands(
     genomeQuery: GenomeQuery,
     fdr: Double,
     gap: Int,
     multiplier: Double = 1e2,
+    noclip: Boolean = false,
     cancellableState: CancellableState? = null
 ): List<Peak> {
     fitInfo.prepareScores()
@@ -53,7 +55,8 @@ fun SpanFitResults.getIslands(
                 chromosome,
                 fdr,
                 gap,
-                multiplier
+                multiplier,
+                noclip
             )
         } else {
             SpanFitResults.LOG.debug(
@@ -72,6 +75,7 @@ internal fun SpanFitResults.getChromosomeIslands(
     fdr: Double,
     gap: Int,
     multiplier: Double,
+    noclip: Boolean
 ): List<Peak> {
     // Compute candidate bins and islands
     val nullMemberships = logNullMemberships.exp()
@@ -82,9 +86,9 @@ internal fun SpanFitResults.getChromosomeIslands(
         "$chromosome: candidate bins ${candidateBins.cardinality()}/${logNullMemberships.size}"
     )
     // Extend candidate islands by half gap
-    val halfGap = floor(gap / 2.0).toInt()
-    val candidateIslands = candidateBins.aggregate(gap).map {
-        (i, j) -> BitRange(max(0, i - halfGap), min(offsets.size, j + halfGap))
+    val halfGap = if (noclip) 0 else floor(gap / 2.0).toInt()
+    val candidateIslands = candidateBins.aggregate(gap).map { (i, j) ->
+        BitRange(max(0, i - halfGap), min(offsets.size, j + halfGap))
     }
     val filteredIslands = candidateIslands.filter { (i, j) ->
         (i until j).any { nullMemberships[it] <= fdr }
@@ -112,10 +116,12 @@ internal fun SpanFitResults.getChromosomeIslands(
             val start = offsets[i]
             val end = if (j < offsets.size) offsets[j] else chromosome.length
             // Optimize length
-            val (clippedStart, clippedEnd) = clipIsland(start, end) { s: Int, e: Int ->
-                val score = fitInfo.score(ChromosomeRange(s, e, chromosome))
-                score
-            }
+            val (clippedStart, clippedEnd) = if (noclip)
+                start to end
+            else
+                clipIsland(start, end) { s: Int, e: Int ->
+                    fitInfo.score(ChromosomeRange(s, e, chromosome))
+                }
             clipStart += (clippedStart - start)
             clipEnd += (end - clippedEnd)
             Peak(
@@ -134,7 +140,8 @@ internal fun SpanFitResults.getChromosomeIslands(
         "$chromosome: islands result/filtered/candidate " +
                 "${clippedIslands.size}/${filteredIslands.size}/${candidateIslands.size} " +
                 "average clip start/end " +
-                "${clipStart.toDouble() / max(1, clippedIslands.size)}/${clipEnd.toDouble() / max(1, clippedIslands.size)}"
+                "${clipStart.toDouble() / max(1, clippedIslands.size)}/${
+                    clipEnd.toDouble() / max(1, clippedIslands.size)}"
     )
     return clippedIslands
 }
