@@ -12,6 +12,7 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.statistics.hypothesis.Fdr
 import org.jetbrains.bio.util.CancellableState
+import org.jetbrains.bio.util.Progress
 import org.jetbrains.bio.viktor.F64Array
 import kotlin.math.ln
 import kotlin.math.log10
@@ -33,11 +34,15 @@ fun SpanFitResults.getPeaks(
     gap: Int,
     cancellableState: CancellableState? = null
 ): List<Peak> {
+    val progress = Progress { title = "Computing peaks" }.bounded(genomeQuery.get().size.toLong())
     fitInfo.prepareScores()
     val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
         cancellableState?.checkCanceled()
-        getChromosomePeaks(chromosome, fdr, gap)
+        val chromosomePeaks = getChromosomePeaks(chromosome, fdr, gap)
+        progress.report(1)
+        chromosomePeaks
     }
+    progress.done()
     return genomeQuery.get().flatMap { map[it] }
 }
 
