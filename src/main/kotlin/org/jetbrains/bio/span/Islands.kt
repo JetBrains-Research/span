@@ -2,7 +2,6 @@ package org.jetbrains.bio.span
 
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
-import org.jetbrains.bio.dataframe.BitRange
 import org.jetbrains.bio.dataframe.BitterSet
 import org.jetbrains.bio.experiments.fit.SpanFitResults
 import org.jetbrains.bio.experiments.fit.SpanModelFitExperiment
@@ -14,8 +13,8 @@ import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.statistics.hypothesis.BenjaminiHochberg
 import org.jetbrains.bio.statistics.hypothesis.StofferLiptakTest
 import org.jetbrains.bio.util.CancellableState
+import org.jetbrains.bio.util.Progress
 import org.jetbrains.bio.viktor.F64Array
-import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.max
 import kotlin.math.min
@@ -24,7 +23,7 @@ import kotlin.math.min
  * The islands are called in five steps.
  *
  * 1) Estimate posterior probabilities
- * 2) Pick candidate bins with probability of H_0 <= alpha * multiplier
+ * 2) Pick candidate bins with probability of H_0 <= alpha * [multiplier]
  * 3) Using gap merge bins into candidate islands
  * 4) Assign p-value to each island using Stoffer-Liptak test
  * 5) Compute qvalues on islands p-values, filter by alpha
@@ -44,28 +43,43 @@ fun SpanFitResults.getIslands(
     noclip: Boolean = false,
     cancellableState: CancellableState? = null
 ): List<Peak> {
+    val progress = Progress { title = "Computing islands" }.bounded(genomeQuery.get().size.toLong())
     fitInfo.prepareScores()
     val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
         cancellableState?.checkCanceled()
-        // Check that we have information for requested chromosome
-        if (chromosome.name in fitInfo.chromosomesSizes) {
-            getChromosomeIslands(
-                logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL),
-                fitInfo.offsets(chromosome),
-                chromosome,
-                fdr,
-                gap,
-                multiplier,
-                noclip
-            )
-        } else {
-            SpanFitResults.LOG.debug(
-                "NO peaks information for chromosome: ${chromosome.name} in fitInfo ${fitInfo.build}"
-            )
-            emptyList()
-        }
+        val chromosomePeaks = getChromosomePeaks(chromosome, fdr, gap, multiplier, noclip)
+        progress.report(1)
+        chromosomePeaks
     }
+    progress.done()
     return genomeQuery.get().flatMap { map[it] }
+}
+
+private fun SpanFitResults.getChromosomePeaks(
+    chromosome: Chromosome,
+    fdr: Double,
+    gap: Int,
+    multiplier: Double,
+    noclip: Boolean
+): List<Peak> {
+    // Check that we have information for requested chromosome
+    val chromosomePeaks = if (chromosome.name in fitInfo.chromosomesSizes) {
+        getChromosomeIslands(
+            logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL),
+            fitInfo.offsets(chromosome),
+            chromosome,
+            fdr,
+            gap,
+            multiplier,
+            noclip
+        )
+    } else {
+        SpanFitResults.LOG.debug(
+            "NO peaks information for chromosome: ${chromosome.name} in fitInfo ${fitInfo.build}"
+        )
+        emptyList()
+    }
+    return chromosomePeaks
 }
 
 internal fun SpanFitResults.getChromosomeIslands(
@@ -85,11 +99,7 @@ internal fun SpanFitResults.getChromosomeIslands(
     Peak.LOG.debug(
         "$chromosome: candidate bins ${candidateBins.cardinality()}/${logNullMemberships.size}"
     )
-    // Extend candidate islands by half gap
-    val halfGap = if (noclip) 0 else floor(gap / 2.0).toInt()
-    val candidateIslands = candidateBins.aggregate(gap).map { (i, j) ->
-        BitRange(max(0, i - halfGap), min(offsets.size, j + halfGap))
-    }
+    val candidateIslands = candidateBins.aggregate(gap)
     val filteredIslands = candidateIslands.filter { (i, j) ->
         (i until j).any { nullMemberships[it] <= fdr }
     }
@@ -118,10 +128,21 @@ internal fun SpanFitResults.getChromosomeIslands(
             // Optimize length
             val (clippedStart, clippedEnd) = if (noclip)
                 start to end
-            else
-                clipIsland(start, end) { s: Int, e: Int ->
-                    fitInfo.score(ChromosomeRange(s, e, chromosome))
+            else {
+                // Threshold limiting max clipped out density, more strict fdr should allow more clipping
+                // Fdr      DensityMultiplier
+                // 1e-1     0.2
+                // 1e-2     0.6
+                // 1e-3     0.73
+                // 1e-4     0.8
+                // 1e-6     0.86
+                // 1e-10    0.92
+                val densityMultiplier = 0.2 + 0.8 * max(0.0, 1 + 1 / log10(fdr))
+                val maxClip = max(0, ((end - start) - (end - start) / (j - i) * gap / 2) / 2)
+                clipIsland(start, end, maxClip, densityMultiplier) { s: Int, e: Int ->
+                    fitInfo.score(ChromosomeRange(s, e, chromosome)) / (e - s)
                 }
+            }
             clipStart += (clippedStart - start)
             clipEnd += (end - clippedEnd)
             Peak(
@@ -141,59 +162,66 @@ internal fun SpanFitResults.getChromosomeIslands(
                 "${clippedIslands.size}/${filteredIslands.size}/${candidateIslands.size} " +
                 "average clip start/end " +
                 "${clipStart.toDouble() / max(1, clippedIslands.size)}/${
-                    clipEnd.toDouble() / max(1, clippedIslands.size)}"
+                    clipEnd.toDouble() / max(1, clippedIslands.size)
+                }"
     )
     return clippedIslands
 }
 
 
-private val CLIP_PERCENTS = intArrayOf(1, 2, 3, 5, 10)
-
-private const val MAX_CLIP_PERCENT = 25
+private val CLIP_STEPS = intArrayOf(1, 2, 3, 5, 10, 20, 50)
 
 /**
- * Optimization function.
- * Tries to reduce range by [CLIP_PERCENTS] percent from both sides in cycle increasing [score].
- * Maximum clip is configured by [MAX_CLIP_PERCENT]
+ * Tries to reduce range by [CLIP_STEPS] from both sides while increasing [density].
+ *
+ * @param start Initial start of island
+ * @param end Initial end of island
+ * @param maxClip Limits maximum length to be clipped
+ * @param multiplier Limits maximum density of clipped out fragment as initial island [density] * [multiplier]
+ * @param density Density function, i.e. coverage / length
  */
-internal fun clipIsland(start: Int, end: Int, score: (Int, Int) -> (Double)): Pair<Int, Int> {
-    val length = end - start
+internal fun clipIsland(
+    start: Int,
+    end: Int,
+    maxClip: Int,
+    multiplier: Double,
+    density: (Int, Int) -> (Double)
+): Pair<Int, Int> {
+    val maxClippedDensity = density(start, end) * multiplier
     // Try to change left boundary
-    val maxStart = start + (MAX_CLIP_PERCENT / 100.0 * length).toInt()
+    val maxStart = start + maxClip
     var currentStart = start
-    var step = 0
-    var currentScore = score(start, end) / length
+    var step = CLIP_STEPS.size - 1
     while (step >= 0 && currentStart <= maxStart) {
-        val newStart = currentStart + (CLIP_PERCENTS[step] / 100.0 * length).toInt()
+        val newStart = currentStart + CLIP_STEPS[step]
         if (newStart > maxStart) {
             step -= 1
             continue
         }
-        val newScore = score(newStart, end) / (end - newStart)
-        if (newScore > currentScore) {
+        // Clip while clipped part density is less than average density
+        val newDensity = density(start, newStart)
+        if (newDensity < maxClippedDensity) {
             currentStart = newStart
-            currentScore = newScore
-            step = min(step + 1, CLIP_PERCENTS.size - 1)
+            step = min(step + 1, CLIP_STEPS.size - 1)
         } else {
             step -= 1
         }
     }
     // Try to change right boundary
-    val minEnd = end - (MAX_CLIP_PERCENT / 100.0 * length).toInt()
+    val minEnd = end - maxClip
     var currentEnd = end
-    step = 0
-    currentScore = score(start, end) / length
+    step = CLIP_STEPS.size - 1
     while (step >= 0 && currentEnd >= minEnd) {
-        val newEnd = currentEnd - (CLIP_PERCENTS[step] / 100.0 * length).toInt()
+        val newEnd = currentEnd - CLIP_STEPS[step]
         if (newEnd < minEnd) {
             step -= 1
             continue
         }
-        val newScore = score(start, newEnd) / (newEnd - start)
-        if (newScore > currentScore) {
+        // Clip while clipped part density is less than average density
+        val newDensity = density(newEnd, end)
+        if (newDensity < maxClippedDensity) {
             currentEnd = newEnd
-            currentScore = newScore
-            step = min(step + 1, CLIP_PERCENTS.size - 1)
+            step = min(step + 1, CLIP_STEPS.size - 1)
         } else {
             step -= 1
         }
