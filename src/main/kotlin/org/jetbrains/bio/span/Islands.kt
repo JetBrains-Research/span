@@ -117,41 +117,42 @@ internal fun SpanFitResults.getChromosomeIslands(
     }
 
     val islandQValues = BenjaminiHochberg.adjust(islandsPValues)
-    val resultIslands = filteredIslands.indices.filter { islandQValues[it] < fdr }
+    val resultIslandsIndexes = filteredIslands.indices.filter {
+        islandQValues[it] < fdr
+    }
     var clipStart = 0L
     var clipEnd = 0L
-    val clippedIslands = resultIslands.indices
-        .map { islandIndex ->
-            val (i, j) = filteredIslands[islandIndex]
-            val start = offsets[i]
-            val end = if (j < offsets.size) offsets[j] else chromosome.length
-            // Optimize length
-            val (clippedStart, clippedEnd) = if (noclip)
-                start to end
-            else {
-                val density = { s: Int, e: Int ->
-                    fitInfo.score(ChromosomeRange(s, e, chromosome)) / (e - s)
-                }
-                // Threshold limiting max clip length and density
-                val minKeepLength = (end - start) / (j - i) * gap / 2
-                val maxClipLength = max(0, ((end - start) - minKeepLength) / 2)
-                val maxClipDensity = 0.25 * density(start, end)
-                clipIsland(start, end, maxClipLength, maxClipDensity, density)
+    val clippedIslands = resultIslandsIndexes.map { idx ->
+        val (i, j) = filteredIslands[idx]
+        val start = offsets[i]
+        val end = if (j < offsets.size) offsets[j] else chromosome.length
+        // Optimize length
+        val (clippedStart, clippedEnd) = if (noclip)
+            start to end
+        else {
+            val density = { s: Int, e: Int ->
+                fitInfo.score(ChromosomeRange(s, e, chromosome)) / (e - s)
             }
-            clipStart += (clippedStart - start)
-            clipEnd += (end - clippedEnd)
-            Peak(
-                chromosome = chromosome,
-                startOffset = clippedStart,
-                endOffset = clippedEnd,
-                mlogpvalue = -log10(islandsPValues[islandIndex]),
-                mlogqvalue = -log10(islandQValues[islandIndex]),
-                // Value is either coverage of fold change
-                value = fitInfo.score(ChromosomeRange(clippedStart, clippedEnd, chromosome)),
-                // Score should be proportional original q-value
-                score = min(1000.0, -10 * log10(islandQValues[islandIndex])).toInt()
-            )
+            // Threshold limiting max clip length and density
+            val minKeepLength = (end - start) / (j - i) * gap / 2
+            val maxClipLength = max(0, ((end - start) - minKeepLength) / 2)
+            val maxClipDensity = 0.25 * density(start, end)
+            clipIsland(start, end, maxClipLength, maxClipDensity, density)
         }
+        clipStart += (clippedStart - start)
+        clipEnd += (end - clippedEnd)
+        Peak(
+            chromosome = chromosome,
+            startOffset = clippedStart,
+            endOffset = clippedEnd,
+            mlogpvalue = -log10(islandsPValues[idx]),
+            mlogqvalue = -log10(islandQValues[idx]),
+            // Value is either coverage of fold change
+            value = fitInfo.score(ChromosomeRange(clippedStart, clippedEnd, chromosome)),
+            // Score should be proportional original q-value
+            score = min(1000.0, -10 * log10(islandQValues[idx])).toInt()
+        )
+    }
     Peak.LOG.debug(
         "$chromosome: islands result/filtered/candidate " +
                 "${clippedIslands.size}/${filteredIslands.size}/${candidateIslands.size} " +
