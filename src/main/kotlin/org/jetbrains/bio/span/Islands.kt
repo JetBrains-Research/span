@@ -91,7 +91,7 @@ internal fun SpanFitResults.getChromosomeIslands(
     multiplier: Double,
     noclip: Boolean
 ): List<Peak> {
-    // Compute candidate bins and islands
+    // Compute candidate bins and islands with relaxed settings by multiplier
     val nullMemberships = logNullMemberships.exp()
     val candidateBins = BitterSet(logNullMemberships.size).apply {
         0.until(size()).filter { nullMemberships[it] <= min(0.1, fdr * multiplier) }.forEach(::set)
@@ -100,26 +100,49 @@ internal fun SpanFitResults.getChromosomeIslands(
         "$chromosome: candidate bins ${candidateBins.cardinality()}/${logNullMemberships.size}"
     )
     val candidateIslands = candidateBins.aggregate(gap)
+
+    // Filter islands containing at least one significant bin
     val filteredIslands = candidateIslands.filter { (i, j) ->
         (i until j).any { nullMemberships[it] <= fdr }
     }
     if (filteredIslands.isEmpty()) {
         return emptyList()
     }
+
+
+    // Apply Stoffer-Liptak test to correct dependence between consequent p-values
     val stofferLiptakTest = ISLANDS_STOFFER_LIPTAK_CACHE.get(this to chromosome) {
         StofferLiptakTest(nullMemberships.data)
     }
-    // Apply Stoffer-Liptak test to correct dependence between consequent p-values
     val islandsPValues = F64Array(filteredIslands.size) { islandIndex ->
         val (i, j) = filteredIslands[islandIndex]
         val pValues = (i until j).map { nullMemberships[it] }.filter { it <= fdr }.toDoubleArray()
         stofferLiptakTest.combine(pValues)
     }
 
+    // Filter result islands by Q values
     val islandQValues = BenjaminiHochberg.adjust(islandsPValues)
     val resultIslandsIndexes = filteredIslands.indices.filter {
         islandQValues[it] < fdr
     }
+
+    // Compute average density
+    val avgDensity = if (noclip) {
+        0.0
+    } else {
+        var sumScore = 0.0
+        var sumLength = 0L
+        resultIslandsIndexes.forEach { idx ->
+            val (i, j) = filteredIslands[idx]
+            val start = offsets[i]
+            val end = if (j < offsets.size) offsets[j] else chromosome.length
+            sumScore += fitInfo.score(ChromosomeRange(start, end, chromosome))
+            sumLength += end - start
+        }
+        if (sumLength > 0) sumScore / sumLength else 0.0
+    }
+
+    // Clip result islands by density
     var clipStart = 0L
     var clipEnd = 0L
     val clippedIslands = resultIslandsIndexes.map { idx ->
@@ -134,9 +157,8 @@ internal fun SpanFitResults.getChromosomeIslands(
                 fitInfo.score(ChromosomeRange(s, e, chromosome)) / (e - s)
             }
             // Threshold limiting max clip length and density
-            val minKeepLength = (end - start) / (j - i) * gap / 2
-            val maxClipLength = max(0, ((end - start) - minKeepLength) / 2)
-            val maxClipDensity = 0.25 * density(start, end)
+            val maxClipLength = (end - start) / 4
+            val maxClipDensity = 0.25 * avgDensity
             clipIsland(start, end, maxClipLength, maxClipDensity, density)
         }
         clipStart += (clippedStart - start)
@@ -156,6 +178,7 @@ internal fun SpanFitResults.getChromosomeIslands(
     Peak.LOG.debug(
         "$chromosome: islands result/filtered/candidate " +
                 "${clippedIslands.size}/${filteredIslands.size}/${candidateIslands.size} " +
+                "average density $avgDensity " +
                 "average clip start/end " +
                 "${clipStart.toDouble() / max(1, clippedIslands.size)}/${
                     clipEnd.toDouble() / max(1, clippedIslands.size)
