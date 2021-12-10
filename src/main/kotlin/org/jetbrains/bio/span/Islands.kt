@@ -126,25 +126,32 @@ internal fun SpanFitResults.getChromosomeIslands(
         islandQValues[it] < fdr
     }
 
-    // Compute average density
-    val avgDensity = if (noclip) {
+    // Compute max clip density
+    val maxClipDensity = if (noclip) {
         0.0
     } else {
-        var sumScore = 0.0
-        var sumLength = 0L
+        var sumIslandsScore = 0.0
+        var sumIslandsLength = 0L
         resultIslandsIndexes.forEach { idx ->
             val (i, j) = filteredIslands[idx]
             val start = offsets[i]
             val end = if (j < offsets.size) offsets[j] else chromosome.length
-            sumScore += fitInfo.score(ChromosomeRange(start, end, chromosome))
-            sumLength += end - start
+            sumIslandsScore += fitInfo.score(ChromosomeRange(start, end, chromosome))
+            sumIslandsLength += end - start
         }
-        if (sumLength > 0) sumScore / sumLength else 0.0
+        val avgIslandsDensity = if (sumIslandsLength > 0) sumIslandsScore / sumIslandsLength else 0.0
+        val sumNoiseScore = fitInfo.score(chromosome.range.on(chromosome)) - sumIslandsScore
+        val sumNoiseLength = chromosome.length - sumIslandsLength
+        val avgNoiseDensity = sumNoiseScore / sumNoiseLength
+        avgNoiseDensity + 0.25 * (avgIslandsDensity - avgNoiseDensity)
     }
 
     // Clip result islands by density
     var clipStart = 0L
     var clipEnd = 0L
+    val densityFunction = { s: Int, e: Int ->
+        fitInfo.score(ChromosomeRange(s, e, chromosome)) / (e - s)
+    }
     val clippedIslands = resultIslandsIndexes.map { idx ->
         val (i, j) = filteredIslands[idx]
         val start = offsets[i]
@@ -153,13 +160,7 @@ internal fun SpanFitResults.getChromosomeIslands(
         val (clippedStart, clippedEnd) = if (noclip)
             start to end
         else {
-            val density = { s: Int, e: Int ->
-                fitInfo.score(ChromosomeRange(s, e, chromosome)) / (e - s)
-            }
-            // Threshold limiting max clip length and density
-            val maxClipLength = (end - start) / 4
-            val maxClipDensity = 0.25 * avgDensity
-            clipIsland(start, end, maxClipLength, maxClipDensity, density)
+            clipIsland(start, end, (end - start) / 4, maxClipDensity, densityFunction)
         }
         clipStart += (clippedStart - start)
         clipEnd += (end - clippedEnd)
@@ -178,7 +179,7 @@ internal fun SpanFitResults.getChromosomeIslands(
     Peak.LOG.debug(
         "$chromosome: islands result/filtered/candidate " +
                 "${clippedIslands.size}/${filteredIslands.size}/${candidateIslands.size} " +
-                "average density $avgDensity " +
+                "max clip density $maxClipDensity " +
                 "average clip start/end " +
                 "${clipStart.toDouble() / max(1, clippedIslands.size)}/${
                     clipEnd.toDouble() / max(1, clippedIslands.size)
@@ -191,20 +192,20 @@ internal fun SpanFitResults.getChromosomeIslands(
 private val CLIP_STEPS = intArrayOf(1, 2, 5, 10, 20, 50, 100, 200, 500, 1000)
 
 /**
- * Tries to reduce range by [CLIP_STEPS] from both sides while increasing [density].
+ * Tries to reduce range by [CLIP_STEPS] from both sides while increasing [densityFunction].
  *
  * @param start Initial start of island
  * @param end Initial end of island
  * @param maxClipLength Limits maximum length to be clipped
  * @param maxClipDensity Limits maximum density of clipped out fragment
- * @param density Density function, i.e. coverage / length
+ * @param densityFunction Density function, i.e. coverage / length
  */
 internal fun clipIsland(
     start: Int,
     end: Int,
     maxClipLength: Int,
     maxClipDensity: Double,
-    density: (Int, Int) -> (Double)
+    densityFunction: (Int, Int) -> (Double)
 ): Pair<Int, Int> {
     // Try to change left boundary
     val maxStart = start + maxClipLength
@@ -217,7 +218,7 @@ internal fun clipIsland(
             continue
         }
         // Clip while clipped part density is less than average density
-        val clipDensity = density(start, newStart)
+        val clipDensity = densityFunction(start, newStart)
         if (clipDensity < maxClipDensity) {
             currentStart = newStart
             step = min(step + 1, CLIP_STEPS.size - 1)
@@ -236,7 +237,7 @@ internal fun clipIsland(
             continue
         }
         // Clip while clipped part density is less than average density
-        val clipDensity = density(newEnd, end)
+        val clipDensity = densityFunction(newEnd, end)
         if (clipDensity < maxClipDensity) {
             currentEnd = newEnd
             step = min(step + 1, CLIP_STEPS.size - 1)
