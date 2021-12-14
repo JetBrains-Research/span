@@ -87,7 +87,8 @@ object SpanCLAAnalyze {
                     Logs.addConsoleAppender(if ("debug" in options) Level.DEBUG else Level.INFO)
                 }
                 SpanCLA.LOG.info("SPAN ${SpanCLA.version()}")
-                SpanCLA.LOG.info("COMMAND: analyze ${params.joinToString(" ")}")
+                SpanCLA.LOG.info("COMMAND: " +
+                        "analyze${if (experimental) "-experimental" else ""} ${params.joinToString(" ")}")
 
                 val peaksPath = options.valueOf("peaks") as Path?
                 val modelPath = options.valueOf("model") as Path?
