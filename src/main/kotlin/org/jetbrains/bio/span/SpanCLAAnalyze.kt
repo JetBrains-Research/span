@@ -65,14 +65,14 @@ object SpanCLAAnalyze {
                 accepts(
                     "type",
                     "Model type.\n" +
-                            "'nbhmm' - negative binomial HMM (default)\n" +
+                            "'nbhmm' - Two states NB HMM with zero inflated (default)\n" +
+                            "'nbhmm3z' - Three states NB HMM with zero inflated\n" +
+                            "'nbhmm4z' - Four states NB HMM with zero inflated\n" +
+                            "'nbhmm2nz' - Two states NB HMM\n" +
+                            "'nbhmm3nz' - Three states NB HMM\n" +
+                            "'nbhmm4nz' - Four states NB HMM\n" +
                             "'prm' - Poisson regression mixture\n" +
-                            "'nbrm' - Negative Binomial regression mixture\n" +
-                            "'nbhmm2nz' - NB_HMM2_NOZERO\n" +
-                            "'nbhmm3nz' - NB_HMM3_NOZERO\n" +
-                            "'nbhmm4nz' - NB_HMM4_NOZERO\n" +
-                            "'nbhmm3z' - NB_HMM3 WITH ZERO\n" +
-                            "'nbhmm4z' - NB_HMM4 WITH ZERO."
+                            "'nbrm' - Negative Binomial regression mixture."
                 ).withRequiredArg()
                 accepts("mapability", "Mapability bigWig file.")
                     .availableIf("treatment")
@@ -444,13 +444,12 @@ object SpanCLAAnalyze {
 }
 
 enum class SpanModel(val description: String) {
-    NB_HMM("negative binomial HMM"),
-
-    NB_HMM2_NOZERO("negative binomial HMM 2states without zero"),
-    NB_HMM3_NOZERO("negative binomial HMM 3states without zero"),
-    NB_HMM4_NOZERO("negative binomial HMM 4states without zero"),
-    NB_HMM3_ZERO("negative binomial HMM 3states with zero"),
-    NB_HMM4_ZERO("negative binomial HMM 4states with zero"),
+    NB_HMM("Negative binomial HMM 2states with zero"),
+    NB_HMM3_ZERO("Negative binomial HMM 3states with zero"),
+    NB_HMM4_ZERO("Negative binomial HMM 4states with zero"),
+    NB_HMM2_NOZERO("Negative binomial HMM 2states without zero"),
+    NB_HMM3_NOZERO("Negative binomial HMM 3states without zero"),
+    NB_HMM4_NOZERO("Negative binomial HMM 4states without zero"),
 
     POISSON_REGRESSION_MIXTURE("Poisson regression mixture"),
     NEGBIN_REGRESSION_MIXTURE("Negative Binomial Regression mixture");
