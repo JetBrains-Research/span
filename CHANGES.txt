@@ -3,6 +3,29 @@ SPAN Changelog
 
 Here you can see the full list of changes between each release.
 
+Version 0.15
+----------------
+
+Released on Dec 13th, 2021
+
+- Switched to new procedure for computing peaks from fit HMM - islands:
+  1) Estimate model bins posterior probabilities
+  2) Pick candidate bins with probability of H_0 <= alpha * multiplier,
+    to mitigate problem of broad peaks split with strict FDR
+  3) Using gap merge bins into candidate islands
+  4) Assign p-value to each island using Stoffer-Liptak test
+  5) Compute qvalues on islands p-values, filter by alpha
+- Use Stoffer-Liptak test for combining pvalues for candidate islands
+- Improved multistart initial NB states guess - use different params for each model
+- Safeguard against infinite failures as initial guess for NB, which effectively converts NB to Poisson
+- Experimental `analyze-experimental` command provide options for different types of data models
+- Updated defaults values for SPAN: fdr 0.05, gap 10, multistart iterations 2, total iterations 20, ll threshold 1
+- Reduced time required for peak calling
+- Show progress while computing peaks from model
+- Switched to viktor library version 1.2.0
+- Bugfixes
+
+
 Version 0.13
 ----------------
 
@@ -40,7 +63,7 @@ Released on March 22, 2019
 
 - ATAC-Seq support -  `--fragment 0` option works correctly in paired end reads case
 - Single Cell ATAC-Seq supported - `--keep-dup` options allows duplicated alignments in same position
-- SPAN model name can be configured explicitly by `--model`, default name is more user friendly
+- SPAN model name can be configured explicitly by `--model`, default name is more user-friendly
 - SPAN doesn't ignore contigs (alternative, random) chromosomes in peak calling anymore
 
 Version 0.9.2
@@ -77,7 +100,7 @@ Released on Nov 22, 2018
 - Ignore empty chromosomes while fitting models
 - Lightweight models can be opened in JBR Genome Browser
 - Improved support for custom chrom.sizes path
-- Windows, Mac OS supported in Viktor (https://github.com/JetBrains-Research/viktor) enabling SS2, AVX instructions set
+- Windows, macOS supported in Viktor (https://github.com/JetBrains-Research/viktor) enabling SS2, AVX instructions set
 - Various bugfixes
 
 Version 0.7.0
