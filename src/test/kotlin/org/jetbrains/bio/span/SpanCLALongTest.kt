@@ -177,6 +177,7 @@ FRAGMENT: auto
 BIN: $BIN
 FDR: $FDR
 GAP: $GAP
+TYPE: islands
 PEAKS: $peaksPath
 """, out
                 )
@@ -659,27 +660,6 @@ CONVERGENCE THRESHOLD: 1
                     Location(1100 * BIN, 1900 * BIN, TO.get().first()) in peaksLocations,
                     "Expected location not found in called peaks"
                 )
-
-                val islandsPath = dir / "islands.bed"
-                SpanCLA.main(
-                    arrayOf(
-                        "analyze-experimental",
-                        "--islands",
-                        "-cs", Genome["to1"].chromSizesPath.toString(),
-                        "-w", dir.toString(),
-                        "--peaks", islandsPath.toString(),
-                        "-fdr", FDR.toString(),
-                        "-t", coveragePath.toString()
-                    )
-                )
-                // Check created bed file
-                val islandsLocations = LocationsMergingList.load(TO, islandsPath)
-                assertTrue(
-                    Location(1100 * BIN, 1900 * BIN, TO.get().first()) in islandsLocations,
-                    "Expected location not found in called peaks"
-                )
-
-                assertTrue(islandsLocations.toList().size <= peaksLocations.toList().size)
             }
         }
     }

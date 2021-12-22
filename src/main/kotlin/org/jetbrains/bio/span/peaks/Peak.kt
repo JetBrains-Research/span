@@ -1,4 +1,4 @@
-package org.jetbrains.bio.span
+package org.jetbrains.bio.span.peaks
 
 import com.google.common.collect.ComparisonChain
 import org.apache.commons.csv.CSVFormat

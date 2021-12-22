@@ -1,11 +1,13 @@
-package org.jetbrains.bio.span
+package org.jetbrains.bio.span.peaks
 
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
 import org.apache.commons.math3.stat.descriptive.rank.Percentile
 import org.jetbrains.bio.dataframe.BitterSet
 import org.jetbrains.bio.dataframe.DataFrame
-import org.jetbrains.bio.experiments.fit.*
+import org.jetbrains.bio.experiments.fit.SpanFitResults
+import org.jetbrains.bio.experiments.fit.SpanModelFitExperiment
+import org.jetbrains.bio.experiments.fit.f64Array
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
@@ -15,20 +17,17 @@ import org.jetbrains.bio.util.CancellableState
 import org.jetbrains.bio.util.Progress
 import org.jetbrains.bio.viktor.F64Array
 import kotlin.math.ln
-import kotlin.math.log10
 import kotlin.math.min
 
+const val PEAKS_TYPE_FDR_GAP = "simple"
+
 /**
- * The peaks are called in three steps.
- *
- * 1) Firstly, an FDR threshold is applied to the posterior state probabilities
+ * The islands are called in three steps.
+ * 1) First, FDR threshold is applied to bins posterior error probabilities.
  * 2) Consecutive enriched bins are merged into peaks.
- * 3) Finally, each peak is assigned a qvalue score - median qvalue
- *
- * @param fdr is used to limit False Discovery Rate at given level.
- * @param gap enriched bins yielded after FDR control are merged if distance is less or equal than gap.
+ * 3) Finally, each peak is assigned a pvalue and qvalue score - median score * ln (length).
  */
-fun SpanFitResults.getPeaks(
+fun SpanFitResults.getFdrGapPeaks(
     genomeQuery: GenomeQuery,
     fdr: Double,
     gap: Int,
@@ -38,7 +37,7 @@ fun SpanFitResults.getPeaks(
     fitInfo.prepareScores()
     val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
         cancellableState?.checkCanceled()
-        val chromosomePeaks = getChromosomePeaks(chromosome, fdr, gap)
+        val chromosomePeaks = getChromosomeFdrGapPeaks(chromosome, fdr, gap)
         progress.report(1)
         chromosomePeaks
     }
@@ -46,14 +45,14 @@ fun SpanFitResults.getPeaks(
     return genomeQuery.get().flatMap { map[it] }
 }
 
-fun SpanFitResults.getChromosomePeaks(
+fun SpanFitResults.getChromosomeFdrGapPeaks(
     chromosome: Chromosome,
     fdr: Double,
     gap: Int
 ): List<Peak> =
     // Check that we have information for requested chromosome
     if (chromosome.name in fitInfo.chromosomesSizes) {
-        getChromosomePeaks(
+        getChromosomeFdrGapPeaks(
             logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL),
             fitInfo.offsets(chromosome),
             chromosome, fdr, gap,
@@ -65,34 +64,35 @@ fun SpanFitResults.getChromosomePeaks(
         emptyList()
     }
 
-internal fun SpanFitResults.getChromosomePeaks(
+internal fun SpanFitResults.getChromosomeFdrGapPeaks(
     logNullMemberships: F64Array,
     offsets: IntArray,
     chromosome: Chromosome,
     fdr: Double,
     gap: Int,
 ): List<Peak> {
-    val qvalues = PEAKS_QVALUES_CACHE.get(this to chromosome) {
-        Fdr.qvalidate(logNullMemberships)
+    val logFdr = ln(fdr)
+    val logQValues = PEAKS_LOG_QVALUES_CACHE.get(this to chromosome) {
+        Fdr.qvalidate(logNullMemberships, logResults = true)
     }
     val enrichedBins = BitterSet(logNullMemberships.size).apply {
-        0.until(size()).filter { qvalues[it] < fdr }.forEach(::set)
+        0.until(size()).filter { logQValues[it] <= logFdr }.forEach(::set)
     }
     Peak.LOG.debug("$chromosome: candidate bins ${enrichedBins.cardinality()}/${logNullMemberships.size}")
     val peaks = enrichedBins.aggregate(gap).map { (i, j) ->
-        val passedFDR = (i until j).filter { qvalues[it] < fdr }
-        val pvalueLogMedian = DoubleArray(passedFDR.size) { logNullMemberships[passedFDR[it]] }.median()
-        val qvalueMedian = DoubleArray(passedFDR.size) { qvalues[passedFDR[it]] }.median()
+        val passedFdrBins = (i until j).filter { logQValues[it] <= logFdr }
+        val pvalueLogMedian = DoubleArray(passedFdrBins.size) { logNullMemberships[passedFdrBins[it]] }.median()
+        val qvalueLogMedian = DoubleArray(passedFdrBins.size) { logQValues[passedFdrBins[it]] }.median()
         val start = offsets[i]
         val end = if (j < offsets.size) offsets[j] else chromosome.length
         // Score should be proportional to length of peak and median original q-value
-        val score = min(1000.0, (-log10(qvalueMedian) * (1 + ln((end - start).toDouble())))).toInt()
+        val score = min(1000.0, (-qvalueLogMedian * (1 + ln((end - start).toDouble())))).toInt()
         // Value is either coverage of fold change
         val value = fitInfo.score(ChromosomeRange(start, end, chromosome))
         Peak(
             chromosome, start, end,
-            mlogpvalue = -pvalueLogMedian,
-            mlogqvalue = -log10(qvalueMedian),
+            mlogpvalue = -pvalueLogMedian / LOG_10,
+            mlogqvalue = -qvalueLogMedian / LOG_10,
             value = value,
             score = score
         )
@@ -107,7 +107,7 @@ internal fun SpanFitResults.getChromosomePeaks(
  * So Q-values estimation is superfluous for each parameter combination.
  * Use cache with weak values to avoid memory overflow.
  */
-private val PEAKS_QVALUES_CACHE: Cache<Pair<SpanFitResults, Chromosome>, F64Array> =
+private val PEAKS_LOG_QVALUES_CACHE: Cache<Pair<SpanFitResults, Chromosome>, F64Array> =
     CacheBuilder.newBuilder().weakValues().build()
 
 
@@ -128,3 +128,5 @@ internal fun DoubleArray.median(): Double {
         override fun getWorkArray(values: DoubleArray?, begin: Int, length: Int) = this@median
     }.evaluate(this)
 }
+
+val LOG_10 = ln(10.0)

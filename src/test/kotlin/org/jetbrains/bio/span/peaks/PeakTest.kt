@@ -1,4 +1,4 @@
-package org.jetbrains.bio.span
+package org.jetbrains.bio.span.peaks
 
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
@@ -12,7 +12,7 @@ import kotlin.test.assertEquals
  * @date 04/07/2017
  */
 
-class PeaksTest {
+class PeakTest {
 
     val genomeQuery = GenomeQuery(Genome["to1"])
     val chromosome = genomeQuery.get().first()

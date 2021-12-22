@@ -13,6 +13,8 @@ import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPA
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
+import org.jetbrains.bio.span.peaks.PEAKS_TYPE_FDR_GAP
+import org.jetbrains.bio.span.peaks.PEAKS_TYPE_ISLANDS
 import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.util.*
 import org.jetbrains.bio.util.FileSize.Companion.GB
@@ -62,11 +64,8 @@ analyze                         Peak calling mode
 compare                         Differential peak calling mode, experimental
 """
     private const val ANALYZE = "analyze"
+    private const val EXPERIMENTAL = "experimental"
     private const val COMPARE = "compare"
-
-    /* the "ANALYZE_EXPERIMENTAL" option is not listed in the help message by design,
-    * since we currently have no conclusive research on whether to use it and in which cases */
-    private const val ANALYZE_EXPERIMENTAL = "analyze-experimental"
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -76,7 +75,7 @@ compare                         Differential peak calling mode, experimental
         } else {
             when (args[0]) {
                 ANALYZE -> SpanCLAAnalyze.analyze(args.copyOfRange(1, args.size), false)
-                ANALYZE_EXPERIMENTAL -> SpanCLAAnalyze.analyze(args.copyOfRange(1, args.size), true)
+                EXPERIMENTAL -> SpanCLAAnalyze.analyze(args.copyOfRange(1, args.size), true)
                 COMPARE -> SpanCLACompare.compare(args.copyOfRange(1, args.size))
 
                 "-?", "-h", "--help" -> println(HELP)
@@ -134,7 +133,7 @@ compare                         Differential peak calling mode, experimental
             acceptsAll(
                 listOf("cs", "chrom.sizes"),
                 "Chromosome sizes path, can be downloaded at\n" +
-                        "http://hgdownload.cse.ucsc.edu/goldenPath/<build>/bigZips/<build>.chrom.sizes"
+                        "https://hgdownload.cse.ucsc.edu/goldenPath/<build>/bigZips/<build>.chrom.sizes"
             ).requiredUnless("model").withRequiredArg().withValuesConvertedBy(PathConverter.exists())
             acceptsAll(
                 listOf("p", "peaks"), "Path to result peaks file in ENCODE broadPeak (BED 6+3) format"
@@ -158,6 +157,16 @@ compare                         Differential peak calling mode, experimental
                 .withRequiredArg()
                 .ofType(Int::class.java)
                 .defaultsTo(SPAN_DEFAULT_GAP)
+            accepts(
+                "peaks-type",
+                """
+                    Peaks computation method.
+                   '$PEAKS_TYPE_ISLANDS' - Merge consequent blocks of enriched bins with relaxed gaps 
+                   '$PEAKS_TYPE_FDR_GAP' - Merge fdr enriched HMM bins with gap into peaks (previous)
+                """.trimIndent()
+            )
+                .withRequiredArg()
+                .defaultsTo(PEAKS_TYPE_ISLANDS)
             acceptsAll(listOf("w", "workdir"), "Path to the working dir")
                 .withRequiredArg().withValuesConvertedBy(PathConverter.exists())
                 .defaultsTo(System.getProperty("user.dir").toPath())
@@ -185,11 +194,10 @@ compare                         Differential peak calling mode, experimental
     /**
      * Configure logging to file. Returns path to log file.
      */
-    internal fun configureLogFile(workingDir: Path, id: String): Path {
-        val logPath = workingDir / "logs" / "$id.log"
-        Logs.addLoggingToFile(logPath)
-        return logPath
-    }
+    internal fun configureLogFile(workingDir: Path, id: String): Path =
+        (workingDir / "logs" / "$id.log").apply {
+            Logs.addLoggingToFile(this)
+        }
 
     /**
      * Compare the command-line option (null if not given) and stored value (null if not present).

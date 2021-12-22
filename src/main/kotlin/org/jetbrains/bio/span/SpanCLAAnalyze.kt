@@ -13,6 +13,7 @@ import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.PeaksInfo
 import org.jetbrains.bio.genome.coverage.FixedFragment
+import org.jetbrains.bio.span.peaks.*
 import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.util.*
 import org.slf4j.event.Level
@@ -57,23 +58,22 @@ object SpanCLAAnalyze {
                 .withRequiredArg()
                 .ofType(Int::class.java)
                 .defaultsTo(Fitter.MULTISTART_ITERATIONS)
-
             if (experimental) {
-                accepts("islands", "Call islands")
-                accepts("noclip", "Don't clip islands to improve density")
-
                 accepts(
-                    "type",
-                    "Model type.\n" +
-                            "'nbhmm' - Two states NB HMM with zero inflated (default)\n" +
-                            "'nbhmm3z' - Three states NB HMM with zero inflated\n" +
-                            "'nbhmm4z' - Four states NB HMM with zero inflated\n" +
-                            "'nbhmm2nz' - Two states NB HMM\n" +
-                            "'nbhmm3nz' - Three states NB HMM\n" +
-                            "'nbhmm4nz' - Four states NB HMM\n" +
-                            "'prm' - Poisson regression mixture\n" +
-                            "'nbrm' - Negative Binomial regression mixture."
-                ).withRequiredArg()
+                    "model-type",
+                    """
+                        Model type.
+                        'nbhmm' - Two states NB HMM with zero inflated (default)
+                        'nbhmm3z' - Three states NB HMM with zero inflated
+                        'nbhmm4z' - Four states NB HMM with zero inflated
+                        'nbhmm2nz' - Two states NB HMM
+                        'nbhmm3nz' - Three states NB HMM
+                        'nbhmm4nz' - Four states NB HMM
+                        'prm' - Poisson regression mixture
+                        'nbrm' - Negative Binomial regression mixture.
+                    """.trimIndent()
+                )
+                    .withRequiredArg()
                 accepts("mapability", "Mapability bigWig file.")
                     .availableIf("treatment")
                     .withRequiredArg()
@@ -87,8 +87,10 @@ object SpanCLAAnalyze {
                     Logs.addConsoleAppender(if ("debug" in options) Level.DEBUG else Level.INFO)
                 }
                 SpanCLA.LOG.info("SPAN ${SpanCLA.version()}")
-                SpanCLA.LOG.info("COMMAND: " +
-                        "analyze${if (experimental) "-experimental" else ""} ${params.joinToString(" ")}")
+                SpanCLA.LOG.info(
+                    "COMMAND: " +
+                            "analyze${if (experimental) "-experimental" else ""} ${params.joinToString(" ")}"
+                )
 
                 val peaksPath = options.valueOf("peaks") as Path?
                 val modelPath = options.valueOf("model") as Path?
@@ -128,8 +130,17 @@ object SpanCLAAnalyze {
 
                 val labelsPath = options.valueOf("labels") as Path?
                 val gap = options.valueOf("gap") as Int
+                check(gap >= 0) { "Negative gap: $gap" }
                 val fdr = options.valueOf("fdr") as Double
+                check(0 < fdr && fdr <= 1) { "Illegal fdr: $fdr, expected range: (0, 1)" }
+                val peaksType = options.valueOf("peaks-type") as String
+                check(peaksType in setOf(PEAKS_TYPE_ISLANDS, PEAKS_TYPE_FDR_GAP)) {
+                    "Unknown peaks-type: $peaksType, expected $PEAKS_TYPE_ISLANDS or $PEAKS_TYPE_FDR_GAP"
+                }
                 val threads = options.valueOf("threads") as Int?
+                check(threads == null || threads > 0) {
+                    "Not positive threads option: $threads"
+                }
 
                 if (peaksPath != null) {
                     if (labelsPath != null) {
@@ -139,6 +150,7 @@ object SpanCLAAnalyze {
                         SpanCLA.LOG.info("FDR: $fdr")
                         SpanCLA.LOG.info("GAP: $gap")
                     }
+                    SpanCLA.LOG.info("TYPE: $peaksType")
                     SpanCLA.LOG.info("PEAKS: $peaksPath")
                 } else {
                     SpanCLA.LOG.info("NO output path given, process model fitting only.")
@@ -161,10 +173,10 @@ object SpanCLAAnalyze {
 
                 if (peaksPath != null) {
                     if (labelsPath == null) {
-                        val peaks = if ("islands" in options) {
-                            spanResults.getIslands(genomeQuery, fdr, gap, noclip = "noclip" in options)
-                        } else {
-                            spanResults.getPeaks(genomeQuery, fdr, gap)
+                        val peaks = when (peaksType) {
+                            PEAKS_TYPE_ISLANDS -> spanResults.getIslands(genomeQuery, fdr, gap)
+                            PEAKS_TYPE_FDR_GAP -> spanResults.getFdrGapPeaks(genomeQuery, fdr, gap)
+                            else -> throw  IllegalStateException("Impossible: $peaksType")
                         }
                         Peak.savePeaks(
                             peaks, peaksPath,
@@ -182,7 +194,6 @@ object SpanCLAAnalyze {
                             "${k.name}: ${k.render(v)}"
                         }.joinToString("\n"))
                     } else {
-                        check("islands" !in options) { "Islands option is not allowed for tuning" }
                         val results = TuningResults()
                         SpanCLA.LOG.info("Loading labels $labelsPath...")
                         val labels = LocationLabel.loadLabels(labelsPath, genomeQuery.genome)
@@ -204,7 +215,7 @@ object SpanCLAAnalyze {
                             peaksPath.parent
                                     / "${peaksPath.fileName.stem}_parameters.csv"
                         )
-                        val peaks = spanResults.getPeaks(genomeQuery, optimalFDR, optimalGap)
+                        val peaks = spanResults.getFdrGapPeaks(genomeQuery, optimalFDR, optimalGap)
                         Peak.savePeaks(
                             peaks, peaksPath,
                             "peak${if (fragment is FixedFragment) "_$fragment" else ""}_" +

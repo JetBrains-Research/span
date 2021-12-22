@@ -10,11 +10,11 @@ import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.genome.query.CachingQuery
 import org.jetbrains.bio.genome.query.Query
-import org.jetbrains.bio.span.Peak
+import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.span.coverage.BinnedCoverageScoresQuery
 import org.jetbrains.bio.span.coverage.CoverageScoresQuery
 import org.jetbrains.bio.span.coverage.binsScoresDataFrame
-import org.jetbrains.bio.span.getChromosomePeaks
+import org.jetbrains.bio.span.peaks.getChromosomeFdrGapPeaks
 import org.jetbrains.bio.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.model.MultiLabels
@@ -60,7 +60,7 @@ class SpanDifferentialPeakCallingExperiment private constructor(
         gap: Int
     ): Pair<List<Peak>, List<Peak>> {
         val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
-            results.getChromosomePeaks(chromosome, fdr, gap)
+            results.getChromosomeFdrGapPeaks(chromosome, fdr, gap)
         }
         val highLow = arrayListOf<Peak>()
         val lowHigh = arrayListOf<Peak>()

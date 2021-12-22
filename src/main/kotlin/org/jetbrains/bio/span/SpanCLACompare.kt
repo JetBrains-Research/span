@@ -7,6 +7,8 @@ import org.jetbrains.bio.experiments.fit.SpanFitResults
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.FixedFragment
+import org.jetbrains.bio.span.peaks.Peak
+import org.jetbrains.bio.span.peaks.getFdrGapPeaks
 import org.jetbrains.bio.util.*
 import org.slf4j.event.Level
 import java.nio.file.Path
@@ -65,6 +67,7 @@ object SpanCLACompare {
 
                 val gap = options.valueOf("gap") as Int
                 val fdr = options.valueOf("fdr") as Double
+                val peaksType = options.valueOf("peaks-type") as String
                 val peaksPath = options.valueOf("peaks") as Path?
                 val threads = options.valueOf("threads") as Int?
 
@@ -102,6 +105,7 @@ object SpanCLACompare {
                 SpanCLA.LOG.info("FDR: $fdr")
                 SpanCLA.LOG.info("GAP: $gap")
                 if (peaksPath != null) {
+                    SpanCLA.LOG.info("TYPE: $peaksType")
                     SpanCLA.LOG.info("PEAKS: $peaksPath")
                 } else {
                     SpanCLA.LOG.info("NO output path given, process model fitting only.")
@@ -115,7 +119,7 @@ object SpanCLACompare {
                 val differentialPeakCallingResults = lazyDifferentialPeakCallingResults.value
                 val genomeQuery = differentialPeakCallingResults.fitInfo.genomeQuery()
                 if (peaksPath != null) {
-                    val peaks = differentialPeakCallingResults.getPeaks(genomeQuery, fdr, gap)
+                    val peaks = differentialPeakCallingResults.getFdrGapPeaks(genomeQuery, fdr, gap)
                     Peak.savePeaks(
                         peaks, peaksPath,
                         "diff${if (fragment is FixedFragment) "_$fragment" else ""}_${binSize}_${fdr}_${gap}"

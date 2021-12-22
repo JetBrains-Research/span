@@ -13,8 +13,8 @@ import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.data.Cell
 import org.jetbrains.bio.genome.data.ChipSeqTarget
 import org.jetbrains.bio.genome.data.DataConfig
-import org.jetbrains.bio.span.Peak
-import org.jetbrains.bio.span.getPeaks
+import org.jetbrains.bio.span.peaks.Peak
+import org.jetbrains.bio.span.peaks.getFdrGapPeaks
 import org.jetbrains.bio.util.*
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
@@ -83,7 +83,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
                     val peaksPath = folder / transform(parameter) / fileName(cellId, replicate, target, parameter)
                     peaksPath.checkOrRecalculate(ignoreEmptyFile = true) { (path) ->
                         Peak.savePeaks(
-                            peakCallingExperiment.results.getPeaks(
+                            peakCallingExperiment.results.getFdrGapPeaks(
                                 configuration.genomeQuery,
                                 parameter.first, parameter.second
                             ), path
@@ -107,7 +107,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
             val optimalParameters = parameters[index]
             val optimalPeaksPath = folder / fileName(cellId, replicate, target, optimalParameters)
             Peak.savePeaks(
-                peakCallingExperiment.results.getPeaks(
+                peakCallingExperiment.results.getFdrGapPeaks(
                     configuration.genomeQuery,
                     optimalParameters.first, optimalParameters.second
                 ),
@@ -160,7 +160,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
             parameters.mapIndexed { index, (fdr, gap) ->
                 Callable {
                     cancellableState.checkCanceled()
-                    val peaksOnLabeledGenomeQuery = results.getPeaks(labeledGenomeQuery, fdr, gap)
+                    val peaksOnLabeledGenomeQuery = results.getFdrGapPeaks(labeledGenomeQuery, fdr, gap)
                     labelErrorsGrid[index] = computeErrors(
                         labels,
                         LocationsMergingList.create(
