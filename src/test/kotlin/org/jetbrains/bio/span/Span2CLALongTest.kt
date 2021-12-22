@@ -45,12 +45,12 @@ class Span2CLALongTest {
                         SpanCLALongTest.withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
                             SpanCLA.main(
                                 arrayOf(
-                                    "analyze-experimental",
+                                    "experimental",
                                     "-cs", chromsizes,
                                     "--workdir", dir.toString(),
                                     "-t", listOf(pathA, pathB).joinToString(","),
                                     "--threads", SpanCLALongTest.THREADS.toString(),
-                                    "--type", "prm"
+                                    "--model-type", "prm"
                                 )
                             )
                         }
@@ -76,11 +76,11 @@ class Span2CLALongTest {
                 val (out, _) = Logs.captureLoggingOutput {
                     SpanCLA.main(
                         arrayOf(
-                            "analyze-experimental", "-cs", chromsizes,
+                            "experimental", "-cs", chromsizes,
                             "--workdir", it.toString(),
                             "-t", path.toString(),
                             "--threads", SpanCLALongTest.THREADS.toString(),
-                            "--type", "prm",
+                            "--model-type", "prm",
                             "--peaks", peaksPath.toString(),
                             "--fdr", "0.01"
                         )
@@ -129,12 +129,12 @@ class Span2CLALongTest {
                     val chromsizes = Genome["to1"].chromSizesPath.toString()
                     SpanCLA.main(
                         arrayOf(
-                            "analyze-experimental",
+                            "experimental",
                             "-cs", chromsizes,
                             "--workdir", dir.toString(),
                             "-t", path.toString(),
                             "-c", control.toString(),
-                            "--type", "prm",
+                            "--model-type", "prm",
                             "--threads", SpanCLALongTest.THREADS.toString()
                         )
                     )
@@ -173,8 +173,8 @@ class Span2CLALongTest {
 
     /**
      * Model extension is used to determine the model type.
-     * .span = negative binomial HMM (classic Span)
-     * .span2 = Poisson regression mixture (experimental Span)
+     * .span = negative binomial HMM (default SPAN)
+     * .span2 = Poisson regression mixture (experimental SPAN)
      * any other = error, unrecognized type.
      * If the model extension contradicts the provided '--type' command line argument, Span should exit with an error.
      */
@@ -187,18 +187,18 @@ class Span2CLALongTest {
 
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
 
-                val wrongModelPath = dir / "custom" / "path" / "model.span"
+                val defaultModelPath = dir / "custom" / "path" / "model.span"
                 val (_, wrongErr) = Logs.captureLoggingOutput {
                     SpanCLALongTest.withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
                         SpanCLA.main(
                             arrayOf(
-                                "analyze-experimental",
+                                "experimental",
                                 "-cs", chromsizes,
                                 "--workdir", dir.toString(),
                                 "-t", path.toString(),
                                 "--threads", SpanCLALongTest.THREADS.toString(),
-                                "--type", "prm",
-                                "--model", wrongModelPath.toString()
+                                "--model-type", "prm",
+                                "--model", defaultModelPath.toString()
                             )
                         )
                     }

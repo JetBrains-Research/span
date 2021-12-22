@@ -12,6 +12,7 @@ import org.jetbrains.bio.genome.data.ChipSeqTarget
 import org.jetbrains.bio.genome.data.DataConfig
 import org.jetbrains.bio.genome.format.BedFormat
 import org.jetbrains.bio.span.peaks.Peak
+import org.jetbrains.bio.span.peaks.PeaksType
 import org.jetbrains.bio.span.peaks.getFdrGapPeaks
 import org.jetbrains.bio.util.*
 import org.slf4j.LoggerFactory
@@ -132,7 +133,8 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
         LOG.info("Tuning $id peaks $target")
         val labelsPath = labelledTracks.first().labelPath
         val labels = LocationLabel.loadLabels(labelsPath, configuration.genomeQuery.genome)
-        val (labelErrorsGrid, index) = Span.tune(replicatedPeakCallingExperiment.results, labels, target, parameters)
+        val (labelErrorsGrid, index) =
+            Span.tune(replicatedPeakCallingExperiment.results, labels, target, parameters, PeaksType.PEAKS_TYPE_ISLANDS)
 
         LOG.info("Saving $target optimal $id peaks to $folder")
         Peak.savePeaks(

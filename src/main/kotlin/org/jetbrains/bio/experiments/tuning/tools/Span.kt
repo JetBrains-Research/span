@@ -13,8 +13,7 @@ import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.data.Cell
 import org.jetbrains.bio.genome.data.ChipSeqTarget
 import org.jetbrains.bio.genome.data.DataConfig
-import org.jetbrains.bio.span.peaks.Peak
-import org.jetbrains.bio.span.peaks.getFdrGapPeaks
+import org.jetbrains.bio.span.peaks.*
 import org.jetbrains.bio.util.*
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
@@ -99,7 +98,11 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
                 labelsPath, configuration.genomeQuery.genome
             )
             val (labelErrorsGrid, index) =
-                tune(peakCallingExperiment.results, labels, "$id $target $cellId $replicate", parameters)
+                tune(
+                    peakCallingExperiment.results, labels,
+                    "$id $target $cellId $replicate", parameters,
+                    PeaksType.PEAKS_TYPE_ISLANDS
+                )
 
 
             LOG.info("Saving $id $target $cellId $replicate optimal peaks to $folder")
@@ -129,10 +132,12 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
         labels: List<LocationLabel>,
         id: String,
         parameters: List<Pair<Double, Int>>,
+        peaksType: PeaksType,
         cancellableState: CancellableState = CancellableState.current()
     ): Pair<List<LabelErrors>, Int> {
         MultitaskProgress.addTask(id, parameters.size.toLong())
-        val tuneResults = tune(results, results.fitInfo.genomeQuery(), labels, id, parameters, cancellableState)
+        val tuneResults =
+            tune(results, results.fitInfo.genomeQuery(), labels, id, parameters, peaksType, cancellableState)
         MultitaskProgress.finishTask(id)
         return tuneResults
     }
@@ -144,6 +149,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
         labels: List<LocationLabel>,
         id: String,
         parameters: List<Pair<Double, Int>>,
+        peaksType: PeaksType,
         cancellableState: CancellableState = CancellableState.current()
     ): Pair<List<LabelErrors>, Int> {
         val labeledGenomeQuery = GenomeQuery(
@@ -151,7 +157,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
             *labels.map { it.location.chromosome.name }.distinct().toTypedArray()
         )
         // Parallelism is OK here:
-        // 1. getPeaks creates BitterSet per each parameters combination of size
+        // 1. getPeaks creates BitterSet per each parameters' combination of size
         // ~ 3*10^9 / 200bp / 8 / 1024 / 1024 ~ 2MB for human genome
         // 2. List.parallelStream()....collect(Collectors.toList()) guarantees the same order as in original list.
         // Order is important!
@@ -160,7 +166,7 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
             parameters.mapIndexed { index, (fdr, gap) ->
                 Callable {
                     cancellableState.checkCanceled()
-                    val peaksOnLabeledGenomeQuery = results.getFdrGapPeaks(labeledGenomeQuery, fdr, gap)
+                    val peaksOnLabeledGenomeQuery = results.getPeaks(labeledGenomeQuery, fdr, gap, peaksType)
                     labelErrorsGrid[index] = computeErrors(
                         labels,
                         LocationsMergingList.create(

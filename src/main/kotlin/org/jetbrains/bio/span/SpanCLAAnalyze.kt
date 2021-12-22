@@ -13,7 +13,9 @@ import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.PeaksInfo
 import org.jetbrains.bio.genome.coverage.FixedFragment
-import org.jetbrains.bio.span.peaks.*
+import org.jetbrains.bio.span.peaks.Peak
+import org.jetbrains.bio.span.peaks.PeaksType
+import org.jetbrains.bio.span.peaks.getPeaks
 import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.util.*
 import org.slf4j.event.Level
@@ -133,10 +135,11 @@ object SpanCLAAnalyze {
                 check(gap >= 0) { "Negative gap: $gap" }
                 val fdr = options.valueOf("fdr") as Double
                 check(0 < fdr && fdr <= 1) { "Illegal fdr: $fdr, expected range: (0, 1)" }
-                val peaksType = options.valueOf("peaks-type") as String
-                check(peaksType in setOf(PEAKS_TYPE_ISLANDS, PEAKS_TYPE_FDR_GAP)) {
-                    "Unknown peaks-type: $peaksType, expected $PEAKS_TYPE_ISLANDS or $PEAKS_TYPE_FDR_GAP"
+                val peaksTypeCmd = options.valueOf("peaks-type") as String
+                check(peaksTypeCmd in PeaksType.values().map { it.cmd }) {
+                    "Unknown peaks-type: $peaksTypeCmd, expected ${PeaksType.values().joinToString(", ") { it.cmd }}"
                 }
+                val peaksType = PeaksType.getTypeFromCmd(peaksTypeCmd)
                 val threads = options.valueOf("threads") as Int?
                 check(threads == null || threads > 0) {
                     "Not positive threads option: $threads"
@@ -150,7 +153,7 @@ object SpanCLAAnalyze {
                         SpanCLA.LOG.info("FDR: $fdr")
                         SpanCLA.LOG.info("GAP: $gap")
                     }
-                    SpanCLA.LOG.info("TYPE: $peaksType")
+                    SpanCLA.LOG.info("TYPE: ${peaksType.cmd}")
                     SpanCLA.LOG.info("PEAKS: $peaksPath")
                 } else {
                     SpanCLA.LOG.info("NO output path given, process model fitting only.")
@@ -173,11 +176,7 @@ object SpanCLAAnalyze {
 
                 if (peaksPath != null) {
                     if (labelsPath == null) {
-                        val peaks = when (peaksType) {
-                            PEAKS_TYPE_ISLANDS -> spanResults.getIslands(genomeQuery, fdr, gap)
-                            PEAKS_TYPE_FDR_GAP -> spanResults.getFdrGapPeaks(genomeQuery, fdr, gap)
-                            else -> throw  IllegalStateException("Impossible: $peaksType")
-                        }
+                        val peaks = spanResults.getPeaks(genomeQuery, fdr, gap, peaksType)
                         Peak.savePeaks(
                             peaks, peaksPath,
                             "peak${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
@@ -190,15 +189,15 @@ object SpanCLAAnalyze {
                             fitInfo.data.map { it.treatment }
                         )
                         val aboutModel = spanResults.about()
-                        SpanCLA.LOG.info("\n" + (aboutPeaks + aboutModel).map { (k, v) ->
+                        SpanCLA.LOG.info("\n" + (aboutPeaks + aboutModel).joinToString("\n") { (k, v) ->
                             "${k.name}: ${k.render(v)}"
-                        }.joinToString("\n"))
+                        })
                     } else {
                         val results = TuningResults()
                         SpanCLA.LOG.info("Loading labels $labelsPath...")
                         val labels = LocationLabel.loadLabels(labelsPath, genomeQuery.genome)
                         SpanCLA.LOG.info("Tuning model on the loaded labels...")
-                        val (labelErrorsGrid, index) = Span.tune(spanResults, labels, "", Span.parameters)
+                        val (labelErrorsGrid, index) = Span.tune(spanResults, labels, "", Span.parameters, peaksType)
                         SpanCLA.LOG.info("Tuning model on the loaded labels complete.")
                         val (optimalFDR, optimalGap) = Span.parameters[index]
                         SpanCLA.LOG.info("Optimal settings: FDR=$optimalFDR, GAP=$optimalGap")
@@ -215,7 +214,7 @@ object SpanCLAAnalyze {
                             peaksPath.parent
                                     / "${peaksPath.fileName.stem}_parameters.csv"
                         )
-                        val peaks = spanResults.getFdrGapPeaks(genomeQuery, optimalFDR, optimalGap)
+                        val peaks = spanResults.getPeaks(genomeQuery, optimalFDR, optimalGap, peaksType)
                         Peak.savePeaks(
                             peaks, peaksPath,
                             "peak${if (fragment is FixedFragment) "_$fragment" else ""}_" +
@@ -298,7 +297,7 @@ object SpanCLAAnalyze {
         }
         if (modelPath != null && modelPath.exists && modelPath.size.isNotEmpty()) {
             SpanCLA.LOG.debug(
-                "Model file $modelPath exists and is not empty, Span will use it to substitute " +
+                "Model file $modelPath exists and is not empty, SPAN will use it to substitute " +
                         "the missing command line arguments and verify the provided ones."
             )
             val results = SpanModelFitExperiment.loadResults(tarPath = modelPath)
@@ -416,40 +415,9 @@ object SpanCLAAnalyze {
     private fun getModelType(
         options: OptionSet, modelPath: Path?
     ) = SpanCLA.getProperty(
-        options.valueOf("type")?.let {
-            when (it) {
-                "nbhmm" -> SpanModel.NB_HMM
-
-                "nbhmm2nz" -> SpanModel.NB_HMM2_NOZERO
-                "nbhmm3nz" -> SpanModel.NB_HMM3_NOZERO
-                "nbhmm4nz" -> SpanModel.NB_HMM4_NOZERO
-                "nbhmm3z" -> SpanModel.NB_HMM3_ZERO
-                "nbhmm4z" -> SpanModel.NB_HMM4_ZERO
-
-                "prm" -> SpanModel.POISSON_REGRESSION_MIXTURE
-                "nbrm" -> SpanModel.NEGBIN_REGRESSION_MIXTURE
-                else -> throw IllegalArgumentException("Unrecognized value for --type command line option: $it")
-            }
-        },
-        modelPath?.let {
-            when (it.extension) {
-                "span" -> SpanModel.NB_HMM
-
-                SpanPeakCallingExperimentNBHMM2NZ.MODEL_EXT -> SpanModel.NB_HMM2_NOZERO
-                SpanPeakCallingExperimentNBHMM3NZ.MODEL_EXT -> SpanModel.NB_HMM3_NOZERO
-                SpanPeakCallingExperimentNBHMM4NZ.MODEL_EXT -> SpanModel.NB_HMM4_NOZERO
-                SpanPeakCallingExperimentNBHMM3Z.MODEL_EXT -> SpanModel.NB_HMM3_ZERO
-                SpanPeakCallingExperimentNBHMM4Z.MODEL_EXT -> SpanModel.NB_HMM4_ZERO
-
-                "span2" -> SpanModel.POISSON_REGRESSION_MIXTURE
-                "span3" -> SpanModel.NEGBIN_REGRESSION_MIXTURE
-                else -> throw IllegalArgumentException(
-                    "Unrecognized model extension '.${it.extension}', should be either '.span' or '.span2'."
-                )
-            }
-        },
-        SpanModel.NB_HMM,
-        "model type", "MODEL TYPE", true
+        options.valueOf("model-type")?.let { SpanModel.guessSpanModelById(it as String) },
+        modelPath?.let { SpanModel.guessSpanModelByExtension(it.extension) },
+        SpanModel.NB_HMM, "model type", "MODEL TYPE", true
     )
 
 }
@@ -466,4 +434,35 @@ enum class SpanModel(val description: String) {
     NEGBIN_REGRESSION_MIXTURE("Negative Binomial Regression mixture");
 
     override fun toString() = description
+
+    companion object {
+
+        fun guessSpanModelById(id: String) = when (id) {
+            "nbhmm" -> NB_HMM
+            "nbhmm2nz" -> NB_HMM2_NOZERO
+            "nbhmm3nz" -> NB_HMM3_NOZERO
+            "nbhmm4nz" -> NB_HMM4_NOZERO
+            "nbhmm3z" -> NB_HMM3_ZERO
+            "nbhmm4z" -> NB_HMM4_ZERO
+            "prm" -> POISSON_REGRESSION_MIXTURE
+            "nbrm" -> NEGBIN_REGRESSION_MIXTURE
+            else -> throw IllegalArgumentException("Unrecognized value for --model-type command line option: $id")
+        }
+
+
+        fun guessSpanModelByExtension(extension: String) = when (extension) {
+            "span" -> NB_HMM
+            SpanPeakCallingExperimentNBHMM2NZ.MODEL_EXT -> NB_HMM2_NOZERO
+            SpanPeakCallingExperimentNBHMM3NZ.MODEL_EXT -> NB_HMM3_NOZERO
+            SpanPeakCallingExperimentNBHMM4NZ.MODEL_EXT -> NB_HMM4_NOZERO
+            SpanPeakCallingExperimentNBHMM3Z.MODEL_EXT -> NB_HMM3_ZERO
+            SpanPeakCallingExperimentNBHMM4Z.MODEL_EXT -> NB_HMM4_ZERO
+            "span2" -> POISSON_REGRESSION_MIXTURE
+            "span3" -> NEGBIN_REGRESSION_MIXTURE
+            else -> throw IllegalArgumentException(
+                "Unrecognized model extension '.$extension', should be either '.span' or '.span2'."
+            )
+        }
+
+    }
 }

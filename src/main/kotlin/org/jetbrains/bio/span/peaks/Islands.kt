@@ -21,7 +21,6 @@ import kotlin.math.ln
 import kotlin.math.min
 
 
-const val PEAKS_TYPE_ISLANDS = "islands"
 /**
  * The islands are called in five steps.
 *

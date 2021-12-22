@@ -13,8 +13,7 @@ import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPA
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
-import org.jetbrains.bio.span.peaks.PEAKS_TYPE_FDR_GAP
-import org.jetbrains.bio.span.peaks.PEAKS_TYPE_ISLANDS
+import org.jetbrains.bio.span.peaks.PeaksType
 import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.util.*
 import org.jetbrains.bio.util.FileSize.Companion.GB
@@ -161,12 +160,12 @@ compare                         Differential peak calling mode, experimental
                 "peaks-type",
                 """
                     Peaks computation method.
-                   '$PEAKS_TYPE_ISLANDS' - Merge consequent blocks of enriched bins with relaxed gaps 
-                   '$PEAKS_TYPE_FDR_GAP' - Merge fdr enriched HMM bins with gap into peaks (previous)
+                   '${PeaksType.PEAKS_TYPE_ISLANDS.cmd}' - Merge consequent blocks of enriched bins with relaxed gaps 
+                   '${PeaksType.PEAKS_TYPE_FDR_GAP.cmd}' - Merge fdr enriched HMM bins with gap into peaks (previous)
                 """.trimIndent()
             )
                 .withRequiredArg()
-                .defaultsTo(PEAKS_TYPE_ISLANDS)
+                .defaultsTo(PeaksType.PEAKS_TYPE_ISLANDS.cmd)
             acceptsAll(listOf("w", "workdir"), "Path to the working dir")
                 .withRequiredArg().withValuesConvertedBy(PathConverter.exists())
                 .defaultsTo(System.getProperty("user.dir").toPath())

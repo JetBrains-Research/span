@@ -32,7 +32,7 @@ class SpanModelFitExperimentTest {
                 listOf("foo"), AutoFragment, true, 200
             ).dataQuery
 
-            assertTrue(dataQuery.id.startsWith("${path.stemGz}_200_foo#"))
+            assertTrue(dataQuery.id.startsWith("binned_200_${path.stemGz}_foo#"))
             val df = dataQuery.apply(Chromosome(Genome["to1"], "chr1"))
             assertEquals("[foo]", df.labels.toList().toString())
         }

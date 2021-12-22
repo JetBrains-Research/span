@@ -19,8 +19,6 @@ import org.jetbrains.bio.viktor.F64Array
 import kotlin.math.ln
 import kotlin.math.min
 
-const val PEAKS_TYPE_FDR_GAP = "simple"
-
 /**
  * The islands are called in three steps.
  * 1) First, FDR threshold is applied to bins posterior error probabilities.
