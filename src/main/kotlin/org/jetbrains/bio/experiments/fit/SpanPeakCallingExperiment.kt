@@ -56,9 +56,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
 
         const val SPAN_DEFAULT_BIN = 200
         const val SPAN_DEFAULT_FDR = 0.05
-        const val SPAN_DEFAULT_GAP = 5
-
-        const val SPAN_REPLICATED_DEFAULT_FDR = 1e-6
+        const val SPAN_DEFAULT_GAP = 3
 
         const val TRACK_PREFIX = "track_"
 

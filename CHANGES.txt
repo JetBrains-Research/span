@@ -3,25 +3,26 @@ SPAN Changelog
 
 Here you can see the full list of changes between each release.
 
-Version 0.15
+Version 1.0
 ----------------
 
-Released on Dec 13th, 2021
+Released on XXX 2021
 
-- Switched to new procedure for computing peaks from fit HMM - islands:
-  1) Estimate model bins posterior probabilities
-  2) Pick candidate bins with probability of H_0 <= alpha * multiplier,
-    to mitigate problem of broad peaks split with strict FDR
-  3) Using gap merge bins into candidate islands
-  4) Assign p-value to each island using Stoffer-Liptak test
-  5) Compute qvalues on islands p-values, filter by alpha
-- Use Stoffer-Liptak test for combining pvalues for candidate islands
+- Switched to new procedure for computing peaks from HMM - islands:
+ * 1) Estimate posterior probabilities
+ * 2) Pick candidate bins with relaxed posterior error probability, e.g. sqrt(fdr).
+ * This mitigates the problem of wide marks peaks split on strong fdrs.
+ * 3) Using gap merge bins into candidate islands.
+ * 4) Assign p-value to each island using based on combined p-values for blocks of consequent enriched bins.
+ *    Each block is assigned P as average posterior log error probability for bins in blocks.
+ *    50% top significant blocks scores are aggregated using length-weighted average as P for island.
+ * 5) Compute qvalues on islands p-values, filter by alpha.
 - Improved multistart initial NB states guess - use different params for each model
 - Safeguard against infinite failures as initial guess for NB, which effectively converts NB to Poisson
-- Experimental `analyze-experimental` command provide options for different types of data models
-- Updated defaults values for SPAN: fdr 0.05, gap 10, multistart iterations 2, total iterations 20, ll threshold 1
 - Reduced time required for peak calling
 - Show progress while computing peaks from model
+- Updated defaults values for SPAN peaks: fdr 0.05, gap 3
+- Updated defaults for SPAN model: multistart/total iterations 2/20, loglikelihood threshold 1
 - Switched to viktor library version 1.2.0
 - Bugfixes
 

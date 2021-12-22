@@ -5,7 +5,6 @@ import org.jetbrains.bio.experiments.fit.SpanDataPaths
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_BIN
 import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_GAP
-import org.jetbrains.bio.experiments.fit.SpanPeakCallingExperiment.Companion.SPAN_REPLICATED_DEFAULT_FDR
 import org.jetbrains.bio.experiments.tuning.*
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.data.ChipSeqTarget
@@ -27,7 +26,7 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
     override val suffix = Span.suffix
 
     private val FDRS = listOf(
-        0.05, 0.01, 1E-4, 1E-6, 1E-8, SPAN_REPLICATED_DEFAULT_FDR,
+        0.05, 0.01, 1E-4, 1E-6, 1E-8, this.SPAN_DEFAULT_GAP,
         1E-20, 1E-40, 1E-60, 1E-80, 1E-100
     )
 
@@ -40,7 +39,7 @@ object SpanReplicated : ReplicatedTool2Tune<Pair<Double, Int>>() {
             GAPS.sorted().map { gap -> fdr to gap }
         }
 
-    override fun defaultParams(uli: Boolean) = SPAN_REPLICATED_DEFAULT_FDR to SPAN_DEFAULT_GAP
+    override fun defaultParams(uli: Boolean) = this.SPAN_DEFAULT_GAP to SPAN_DEFAULT_GAP
 
     fun fileName(target: String, parameter: Pair<Double, Int>) =
         "${target}_${SPAN_DEFAULT_BIN}_${parameter.first}_${parameter.second}_peaks.bed"

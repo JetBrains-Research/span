@@ -29,9 +29,9 @@ import kotlin.math.min
  * This mitigates the problem of wide marks peaks split on strong fdrs.
  * 3) Using gap merge bins into candidate islands.
  * 4) Assign p-value to each island using based on combined p-values for blocks of consequent enriched bins.
- *  Each block is assigned P as average posterior log error probability for bins in blocks.
- *  50% top significant blocks scores are aggregated using length-weighted average as P for island.
- *  5) Compute qvalues on islands p-values, filter by alpha.
+ *    Each block is assigned P as average posterior log error probability for bins in blocks.
+ *    50% top significant blocks scores are aggregated using length-weighted average as P for island.
+ * 5) Compute qvalues on islands p-values, filter by alpha.
 */
 fun SpanFitResults.getIslands(
     genomeQuery: GenomeQuery,

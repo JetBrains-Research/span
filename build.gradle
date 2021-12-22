@@ -1,7 +1,7 @@
 import org.apache.tools.ant.filters.ReplaceTokens
 
 // SPAN application version
-version = "0.14"
+version = "1.0"
 
 buildscript {
     ext.kotlin_version = "1.6.10"
@@ -33,6 +33,14 @@ compileKotlin { kotlinOptions.jvmTarget = sourceCompatibility }
 compileTestKotlin { kotlinOptions.jvmTarget = sourceCompatibility }
 
 if (rootProject == project) {
+    repositories {
+        maven { url("https://cache-redirector.jetbrains.com/repo1.maven.org/maven2") }
+        maven { url("https://cache-redirector.jetbrains.com/plugins.gradle.org/m2") }
+
+        // In case of issues with cache redirector:
+        // mavenCentral()
+    }
+
     project(":bioinf-commons")
 }
 
