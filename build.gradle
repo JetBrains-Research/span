@@ -40,8 +40,6 @@ if (rootProject == project) {
         // In case of issues with cache redirector:
         // mavenCentral()
     }
-
-    project(":bioinf-commons")
 }
 
 dependencies {
@@ -55,7 +53,7 @@ dependencies {
     implementation("org.slf4j:slf4j-api:1.7.25")
 
 
-    implementation project(":bioinf-commons")
+    compile project(":bioinf-commons")
 
     testImplementation("junit:junit:4.12")
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlin_version")

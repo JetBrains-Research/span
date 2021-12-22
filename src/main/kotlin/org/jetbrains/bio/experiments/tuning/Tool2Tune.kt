@@ -5,6 +5,7 @@ import org.jetbrains.bio.experiments.tuning.tools.Span
 import org.jetbrains.bio.genome.data.Cell
 import org.jetbrains.bio.genome.data.DataConfig
 import org.jetbrains.bio.util.*
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
@@ -12,15 +13,13 @@ import java.nio.file.StandardOpenOption
 
 abstract class Tool2Tune<T> {
 
-    private val LOG = LoggerFactory.getLogger(Tool2Tune::class.java)
-
     abstract val id: String
 
     abstract val suffix: String
 
     /**
      * In case of equal tuning error, first parameter will be chosen,
-     * so that each tool has it's own order of parameters.
+     * so that each tool has its own order of parameters.
      */
     abstract val parameters: List<T>
 
@@ -72,7 +71,7 @@ abstract class Tool2Tune<T> {
     /**
      * @return map of Pair<cell, replicate> -> path
      */
-    fun tunedPeaks(
+    private fun tunedPeaks(
         configuration: DataConfig,
         path: Path,
         target: String,
@@ -153,6 +152,10 @@ abstract class Tool2Tune<T> {
             it.deleteIfExists()
             "${it}_rip.csv".toPath().deleteIfExists()
         }
+    }
+
+    companion object {
+        private val LOG: Logger = LoggerFactory.getLogger(Tool2Tune::class.java)
     }
 }
 

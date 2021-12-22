@@ -29,9 +29,9 @@ object Span : Tool2Tune<Pair<Double, Int>>() {
     override val id = "span"
     override val suffix = "_peaks.bed"
 
-    private val FDRS = listOf(0.1, 0.05, 1E-2, 1E-3, 1E-4, 1E-5, SPAN_DEFAULT_FDR, 1E-7, 1E-8, 1E-9, 1E-10)
+    private val FDRS = listOf(0.1, SPAN_DEFAULT_FDR, 0.01, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10)
 
-    val GAPS = listOf(0, 1, 2, SPAN_DEFAULT_GAP, 10)
+    val GAPS = listOf(0, 1, 2, SPAN_DEFAULT_GAP, 5, 10)
 
     override val parameters =
         FDRS.sorted().flatMap { fdr ->
