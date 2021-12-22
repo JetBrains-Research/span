@@ -71,7 +71,7 @@ abstract class Tool2Tune<T> {
     /**
      * @return map of Pair<cell, replicate> -> path
      */
-    private fun tunedPeaks(
+    fun tunedPeaks(
         configuration: DataConfig,
         path: Path,
         target: String,
