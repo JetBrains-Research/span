@@ -1,7 +1,7 @@
 pluginManagement {
     repositories {
-        maven { url "https://cache-redirector.jetbrains.com/plugins.gradle.org/m2" }
+        maven { url("https://cache-redirector.jetbrains.com/plugins.gradle.org/m2") }
     }
 }
 
-include 'bioinf-commons'
+include "bioinf-commons"

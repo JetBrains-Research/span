@@ -1,24 +1,22 @@
 import org.apache.tools.ant.filters.ReplaceTokens
 
+// SPAN application version
+version = "0.14"
+
 buildscript {
-    ext.kotlin_version = "1.5.31"
+    ext.kotlin_version = "1.6.10"
 
     repositories {
-        maven { url "https://cache-redirector.jetbrains.com/repo1.maven.org/maven2" }
-        maven { url "https://cache-redirector.jetbrains.com/jcenter.bintray.com" }
-
+        maven { url("https://cache-redirector.jetbrains.com/repo1.maven.org/maven2") }
+        maven { url("https://cache-redirector.jetbrains.com/plugins.gradle.org/m2") }
         // In case of issues with cache redirector:
-        // jcenter()
+        // mavenCentral()
     }
 
     dependencies {
         classpath "com.github.jengelman.gradle.plugins:shadow:6.1.0"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
-}
-
-plugins {
-    id "com.dorongold.task-tree" version "1.5"
 }
 
 /* We can't use `plugins` block here because of the multi-root setup, since the `plugins` block doesn't allow
@@ -34,28 +32,25 @@ targetCompatibility = sourceCompatibility
 compileKotlin { kotlinOptions.jvmTarget = sourceCompatibility }
 compileTestKotlin { kotlinOptions.jvmTarget = sourceCompatibility }
 
-repositories {
-    maven { url "https://dl.bintray.com/jetbrains-research/maven" }
-    jcenter()
+if (rootProject == project) {
+    project(":bioinf-commons")
 }
 
-project(":bioinf-commons")
-
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-    implementation "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
-    implementation 'org.jetbrains.kotlinx:kotlinx-support-jdk8:0.1'
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version")
+    implementation("org.jetbrains.kotlin:kotlin-reflect:$kotlin_version")
+    implementation("org.jetbrains.kotlinx:kotlinx-support-jdk8:0.1")
 
     // Logging dependencies
     implementation("ch.qos.logback:logback-classic:1.2.3")
     implementation("ch.qos.logback:logback-core:1.2.3")
-    implementation "org.slf4j:slf4j-api:1.7.25"
+    implementation("org.slf4j:slf4j-api:1.7.25")
 
 
     implementation project(":bioinf-commons")
 
-    testImplementation "junit:junit:4.12"
-    testImplementation "org.jetbrains.kotlin:kotlin-test:$kotlin_version"
+    testImplementation("junit:junit:4.12")
+    testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlin_version")
 }
 
 private String settingsFolder(final String propertyName, final String folderName) {
@@ -82,9 +77,6 @@ test {
     systemProperty "experiments.path", settingsFolder("experiments.path", "experiments")
     systemProperty "teamcity.build.checkoutDir", System.getProperty("teamcity.build.checkoutDir")
 }
-
-// Major application version
-version = "0.13"
 
 task processBuildProperties(type: Copy) {
     shadowJar.dependsOn name
