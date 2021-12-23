@@ -1,12 +1,12 @@
 package org.jetbrains.bio.span
 
 import joptsimple.OptionSet
-import org.jetbrains.bio.experiments.fit.SpanDataPaths
-import org.jetbrains.bio.experiments.fit.SpanDifferentialPeakCallingExperiment
-import org.jetbrains.bio.experiments.fit.SpanFitResults
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.FixedFragment
+import org.jetbrains.bio.span.fit.SpanDataPaths
+import org.jetbrains.bio.span.fit.SpanDifferentialPeakCallingExperiment
+import org.jetbrains.bio.span.fit.SpanFitResults
 import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.span.peaks.getFdrGapPeaks
 import org.jetbrains.bio.util.*

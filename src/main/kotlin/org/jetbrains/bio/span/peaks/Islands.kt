@@ -1,13 +1,13 @@
 package org.jetbrains.bio.span.peaks
 
 import org.jetbrains.bio.dataframe.BitterSet
-import org.jetbrains.bio.experiments.fit.SpanFitResults
-import org.jetbrains.bio.experiments.fit.SpanModelFitExperiment
-import org.jetbrains.bio.experiments.fit.f64Array
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
+import org.jetbrains.bio.span.fit.SpanFitResults
+import org.jetbrains.bio.span.fit.SpanModelFitExperiment
+import org.jetbrains.bio.statistics.f64Array
 import org.jetbrains.bio.statistics.hypothesis.Fdr
 import org.jetbrains.bio.statistics.hypothesis.StofferLiptakTest
 import org.jetbrains.bio.util.CancellableState

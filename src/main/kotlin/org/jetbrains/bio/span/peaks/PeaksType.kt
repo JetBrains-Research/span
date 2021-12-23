@@ -1,7 +1,7 @@
 package org.jetbrains.bio.span.peaks
 
-import org.jetbrains.bio.experiments.fit.SpanFitResults
 import org.jetbrains.bio.genome.GenomeQuery
+import org.jetbrains.bio.span.fit.SpanFitResults
 
 enum class PeaksType(val cmd: String) {
     PEAKS_TYPE_ISLANDS("islands"),

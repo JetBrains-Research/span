@@ -1,21 +1,18 @@
 package org.jetbrains.bio.span
 
 import joptsimple.OptionSet
-import org.jetbrains.bio.experiments.fit.*
-import org.jetbrains.bio.experiments.fit.experimental.Span2FitInformation
-import org.jetbrains.bio.experiments.fit.experimental.Span2PeakCallingExperiment
-import org.jetbrains.bio.experiments.fit.experimental.Span3PeakCallingExperiment
-import org.jetbrains.bio.experiments.fit.span234.*
-import org.jetbrains.bio.experiments.tuning.LocationLabel
-import org.jetbrains.bio.experiments.tuning.TuningResults
-import org.jetbrains.bio.experiments.tuning.tools.Span
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.PeaksInfo
 import org.jetbrains.bio.genome.coverage.FixedFragment
+import org.jetbrains.bio.span.fit.*
+import org.jetbrains.bio.span.fit.experimental.*
 import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.span.peaks.PeaksType
 import org.jetbrains.bio.span.peaks.getPeaks
+import org.jetbrains.bio.span.semisupervised.LocationLabel
+import org.jetbrains.bio.span.semisupervised.SpanSemiSupervised
+import org.jetbrains.bio.span.semisupervised.TuningResults
 import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.util.*
 import org.slf4j.event.Level
@@ -197,16 +194,24 @@ object SpanCLAAnalyze {
                         SpanCLA.LOG.info("Loading labels $labelsPath...")
                         val labels = LocationLabel.loadLabels(labelsPath, genomeQuery.genome)
                         SpanCLA.LOG.info("Tuning model on the loaded labels...")
-                        val (labelErrorsGrid, index) = Span.tune(spanResults, labels, "", Span.parameters, peaksType)
+                        val (labelErrorsGrid, optimalIndex) = SpanSemiSupervised.tune(
+                            spanResults,
+                            genomeQuery,
+                            labels,
+                            "",
+                            SpanSemiSupervised.PARAMETERS,
+                            peaksType
+                        )
                         SpanCLA.LOG.info("Tuning model on the loaded labels complete.")
-                        val (optimalFDR, optimalGap) = Span.parameters[index]
+                        val (optimalFDR, optimalGap) = SpanSemiSupervised.PARAMETERS[optimalIndex]
                         SpanCLA.LOG.info("Optimal settings: FDR=$optimalFDR, GAP=$optimalGap")
                         labelErrorsGrid.forEachIndexed { i, error ->
+                            val (fdrTuning, gapTuning) = SpanSemiSupervised.PARAMETERS[i]
                             results.addRecord(
                                 "result",
-                                Span.transform(Span.parameters[i]),
+                                "${fdrTuning}_${gapTuning}",
                                 error,
-                                i == index
+                                i == optimalIndex
                             )
                         }
                         results.saveTuningErrors(peaksPath.parent / "${peaksPath.fileName.stem}_errors.csv")
