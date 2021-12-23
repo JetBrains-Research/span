@@ -2,12 +2,12 @@ package org.jetbrains.bio.span.statistics.mixture
 
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.span.fit.flipStatesIfNecessary
+import org.jetbrains.bio.span.statistics.regression.PoissonRegressionEmissionScheme
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.emission.ConstantIntegerEmissionScheme
 import org.jetbrains.bio.statistics.emission.EmissionScheme
 import org.jetbrains.bio.statistics.mixture.MLFreeMixture
 import org.jetbrains.bio.statistics.model.Fitter
-import org.jetbrains.bio.span.statistics.regression.PoissonRegressionEmissionScheme
 import org.jetbrains.bio.viktor.F64Array
 import org.jetbrains.bio.viktor.asF64Array
 import kotlin.math.exp
@@ -68,9 +68,10 @@ class PoissonRegressionMixture(
     }
 
     companion object {
+        @Suppress("MayBeConstant", "unused")
         @Transient
         @JvmField
-        var VERSION = 1
+        var VERSION = 2
 
         fun fitter() = object : Fitter<PoissonRegressionMixture> {
             /**

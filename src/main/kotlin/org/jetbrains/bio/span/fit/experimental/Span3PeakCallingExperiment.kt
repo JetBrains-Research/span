@@ -5,8 +5,8 @@ import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.fit.SpanDataPaths
 import org.jetbrains.bio.span.fit.SpanModelFitExperiment
 import org.jetbrains.bio.span.fit.ZLH
-import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.span.statistics.mixture.NegBinRegressionMixture
+import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.util.div
 import java.nio.file.Path
 
@@ -28,11 +28,11 @@ import java.nio.file.Path
  * - HIGH state employs another negative binomial GLM with the covariates listed above
  */
 class Span3PeakCallingExperiment private constructor(
-    fitInformation: Span2FitInformation,
+    fitInformation: Span2AnalyzeFitInformation,
     fixedModelPath: Path?,
     threshold: Double,
     maxIter: Int
-) : SpanModelFitExperiment<NegBinRegressionMixture, Span2FitInformation, ZLH>(
+) : SpanModelFitExperiment<NegBinRegressionMixture, Span2AnalyzeFitInformation, ZLH>(
     fitInformation,
     NegBinRegressionMixture.fitter(), NegBinRegressionMixture::class.java,
     ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
@@ -59,7 +59,7 @@ class Span3PeakCallingExperiment private constructor(
             maxIter: Int
         ): Span3PeakCallingExperiment {
             check(data.size == 1) { "Negative binomial regression mixture currently accepts a single data track." }
-            val fitInformation = Span2FitInformation(
+            val fitInformation = Span2AnalyzeFitInformation(
                 genomeQuery, data.single(), mapabilityPath, fragment, unique, binSize
             )
             return Span3PeakCallingExperiment(fitInformation, fixedModelPath, threshold, maxIter)

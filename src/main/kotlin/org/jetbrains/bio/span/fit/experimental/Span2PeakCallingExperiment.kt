@@ -5,8 +5,8 @@ import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.fit.SpanDataPaths
 import org.jetbrains.bio.span.fit.SpanModelFitExperiment
 import org.jetbrains.bio.span.fit.ZLH
-import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.span.statistics.mixture.PoissonRegressionMixture
+import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.util.div
 import java.nio.file.Path
 
@@ -28,11 +28,11 @@ import java.nio.file.Path
  * - HIGH state employs another Poisson GLM with the covariates listed above
  */
 class Span2PeakCallingExperiment private constructor(
-    fitInformation: Span2FitInformation,
+    fitInformation: Span2AnalyzeFitInformation,
     fixedModelPath: Path?,
     threshold: Double,
     maxIter: Int
-) : SpanModelFitExperiment<PoissonRegressionMixture, Span2FitInformation, ZLH>(
+) : SpanModelFitExperiment<PoissonRegressionMixture, Span2AnalyzeFitInformation, ZLH>(
     fitInformation,
     PoissonRegressionMixture.fitter(), PoissonRegressionMixture::class.java,
     ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
@@ -59,7 +59,7 @@ class Span2PeakCallingExperiment private constructor(
             maxIter: Int
         ): Span2PeakCallingExperiment {
             check(data.size == 1) { "Poisson regression mixture currently accepts a single data track." }
-            val fitInformation = Span2FitInformation(
+            val fitInformation = Span2AnalyzeFitInformation(
                 genomeQuery, data.single(), mapabilityPath, fragment, unique, binSize
             )
             return Span2PeakCallingExperiment(fitInformation, fixedModelPath, threshold, maxIter)

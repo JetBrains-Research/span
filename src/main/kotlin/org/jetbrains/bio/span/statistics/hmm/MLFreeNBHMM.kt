@@ -2,11 +2,11 @@ package org.jetbrains.bio.span.statistics.hmm
 
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.span.fit.flipStatesIfNecessary
+import org.jetbrains.bio.span.statistics.emission.NegBinEmissionScheme
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.distribution.NegativeBinomialDistribution
 import org.jetbrains.bio.statistics.emission.ConstantIntegerEmissionScheme
 import org.jetbrains.bio.statistics.emission.IntegerEmissionScheme
-import org.jetbrains.bio.span.statistics.emission.NegBinEmissionScheme
 import org.jetbrains.bio.statistics.hmm.MLFreeHMM
 import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.statistics.standardDeviation
@@ -65,7 +65,7 @@ class MLFreeNBHMM(meanLow: Double, meanHigh: Double, failuresLow: Double, failur
         @Suppress("MayBeConstant", "unused")
         @Transient
         @JvmField
-        val VERSION: Int = 1
+        val VERSION: Int = 2
 
         private val LOG = LoggerFactory.getLogger(MLFreeNBHMM::class.java)
 

@@ -135,7 +135,7 @@ interface SpanFitInformation {
      * Inverse of [split].
      *
      * @param statesDataFrame a map of chromosome name -> dataframe entries. Must contain a dataframe with
-     * row number equal to the number of bins on the appropriate chromosome for each chromosome in [chromosomesSizes].
+     * row number equal to the number of bins on the appropriate chromosome for each chromosome in [chromSizes].
      */
     fun merge(statesDataFrame: Map<String, DataFrame>): DataFrame {
         return DataFrame.rowBind(chromosomesSizes.keys.sorted().map { statesDataFrame[it]!! }.toTypedArray())
@@ -224,20 +224,16 @@ interface SpanFitInformation {
             }
         }
 
-        val GSON: Gson = GsonBuilder().setPrettyPrinting().setFieldNamingStrategy(
-            GSONUtil.NO_MY_UNDESCORE_NAMING_STRATEGY
-        ).registerTypeAdapterFactory(
-            GSONUtil.classSpecificFactory(SpanFitInformation::class.java) { gson, factory ->
-                GSONUtil.classAndVersionAdapter(
-                    gson, factory,
-                    "fit.information.fqn", "version"
-                )
-            }
-        ).registerTypeAdapter(
-            object : TypeToken<Fragment>() {}.type, FragmentTypeAdapter
-        ).registerTypeHierarchyAdapter(
-            Path::class.java, PathTypeAdapter
-        ).create()
+        private val GSON: Gson = GsonBuilder()
+            .setPrettyPrinting()
+            .setFieldNamingStrategy(GSONUtil.NO_MY_UNDERSCORE_NAMING_STRATEGY)
+            .registerTypeAdapterFactory(
+                GSONUtil.classSpecificFactory(SpanFitInformation::class.java) { gson, factory ->
+                    GSONUtil.classAndVersionAdapter(gson, factory, "fit.information.fqn", "version")
+                })
+            .registerTypeAdapter(object : TypeToken<Fragment>() {}.type, FragmentTypeAdapter)
+            .registerTypeHierarchyAdapter(Path::class.java, PathTypeAdapter)
+            .create()
 
         /**
          * Loads a [SpanFitInformation] instance from a JSON file.

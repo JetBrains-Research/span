@@ -20,7 +20,7 @@ import org.jetbrains.bio.util.stemGz
 import org.jetbrains.bio.viktor.asF64Array
 import java.nio.file.Path
 
-data class Span2FitInformation constructor(
+data class Span2AnalyzeFitInformation constructor(
     override val build: String,
     override val data: List<SpanDataPaths>,
     val mapabilityPath: Path?,
@@ -103,8 +103,10 @@ data class Span2FitInformation constructor(
     override fun score(chromosomeRange: ChromosomeRange): Double = scoreQuery.apply(chromosomeRange).toDouble()
 
     companion object {
-
-        const val VERSION = 3
+        @Suppress("MayBeConstant", "unused")
+        @Transient
+        @JvmField
+        val VERSION = 4
 
         fun binnedCoverage(chr: Chromosome, coverage: Coverage, binSize: Int): IntArray {
             val len = (chr.length - 1) / binSize + 1

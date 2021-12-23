@@ -4,7 +4,7 @@ import com.google.gson.JsonParseException
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.FixedFragment
-import org.jetbrains.bio.span.fit.experimental.Span2FitInformation
+import org.jetbrains.bio.span.fit.experimental.Span2AnalyzeFitInformation
 import org.jetbrains.bio.util.bufferedReader
 import org.jetbrains.bio.util.bufferedWriter
 import org.jetbrains.bio.util.toPath
@@ -40,14 +40,16 @@ class SpanFitInformationTest {
     @Test
     fun checkGenomeQueryOrder() {
         Span1AnalyzeFitInformation(
-            GenomeQuery(Genome["to1"], "chr1", "chr2"), emptyList(), emptyList(), 100, true, 200
+            GenomeQuery(Genome["to1"], "chr1", "chr2"), emptyList(), emptyList(), FixedFragment(100), true, 200
         ).checkGenome(Genome["to1"])
     }
 
 
     @Test
     fun checkOf() {
-        val of = Span1AnalyzeFitInformation(gq, emptyList(), emptyList(), 100, true, 200)
+        val of = Span1AnalyzeFitInformation(
+            gq, emptyList(), emptyList(), FixedFragment(100), true, 200
+        )
         assertEquals(listOf("chr1", "chr2", "chr3", "chrM", "chrX"), of.chromosomesSizes.keys.toList())
     }
 
@@ -57,7 +59,7 @@ class SpanFitInformationTest {
             withTempFile("control", ".bam") { c ->
                 val info = Span1AnalyzeFitInformation(
                     gq, listOf(SpanDataPaths(t, c)), listOf("treatment_control"),
-                    100, false, 200
+                    FixedFragment(100), false, 200
                 )
                 withTempFile("foo", ".tar") { path ->
                     info.save(path)
@@ -85,7 +87,7 @@ class SpanFitInformationTest {
     "chrX": 1000000
   },
   "fit.information.fqn": "org.jetbrains.bio.span.fit.Span1AnalyzeFitInformation",
-  "version": 3
+  "version": 4
 }""".trim().lines(), path.bufferedReader().lines().collect(Collectors.toList())
                     )
                 }
@@ -96,7 +98,7 @@ class SpanFitInformationTest {
 
     @Test
     fun checkLoad() {
-        val info = Span2FitInformation(
+        val info = Span2AnalyzeFitInformation(
             gq, SpanDataPaths("path_to_file".toPath(), "path_to_control".toPath()),
             "mapability.bigWig".toPath(), FixedFragment(42), false, 200
         )
@@ -125,8 +127,8 @@ class SpanFitInformationTest {
     "chrM": 10000,
     "chrX": 1000000
   },
-  "fit.information.fqn": "org.jetbrains.bio.span.fit.experimental.Span2FitInformation",  
-  "version": 3
+  "fit.information.fqn": "org.jetbrains.bio.span.fit.experimental.Span2AnalyzeFitInformation",  
+  "version": 4
 }"""
                 )
             }
@@ -256,29 +258,19 @@ class SpanFitInformationTest {
 
     @Test
     fun checkIndices() {
-        val info = Span1AnalyzeFitInformation(gq, emptyList(), emptyList(), 100, true, 200)
+        val info = Span1AnalyzeFitInformation(
+            gq, emptyList(), emptyList(), FixedFragment(100), true, 200
+        )
         assertEquals(50000 to 55000, info.getChromosomesIndices(chr2))
     }
 
     @Test
     fun checkOffsets() {
-        val info = Span1AnalyzeFitInformation(gq, emptyList(), emptyList(), 100, true, 200)
+        val info = Span1AnalyzeFitInformation(
+            gq, emptyList(), emptyList(), FixedFragment(100), true, 200
+        )
         assertEquals(listOf(0, 200, 400, 600, 800), info.offsets(chr2).take(5))
         assertEquals(5000, chr2.length / 200)
         assertEquals(5000, info.offsets(chr2).size)
     }
 }
-
-/**
- * Simplified instance construction for tests.
- */
-internal operator fun Span1AnalyzeFitInformation.Companion.invoke(
-    genomeQuery: GenomeQuery,
-    paths: List<SpanDataPaths>,
-    labels: List<String>,
-    fragment: Int,
-    unique: Boolean,
-    binSize: Int
-): Span1AnalyzeFitInformation = Span1AnalyzeFitInformation(
-    genomeQuery, paths, labels, FixedFragment(fragment), unique, binSize
-)

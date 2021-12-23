@@ -1,17 +1,17 @@
 package org.jetbrains.bio.span.statistics.hmm
 
 import org.jetbrains.bio.dataframe.DataFrame
-import org.jetbrains.bio.span.fit.flipStatesIfNecessary
 import org.jetbrains.bio.span.fit.ZLH
 import org.jetbrains.bio.span.fit.ZLHID
+import org.jetbrains.bio.span.fit.flipStatesIfNecessary
+import org.jetbrains.bio.span.statistics.emission.NegBinEmissionScheme
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.distribution.NegativeBinomialDistribution
 import org.jetbrains.bio.statistics.emission.ConstantIntegerEmissionScheme
 import org.jetbrains.bio.statistics.emission.IntegerEmissionScheme
-import org.jetbrains.bio.span.statistics.emission.NegBinEmissionScheme
+import org.jetbrains.bio.statistics.hmm.MLConstrainedHMM
 import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.statistics.standardDeviation
-import org.jetbrains.bio.statistics.hmm.MLConstrainedHMM
 import org.jetbrains.bio.statistics.stochastic
 import org.jetbrains.bio.viktor.F64Array
 import org.slf4j.LoggerFactory
@@ -79,7 +79,7 @@ class MLConstrainedNBHMM(
         @Suppress("unused", "MayBeConstant")
         @Transient
         @JvmField
-        val VERSION = 1
+        val VERSION = 2
 
         private val LOG = LoggerFactory.getLogger(MLConstrainedNBHMM::class.java)
 
