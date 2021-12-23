@@ -105,7 +105,7 @@ class MLFreeNBHMM(meanLow: Double, meanHigh: Double, failuresLow: Double, failur
         }
 
         /**
-         * Propose initial signal-to-noise ration in multistart runs.
+         * Propose initial signal-to-noise ration in multi-start runs.
          * Good experiment signal-to-noise ratio is generally 10-30.
          * [snr] and [multiplier] as used to yield the sequence of values
          * snr, snr / multiplier, snr * multiplier, snr / multiplier^2, snr * multiplier^2, ...

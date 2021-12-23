@@ -84,7 +84,7 @@ class SpanFitInformationTest {
     "chrM": 10000,
     "chrX": 1000000
   },
-  "fit.information.fqn": "org.jetbrains.bio.experiments.fit.Span1AnalyzeFitInformation",
+  "fit.information.fqn": "org.jetbrains.bio.span.fit.Span1AnalyzeFitInformation",
   "version": 3
 }""".trim().lines(), path.bufferedReader().lines().collect(Collectors.toList())
                     )
@@ -125,7 +125,7 @@ class SpanFitInformationTest {
     "chrM": 10000,
     "chrX": 1000000
   },
-  "fit.information.fqn": "org.jetbrains.bio.experiments.fit.experimental.Span2FitInformation",  
+  "fit.information.fqn": "org.jetbrains.bio.span.fit.experimental.Span2FitInformation",  
   "version": 3
 }"""
                 )
@@ -150,7 +150,7 @@ class SpanFitInformationTest {
   "ie6_compatibility": false,
   "enable_quantum_optimization": true,
   "chromosomes_sizes": {},
-  "fit.information.fqn": "org.jetbrains.bio.experiments.fit.Span1AnalyzeFitInformation",  
+  "fit.information.fqn": "org.jetbrains.bio.span.fit.Span1AnalyzeFitInformation",  
   "version": 100500
 }"""
                 )
@@ -164,7 +164,7 @@ class SpanFitInformationTest {
         withTempFile("foo", ".tar") { path ->
             expectedEx.expect(JsonParseException::class.java)
             expectedEx.expectMessage(
-                "Cannot load class org.jetbrains.bio.experiments.fit.Span100500FitInformation"
+                "Cannot load class org.jetbrains.bio.span.fit.Span100500FitInformation"
             )
             path.bufferedWriter().use {
                 it.write(
@@ -190,7 +190,7 @@ class SpanFitInformationTest {
     "chrM": 1000000,
     "chrX": 1000000
   },
-  "fit.information.fqn": "org.jetbrains.bio.experiments.fit.Span100500FitInformation",
+  "fit.information.fqn": "org.jetbrains.bio.span.fit.Span100500FitInformation",
   "version": 3
 }"""
                 )
@@ -209,7 +209,7 @@ class SpanFitInformationTest {
                     """{
   "foo": "bar",
   "baz": [],
-  "fit.information.fqn": "org.jetbrains.bio.experiments.fit.SpanFitInformation"
+  "fit.information.fqn": "org.jetbrains.bio.span.fit.SpanFitInformation"
 }"""
                 )
             }

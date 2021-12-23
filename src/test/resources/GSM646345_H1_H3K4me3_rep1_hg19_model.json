@@ -39,6 +39,6 @@
     ]
   ],
   "num_states": 3,
-  "model.class.fqn": "org.jetbrains.bio.statistics.hmm.MLFreeNBHMM",
+  "model.class.fqn": "org.jetbrains.bio.span.statistics.hmm.MLFreeNBHMM",
   "model.class.format": "1"
 }

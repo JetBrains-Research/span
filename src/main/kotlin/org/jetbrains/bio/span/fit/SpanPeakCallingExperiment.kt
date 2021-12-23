@@ -12,7 +12,6 @@ import org.jetbrains.bio.span.coverage.BinnedCoverageScoresQuery
 import org.jetbrains.bio.span.coverage.CoverageScoresQuery
 import org.jetbrains.bio.span.coverage.binsScoresDataFrame
 import org.jetbrains.bio.span.fit.SpanFitInformation.Companion.chromSizes
-import org.jetbrains.bio.span.fit.ZLH
 import org.jetbrains.bio.span.statistics.hmm.MLConstrainedNBHMM
 import org.jetbrains.bio.span.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis

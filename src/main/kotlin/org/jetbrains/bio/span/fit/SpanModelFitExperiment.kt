@@ -65,7 +65,7 @@ abstract class SpanModelFitExperiment<
 ) : Experiment("fit") {
 
     val genomeQuery = fitInformation.genomeQuery()
-    val dataQuery = fitInformation.dataQuery
+    private val dataQuery = fitInformation.dataQuery
 
     /**
      * Preprocessed data by chromosomes, chromosomes are sorted by name.
