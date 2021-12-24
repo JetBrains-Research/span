@@ -60,7 +60,8 @@ Option                          Description
 -?, -h, --help                  Show help
 -v, --version                   Show version
 analyze                         Peak calling mode
-compare                         Differential peak calling mode, experimental
+compare                         Differential peak calling mode 
+experimental                    Experimental features
 """
     private const val ANALYZE = "analyze"
     private const val EXPERIMENTAL = "experimental"
@@ -69,7 +70,7 @@ compare                         Differential peak calling mode, experimental
     @JvmStatic
     fun main(args: Array<String>) {
         if (args.isEmpty()) {
-            System.err.println("ERROR: No command given; $ANALYZE or $COMPARE expected.")
+            System.err.println("ERROR: No command given.")
             System.err.println(HELP)
         } else {
             when (args[0]) {
@@ -81,7 +82,7 @@ compare                         Differential peak calling mode, experimental
                 "-v", "--version" -> println(version())
 
                 else -> {
-                    System.err.println("ERROR: Unknown command: ${args[0]}; $ANALYZE or $COMPARE expected.")
+                    System.err.println("ERROR: Unknown command: ${args[0]}.")
                     System.err.println(HELP)
                 }
             }
@@ -151,7 +152,7 @@ compare                         Differential peak calling mode, experimental
                 .withRequiredArg()
                 .ofType(Double::class.java)
                 .defaultsTo(SPAN_DEFAULT_FDR)
-            acceptsAll(listOf("g", "gap"), "Gap size to merge peaks (in bins).")
+            acceptsAll(listOf("g", "gap"), "Gap size to merge consequent peaks.")
                 .availableIf("peaks")
                 .withRequiredArg()
                 .ofType(Int::class.java)

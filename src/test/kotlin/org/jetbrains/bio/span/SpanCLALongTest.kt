@@ -47,18 +47,7 @@ class SpanCLALongTest {
         val (_, err) = Logs.captureLoggingOutput {
             SpanCLA.main(arrayOf())
         }
-        assertLinesEqual(
-            """
-ERROR: No command given; analyze or compare expected.
-
-Option                          Description
----------------------           -----------
--?, -h, --help                  Show help
--v, --version                   Show version
-analyze                         Peak calling mode
-compare                         Differential peak calling mode, experimental
-""".trim(), err.trim()
-        )
+        assertTrue("ERROR: No command given." in err)
     }
 
     @Test
@@ -66,18 +55,7 @@ compare                         Differential peak calling mode, experimental
         val (_, err) = Logs.captureLoggingOutput {
             SpanCLA.main(arrayOf("foobar"))
         }
-        assertLinesEqual(
-            """
-ERROR: Unknown command: foobar; analyze or compare expected.
-
-Option                          Description
----------------------           -----------
--?, -h, --help                  Show help
--v, --version                   Show version
-analyze                         Peak calling mode
-compare                         Differential peak calling mode, experimental
-""".trim(), err.trim()
-        )
+        assertTrue("ERROR: Unknown command: foobar." in err)
     }
 
     @Test
@@ -85,18 +63,7 @@ compare                         Differential peak calling mode, experimental
         val (_, err) = Logs.captureLoggingOutput {
             SpanCLA.main(arrayOf("foobar", "quiet"))
         }
-        assertLinesEqual(
-            """
-ERROR: Unknown command: foobar; analyze or compare expected.
-
-Option                          Description
----------------------           -----------
--?, -h, --help                  Show help
--v, --version                   Show version
-analyze                         Peak calling mode
-compare                         Differential peak calling mode, experimental
-        """.trim(), err.trim()
-        )
+        assertTrue("ERROR: Unknown command: foobar." in err)
     }
 
     @Test
@@ -111,7 +78,8 @@ Option                          Description
 -?, -h, --help                  Show help
 -v, --version                   Show version
 analyze                         Peak calling mode
-compare                         Differential peak calling mode, experimental
+compare                         Differential peak calling mode 
+experimental                    Experimental features
 """.trim(), out.trim()
         )
     }
