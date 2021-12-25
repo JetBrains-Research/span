@@ -23,7 +23,6 @@ Released on XXX 2021
 - Show progress while computing peaks from model
 - Updated defaults values for SPAN peaks: fdr 0.05, gap 3
 - Updated defaults for SPAN model: multistart/total iterations 2/20, loglikelihood threshold 1
-- Switched to viktor library version 1.2.0
 - Bugfixes
 
 
