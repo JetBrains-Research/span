@@ -31,7 +31,7 @@ internal fun SpanFitResults.getFdrGapPeaks(
     gap: Int,
     cancellableState: CancellableState? = null
 ): List<Peak> {
-    val progress = Progress { title = "Computing peaks" }.bounded(genomeQuery.get().size.toLong())
+    val progress = Progress { title = "Computing peaks fdr=$fdr gap=$gap" }.bounded(genomeQuery.get().size.toLong())
     fitInfo.prepareScores()
     val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
         cancellableState?.checkCanceled()

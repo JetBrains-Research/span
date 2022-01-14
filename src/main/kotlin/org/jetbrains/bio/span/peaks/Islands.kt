@@ -41,7 +41,7 @@ internal fun SpanFitResults.getIslands(
     cancellableState: CancellableState? = null
 ): List<Peak> {
     resetCounters()
-    val progress = Progress { title = "Computing islands" }.bounded(genomeQuery.get().size.toLong())
+    val progress = Progress { title = "Computing peaks fdr=$fdr gap=$gap" }.bounded(genomeQuery.get().size.toLong())
     fitInfo.prepareScores()
     val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
         cancellableState?.checkCanceled()
