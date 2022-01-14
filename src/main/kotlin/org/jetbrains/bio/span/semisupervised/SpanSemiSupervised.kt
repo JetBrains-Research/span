@@ -53,7 +53,8 @@ object SpanSemiSupervised {
             parameters.mapIndexed { index, (fdr, gap) ->
                 Callable {
                     cancellableState.checkCanceled()
-                    val peaksOnLabeledGenomeQuery = results.getPeaks(labeledGenomeQuery, fdr, gap, peaksType)
+                    val peaksOnLabeledGenomeQuery =
+                        results.getPeaks(labeledGenomeQuery, fdr, gap, peaksType = peaksType)
                     labelErrorsGrid[index] = computeErrors(
                         labels,
                         LocationsMergingList.create(

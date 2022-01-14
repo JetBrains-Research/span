@@ -25,7 +25,7 @@ import kotlin.math.min
  * 2) Consecutive enriched bins are merged into peaks.
  * 3) Finally, each peak is assigned a pvalue and qvalue score - median score * ln (length).
  */
-fun SpanFitResults.getFdrGapPeaks(
+internal fun SpanFitResults.getFdrGapPeaks(
     genomeQuery: GenomeQuery,
     fdr: Double,
     gap: Int,
@@ -43,7 +43,7 @@ fun SpanFitResults.getFdrGapPeaks(
     return genomeQuery.get().flatMap { map[it] }
 }
 
-fun SpanFitResults.getChromosomeFdrGapPeaks(
+internal fun SpanFitResults.getChromosomeFdrGapPeaks(
     chromosome: Chromosome,
     fdr: Double,
     gap: Int
@@ -62,7 +62,7 @@ fun SpanFitResults.getChromosomeFdrGapPeaks(
         emptyList()
     }
 
-internal fun SpanFitResults.getChromosomeFdrGapPeaks(
+private fun SpanFitResults.getChromosomeFdrGapPeaks(
     logNullMemberships: F64Array,
     offsets: IntArray,
     chromosome: Chromosome,

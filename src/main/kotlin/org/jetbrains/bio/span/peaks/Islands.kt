@@ -33,7 +33,7 @@ import kotlin.math.min
  *    50% top significant blocks scores are aggregated using length-weighted average as P for island.
  * 5) Compute qvalues on islands p-values, filter by alpha.
 */
-fun SpanFitResults.getIslands(
+internal fun SpanFitResults.getIslands(
     genomeQuery: GenomeQuery,
     fdr: Double,
     gap: Int,
@@ -57,11 +57,11 @@ fun SpanFitResults.getIslands(
     return genomeQuery.get().flatMap { map[it] }
 }
 
-private fun SpanFitResults.getChromosomeIslands(
+internal fun SpanFitResults.getChromosomeIslands(
     chromosome: Chromosome,
     fdr: Double,
     gap: Int,
-    summitsOnly: Boolean
+    summitsOnly: Boolean = false
 ): List<Peak> {
     // Check that we have information for requested chromosome
     val chromosomeIslands = if (chromosome.name in fitInfo.chromosomesSizes) {
@@ -82,17 +82,17 @@ private fun SpanFitResults.getChromosomeIslands(
     return chromosomeIslands
 }
 
-val candidateBinsCounter = AtomicInteger()
-val candidateIslandsCounter = AtomicInteger()
-val resultIslandsCounter = AtomicInteger()
+private val candidateBinsCounter = AtomicInteger()
+private val candidateIslandsCounter = AtomicInteger()
+private val resultIslandsCounter = AtomicInteger()
 
-fun resetCounters() {
+private fun resetCounters() {
     candidateBinsCounter.set(0)
     candidateIslandsCounter.set(0)
     resultIslandsCounter.set(0)
 }
 
-internal fun SpanFitResults.getChromosomeIslands(
+private fun SpanFitResults.getChromosomeIslands(
     logNullMemberships: F64Array,
     offsets: IntArray,
     chromosome: Chromosome,
