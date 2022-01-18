@@ -161,8 +161,8 @@ experimental                    Experimental features
                 "peaks-type",
                 """
                     Peaks computation method.
-                   '${PeaksType.PEAKS_TYPE_ISLANDS.cmd}' - Merge consequent blocks of enriched bins with relaxed gaps 
-                   '${PeaksType.PEAKS_TYPE_FDR_GAP.cmd}' - Merge fdr enriched HMM bins with gap into peaks (previous)
+                   '${PeaksType.PEAKS_TYPE_ISLANDS.cmd}' - Compute candidate peaks with relaxed fdr and gap, followed by fdr test. 
+                   '${PeaksType.PEAKS_TYPE_FDR_GAP.cmd}' - Merge single fdr enriched bins with gap into peaks (previous).
                 """.trimIndent()
             )
                 .withRequiredArg()
