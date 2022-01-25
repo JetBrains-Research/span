@@ -42,12 +42,14 @@ class CoverageScoresQuery(
         get() = "Treatment: $treatmentPath, Control: $controlPath, " +
                 "Fragment: $fragment, Keep-dup: ${!unique}"
 
-    private val treatmentCoverage = ReadsQuery(
-        genomeQuery, treatmentPath, unique, fragment, showLibraryInfo = showLibraryInfo
-    )
+    private val treatmentCoverage by lazy {
+        ReadsQuery(genomeQuery, treatmentPath, unique, fragment, showLibraryInfo = showLibraryInfo)
+    }
 
-    private val controlCoverage = controlPath?.let {
-        ReadsQuery(genomeQuery, it, unique, fragment, showLibraryInfo = showLibraryInfo)
+    private val controlCoverage by lazy {
+        controlPath?.let {
+            ReadsQuery(genomeQuery, it, unique, fragment, showLibraryInfo = showLibraryInfo)
+        }
     }
 
     /**
@@ -56,10 +58,12 @@ class CoverageScoresQuery(
     val ready: Boolean
         get() = treatmentCoverage.npzPath().exists && controlCoverage?.npzPath()?.exists ?: true
 
-    val scale: Double = if (controlCoverage != null)
-        computeScale(genomeQuery, treatmentCoverage.get(), controlCoverage.get())
-    else
-        0.0
+    val scale: Double by lazy {
+        if (!ready || controlCoverage == null) {
+            return@lazy 0.0  // When no caches
+        }
+        return@lazy computeScale(genomeQuery, treatmentCoverage.get(), controlCoverage!!.get())
+    }
 
     override fun apply(t: ChromosomeRange): Int {
         return getScore(t, treatmentCoverage.get(), controlCoverage?.get(), scale)
