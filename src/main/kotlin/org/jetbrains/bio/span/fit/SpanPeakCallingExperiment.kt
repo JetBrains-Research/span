@@ -33,10 +33,11 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
     modelClass: Class<Model>,
     fixedModelPath: Path?,
     threshold: Double,
-    maxIter: Int
+    maxIter: Int,
+    saveExtendedInfo: Boolean = false
 ) : SpanModelFitExperiment<Model, Span1AnalyzeFitInformation, ZLH>(
     fitInformation, modelFitter, modelClass, ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L), fixedModelPath,
-    threshold, maxIter
+    threshold, maxIter, saveExtendedInfo
 ) {
 
     override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span"
@@ -66,10 +67,11 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
             threshold: Double = Fitter.THRESHOLD,
             maxIter: Int = Fitter.MAX_ITERATIONS,
             multistarts: Int = Fitter.MULTISTARTS,
-            multistartIter: Int = Fitter.MULTISTART_ITERATIONS
+            multistartIter: Int = Fitter.MULTISTART_ITERATIONS,
+            saveExtendedInfo: Boolean = false
         ): SpanPeakCallingExperiment<out ClassificationModel> {
             check(paths.isNotEmpty()) { "No data" }
-            val fitInformation = Span1AnalyzeFitInformation.effective(
+            val fitInformation = Span1AnalyzeFitInformation.createFitInformation(
                 genomeQuery, paths, MultiLabels.generate(TRACK_PREFIX, paths.size).toList(),
                 fragment, unique, bin
             )
@@ -85,7 +87,8 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
                     MLFreeNBHMM::class.java,
                     fixedModelPath,
                     threshold,
-                    maxIter
+                    maxIter,
+                    saveExtendedInfo
                 )
             } else {
                 SpanPeakCallingExperiment(
@@ -99,7 +102,8 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
                     MLConstrainedNBHMM::class.java,
                     fixedModelPath,
                     threshold,
-                    maxIter
+                    maxIter,
+                    saveExtendedInfo
                 )
             }
         }

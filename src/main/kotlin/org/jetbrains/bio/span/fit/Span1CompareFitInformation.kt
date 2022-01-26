@@ -111,7 +111,7 @@ data class Span1CompareFitInformation(
             return Span1CompareFitInformation(
                 genomeQuery.build, paths1, paths2, labels1, labels2, fragment, unique, binSize,
                 SpanFitInformation.chromSizes(
-                    SpanModelFitExperiment.effectiveGenomeQuery(
+                    SpanModelFitExperiment.filterGenomeQueryWithData(
                         genomeQuery, paths1 + paths2, fragment, unique
                     )
                 )

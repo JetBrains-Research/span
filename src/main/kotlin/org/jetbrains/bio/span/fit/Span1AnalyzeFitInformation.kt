@@ -85,7 +85,7 @@ data class Span1AnalyzeFitInformation(
      * Returns summary coverage averaged by tracks
      */
     override fun score(chromosomeRange: ChromosomeRange): Double {
-        check (scoreQueries != null) {
+        check(scoreQueries != null) {
             "Please use prepareScores before!"
         }
         return if (scoreQueries!!.all { it.ready }) {
@@ -101,7 +101,7 @@ data class Span1AnalyzeFitInformation(
         @JvmField
         val VERSION: Int = 4
 
-        fun effective(
+        fun createFitInformation(
             genomeQuery: GenomeQuery,
             paths: List<SpanDataPaths>,
             labels: List<String>,
@@ -109,9 +109,16 @@ data class Span1AnalyzeFitInformation(
             unique: Boolean,
             binSize: Int
         ): Span1AnalyzeFitInformation {
-            val effectiveGQ = SpanModelFitExperiment.effectiveGenomeQuery(genomeQuery, paths, fragment, unique)
+            val genomeQueryWithData =
+                SpanModelFitExperiment.filterGenomeQueryWithData(genomeQuery, paths, fragment, unique)
             return Span1AnalyzeFitInformation(
-                effectiveGQ.build, paths, labels, fragment, unique, binSize, SpanFitInformation.chromSizes(effectiveGQ)
+                genomeQueryWithData.build,
+                paths,
+                labels,
+                fragment,
+                unique,
+                binSize,
+                SpanFitInformation.chromSizes(genomeQueryWithData)
             )
         }
     }

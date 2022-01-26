@@ -57,6 +57,7 @@ object SpanCLAAnalyze {
                 .withRequiredArg()
                 .ofType(Int::class.java)
                 .defaultsTo(Fitter.MULTISTART_ITERATIONS)
+            acceptsAll(listOf("ext"), "Save extended information to model file")
             if (experimental) {
                 accepts(
                     "model-type",
@@ -352,7 +353,8 @@ object SpanCLAAnalyze {
                     SpanModel.NB_HMM ->
                         SpanPeakCallingExperiment.getExperiment(
                             genomeQuery, data, bin, fragment, unique, modelPath,
-                            threshold, maxIter, multistarts, multistartIterations
+                            threshold, maxIter, multistarts, multistartIterations,
+                            options.has("ext")
                         )
 
                     SpanModel.NB_HMM2_NOZERO ->

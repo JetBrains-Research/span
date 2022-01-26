@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory
  * the log probability of each observation under the null hypothesis. Each dataframe should at least contain
  * a column of floats or doubles labelled [SpanModelFitExperiment.NULL].
  */
-data class SpanFitResults(
+open class SpanFitResults(
     val fitInfo: SpanFitInformation,
     val model: ClassificationModel,
     val logNullMemberships: Map<String, DataFrame>
@@ -34,7 +34,7 @@ data class SpanFitResults(
     /**
      * @return Information about fit results including model and other parameters
      */
-    fun about(): List<TrackAboutMetricValue<*>> {
+    open fun about(): List<TrackAboutMetricValue<*>> {
         return when (model) {
             is MLFreeNBHMM -> {
                 val signalMean = model.means[1]

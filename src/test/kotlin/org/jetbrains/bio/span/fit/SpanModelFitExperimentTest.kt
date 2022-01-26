@@ -27,7 +27,7 @@ class SpanModelFitExperimentTest {
         withTempFile("track", ".bed.gz") { path ->
             SpanCLALongTest.sampleCoverage(path, GenomeQuery(Genome["to1"]), 200, goodQuality = true)
             println("Saved sampled track file: $path")
-            val dataQuery = Span1AnalyzeFitInformation.effective(
+            val dataQuery = Span1AnalyzeFitInformation.createFitInformation(
                 GenomeQuery(Genome["to1"]), listOf(SpanDataPaths(path, null)),
                 listOf("foo"), AutoFragment, true, 200
             ).dataQuery
@@ -48,7 +48,7 @@ class SpanModelFitExperimentTest {
             )
             println("Saved sampled track file: $path")
             val (out, _) = Logs.captureLoggingOutput {
-                val effectiveGenomeQuery = SpanModelFitExperiment.effectiveGenomeQuery(
+                val effectiveGenomeQuery = SpanModelFitExperiment.filterGenomeQueryWithData(
                     GenomeQuery(Genome["to1"]), listOf(SpanDataPaths(path, null)), AutoFragment, true
                 )
                 assertEquals("[chr1]", effectiveGenomeQuery.get().map { it.name }.toString())

@@ -53,7 +53,7 @@ class SpanPeakCallingExperimentNBHMM2NZ<Model : ClassificationModel> private con
             multistartIter: Int = Fitter.MULTISTART_ITERATIONS
         ): SpanPeakCallingExperimentNBHMM2NZ<out ClassificationModel> {
             check(paths.isNotEmpty()) { "No data" }
-            val fitInformation = Span1AnalyzeFitInformation.effective(
+            val fitInformation = Span1AnalyzeFitInformation.createFitInformation(
                 genomeQuery, paths, MultiLabels.generate(SpanPeakCallingExperiment.TRACK_PREFIX, paths.size).toList(),
                 fragment, unique, bin
             )

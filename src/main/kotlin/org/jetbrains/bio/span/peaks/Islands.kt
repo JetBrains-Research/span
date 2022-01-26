@@ -108,15 +108,15 @@ private fun SpanFitResults.getChromosomeIslands(
     * 2) Mitigate the problem when number of peaks for strict FDR is much bigger than for relaxed FDR
     * */
     val logFdr = ln(fdr)
-    val candidateBins = BitterSet(logNullMemberships.size).apply {
-        0.until(size()).filter { logNullMemberships[it] <= min(ln(0.1), logFdr * relaxPower) }.forEach(::set)
-    }
+    val relaxedLogFdr = relaxedLogFdr(logFdr, relaxPower)
     val strictBins = BitterSet(logNullMemberships.size).apply {
         0.until(size()).filter { logNullMemberships[it] <= logFdr }.forEach(::set)
     }
-
+    val candidateBins = BitterSet(logNullMemberships.size).apply {
+        0.until(size()).filter { logNullMemberships[it] <= relaxedLogFdr }.forEach(::set)
+    }
     val candidateIslands = candidateBins.aggregate(gap).filter { (from, to) ->
-        (from until to).any { logNullMemberships[it] <= logFdr }
+        (from until to).any { strictBins[it] }
     }
     if (candidateIslands.isEmpty()) {
         return emptyList()
@@ -198,6 +198,8 @@ private fun SpanFitResults.getChromosomeIslands(
     resultIslandsCounter.addAndGet(resultIslands.size)
     return resultIslands
 }
+
+fun relaxedLogFdr(logFdr: Double, relaxPower: Double) = min(ln(0.1), logFdr * relaxPower)
 
 const val RELAX_POWER_DEFAULT = 0.5
 val SUMMIT_WINDOWS = intArrayOf(2, 3, 5)
