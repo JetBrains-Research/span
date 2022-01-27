@@ -283,8 +283,9 @@ abstract class SpanModelFitExperiment<
 
                 LOG.debug("Completed model file decompress and started loading: $tarPath")
                 val info = SpanFitInformation.load<SpanFitInformation>(dir / INFORMATION_JSON)
-                // Sanity check
+                // Check genome build
                 genomeQuery?.let { info.checkGenome(it.genome) }
+                // Load model and PEPs
                 val model = ClassificationModel.load<ClassificationModel>(dir / MODEL_JSON)
                 val logNullMembershipsDF = DataFrame.load(dir / NULL_NPZ)
                 val logNullMembershipsMap = info.split(logNullMembershipsDF, genomeQuery)
@@ -295,13 +296,17 @@ abstract class SpanModelFitExperiment<
                     LOG.info("Loading states data frame")
                     val statesDfMap = info.split(DataFrame.load(statesPath), genomeQuery)
                     val coveragesDfMap = hashMapOf<String, DataFrame>()
-                    genomeQuery!!.get().forEach { chromosome ->
-                        val chrCoveragePath = dir / "coverage_${chromosome.name}.npz"
+                    val chromosomeNames = if (genomeQuery != null)
+                        genomeQuery.get().map { it.name }
+                    else
+                        info.chromosomesSizes.keys
+                    chromosomeNames.forEach { chromosome ->
+                        val chrCoveragePath = dir / "coverage_$chromosome.npz"
                         if (chrCoveragePath.exists) {
-                            LOG.info("Loading coverage data for ${chromosome.name}")
-                            coveragesDfMap[chromosome.name] = DataFrame.load(chrCoveragePath)
+                            LOG.info("Loading coverage data for $chromosome")
+                            coveragesDfMap[chromosome] = DataFrame.load(chrCoveragePath)
                         } else {
-                            LOG.info("No coverage information available for ${chromosome.name}")
+                            LOG.info("No coverage information available for $chromosome")
                         }
                     }
                     LOG.info("Completed loading extended model: $tarPath")
