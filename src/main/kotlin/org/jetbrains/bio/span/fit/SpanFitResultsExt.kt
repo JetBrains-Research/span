@@ -12,7 +12,7 @@ class SpanFitResultsExt(
     fitInfo: SpanFitInformation,
     model: ClassificationModel,
     logNullMemberships: Map<String, DataFrame>,
-    val coveragesDataFrameMaps: List<Map<String, DataFrame>>,
+    val coveragesDataFrameMap: Map<String, DataFrame>,
     val statesDataFrameMap: Map<String, DataFrame>,
 ) : SpanFitResults(fitInfo, model, logNullMemberships) {
     companion object {

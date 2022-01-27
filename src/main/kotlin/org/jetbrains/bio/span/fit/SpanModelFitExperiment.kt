@@ -154,6 +154,8 @@ abstract class SpanModelFitExperiment<
                 val modelPath = dir / MODEL_JSON
                 LOG.info("Computing data model")
                 val model = calculateModel()
+                LOG.info("Done computing data model")
+                LOG.info("Saving model information...")
                 model.save(modelPath)
                 LOG.debug("Model saved to $modelPath")
                 ClassificationModel.load<Model>(modelPath)
@@ -168,7 +170,8 @@ abstract class SpanModelFitExperiment<
                 LOG.debug("Computing states dataframe")
                 val statesDataFrame = calculateStatesDataFrame(model)
                 LOG.debug("Computing null hypothesis log memberships")
-                val chromosomeToDataFrameMap = genomeQuery.get().associate {
+                val chromosomes = genomeQuery.get()
+                val chromosomeToDataFrameMap = chromosomes.associate {
                     val logMemberships = getLogMemberships(sliceStatesDataFrame(statesDataFrame, it))
                     val logNullMemberships = nullHypothesis.apply(logMemberships)
                     // Convert [Double] to [Float] to save space, see #1163
@@ -184,15 +187,15 @@ abstract class SpanModelFitExperiment<
 
                 if (saveExtendedInfo) {
                     val extendedPaths = arrayListOf<Path>()
-                    LOG.debug("Extended information in enabled.")
-                    LOG.debug("Saving preprocessed coverage(s) dataframe")
-                    val coverageDfsMaps = arrayListOf<Map<String, DataFrame>>()
+                    LOG.info("Extended information in enabled, preparing additional information.")
+                    val coverageDfMap = hashMapOf<String, DataFrame>()
                     preprocessedData.forEachIndexed { i, preprocessed ->
-                        val preprocessedPath = dir / "coverage_$i.npz"
+                        val chromosome = chromosomes[i]
+                        val preprocessedPath = dir / "coverage_${chromosome.name}.npz"
                         val covDf = preprocessed.get()
-                        coverageDfsMaps.add(fitInformation.split(covDf, genomeQuery))
+                        coverageDfMap[chromosome.name] = covDf
                         covDf.save(preprocessedPath)
-                        LOG.debug("Preprocessed coverage $i saved to $preprocessedPath")
+                        LOG.debug("Preprocessed coverage ${chromosome.name} saved to $preprocessedPath")
                         extendedPaths.add(preprocessedPath)
                     }
                     LOG.debug("Saving full states dataframe")
@@ -206,19 +209,17 @@ abstract class SpanModelFitExperiment<
                     )
                     computedResults = SpanFitResultsExt(
                         fitInformation, model, logNullMembershipsMap,
-                        coverageDfsMaps, fitInformation.split(statesDataFrame, genomeQuery)
+                        coverageDfMap, fitInformation.split(statesDataFrame, genomeQuery)
                     )
+                    LOG.info("Done saving model with additional information.")
                 } else {
                     Tar.compress(
                         p, *(listOf(modelPath, informationPath, nullHypothesisPath)).map(Path::toFile)
                             .toTypedArray()
                     )
                     computedResults = SpanFitResults(fitInformation, model, logNullMembershipsMap)
+                    LOG.info("Done saving model.")
                 }
-
-                LOG.info("Saved model files to $p")
-
-
             }
         }
         return if (computedResults != null) {
@@ -291,14 +292,20 @@ abstract class SpanModelFitExperiment<
                 val statesPath = dir / "states.npz"
                 if (statesPath.exists) {
                     LOG.info("Loading extended model file")
+                    LOG.info("Loading states data frame")
                     val statesDfMap = info.split(DataFrame.load(statesPath), genomeQuery)
-                    var i = 0
-                    val coveragesDfMaps = arrayListOf<Map<String, DataFrame>>()
-                    while ((dir / "coverage_$i.npz").exists) {
-                        coveragesDfMaps.add(info.split(DataFrame.load(dir / "coverage_$i.npz"), genomeQuery))
-                        i += 1
+                    val coveragesDfMap = hashMapOf<String, DataFrame>()
+                    genomeQuery!!.get().forEach { chromosome ->
+                        val chrCoveragePath = dir / "coverage_${chromosome.name}.npz"
+                        if (chrCoveragePath.exists) {
+                            LOG.info("Loading coverage data for ${chromosome.name}")
+                            coveragesDfMap[chromosome.name] = DataFrame.load(chrCoveragePath)
+                        } else {
+                            LOG.info("No coverage information available for ${chromosome.name}")
+                        }
                     }
-                    return SpanFitResultsExt(info, model, logNullMembershipsMap, coveragesDfMaps, statesDfMap)
+                    LOG.info("Completed loading extended model: $tarPath")
+                    return SpanFitResultsExt(info, model, logNullMembershipsMap, coveragesDfMap, statesDfMap)
                 }
 
                 LOG.info("Completed loading model: $tarPath")
