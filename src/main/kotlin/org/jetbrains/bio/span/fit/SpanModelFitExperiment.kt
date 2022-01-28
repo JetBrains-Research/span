@@ -275,7 +275,11 @@ abstract class SpanModelFitExperiment<
         }
 
 
-        fun loadResults(genomeQuery: GenomeQuery? = null, tarPath: Path): SpanFitResults {
+        fun loadResults(
+            genomeQuery: GenomeQuery? = null,
+            tarPath: Path,
+            loadExtendedInfo: Boolean = false
+        ): SpanFitResults {
             LOG.info("Loading model: $tarPath")
             return withTempDirectory(tarPath.stem) { dir ->
                 LOG.debug("Started model file decompress: $tarPath")
@@ -289,32 +293,33 @@ abstract class SpanModelFitExperiment<
                 val model = ClassificationModel.load<ClassificationModel>(dir / MODEL_JSON)
                 val logNullMembershipsDF = DataFrame.load(dir / NULL_NPZ)
                 val logNullMembershipsMap = info.split(logNullMembershipsDF, genomeQuery)
-
-                val statesPath = dir / "states.npz"
-                if (statesPath.exists) {
-                    LOG.info("Loading extended model file")
-                    LOG.info("Loading states data frame")
-                    val statesDfMap = info.split(DataFrame.load(statesPath), genomeQuery)
-                    val coveragesDfMap = hashMapOf<String, DataFrame>()
-                    val chromosomeNames = if (genomeQuery != null)
-                        genomeQuery.get().map { it.name }
-                    else
-                        info.chromosomesSizes.keys
-                    chromosomeNames.forEach { chromosome ->
-                        val chrCoveragePath = dir / "coverage_$chromosome.npz"
-                        if (chrCoveragePath.exists) {
-                            LOG.info("Loading coverage data for $chromosome")
-                            coveragesDfMap[chromosome] = DataFrame.load(chrCoveragePath)
-                        } else {
-                            LOG.info("No coverage information available for $chromosome")
-                        }
-                    }
-                    LOG.info("Completed loading extended model: $tarPath")
-                    return SpanFitResultsExt(info, model, logNullMembershipsMap, coveragesDfMap, statesDfMap)
+                if (!loadExtendedInfo) {
+                    LOG.info("Completed loading model: $tarPath")
+                    return@withTempDirectory SpanFitResults(info, model, logNullMembershipsMap)
                 }
-
-                LOG.info("Completed loading model: $tarPath")
-                return@withTempDirectory SpanFitResults(info, model, logNullMembershipsMap)
+                val statesPath = dir / "states.npz"
+                check(statesPath.exists) {
+                    "Extended SPAN model information is not available, please run SPAN with --ext parameter."
+                }
+                LOG.info("Loading extended model file")
+                LOG.info("Loading states data frame")
+                val statesDfMap = info.split(DataFrame.load(statesPath), genomeQuery)
+                val coveragesDfMap = hashMapOf<String, DataFrame>()
+                val chromosomeNames = if (genomeQuery != null)
+                    genomeQuery.get().map { it.name }
+                else
+                    info.chromosomesSizes.keys
+                chromosomeNames.forEach { chromosome ->
+                    val chrCoveragePath = dir / "coverage_$chromosome.npz"
+                    if (chrCoveragePath.exists) {
+                        LOG.info("Loading coverage data for $chromosome")
+                        coveragesDfMap[chromosome] = DataFrame.load(chrCoveragePath)
+                    } else {
+                        LOG.info("No coverage information available for $chromosome")
+                    }
+                }
+                LOG.info("Completed loading extended model: $tarPath")
+                return SpanFitResultsExt(info, model, logNullMembershipsMap, coveragesDfMap, statesDfMap)
             }
         }
     }
