@@ -14,15 +14,15 @@ import org.slf4j.LoggerFactory
 private val LOG = LoggerFactory.getLogger(SpanCLA::class.java)
 
 internal fun MLFreeNBHMM.probabilityFlip(state1: Int, state2: Int) {
-    for (i in 0..2) {
-        val tmp = this.logTransitionProbabilities[i, state1]
-        this.logTransitionProbabilities[i, state1] = this.logTransitionProbabilities[i, state2]
-        this.logTransitionProbabilities[i, state2] = tmp
+    for (s in 0..2) {
+        val tmp = this.logTransitionProbabilities[s, state1]
+        this.logTransitionProbabilities[s, state1] = this.logTransitionProbabilities[s, state2]
+        this.logTransitionProbabilities[s, state2] = tmp
     }
-    for (j in 0..2) {
-        val tmp = this.logTransitionProbabilities[state1, j]
-        this.logTransitionProbabilities[state1, j] = this.logTransitionProbabilities[state2, j]
-        this.logTransitionProbabilities[state2, j] = tmp
+    for (s in 0..2) {
+        val tmp = this.logTransitionProbabilities[state1, s]
+        this.logTransitionProbabilities[state1, s] = this.logTransitionProbabilities[state2, s]
+        this.logTransitionProbabilities[state2, s] = tmp
     }
     val tmp = this.logPriorProbabilities[state1]
     this.logPriorProbabilities[state1] = this.logPriorProbabilities[state2]
@@ -34,15 +34,15 @@ internal fun MLFreeNBHMM.probabilityFlip(state1: Int, state2: Int) {
  * Rearranges the transition and prior probabilities so that the provided states flip
  */
 internal fun MLConstrainedNBHMM.probabilityFlip(state1: Int, state2: Int, stateNum: Int) {
-    for (i in 0 until stateNum) {
-        val tmp = this.logTransitionProbabilities[i, state1]
-        this.logTransitionProbabilities[i, state1] = this.logTransitionProbabilities[i, state2]
-        this.logTransitionProbabilities[i, state2] = tmp
+    for (s in 0 until stateNum) {
+        val tmp = this.logTransitionProbabilities[s, state1]
+        this.logTransitionProbabilities[s, state1] = this.logTransitionProbabilities[s, state2]
+        this.logTransitionProbabilities[s, state2] = tmp
     }
-    for (j in 0 until stateNum) {
-        val tmp = this.logTransitionProbabilities[state1, j]
-        this.logTransitionProbabilities[state1, j] = this.logTransitionProbabilities[state2, j]
-        this.logTransitionProbabilities[state2, j] = tmp
+    for (s in 0 until stateNum) {
+        val tmp = this.logTransitionProbabilities[state1, s]
+        this.logTransitionProbabilities[state1, s] = this.logTransitionProbabilities[state2, s]
+        this.logTransitionProbabilities[state2, s] = tmp
     }
     val tmp = this.logPriorProbabilities[state1]
     this.logPriorProbabilities[state1] = this.logPriorProbabilities[state2]
