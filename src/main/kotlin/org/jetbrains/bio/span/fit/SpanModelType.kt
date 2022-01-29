@@ -2,13 +2,17 @@ package org.jetbrains.bio.span.fit
 
 enum class SpanModelType(val id: String, val extension: String, val description: String) {
     // Default SPAN model
-    NB2Z_HMM("nb2zhmm", "span", "Negative binomial HMM 2states with zero inflation"),
-
-    NB3Z_HMM("nb3zhmm", "span-nb3z", "Negative binomial HMM 3states with zero inflation"),
-    NB2_HMM("nb2hmm", "span-nb2", "Negative binomial HMM 2states"),
-    NB3_HMM3("nb3hmm", "span-nb3", "Negative binomial HMM 3states"),
-    POISSON_REGRESSION_MIXTURE("p2zrm", "span-p2zrm", "Poisson regression mixture"),
-    NEGBIN_REGRESSION_MIXTURE("nb2zrm", "span-nb2zrm", "Negative Binomial Regression mixture");
+    NB2Z_HMM("nb2zhmm", "span", "Negative binomial HMM 2 states with zero inflation"),
+    NB2Z_MIXTURE("nb2zm", "span-nb2zm", "Negative binomial 2 states mixture with zero inflation"),
+    NB3Z_HMM("nb3zhmm", "span-nb3z", "Negative binomial HMM 3 states with zero inflation"),
+    NB2_HMM("nb2hmm", "span-nb2", "Negative binomial HMM 2 states"),
+    NB3_HMM3("nb3hmm", "span-nb3", "Negative binomial HMM 3 states"),
+    POISSON_REGRESSION_MIXTURE(
+        "p2zrm", "span-p2zrm", "Poisson 2 states regression mixture with zero inflation"
+    ),
+    NEGBIN_REGRESSION_MIXTURE(
+        "nb2zrm", "span-nb2zrm", "Negative binomial 2 states regression mixture with zero inflation "
+    );
 
     override fun toString() = description
 

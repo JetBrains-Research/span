@@ -4,6 +4,7 @@ import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.TrackAboutDoubleColumnType
 import org.jetbrains.bio.genome.TrackAboutMetricValue
 import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
+import org.jetbrains.bio.span.statistics.mixture.NegBinMixture
 import org.jetbrains.bio.span.statistics.mixture.NegBinRegressionMixture
 import org.jetbrains.bio.span.statistics.mixture.PoissonRegressionMixture
 import org.jetbrains.bio.statistics.model.ClassificationModel
@@ -37,6 +38,15 @@ open class SpanFitResults(
     open fun about(): List<TrackAboutMetricValue<*>> {
         return when (model) {
             is NB2ZHMM -> {
+                val signalMean = model.means[1]
+                val noiseMean = model.means[0]
+                listOf(
+                    CT_SIGNAL_MEAN to signalMean,
+                    CT_NOISE_MEAN to noiseMean,
+                    CT_SIGNAL_TO_NOISE to ((signalMean + 1e-10) / (noiseMean + 1e-10))
+                )
+            }
+            is NegBinMixture -> {
                 val signalMean = model.means[1]
                 val noiseMean = model.means[0]
                 listOf(

@@ -351,6 +351,12 @@ object SpanCLAAnalyze {
                             threshold, maxIter, multistarts, multistartIterations,
                             saveExtendedInfo
                         )
+                    SpanModelType.NB2Z_MIXTURE ->
+                        SpanPeakCallingExperimentNB2ZM.getExperiment(
+                            genomeQuery, data, fragment, bin, unique, modelPath,
+                            threshold, maxIter,
+                            saveExtendedInfo
+                        )
                     SpanModelType.NB3Z_HMM ->
                         SpanPeakCallingExperimentNB3ZHMM.getExperiment(
                             genomeQuery, data, bin, fragment, unique, modelPath,
