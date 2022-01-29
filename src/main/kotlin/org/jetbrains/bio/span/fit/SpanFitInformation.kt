@@ -22,7 +22,7 @@ import java.util.*
  * The most common interface for all fit information classes.
  *
  * [SpanFitInformation] instance is designed to contain all information necessary to uniquely identify the input
- * of a Span-like model fitting experiment. For example, [Span1AnalyzeFitInformation] completely describes
+ * of a Span-like model fitting experiment. For example, [SpanAnalyzeFitInformation] completely describes
  * the input of the classical `span analyze` command.
  *
  * [SpanFitInformation] object is a part of [SpanFitResults], and its type is type parameter

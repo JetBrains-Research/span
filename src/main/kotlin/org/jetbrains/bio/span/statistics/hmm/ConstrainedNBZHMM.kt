@@ -3,7 +3,6 @@ package org.jetbrains.bio.span.statistics.hmm
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.span.fit.ZLH
 import org.jetbrains.bio.span.fit.ZLHID
-import org.jetbrains.bio.span.fit.flipStatesIfNecessary
 import org.jetbrains.bio.span.statistics.emission.NegBinEmissionScheme
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.distribution.NegativeBinomialDistribution
@@ -15,6 +14,7 @@ import org.jetbrains.bio.statistics.standardDeviation
 import org.jetbrains.bio.statistics.stochastic
 import org.jetbrains.bio.viktor.F64Array
 import org.slf4j.LoggerFactory
+import kotlin.math.sqrt
 
 /**
  * A HMM with multidimensional Negative Binomial emissions and
@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory
  * @author Oleg Shpynov
  * @since 20/05/14
  */
-class MLConstrainedNBHMM(
+class ConstrainedNBZHMM(
     stateDimensionEmissionMap: Array<IntArray>,
     means: DoubleArray,
     failures: DoubleArray
@@ -81,21 +81,21 @@ class MLConstrainedNBHMM(
         @JvmField
         val VERSION = 2
 
-        private val LOG = LoggerFactory.getLogger(MLConstrainedNBHMM::class.java)
+        private val LOG = LoggerFactory.getLogger(ConstrainedNBZHMM::class.java)
 
         /**
          * The fitter for detecting the presence of ChIP-Seq enrichment based on one or several
          * ChIP-Seq replicates. It assumes [ZLH] state set.
          */
-        fun fitter(numReplicates: Int): Fitter<MLConstrainedNBHMM> {
-            return object : Fitter<MLConstrainedNBHMM> {
+        fun fitter(numReplicates: Int): Fitter<ConstrainedNBZHMM> {
+            return object : Fitter<ConstrainedNBZHMM> {
                 override fun guess(
                     preprocessed: Preprocessed<DataFrame>,
                     title: String,
                     threshold: Double,
                     maxIter: Int,
                     attempt: Int
-                ): MLConstrainedNBHMM {
+                ): ConstrainedNBZHMM {
                     val df = preprocessed.get()
                     val meanCoverage = DoubleArray(numReplicates)
                     val means = DoubleArray(numReplicates * 2)
@@ -108,9 +108,9 @@ class MLConstrainedNBHMM(
                         }
                         val mean = values.average()
                         val sd = values.standardDeviation()
-                        val snr = MLFreeNBHMM.multiStartSignalToNoise(attempt)
-                        val meanLow = mean / Math.sqrt(snr)
-                        val meanHigh = mean * Math.sqrt(snr)
+                        val snr = FreeNBZHMM.multiStartSignalToNoise(attempt)
+                        val meanLow = mean / sqrt(snr)
+                        val meanHigh = mean * sqrt(snr)
                         val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, sd * sd)
                         LOG.debug("Guess $attempt emissions mean $mean\tsd $sd")
                         LOG.debug("Guess $attempt init meanLow $meanLow\tmeanHigh $meanHigh\tfailures $fs")
@@ -121,7 +121,7 @@ class MLConstrainedNBHMM(
                         failures[d + numReplicates] = fs
                     }
 
-                    return MLConstrainedNBHMM(ZLH.constraintMap(numReplicates), means, failures)
+                    return ConstrainedNBZHMM(ZLH.constraintMap(numReplicates), means, failures)
                 }
 
                 override fun fit(
@@ -141,8 +141,8 @@ class MLConstrainedNBHMM(
          * ChIP-Seq replicates for each track.
          * It assumes [ZLHID] state set.
          */
-        fun fitter(numReplicates1: Int, numReplicates2: Int): Fitter<MLConstrainedNBHMM> {
-            return object : Fitter<MLConstrainedNBHMM> {
+        fun fitter(numReplicates1: Int, numReplicates2: Int): Fitter<ConstrainedNBZHMM> {
+            return object : Fitter<ConstrainedNBZHMM> {
                 override fun guess(
                     preprocessed: Preprocessed<DataFrame>,
                     title: String,
@@ -157,7 +157,7 @@ class MLConstrainedNBHMM(
                     threshold: Double,
                     maxIter: Int,
                     attempt: Int
-                ): MLConstrainedNBHMM {
+                ): ConstrainedNBZHMM {
                     val df = DataFrame.rowBind(preprocessed.map { it.get() }.toTypedArray())
                     val means = DoubleArray((numReplicates1 + numReplicates2) * 2)
                     val failures = DoubleArray((numReplicates1 + numReplicates2) * 2)
@@ -170,9 +170,9 @@ class MLConstrainedNBHMM(
                         }
                         val mean = values.average()
                         val sd = values.standardDeviation()
-                        val snr = MLFreeNBHMM.multiStartSignalToNoise(attempt)
-                        val meanLow = mean / Math.sqrt(snr)
-                        val meanHigh = mean * Math.sqrt(snr)
+                        val snr = FreeNBZHMM.multiStartSignalToNoise(attempt)
+                        val meanLow = mean / sqrt(snr)
+                        val meanHigh = mean * sqrt(snr)
                         val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, sd * sd)
                         LOG.debug("Guess1 $attempt emissions mean $mean\tsd $sd")
                         LOG.debug("Guess1 $attempt init meanLow $meanLow\tmeanHigh $meanHigh\tfailures $fs")
@@ -190,9 +190,9 @@ class MLConstrainedNBHMM(
                         }
                         val mean = values.average()
                         val sd = values.standardDeviation()
-                        val snr = MLFreeNBHMM.multiStartSignalToNoise(attempt)
-                        val meanLow = mean / Math.sqrt(snr)
-                        val meanHigh = mean * Math.sqrt(snr)
+                        val snr = FreeNBZHMM.multiStartSignalToNoise(attempt)
+                        val meanLow = mean / sqrt(snr)
+                        val meanHigh = mean * sqrt(snr)
                         val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, sd * sd)
                         LOG.debug("Guess2 $attempt emissions mean $mean\tsd $sd")
                         LOG.debug("Guess2 $attempt init meanLow $meanLow\tmeanHigh $meanHigh\tfailures $fs")
@@ -201,7 +201,7 @@ class MLConstrainedNBHMM(
                         failures[d2 + numReplicates1 * 2] = fs
                         failures[d2 + numReplicates2 + numReplicates1 * 2] = fs
                     }
-                    return MLConstrainedNBHMM(ZLHID.constraintMap(numReplicates1, numReplicates2), means, failures)
+                    return ConstrainedNBZHMM(ZLHID.constraintMap(numReplicates1, numReplicates2), means, failures)
                 }
 
                 override fun fit(
@@ -215,5 +215,112 @@ class MLConstrainedNBHMM(
                 }
             }
         }
+
+        /**
+         * Rearranges the transition and prior probabilities so that the provided states flip
+         */
+        internal fun ConstrainedNBZHMM.probabilityFlip(state1: Int, state2: Int, stateNum: Int) {
+            for (s in 0 until stateNum) {
+                val tmp = this.logTransitionProbabilities[s, state1]
+                this.logTransitionProbabilities[s, state1] = this.logTransitionProbabilities[s, state2]
+                this.logTransitionProbabilities[s, state2] = tmp
+            }
+            for (s in 0 until stateNum) {
+                val tmp = this.logTransitionProbabilities[state1, s]
+                this.logTransitionProbabilities[state1, s] = this.logTransitionProbabilities[state2, s]
+                this.logTransitionProbabilities[state2, s] = tmp
+            }
+            val tmp = this.logPriorProbabilities[state1]
+            this.logPriorProbabilities[state1] = this.logPriorProbabilities[state2]
+            this.logPriorProbabilities[state2] = tmp
+        }
+
+        /**
+         * Flip states in case when states with HIGH get lower mean than LOW
+         */
+        internal fun ConstrainedNBZHMM.flipStatesIfNecessary(tracks: Int) {
+            val means = this.means
+            val ps = this.successProbabilities
+            val switchNeeded = (0 until tracks).filter { means[it] > means[it + tracks] && ps[it] > ps[it + tracks] }
+            val switchNotNeeded = (0 until tracks).filter { means[it] < means[it + tracks] || ps[it] < ps[it + tracks] }
+            if (switchNeeded.isNotEmpty() && switchNotNeeded.isNotEmpty()) {
+                LOG.error("Irrecoverable fitting error")
+                LOG.error("means: $means")
+                LOG.error("ps: $ps")
+                LOG.error(
+                    "track(s) " + switchNeeded.joinToString(transform = Int::toString)
+                            + " contradict track(s) " + switchNotNeeded.joinToString(transform = Int::toString)
+                )
+                throw IllegalStateException("Irrecoverable fitting error")
+            }
+            if (switchNeeded.isNotEmpty()) {
+                // flip LOW(1) <-> HIGH(2)
+                for (i in 0 until tracks) {
+                    val tmp = this[i + 1]
+                    this[i + 1] = this[i + tracks + 1] as NegBinEmissionScheme
+                    this[i + tracks + 1] = tmp as NegBinEmissionScheme
+                }
+                this.probabilityFlip(1, 2, 3)
+            }
+            this.updateTransients()
+        }
+
+        /**
+         * Flip states in case when states with HIGH get lower mean than LOW
+         */
+        internal fun ConstrainedNBZHMM.flipStatesIfNecessary(tracks1: Int, tracks2: Int) {
+            val means = means
+            val ps = successProbabilities
+            val switchNeeded1 =
+                (0 until tracks1).filter { means[it] > means[it + tracks1] && ps[it] > ps[it + tracks1] }
+            val switchNotNeeded1 =
+                (0 until tracks1).filter { means[it] < means[it + tracks1] && ps[it] < ps[it + tracks1] }
+            val switchNeeded2 = (2 * tracks1 until 2 * tracks1 + tracks2)
+                .filter { means[it] > means[it + tracks2] && ps[it] > ps[it + tracks2] }
+            val switchNotNeeded2 = (2 * tracks1 until 2 * tracks1 + tracks2)
+                .filter { means[it] < means[it + tracks2] && ps[it] < ps[it + tracks2] }
+            if (switchNeeded1.isNotEmpty() && switchNotNeeded1.isNotEmpty()) {
+                LOG.error("Irrecoverable fitting error")
+                LOG.error("means: $means")
+                LOG.error("ps: $ps")
+                LOG.error(
+                    "track(s) " + switchNeeded1.joinToString(transform = Int::toString)
+                            + " contradict track(s) " + switchNotNeeded1.joinToString(transform = Int::toString)
+                )
+                throw IllegalStateException("Irrecoverable fitting error")
+            }
+            if (switchNeeded2.isNotEmpty() && switchNotNeeded2.isNotEmpty()) {
+                LOG.error("Irrecoverable fitting error")
+                LOG.error("means: $means")
+                LOG.error("ps: $ps")
+                LOG.error(
+                    "track(s) " + switchNeeded2.joinToString(transform = Int::toString)
+                            + " contradict track(s) " + switchNotNeeded2.joinToString(transform = Int::toString)
+                )
+                throw IllegalStateException("Irrecoverable fitting error")
+            }
+            if (switchNeeded1.isNotEmpty()) {
+                // flip LOW(0) <-> DECREASING(2) and HIGH(3) <-> INCREASING(1)
+                for (i in 0 until tracks1) {
+                    val tmp = this[i + 1]
+                    this[i + 1] = this[i + tracks1 + 1] as NegBinEmissionScheme
+                    this[i + tracks1 + 1] = tmp as NegBinEmissionScheme
+                }
+                this.probabilityFlip(0, 2, 5)
+                this.probabilityFlip(1, 3, 5)
+            }
+            if (switchNeeded2.isNotEmpty()) {
+                // flip LOW(0) <-> INCREASING(1) and HIGH(3) <-> DECREASING(2)
+                for (i in 2 * tracks1 until 2 * tracks1 + tracks2) {
+                    val tmp = this[i + 1]
+                    this[i + 1] = this[i + tracks2 + 1] as NegBinEmissionScheme
+                    this[i + tracks2 + 1] = tmp as NegBinEmissionScheme
+                }
+                this.probabilityFlip(0, 1, 5)
+                this.probabilityFlip(2, 3, 5)
+            }
+            updateTransients()
+        }
+
     }
 }

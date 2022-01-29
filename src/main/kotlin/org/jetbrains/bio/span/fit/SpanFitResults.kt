@@ -3,7 +3,7 @@ package org.jetbrains.bio.span.fit
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.TrackAboutDoubleColumnType
 import org.jetbrains.bio.genome.TrackAboutMetricValue
-import org.jetbrains.bio.span.statistics.hmm.MLFreeNBHMM
+import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
 import org.jetbrains.bio.span.statistics.mixture.NegBinRegressionMixture
 import org.jetbrains.bio.span.statistics.mixture.PoissonRegressionMixture
 import org.jetbrains.bio.statistics.model.ClassificationModel
@@ -36,7 +36,7 @@ open class SpanFitResults(
      */
     open fun about(): List<TrackAboutMetricValue<*>> {
         return when (model) {
-            is MLFreeNBHMM -> {
+            is NB2ZHMM -> {
                 val signalMean = model.means[1]
                 val noiseMean = model.means[0]
                 listOf(

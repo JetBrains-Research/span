@@ -63,17 +63,11 @@ object SpanCLAAnalyze {
                     "model-type",
                     """
                         Model type.
-                        'nbhmm' - Two states NB HMM with zero inflated (default)
-                        'nbhmm3z' - Three states NB HMM with zero inflated
-                        'nbhmm4z' - Four states NB HMM with zero inflated
-                        'nbhmm2nz' - Two states NB HMM
-                        'nbhmm3nz' - Three states NB HMM
-                        'nbhmm4nz' - Four states NB HMM
-                        'prm' - Poisson regression mixture
-                        'nbrm' - Negative Binomial regression mixture.
+                        ${SpanModelType.values().joinToString("\n") { "'${it.id}' - ${it.description}" }}
                     """.trimIndent()
                 )
                     .withRequiredArg()
+                    .defaultsTo(SpanModelType.NB2Z_HMM.id)
                 accepts("mapability", "Mapability bigWig file.")
                     .availableIf("treatment")
                     .withRequiredArg()
@@ -165,7 +159,7 @@ object SpanCLAAnalyze {
 
                 val spanResults = lazySpanResults.value
                 val fitInfo = spanResults.fitInfo
-                check(fitInfo is SpanAnalyzeFitInformation) {
+                check(fitInfo is AbstractSpanAnalyzeFitInformation) {
                     "Expected SpanAnalyzeFitInformation, got ${fitInfo::class.java.name}"
                 }
                 val genomeQuery = fitInfo.genomeQuery()
@@ -240,7 +234,7 @@ object SpanCLAAnalyze {
      * If both are available, checks that they are consistent.
      */
     private fun getAnalyzePaths(
-        options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null, log: Boolean = false
+        options: OptionSet, fitInformation: AbstractSpanAnalyzeFitInformation? = null, log: Boolean = false
     ): List<SpanDataPaths> {
         val commandLineTreatmentPaths = options.valuesOf("treatment") as List<Path>
         val commandLineControlPaths = options.valuesOf("control") as List<Path>
@@ -307,7 +301,7 @@ object SpanCLAAnalyze {
                         "the missing command line arguments and verify the provided ones."
             )
             val results = SpanModelFitExperiment.loadResults(tarPath = modelPath)
-            check(results.fitInfo is SpanAnalyzeFitInformation) {
+            check(results.fitInfo is AbstractSpanAnalyzeFitInformation) {
                 "Invalid fit information; expected SpanAnalyzeFitInformation, got ${results.fitInfo::class.java.name}"
             }
             val chromSizesPath = SpanCLA.getAndLogWorkDirAndChromSizes(options, results.fitInfo)
@@ -316,7 +310,7 @@ object SpanCLAAnalyze {
             SpanCLA.getBin(options, results.fitInfo, log = true)
             SpanCLA.getFragment(options, results.fitInfo, log = true)
             SpanCLA.getUnique(options, results.fitInfo, log = true)
-            if (results.fitInfo is Span2AnalyzeFitInformation) {
+            if (results.fitInfo is SpanRMAnalyzeFitInformation) {
                 getMapabilityPath(options, results.fitInfo, log = true)
             }
             return lazyOf(results)
@@ -332,77 +326,64 @@ object SpanCLAAnalyze {
             val multistarts = getMultistarts(options, log = true)
             val multistartIterations = getMultistartIterations(options, log = true)
             val threshold = SpanCLA.getThreshold(options, log = true)
-            val modelType: SpanModel
+            val modelType: SpanModelType
             val mapabilityPath: Path?
             if (experimental) {
                 modelType = getModelType(options, modelPath)
                 mapabilityPath = if (
-                    modelType == SpanModel.POISSON_REGRESSION_MIXTURE ||
-                    modelType == SpanModel.NEGBIN_REGRESSION_MIXTURE
+                    modelType == SpanModelType.POISSON_REGRESSION_MIXTURE ||
+                    modelType == SpanModelType.NEGBIN_REGRESSION_MIXTURE
                 ) {
                     getMapabilityPath(options, log = true)
                 } else {
                     null
                 }
             } else {
-                modelType = SpanModel.NB_HMM
+                modelType = SpanModelType.NB2Z_HMM
                 mapabilityPath = null
             }
             return lazy {
+                val saveExtendedInfo = options.has("ext")
                 val experiment = when (modelType) {
-                    SpanModel.NB_HMM ->
+                    SpanModelType.NB2Z_HMM ->
                         SpanPeakCallingExperiment.getExperiment(
                             genomeQuery, data, bin, fragment, unique, modelPath,
                             threshold, maxIter, multistarts, multistartIterations,
-                            options.has("ext")
+                            saveExtendedInfo
                         )
-
-                    SpanModel.NB_HMM2_NOZERO ->
-                        SpanPeakCallingExperimentNBHMM2NZ.getExperiment(
+                    SpanModelType.NB3Z_HMM ->
+                        SpanPeakCallingExperimentNB3ZHMM.getExperiment(
                             genomeQuery, data, bin, fragment, unique, modelPath,
                             threshold, maxIter, multistarts, multistartIterations
                         )
-                    SpanModel.NB_HMM3_NOZERO ->
-                        SpanPeakCallingExperimentNBHMM3NZ.getExperiment(
+                    SpanModelType.NB2_HMM ->
+                        SpanPeakCallingExperimentNB2HMM.getExperiment(
                             genomeQuery, data, bin, fragment, unique, modelPath,
                             threshold, maxIter, multistarts, multistartIterations
                         )
-                    SpanModel.NB_HMM4_NOZERO ->
-                        SpanPeakCallingExperimentNBHMM4NZ.getExperiment(
+                    SpanModelType.NB3_HMM3 ->
+                        SpanPeakCallingExperimentNB3HMM.getExperiment(
                             genomeQuery, data, bin, fragment, unique, modelPath,
                             threshold, maxIter, multistarts, multistartIterations
                         )
-
-                    SpanModel.NB_HMM3_ZERO ->
-                        SpanPeakCallingExperimentNBHMM3Z.getExperiment(
-                            genomeQuery, data, bin, fragment, unique, modelPath,
-                            threshold, maxIter, multistarts, multistartIterations
-                        )
-                    SpanModel.NB_HMM4_ZERO ->
-                        SpanPeakCallingExperimentNBHMM4Z.getExperiment(
-                            genomeQuery, data, bin, fragment, unique, modelPath,
-                            threshold, maxIter, multistarts, multistartIterations
-                        )
-
-                    SpanModel.POISSON_REGRESSION_MIXTURE -> {
+                    SpanModelType.POISSON_REGRESSION_MIXTURE -> {
                         if (multistarts > 0) {
                             SpanCLA.LOG.error("Multistart is not supported for $modelType")
                         }
-                        Span2PeakCallingExperiment.getExperiment(
+                        SpanPeakCallingExperimentP2ZRM.getExperiment(
                             genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath,
                             threshold, maxIter
                         )
                     }
-                    SpanModel.NEGBIN_REGRESSION_MIXTURE -> {
+                    SpanModelType.NEGBIN_REGRESSION_MIXTURE -> {
                         if (multistarts > 0) {
                             SpanCLA.LOG.error("Multistart is not supported for $modelType")
                         }
-                        Span3PeakCallingExperiment.getExperiment(
+                        SpanPeakCallingExperimentNB2ZRM.getExperiment(
                             genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath,
                             threshold, maxIter
                         )
                     }
-
                 }
                 experiment.results
             }
@@ -410,7 +391,7 @@ object SpanCLAAnalyze {
     }
 
     private fun getMapabilityPath(
-        options: OptionSet, fitInfo: Span2AnalyzeFitInformation? = null, log: Boolean = false
+        options: OptionSet, fitInfo: SpanRMAnalyzeFitInformation? = null, log: Boolean = false
     ) = SpanCLA.getProperty(
         options.valueOf("mapability") as Path?,
         fitInfo?.mapabilityPath,
@@ -422,54 +403,9 @@ object SpanCLAAnalyze {
     private fun getModelType(
         options: OptionSet, modelPath: Path?
     ) = SpanCLA.getProperty(
-        options.valueOf("model-type")?.let { SpanModel.guessSpanModelById(it as String) },
-        modelPath?.let { SpanModel.guessSpanModelByExtension(it.extension) },
-        SpanModel.NB_HMM, "model type", "MODEL TYPE", true
+        options.valueOf("model-type")?.let { SpanModelType.guessSpanModelById(it as String) },
+        modelPath?.let { SpanModelType.guessSpanModelByExtension(it.extension) },
+        SpanModelType.NB2Z_HMM, "model type", "MODEL TYPE", true
     )
 
-}
-
-enum class SpanModel(val description: String) {
-    NB_HMM("Negative binomial HMM 2states with zero"),
-    NB_HMM3_ZERO("Negative binomial HMM 3states with zero"),
-    NB_HMM4_ZERO("Negative binomial HMM 4states with zero"),
-    NB_HMM2_NOZERO("Negative binomial HMM 2states without zero"),
-    NB_HMM3_NOZERO("Negative binomial HMM 3states without zero"),
-    NB_HMM4_NOZERO("Negative binomial HMM 4states without zero"),
-
-    POISSON_REGRESSION_MIXTURE("Poisson regression mixture"),
-    NEGBIN_REGRESSION_MIXTURE("Negative Binomial Regression mixture");
-
-    override fun toString() = description
-
-    companion object {
-
-        fun guessSpanModelById(id: String) = when (id) {
-            "nbhmm" -> NB_HMM
-            "nbhmm2nz" -> NB_HMM2_NOZERO
-            "nbhmm3nz" -> NB_HMM3_NOZERO
-            "nbhmm4nz" -> NB_HMM4_NOZERO
-            "nbhmm3z" -> NB_HMM3_ZERO
-            "nbhmm4z" -> NB_HMM4_ZERO
-            "prm" -> POISSON_REGRESSION_MIXTURE
-            "nbrm" -> NEGBIN_REGRESSION_MIXTURE
-            else -> throw IllegalArgumentException("Unrecognized value for --model-type command line option: $id")
-        }
-
-
-        fun guessSpanModelByExtension(extension: String) = when (extension) {
-            "span" -> NB_HMM
-            SpanPeakCallingExperimentNBHMM2NZ.MODEL_EXT -> NB_HMM2_NOZERO
-            SpanPeakCallingExperimentNBHMM3NZ.MODEL_EXT -> NB_HMM3_NOZERO
-            SpanPeakCallingExperimentNBHMM4NZ.MODEL_EXT -> NB_HMM4_NOZERO
-            SpanPeakCallingExperimentNBHMM3Z.MODEL_EXT -> NB_HMM3_ZERO
-            SpanPeakCallingExperimentNBHMM4Z.MODEL_EXT -> NB_HMM4_ZERO
-            "span2" -> POISSON_REGRESSION_MIXTURE
-            "span3" -> NEGBIN_REGRESSION_MIXTURE
-            else -> throw IllegalArgumentException(
-                "Unrecognized model extension '.$extension', should be either '.span' or '.span2'."
-            )
-        }
-
-    }
 }

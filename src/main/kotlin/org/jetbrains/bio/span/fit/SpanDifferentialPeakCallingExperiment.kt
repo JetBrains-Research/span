@@ -6,7 +6,7 @@ import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.coverage.BinnedCoverageScoresQuery
 import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.span.peaks.getChromosomeFdrGapPeaks
-import org.jetbrains.bio.span.statistics.hmm.MLConstrainedNBHMM
+import org.jetbrains.bio.span.statistics.hmm.ConstrainedNBZHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.model.MultiLabels
 import org.jetbrains.bio.util.div
@@ -29,13 +29,13 @@ import java.nio.file.Path
  * @since 10/04/15
  */
 class SpanDifferentialPeakCallingExperiment private constructor(
-    fitInformation: Span1CompareFitInformation,
+    fitInformation: SpanCompareFitInformation,
     threshold: Double,
     maxIter: Int
-) : SpanModelFitExperiment<MLConstrainedNBHMM, Span1CompareFitInformation, ZLHID>(
+) : SpanModelFitExperiment<ConstrainedNBZHMM, SpanCompareFitInformation, ZLHID>(
     fitInformation,
-    MLConstrainedNBHMM.fitter(fitInformation.data1.size, fitInformation.data2.size),
-    MLConstrainedNBHMM::class.java,
+    ConstrainedNBZHMM.fitter(fitInformation.data1.size, fitInformation.data2.size),
+    ConstrainedNBZHMM::class.java,
     ZLHID.values(), NullHypothesis.of(ZLHID.same()),
     threshold = threshold,
     maxIter = maxIter
@@ -69,8 +69,8 @@ class SpanDifferentialPeakCallingExperiment private constructor(
 
 
     companion object {
-        private const val TRACK1_PREFIX = "track1_"
-        private const val TRACK2_PREFIX = "track2_"
+        private const val TRACK1_PREFIX = "track1"
+        private const val TRACK2_PREFIX = "track2"
 
         /**
          * Creates experiment for model-based comparison of binned coverage tracks for given queries.
@@ -88,7 +88,7 @@ class SpanDifferentialPeakCallingExperiment private constructor(
             maxIter: Int
         ): SpanDifferentialPeakCallingExperiment {
             check(paths1.isNotEmpty() && paths2.isNotEmpty()) { "No data" }
-            val fitInformation = Span1CompareFitInformation.effective(
+            val fitInformation = SpanCompareFitInformation.effective(
                 genomeQuery,
                 paths1, paths2,
                 MultiLabels.generate(TRACK1_PREFIX, paths1.size).toList(),

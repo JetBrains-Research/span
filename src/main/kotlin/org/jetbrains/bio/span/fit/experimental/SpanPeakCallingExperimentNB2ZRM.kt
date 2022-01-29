@@ -4,6 +4,7 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.fit.SpanDataPaths
 import org.jetbrains.bio.span.fit.SpanModelFitExperiment
+import org.jetbrains.bio.span.fit.SpanModelType
 import org.jetbrains.bio.span.fit.ZLH
 import org.jetbrains.bio.span.statistics.mixture.NegBinRegressionMixture
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
@@ -13,7 +14,7 @@ import java.nio.file.Path
 /**
  * Corresponds to Span `analyze-experimental --type nbrm` invocation.
  *
- * Currently supports only a single treatment track.
+ * Currently, supports only a single treatment track.
  *
  * We compute binned coverage for the treatment track and use it as the response vector.
  *
@@ -27,12 +28,12 @@ import java.nio.file.Path
  * - LOW state employs a negative binomial GLM with the covariates listed above
  * - HIGH state employs another negative binomial GLM with the covariates listed above
  */
-class Span3PeakCallingExperiment private constructor(
-    fitInformation: Span2AnalyzeFitInformation,
+class SpanPeakCallingExperimentNB2ZRM private constructor(
+    fitInformation: SpanRMAnalyzeFitInformation,
     fixedModelPath: Path?,
     threshold: Double,
     maxIter: Int
-) : SpanModelFitExperiment<NegBinRegressionMixture, Span2AnalyzeFitInformation, ZLH>(
+) : SpanModelFitExperiment<NegBinRegressionMixture, SpanRMAnalyzeFitInformation, ZLH>(
     fitInformation,
     NegBinRegressionMixture.fitter(), NegBinRegressionMixture::class.java,
     ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
@@ -40,7 +41,8 @@ class Span3PeakCallingExperiment private constructor(
     threshold, maxIter
 ) {
 
-    override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span2"
+    override val defaultModelPath: Path =
+        experimentPath / "${fitInformation.id}.${SpanModelType.NEGBIN_REGRESSION_MIXTURE.extension}"
 
     companion object {
 
@@ -57,12 +59,12 @@ class Span3PeakCallingExperiment private constructor(
             fixedModelPath: Path?,
             threshold: Double,
             maxIter: Int
-        ): Span3PeakCallingExperiment {
+        ): SpanPeakCallingExperimentNB2ZRM {
             check(data.size == 1) { "Negative binomial regression mixture currently accepts a single data track." }
-            val fitInformation = Span2AnalyzeFitInformation(
+            val fitInformation = SpanRMAnalyzeFitInformation(
                 genomeQuery, data.single(), mapabilityPath, fragment, unique, binSize
             )
-            return Span3PeakCallingExperiment(fitInformation, fixedModelPath, threshold, maxIter)
+            return SpanPeakCallingExperimentNB2ZRM(fitInformation, fixedModelPath, threshold, maxIter)
         }
     }
 }

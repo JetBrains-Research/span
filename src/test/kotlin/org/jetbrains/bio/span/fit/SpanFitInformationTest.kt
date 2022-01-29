@@ -4,7 +4,7 @@ import com.google.gson.JsonParseException
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.FixedFragment
-import org.jetbrains.bio.span.fit.experimental.Span2AnalyzeFitInformation
+import org.jetbrains.bio.span.fit.experimental.SpanRMAnalyzeFitInformation
 import org.jetbrains.bio.util.bufferedReader
 import org.jetbrains.bio.util.bufferedWriter
 import org.jetbrains.bio.util.toPath
@@ -32,14 +32,14 @@ class SpanFitInformationTest {
     fun checkWrongBuild() {
         expectedEx.expect(IllegalStateException::class.java)
         expectedEx.expectMessage("Wrong genome build, expected: hg19, got: to1")
-        Span1AnalyzeFitInformation(
+        SpanAnalyzeFitInformation(
             "hg19", emptyList(), emptyList(), FixedFragment(100), true, 200, LinkedHashMap()
         ).checkGenome(Genome["to1"])
     }
 
     @Test
     fun checkGenomeQueryOrder() {
-        Span1AnalyzeFitInformation(
+        SpanAnalyzeFitInformation(
             GenomeQuery(Genome["to1"], "chr1", "chr2"), emptyList(), emptyList(), FixedFragment(100), true, 200
         ).checkGenome(Genome["to1"])
     }
@@ -47,7 +47,7 @@ class SpanFitInformationTest {
 
     @Test
     fun checkOf() {
-        val of = Span1AnalyzeFitInformation(
+        val of = SpanAnalyzeFitInformation(
             gq, emptyList(), emptyList(), FixedFragment(100), true, 200
         )
         assertEquals(listOf("chr1", "chr2", "chr3", "chrM", "chrX"), of.chromosomesSizes.keys.toList())
@@ -57,7 +57,7 @@ class SpanFitInformationTest {
     fun checkSave() {
         withTempFile("treatment", ".bam") { t ->
             withTempFile("control", ".bam") { c ->
-                val info = Span1AnalyzeFitInformation(
+                val info = SpanAnalyzeFitInformation(
                     gq, listOf(SpanDataPaths(t, c)), listOf("treatment_control"),
                     FixedFragment(100), false, 200
                 )
@@ -86,7 +86,7 @@ class SpanFitInformationTest {
     "chrM": 10000,
     "chrX": 1000000
   },
-  "fit.information.fqn": "org.jetbrains.bio.span.fit.Span1AnalyzeFitInformation",
+  "fit.information.fqn": "org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation",
   "version": 4
 }""".trim().lines(), path.bufferedReader().lines().collect(Collectors.toList())
                     )
@@ -98,7 +98,7 @@ class SpanFitInformationTest {
 
     @Test
     fun checkLoad() {
-        val info = Span2AnalyzeFitInformation(
+        val info = SpanRMAnalyzeFitInformation(
             gq, SpanDataPaths("path_to_file".toPath(), "path_to_control".toPath()),
             "mapability.bigWig".toPath(), FixedFragment(42), false, 200
         )
@@ -127,7 +127,7 @@ class SpanFitInformationTest {
     "chrM": 10000,
     "chrX": 1000000
   },
-  "fit.information.fqn": "org.jetbrains.bio.span.fit.experimental.Span2AnalyzeFitInformation",  
+  "fit.information.fqn": "org.jetbrains.bio.span.fit.experimental.SpanRMAnalyzeFitInformation",  
   "version": 4
 }"""
                 )
@@ -139,7 +139,7 @@ class SpanFitInformationTest {
     @Test
     fun checkWrongVersion() {
         expectedEx.expect(JsonParseException::class.java)
-        expectedEx.expectMessage("expects '${Span1AnalyzeFitInformation.VERSION}' version, but got '100500'")
+        expectedEx.expectMessage("expects '${SpanAnalyzeFitInformation.VERSION}' version, but got '100500'")
         withTempFile("foo", ".tar") { path ->
             path.bufferedWriter().use {
                 it.write(
@@ -152,7 +152,7 @@ class SpanFitInformationTest {
   "ie6_compatibility": false,
   "enable_quantum_optimization": true,
   "chromosomes_sizes": {},
-  "fit.information.fqn": "org.jetbrains.bio.span.fit.Span1AnalyzeFitInformation",  
+  "fit.information.fqn": "org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation",  
   "version": 100500
 }"""
                 )
@@ -258,7 +258,7 @@ class SpanFitInformationTest {
 
     @Test
     fun checkIndices() {
-        val info = Span1AnalyzeFitInformation(
+        val info = SpanAnalyzeFitInformation(
             gq, emptyList(), emptyList(), FixedFragment(100), true, 200
         )
         assertEquals(50000 to 55000, info.getChromosomesIndices(chr2))
@@ -266,7 +266,7 @@ class SpanFitInformationTest {
 
     @Test
     fun checkOffsets() {
-        val info = Span1AnalyzeFitInformation(
+        val info = SpanAnalyzeFitInformation(
             gq, emptyList(), emptyList(), FixedFragment(100), true, 200
         )
         assertEquals(listOf(0, 200, 400, 600, 800), info.offsets(chr2).take(5))
