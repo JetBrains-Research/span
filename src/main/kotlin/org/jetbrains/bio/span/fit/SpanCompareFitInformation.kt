@@ -14,7 +14,7 @@ import org.jetbrains.bio.span.coverage.binsScoresDataFrame
 import org.jetbrains.bio.util.reduceIds
 import org.jetbrains.bio.util.stemGz
 
-data class Span1CompareFitInformation(
+data class SpanCompareFitInformation(
     override val build: String,
     val data1: List<SpanDataPaths>,
     val data2: List<SpanDataPaths>,
@@ -107,8 +107,8 @@ data class Span1CompareFitInformation(
             fragment: Fragment,
             unique: Boolean,
             binSize: Int
-        ): Span1CompareFitInformation {
-            return Span1CompareFitInformation(
+        ): SpanCompareFitInformation {
+            return SpanCompareFitInformation(
                 genomeQuery.build, paths1, paths2, labels1, labels2, fragment, unique, binSize,
                 SpanFitInformation.chromSizes(
                     SpanModelFitExperiment.filterGenomeQueryWithData(

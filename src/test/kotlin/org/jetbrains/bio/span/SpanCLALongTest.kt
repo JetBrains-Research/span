@@ -12,8 +12,8 @@ import org.jetbrains.bio.genome.containers.GenomeMap
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.format.BedFormat
+import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
 import org.jetbrains.bio.statistics.distribution.Sampling
-import org.jetbrains.bio.span.statistics.hmm.MLFreeNBHMM
 import org.jetbrains.bio.statistics.model.ClassificationModel
 import org.jetbrains.bio.util.*
 import org.junit.After
@@ -223,7 +223,7 @@ LABELS, FDR, GAP options are ignored.
     }
 
     @Test
-    fun testBadTrackQualityWarning() {
+    fun testBadTrackQualityNoWarning() {
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
         withTempFile("track", ".bed.gz") { path ->
 
@@ -243,12 +243,8 @@ LABELS, FDR, GAP options are ignored.
                         )
                     )
                 }
-                assertIn(
-                    "] WARN SpanCLA After fitting the model, emission's parameter p in LOW state", out
-                )
-                assertIn(
-                    "] WARN SpanCLA This is generally harmless, but could indicate low quality of data.", out
-                )
+                assertFalse("After fitting the model, emission's parameter p in LOW state" in out)
+                assertFalse("This is generally harmless, but could indicate low quality of data." in  out)
             }
         }
     }
@@ -780,7 +776,7 @@ CONVERGENCE THRESHOLD: 1
                 else
                     "yd6_k27ac_failed_model.json"
             ) { modelPath ->
-                val model = ClassificationModel.load<MLFreeNBHMM>(modelPath)
+                val model = ClassificationModel.load<NB2ZHMM>(modelPath)
                 model.logPriorProbabilities[0] = Double.NEGATIVE_INFINITY
                 BedFormat().print(path).use {
                     genomeQuery.get().forEach { chr ->

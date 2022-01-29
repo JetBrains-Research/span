@@ -7,7 +7,7 @@ import org.jetbrains.bio.experiment.Configuration
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
-import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
+import org.jetbrains.bio.span.fit.AbstractSpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanDataPaths
 import org.jetbrains.bio.span.fit.SpanFitInformation
 import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_BIN
@@ -218,7 +218,7 @@ experimental                    Experimental features
     }
 
     internal fun getUnique(
-        options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null, log: Boolean = false
+        options: OptionSet, fitInformation: AbstractSpanAnalyzeFitInformation? = null, log: Boolean = false
     ) = !getProperty(
         if ("keep-dup" in options) options.valueOf("keep-dup") as Boolean else null,
         fitInformation?.unique?.not(), false,
@@ -226,7 +226,7 @@ experimental                    Experimental features
     )
 
     internal fun getFragment(
-        options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null, log: Boolean = false
+        options: OptionSet, fitInformation: AbstractSpanAnalyzeFitInformation? = null, log: Boolean = false
     ) = getProperty(
         options.valueOf("fragment") as Fragment?, fitInformation?.fragment, AutoFragment,
         "fragment size", "FRAGMENT", log
@@ -254,7 +254,7 @@ experimental                    Experimental features
     )
 
     internal fun getAndLogWorkDirAndChromSizes(
-        options: OptionSet, fitInformation: SpanAnalyzeFitInformation? = null
+        options: OptionSet, fitInformation: AbstractSpanAnalyzeFitInformation? = null
     ): Path? {
         val workingDir = options.valueOf("workdir") as Path
         LOG.info("WORKING DIR: $workingDir")

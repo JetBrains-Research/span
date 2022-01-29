@@ -1,7 +1,6 @@
 package org.jetbrains.bio.span.statistics.mixture
 
 import org.jetbrains.bio.dataframe.DataFrame
-import org.jetbrains.bio.span.fit.flipStatesIfNecessary
 import org.jetbrains.bio.span.statistics.regression.PoissonRegressionEmissionScheme
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.emission.ConstantIntegerEmissionScheme
@@ -10,6 +9,8 @@ import org.jetbrains.bio.statistics.mixture.MLFreeMixture
 import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.viktor.F64Array
 import org.jetbrains.bio.viktor.asF64Array
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import kotlin.math.exp
 
 /**
@@ -73,6 +74,8 @@ class PoissonRegressionMixture(
         @JvmField
         var VERSION = 2
 
+        val LOG: Logger = LoggerFactory.getLogger(PoissonRegressionMixture::class.java)
+
         fun fitter() = object : Fitter<PoissonRegressionMixture> {
             /**
              * We assume that the response vector is the integer-valued column 0,
@@ -113,5 +116,23 @@ class PoissonRegressionMixture(
                 )
             }
         }
+
+        /**
+         * Flip states in case when states with HIGH get lower mean than LOW
+         */
+        internal fun PoissonRegressionMixture.flipStatesIfNecessary() {
+            val lowScheme = this[1] as PoissonRegressionEmissionScheme
+            val highScheme = this[2] as PoissonRegressionEmissionScheme
+            if (weights[1] < weights[2]) {
+                LOG.warn("After fitting the model, the weight of LOW state is lower than that of HIGH state.")
+                LOG.warn("This usually indicates that the states were flipped during fitting. We will now flip them back.")
+                this[2] = lowScheme
+                this[1] = highScheme
+                val tmp = logWeights[1]
+                logWeights[1] = logWeights[2]
+                logWeights[2] = tmp
+            }
+        }
+
     }
 }

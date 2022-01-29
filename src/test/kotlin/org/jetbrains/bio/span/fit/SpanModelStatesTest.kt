@@ -1,9 +1,9 @@
 package org.jetbrains.bio.span.fit
 
-import org.jetbrains.bio.statistics.emission.ConstantIntegerEmissionScheme
 import org.jetbrains.bio.span.statistics.emission.NegBinEmissionScheme
-import org.jetbrains.bio.span.statistics.hmm.MLConstrainedNBHMM
-import org.jetbrains.bio.span.statistics.hmm.MLFreeNBHMM
+import org.jetbrains.bio.span.statistics.hmm.ConstrainedNBZHMM
+import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
+import org.jetbrains.bio.statistics.emission.ConstantIntegerEmissionScheme
 import org.junit.Assert.assertArrayEquals
 import org.junit.Test
 import kotlin.test.assertEquals
@@ -58,13 +58,13 @@ class SpanModelStatesTest {
     @Test
     fun testModel() {
         val zhlConstraints = ZLH.constraintMap(1)
-        val free = MLFreeNBHMM(0.5, 5.0, 1.0, 1.0)
+        val free = NB2ZHMM(doubleArrayOf(0.5, 5.0), doubleArrayOf(1.0, 1.0))
         assertIs(free[zhlConstraints[ZLH.Z.ordinal][0]], ConstantIntegerEmissionScheme::class.java)
         assertIs(free[zhlConstraints[ZLH.L.ordinal][0]], NegBinEmissionScheme::class.java)
         assertIs(free[zhlConstraints[ZLH.H.ordinal][0]], NegBinEmissionScheme::class.java)
 
         val zlhidConstraints = ZLHID.constraintMap(3, 2)
-        val constrained = MLConstrainedNBHMM(zlhidConstraints,
+        val constrained = ConstrainedNBZHMM(zlhidConstraints,
             DoubleArray(10) { it.toDouble() },
             DoubleArray(10) { it.toDouble() })
         zlhidConstraints[ZLHID.Z.ordinal]

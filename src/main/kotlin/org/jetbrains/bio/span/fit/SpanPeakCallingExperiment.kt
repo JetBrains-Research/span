@@ -4,8 +4,8 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.coverage.BinnedCoverageScoresQuery
-import org.jetbrains.bio.span.statistics.hmm.MLConstrainedNBHMM
-import org.jetbrains.bio.span.statistics.hmm.MLFreeNBHMM
+import org.jetbrains.bio.span.statistics.hmm.ConstrainedNBZHMM
+import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.model.ClassificationModel
 import org.jetbrains.bio.statistics.model.Fitter
@@ -28,14 +28,14 @@ import java.nio.file.Path
  * @since 10/04/15
  */
 class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor(
-    fitInformation: Span1AnalyzeFitInformation,
+    fitInformation: SpanAnalyzeFitInformation,
     modelFitter: Fitter<Model>,
     modelClass: Class<Model>,
     fixedModelPath: Path?,
     threshold: Double,
     maxIter: Int,
     saveExtendedInfo: Boolean = false
-) : SpanModelFitExperiment<Model, Span1AnalyzeFitInformation, ZLH>(
+) : SpanModelFitExperiment<Model, SpanAnalyzeFitInformation, ZLH>(
     fitInformation, modelFitter, modelClass, ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L), fixedModelPath,
     threshold, maxIter, saveExtendedInfo
 ) {
@@ -48,7 +48,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
         const val SPAN_DEFAULT_FDR = 0.05
         const val SPAN_DEFAULT_GAP = 3
 
-        const val TRACK_PREFIX = "track_"
+        const val TRACK_PREFIX = "track"
 
         /**
          * Creates experiment for model-based enrichment of binned coverage tracks (e.g. ChIP-seq tracks)
@@ -71,7 +71,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
             saveExtendedInfo: Boolean = false
         ): SpanPeakCallingExperiment<out ClassificationModel> {
             check(paths.isNotEmpty()) { "No data" }
-            val fitInformation = Span1AnalyzeFitInformation.createFitInformation(
+            val fitInformation = SpanAnalyzeFitInformation.createFitInformation(
                 genomeQuery, paths, MultiLabels.generate(TRACK_PREFIX, paths.size).toList(),
                 fragment, unique, bin
             )
@@ -80,11 +80,11 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
                     fitInformation,
                     when {
                         multistarts > 0 ->
-                            MLFreeNBHMM.fitter().multiStarted(multistarts, multistartIter)
+                            NB2ZHMM.fitter().multiStarted(multistarts, multistartIter)
                         else ->
-                            MLFreeNBHMM.fitter()
+                            NB2ZHMM.fitter()
                     },
-                    MLFreeNBHMM::class.java,
+                    NB2ZHMM::class.java,
                     fixedModelPath,
                     threshold,
                     maxIter,
@@ -95,11 +95,11 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
                     fitInformation,
                     when {
                         multistarts > 0 ->
-                            MLConstrainedNBHMM.fitter(paths.size).multiStarted(multistarts, multistartIter)
+                            ConstrainedNBZHMM.fitter(paths.size).multiStarted(multistarts, multistartIter)
                         else ->
-                            MLConstrainedNBHMM.fitter(paths.size)
+                            ConstrainedNBZHMM.fitter(paths.size)
                     },
-                    MLConstrainedNBHMM::class.java,
+                    ConstrainedNBZHMM::class.java,
                     fixedModelPath,
                     threshold,
                     maxIter,

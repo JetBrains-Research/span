@@ -4,6 +4,7 @@ import org.jetbrains.bio.Tests
 import org.jetbrains.bio.experiment.Configuration
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.format.BedFormat
+import org.jetbrains.bio.span.fit.SpanModelType
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.util.*
 import org.junit.After
@@ -13,7 +14,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class Span2CLALongTest {
+/**
+ * RM - regression mixture
+ */
+class SpanRMCLALongTest {
 
     @Before
     fun setUp() {
@@ -50,7 +54,7 @@ class Span2CLALongTest {
                                     "--workdir", dir.toString(),
                                     "-t", listOf(pathA, pathB).joinToString(","),
                                     "--threads", SpanCLALongTest.THREADS.toString(),
-                                    "--model-type", "prm"
+                                    "--model-type", SpanModelType.POISSON_REGRESSION_MIXTURE.id
                                 )
                             )
                         }
@@ -80,7 +84,7 @@ class Span2CLALongTest {
                             "--workdir", it.toString(),
                             "-t", path.toString(),
                             "--threads", SpanCLALongTest.THREADS.toString(),
-                            "--model-type", "prm",
+                            "--model-type", SpanModelType.POISSON_REGRESSION_MIXTURE.id,
                             "--peaks", peaksPath.toString(),
                             "--fdr", "0.01"
                         )
@@ -92,7 +96,7 @@ class Span2CLALongTest {
     """ in out
                 )
                 Tests.assertIn("100.00% (", out)
-                Tests.assertIn("MODEL TYPE: ${SpanModel.POISSON_REGRESSION_MIXTURE}", out)
+                Tests.assertIn("MODEL TYPE: ${SpanModelType.POISSON_REGRESSION_MIXTURE}", out)
                 Tests.assertIn("Source: $peaksPath", out)
                 Tests.assertIn("FRIP: ", out)
 
@@ -134,7 +138,7 @@ class Span2CLALongTest {
                             "--workdir", dir.toString(),
                             "-t", path.toString(),
                             "-c", control.toString(),
-                            "--model-type", "prm",
+                            "--model-type", SpanModelType.POISSON_REGRESSION_MIXTURE.id,
                             "--threads", SpanCLALongTest.THREADS.toString()
                         )
                     )
@@ -164,7 +168,7 @@ class Span2CLALongTest {
                     assertEquals(
                         1,
                         (Configuration.experimentsPath / "fit")
-                            .glob("${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}.span2").size
+                            .glob("${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}.${SpanModelType.POISSON_REGRESSION_MIXTURE.extension}").size
                     )
                 }
             }
@@ -197,15 +201,15 @@ class Span2CLALongTest {
                                 "--workdir", dir.toString(),
                                 "-t", path.toString(),
                                 "--threads", SpanCLALongTest.THREADS.toString(),
-                                "--model-type", "prm",
+                                "--model-type", SpanModelType.POISSON_REGRESSION_MIXTURE.id,
                                 "--model", defaultModelPath.toString()
                             )
                         )
                     }
                 }
                 Tests.assertIn(
-                    "Stored model type (${SpanModel.NB_HMM}) " +
-                            "differs from the command line argument (${SpanModel.POISSON_REGRESSION_MIXTURE})",
+                    "Stored model type (${SpanModelType.NB2Z_HMM}) " +
+                            "differs from the command line argument (${SpanModelType.POISSON_REGRESSION_MIXTURE})",
                     wrongErr
                 )
             }

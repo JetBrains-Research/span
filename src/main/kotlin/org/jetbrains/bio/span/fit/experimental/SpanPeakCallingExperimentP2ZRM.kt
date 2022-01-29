@@ -4,6 +4,7 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.fit.SpanDataPaths
 import org.jetbrains.bio.span.fit.SpanModelFitExperiment
+import org.jetbrains.bio.span.fit.SpanModelType
 import org.jetbrains.bio.span.fit.ZLH
 import org.jetbrains.bio.span.statistics.mixture.PoissonRegressionMixture
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
@@ -27,12 +28,12 @@ import java.nio.file.Path
  * - LOW state employs a Poisson GLM with the covariates listed above
  * - HIGH state employs another Poisson GLM with the covariates listed above
  */
-class Span2PeakCallingExperiment private constructor(
-    fitInformation: Span2AnalyzeFitInformation,
+class SpanPeakCallingExperimentP2ZRM private constructor(
+    fitInformation: SpanRMAnalyzeFitInformation,
     fixedModelPath: Path?,
     threshold: Double,
     maxIter: Int
-) : SpanModelFitExperiment<PoissonRegressionMixture, Span2AnalyzeFitInformation, ZLH>(
+) : SpanModelFitExperiment<PoissonRegressionMixture, SpanRMAnalyzeFitInformation, ZLH>(
     fitInformation,
     PoissonRegressionMixture.fitter(), PoissonRegressionMixture::class.java,
     ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
@@ -40,7 +41,8 @@ class Span2PeakCallingExperiment private constructor(
     threshold, maxIter
 ) {
 
-    override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span2"
+    override val defaultModelPath: Path =
+        experimentPath / "${fitInformation.id}.${SpanModelType.POISSON_REGRESSION_MIXTURE.extension}"
 
     companion object {
 
@@ -57,12 +59,12 @@ class Span2PeakCallingExperiment private constructor(
             fixedModelPath: Path?,
             threshold: Double,
             maxIter: Int
-        ): Span2PeakCallingExperiment {
+        ): SpanPeakCallingExperimentP2ZRM {
             check(data.size == 1) { "Poisson regression mixture currently accepts a single data track." }
-            val fitInformation = Span2AnalyzeFitInformation(
+            val fitInformation = SpanRMAnalyzeFitInformation(
                 genomeQuery, data.single(), mapabilityPath, fragment, unique, binSize
             )
-            return Span2PeakCallingExperiment(fitInformation, fixedModelPath, threshold, maxIter)
+            return SpanPeakCallingExperimentP2ZRM(fitInformation, fixedModelPath, threshold, maxIter)
         }
     }
 }

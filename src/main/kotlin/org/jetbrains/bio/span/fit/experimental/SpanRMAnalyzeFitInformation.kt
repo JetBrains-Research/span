@@ -12,7 +12,7 @@ import org.jetbrains.bio.genome.query.Query
 import org.jetbrains.bio.genome.query.ReadsQuery
 import org.jetbrains.bio.genome.sequence.CpGContent
 import org.jetbrains.bio.span.coverage.CoverageScoresQuery
-import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
+import org.jetbrains.bio.span.fit.AbstractSpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanDataPaths
 import org.jetbrains.bio.span.fit.SpanFitInformation
 import org.jetbrains.bio.util.reduceIds
@@ -20,7 +20,7 @@ import org.jetbrains.bio.util.stemGz
 import org.jetbrains.bio.viktor.asF64Array
 import java.nio.file.Path
 
-data class Span2AnalyzeFitInformation constructor(
+data class SpanRMAnalyzeFitInformation constructor(
     override val build: String,
     override val data: List<SpanDataPaths>,
     val mapabilityPath: Path?,
@@ -28,7 +28,7 @@ data class Span2AnalyzeFitInformation constructor(
     override val unique: Boolean,
     override val binSize: Int,
     override val chromosomesSizes: LinkedHashMap<String, Int>
-) : SpanAnalyzeFitInformation {
+) : AbstractSpanAnalyzeFitInformation {
     constructor(
         genomeQuery: GenomeQuery,
         data: SpanDataPaths,

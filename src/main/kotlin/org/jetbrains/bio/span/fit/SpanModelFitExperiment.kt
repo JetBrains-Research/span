@@ -6,9 +6,6 @@ import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.genome.query.ReadsQuery
-import org.jetbrains.bio.span.statistics.hmm.MLConstrainedNBHMM
-import org.jetbrains.bio.span.statistics.hmm.MLFreeNBHMM
-import org.jetbrains.bio.span.statistics.mixture.PoissonRegressionMixture
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.f64Array
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
@@ -32,24 +29,9 @@ import java.nio.file.Path
  * actually accessed) and cached (if possible, will be loaded from the previously created file, if not, will
  * be saved to a file after the computation). The results are saved in a TAR file.
  *
- * Current implementations:
- * - [SpanPeakCallingExperiment] -- enrichment analysis (peak calling).
- *   - States: [ZLH]
- *   - Fit information: [Span1AnalyzeFitInformation]
- *   - Single replicate: [MLFreeNBHMM] zero-inflated HMM with univariate negative binomial emissions
- *   - Multi replicates: [MLConstrainedNBHMM] zero-inflated HMM with multidimensional negative binomial emissions *
- * - [SpanDifferentialPeakCallingExperiment] -- enrichment comparison (differential peak calling).
- *   - States: [ZLHID]
- *   - Fit information: [Span1CompareFitInformation]
- *   - Any number of replicates: [MLConstrainedNBHMM] zero-inflated HMM with multidimensional
- *   negative binomial emissions *
- * - [Span2PeakCallingExperiment] -- enrichment analysis (peak calling).
- *   - States: [ZLH]
- *   - Fit information: [Span2FitInformation]
- *   - Single replicate: [PoissonRegressionMixture] a mixture of Poisson GLMs
+ * @param fixedModelPath    If not null, the experiment will use this path for saving/loading the results.
+ *                          Otherwise, [defaultModelPath] will be used (it usually depends on [fitInformation] id).
  *
- * @param fixedModelPath If not null, the experiment will use this path for saving/loading the results. Otherwise,
- * [defaultModelPath] will be used (it usually depends of [fitInformation] id).
  */
 abstract class SpanModelFitExperiment<
         out Model : ClassificationModel, out FitInfo : SpanFitInformation, State : Any
