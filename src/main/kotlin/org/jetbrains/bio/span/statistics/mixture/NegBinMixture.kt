@@ -91,16 +91,35 @@ class NegBinMixture(
         }
 
         internal fun NegBinMixture.flipStatesIfNecessary() {
-            val lowScheme = this[1] as NegBinEmissionScheme
-            val highScheme = this[2] as NegBinEmissionScheme
-            if (weights[1] < weights[2]) {
-                LOG.warn("After fitting the model, the wight of LOW state is lower than that of HIGH state.")
+            val lowScheme = negBinEmissionSchemes[0]
+            val highScheme = negBinEmissionSchemes[1]
+            val meanLow = lowScheme.mean
+            val meanHigh = highScheme.mean
+            val pLow = lowScheme.successProbability
+            val pHigh = highScheme.successProbability
+            val meanFlipped = meanLow > meanHigh
+            if (meanFlipped) {
+                LOG.warn(
+                    "After fitting the model, mean emission in LOW state ($meanLow) is higher than " +
+                            "mean emission in HIGH state ($meanHigh)."
+                )
+            }
+            val pFlipped = pLow > pHigh
+            if (pFlipped) {
+                LOG.warn(
+                    "After fitting the model, emission's parameter p in LOW state ($pLow) is higher than " +
+                            "emission's parameter p in HIGH state ($pHigh)."
+                )
+            }
+            if (meanFlipped && pFlipped) {
                 LOG.warn("This usually indicates that the states were flipped during fitting. We will now flip them back.")
-                this[2] = lowScheme
-                this[1] = highScheme
-                val tmp = logWeights[1]
-                logWeights[1] = logWeights[2]
-                logWeights[2] = tmp
+                negBinEmissionSchemes[0] = highScheme
+                negBinEmissionSchemes[1] = lowScheme
+                val tmp = weights[1]
+                weights[1] = weights[2]
+                weights[2] = tmp
+            } else if (meanFlipped || pFlipped) {
+                LOG.warn("This is generally harmless, but could indicate low quality of data.")
             }
         }
     }
