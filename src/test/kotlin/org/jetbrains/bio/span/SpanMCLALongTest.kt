@@ -113,7 +113,8 @@ class SpanMCLALongTest {
                         "--peaks", bedPath.toString(),
                         "-fdr", "0.05",
                         "-t", path.toString(),
-                        "--model-type", SpanModelType.NB2Z_MIXTURE.id
+                        "--model-type", SpanModelType.NB2Z_MIXTURE.id,
+                        "--ext"
                     )
                 )
                 // Check created bed file
