@@ -52,6 +52,11 @@ class NegBinMixture(
 
     val failures: F64Array get() = F64Array(negBinEmissionSchemes.size) { negBinEmissionSchemes[it].failures }
 
+    val successProbabilities: F64Array
+        get() = F64Array(negBinEmissionSchemes.size) {
+            negBinEmissionSchemes[it].successProbability
+        }
+
     override fun fit(preprocessed: List<Preprocessed<DataFrame>>, title: String, threshold: Double, maxIter: Int) {
         val data = DataFrame.rowBind(preprocessed.map { it.get() }.toTypedArray())
         super.fit(Preprocessed.of(data), title, threshold, maxIter)
