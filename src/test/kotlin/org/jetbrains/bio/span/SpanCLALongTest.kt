@@ -15,6 +15,7 @@ import org.jetbrains.bio.genome.format.BedFormat
 import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.statistics.model.ClassificationModel
+import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.util.*
 import org.junit.After
 import org.junit.Before
@@ -151,7 +152,7 @@ PEAKS: $peaksPath
                 )
                 assertIn("Saved result to $peaksPath", out)
                 // Check model fit has a progress
-                assertIn("0.00% (0/20), Elapsed time", out)
+                assertIn("0.00% (0/${Fitter.MAX_ITERATIONS}), Elapsed time", out)
                 assertIn("100.00% (", out)
             }
         }
@@ -492,8 +493,8 @@ TREATMENT: $path
 CONTROL: none
 CHROM.SIZES: $chromsizes
 FRAGMENT: auto
-MAX ITERATIONS: 20
-CONVERGENCE THRESHOLD: 1
+MAX ITERATIONS: ${Fitter.MAX_ITERATIONS}
+CONVERGENCE THRESHOLD: ${Fitter.THRESHOLD}
 """, out
                 )
                 assertFalse(
