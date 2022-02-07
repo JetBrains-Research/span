@@ -22,7 +22,7 @@ import kotlin.math.exp
  * @author Elena Kartysheva
  * @date 5/25/19
  */
-class PoissonRegressionMixture(
+class PoissonRegression2Mixture(
     weights: F64Array,
     covariateLabels: List<String>,
     regressionCoefficients: Array<DoubleArray>
@@ -74,9 +74,9 @@ class PoissonRegressionMixture(
         @JvmField
         var VERSION = 2
 
-        val LOG: Logger = LoggerFactory.getLogger(PoissonRegressionMixture::class.java)
+        val LOG: Logger = LoggerFactory.getLogger(PoissonRegression2Mixture::class.java)
 
-        fun fitter() = object : Fitter<PoissonRegressionMixture> {
+        fun fitter() = object : Fitter<PoissonRegression2Mixture> {
             /**
              * We assume that the response vector is the integer-valued column 0,
              * and that the remaining columns are the double-valued covariates.
@@ -85,9 +85,8 @@ class PoissonRegressionMixture(
                 preprocessed: Preprocessed<DataFrame>,
                 title: String,
                 threshold: Double,
-                maxIter: Int,
-                attempt: Int
-            ) = guess(listOf(preprocessed), title, threshold, maxIter, attempt)
+                maxIter: Int
+            ) = guess(listOf(preprocessed), title, threshold, maxIter)
 
             /**
              * We assume that the response vector is the integer-valued column 0,
@@ -97,16 +96,15 @@ class PoissonRegressionMixture(
                 preprocessed: List<Preprocessed<DataFrame>>,
                 title: String,
                 threshold: Double,
-                maxIter: Int,
-                attempt: Int
-            ): PoissonRegressionMixture {
+                maxIter: Int
+            ): PoissonRegression2Mixture {
                 // Filter out 0s, since they are covered by dedicated ZERO state
                 val emissions = preprocessed.flatMap {
                     it.get().let { df -> df.sliceAsInt(df.labels.first()).toList() }
                 }.filter { it != 0 }.toIntArray()
                 check(emissions.isNotEmpty()) { "Model can't be trained on empty coverage, exiting." }
                 val df = preprocessed[0].get()
-                return PoissonRegressionMixture(
+                return PoissonRegression2Mixture(
                     doubleArrayOf(1 / 3.0, 1 / 3.0, 1 / 3.0).asF64Array(),
                     df.labels.drop(1),
                     arrayOf(
@@ -120,7 +118,7 @@ class PoissonRegressionMixture(
         /**
          * Flip states in case when states with HIGH get lower mean than LOW
          */
-        internal fun PoissonRegressionMixture.flipStatesIfNecessary() {
+        internal fun PoissonRegression2Mixture.flipStatesIfNecessary() {
             val lowScheme = this[1] as PoissonRegressionEmissionScheme
             val highScheme = this[2] as PoissonRegressionEmissionScheme
             if (weights[1] < weights[2]) {

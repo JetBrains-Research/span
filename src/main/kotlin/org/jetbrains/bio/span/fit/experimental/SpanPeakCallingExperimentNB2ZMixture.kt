@@ -4,7 +4,7 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.fit.*
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation.Companion.createFitInformation
-import org.jetbrains.bio.span.statistics.mixture.NegBinMixture
+import org.jetbrains.bio.span.statistics.mixture.NB2ZMixture
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.model.MultiLabels
 import org.jetbrains.bio.util.div
@@ -18,15 +18,15 @@ import java.nio.file.Path
  *
  * @author Oleg Shpynov
  */
-class SpanPeakCallingExperimentNB2ZM private constructor(
+class SpanPeakCallingExperimentNB2ZMixture private constructor(
     fitInformation: SpanAnalyzeFitInformation,
     fixedModelPath: Path?,
     threshold: Double,
     maxIter: Int,
     saveExtendedInfo: Boolean = true
-) : SpanModelFitExperiment<NegBinMixture, SpanAnalyzeFitInformation, ZLH>(
+) : SpanModelFitExperiment<NB2ZMixture, SpanAnalyzeFitInformation, ZLH>(
     fitInformation,
-    NegBinMixture.fitter(), NegBinMixture::class.java,
+    NB2ZMixture.fitter(), NB2ZMixture::class.java,
     ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
     fixedModelPath, threshold, maxIter, saveExtendedInfo
 ) {
@@ -49,13 +49,13 @@ class SpanPeakCallingExperimentNB2ZM private constructor(
             threshold: Double,
             maxIter: Int,
             saveExtendedInfo: Boolean = false
-        ): SpanPeakCallingExperimentNB2ZM {
+        ): SpanPeakCallingExperimentNB2ZMixture {
             check(paths.size == 1) { "Mixture currently accepts a single data track." }
             val fitInformation = createFitInformation(
                 genomeQuery, paths, MultiLabels.generate(SpanPeakCallingExperiment.TRACK_PREFIX, paths.size).toList(),
                 fragment, unique, binSize
             )
-            return SpanPeakCallingExperimentNB2ZM(fitInformation, fixedModelPath, threshold, maxIter, saveExtendedInfo)
+            return SpanPeakCallingExperimentNB2ZMixture(fitInformation, fixedModelPath, threshold, maxIter, saveExtendedInfo)
         }
     }
 }

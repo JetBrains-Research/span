@@ -6,7 +6,7 @@ Here you can see the full list of changes between each release.
 Version 1.0
 ----------------
 
-Released on XXX 2021
+Released on XXX 2022
 
 - Switched to new procedure for computing peaks from HMM - islands:
  * 1) Estimate posterior probabilities
@@ -22,7 +22,9 @@ Released on XXX 2021
 - Reduced time required for peak calling
 - Show progress while computing peaks from model
 - Updated defaults values for SPAN peaks: fdr 0.05, gap 3
-- Updated defaults for SPAN model: multistart/total iterations 2/20, loglikelihood threshold 1
+- Updated defaults for SPAN model: total iterations 50, loglikelihood threshold 1
+- Added advanced SPAN model viewer
+- Disabled multistart
 - Bugfixes
 
 

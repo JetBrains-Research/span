@@ -66,8 +66,6 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
             fixedModelPath: Path? = null,
             threshold: Double = Fitter.THRESHOLD,
             maxIter: Int = Fitter.MAX_ITERATIONS,
-            multistarts: Int = Fitter.MULTISTARTS,
-            multistartIter: Int = Fitter.MULTISTART_ITERATIONS,
             saveExtendedInfo: Boolean = false
         ): SpanPeakCallingExperiment<out ClassificationModel> {
             check(paths.isNotEmpty()) { "No data" }
@@ -75,37 +73,25 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
                 genomeQuery, paths, MultiLabels.generate(TRACK_PREFIX, paths.size).toList(),
                 fragment, unique, bin
             )
-            return if (paths.size == 1) {
+            return if (paths.size == 1)
                 SpanPeakCallingExperiment(
                     fitInformation,
-                    when {
-                        multistarts > 0 ->
-                            NB2ZHMM.fitter().multiStarted(multistarts, multistartIter)
-                        else ->
-                            NB2ZHMM.fitter()
-                    },
+                    NB2ZHMM.fitter(),
                     NB2ZHMM::class.java,
                     fixedModelPath,
                     threshold,
                     maxIter,
                     saveExtendedInfo
-                )
-            } else {
+                ) else
                 SpanPeakCallingExperiment(
                     fitInformation,
-                    when {
-                        multistarts > 0 ->
-                            ConstrainedNBZHMM.fitter(paths.size).multiStarted(multistarts, multistartIter)
-                        else ->
-                            ConstrainedNBZHMM.fitter(paths.size)
-                    },
+                    ConstrainedNBZHMM.fitter(paths.size),
                     ConstrainedNBZHMM::class.java,
                     fixedModelPath,
                     threshold,
                     maxIter,
                     saveExtendedInfo
                 )
-            }
         }
     }
 }

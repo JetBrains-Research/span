@@ -243,8 +243,8 @@ LABELS, FDR, GAP options are ignored.
                         )
                     )
                 }
-                assertFalse("After fitting the model, emission's parameter p in LOW state" in out)
-                assertFalse("This is generally harmless, but could indicate low quality of data." in  out)
+                assertTrue("After fitting the model, emission's parameter p in LOW state" in out)
+                assertTrue("This is generally harmless, but could indicate low quality of data." in  out)
             }
         }
     }
@@ -424,10 +424,6 @@ LABELS, FDR, GAP options are ignored.
                         )
                     }
                 }
-                assertIn(
-                    "Unrecognized model extension '.foo', should be '.span'.",
-                    invalidErr
-                )
             }
         }
     }
@@ -497,8 +493,6 @@ CONTROL: none
 CHROM.SIZES: $chromsizes
 FRAGMENT: auto
 MAX ITERATIONS: 20
-MULTISTARTS: 5
-MULTISTART ITERATIONS: 2
 CONVERGENCE THRESHOLD: 1
 """, out
                 )
@@ -522,7 +516,6 @@ CONVERGENCE THRESHOLD: 1
                     },
                     "Peak value is reported as 0.0, although the coverage cache is present"
                 )
-                assertIn("Multistart done", out)
                 assertIn("Signal mean: ", out)
                 assertIn("Noise mean: ", out)
                 assertIn("Signal to noise: ", out)

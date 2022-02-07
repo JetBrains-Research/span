@@ -1,16 +1,19 @@
 package org.jetbrains.bio.span.statistics.emission
 
 import org.apache.commons.math3.special.Gamma
+import org.jetbrains.bio.span.statistics.hmm.FreeNBZHMM
 import org.jetbrains.bio.statistics.MoreMath
 import org.jetbrains.bio.statistics.distribution.NegativeBinomialDistribution
 import org.jetbrains.bio.statistics.distribution.NegativeBinomialDistribution.Companion.estimateVariance
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.statistics.emission.IntegerEmissionScheme
 import org.jetbrains.bio.statistics.gson.NotDirectlyDeserializable
+import org.jetbrains.bio.statistics.standardDeviation
 import org.jetbrains.bio.viktor.F64Array
 import org.slf4j.LoggerFactory
 import java.util.function.IntSupplier
 import kotlin.math.ln
+import kotlin.math.max
 
 class NegBinEmissionScheme(mean: Double, failures: Double) :
     IntegerEmissionScheme, NotDirectlyDeserializable {

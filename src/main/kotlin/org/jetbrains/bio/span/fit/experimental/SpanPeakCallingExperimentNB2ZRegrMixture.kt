@@ -6,15 +6,15 @@ import org.jetbrains.bio.span.fit.SpanDataPaths
 import org.jetbrains.bio.span.fit.SpanModelFitExperiment
 import org.jetbrains.bio.span.fit.SpanModelType
 import org.jetbrains.bio.span.fit.ZLH
-import org.jetbrains.bio.span.statistics.mixture.PoissonRegressionMixture
+import org.jetbrains.bio.span.statistics.mixture.NegBin2ZeroRegressionMixture
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.util.div
 import java.nio.file.Path
 
 /**
- * Corresponds to Span `analyze --type prm` invocation.
+ * Corresponds to Span `analyze-experimental --type nbrm` invocation.
  *
- * Currently supports only a single treatment track.
+ * Currently, supports only a single treatment track.
  *
  * We compute binned coverage for the treatment track and use it as the response vector.
  *
@@ -23,26 +23,26 @@ import java.nio.file.Path
  * - "input" is the binned control track coverage, if supplied
  * - "mapability" is the binned mean mapability, if supplied
  *
- * These data are used as the input for a three-state Poisson regression mixture.
+ * These data are used as the input for a three-state negative binomial regression mixture.
  * - ZERO state corresponds to zero emission
- * - LOW state employs a Poisson GLM with the covariates listed above
- * - HIGH state employs another Poisson GLM with the covariates listed above
+ * - LOW state employs a negative binomial GLM with the covariates listed above
+ * - HIGH state employs another negative binomial GLM with the covariates listed above
  */
-class SpanPeakCallingExperimentP2ZRM private constructor(
+class SpanPeakCallingExperimentNB2ZRegrMixture private constructor(
     fitInformation: SpanRMAnalyzeFitInformation,
     fixedModelPath: Path?,
     threshold: Double,
     maxIter: Int
-) : SpanModelFitExperiment<PoissonRegressionMixture, SpanRMAnalyzeFitInformation, ZLH>(
+) : SpanModelFitExperiment<NegBin2ZeroRegressionMixture, SpanRMAnalyzeFitInformation, ZLH>(
     fitInformation,
-    PoissonRegressionMixture.fitter(), PoissonRegressionMixture::class.java,
+    NegBin2ZeroRegressionMixture.fitter(), NegBin2ZeroRegressionMixture::class.java,
     ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
     fixedModelPath,
     threshold, maxIter
 ) {
 
     override val defaultModelPath: Path =
-        experimentPath / "${fitInformation.id}.${SpanModelType.POISSON_REGRESSION_MIXTURE.extension}"
+        experimentPath / "${fitInformation.id}.${SpanModelType.NEGBIN_REGRESSION_MIXTURE.extension}"
 
     companion object {
 
@@ -59,12 +59,13 @@ class SpanPeakCallingExperimentP2ZRM private constructor(
             fixedModelPath: Path?,
             threshold: Double,
             maxIter: Int
-        ): SpanPeakCallingExperimentP2ZRM {
-            check(data.size == 1) { "Poisson regression mixture currently accepts a single data track." }
+        ): SpanPeakCallingExperimentNB2ZRegrMixture {
+            check(data.size == 1) { "Negative binomial regression mixture currently accepts a single data track." }
             val fitInformation = SpanRMAnalyzeFitInformation(
                 genomeQuery, data.single(), mapabilityPath, fragment, unique, binSize
             )
-            return SpanPeakCallingExperimentP2ZRM(fitInformation, fixedModelPath, threshold, maxIter)
+            return SpanPeakCallingExperimentNB2ZRegrMixture(fitInformation, fixedModelPath, threshold, maxIter)
         }
     }
 }
+

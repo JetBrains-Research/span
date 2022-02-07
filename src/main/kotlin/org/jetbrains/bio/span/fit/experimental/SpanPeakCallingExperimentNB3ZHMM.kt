@@ -48,8 +48,6 @@ class SpanPeakCallingExperimentNB3ZHMM<Model : ClassificationModel> private cons
             fixedModelPath: Path? = null,
             threshold: Double = Fitter.THRESHOLD,
             maxIter: Int = Fitter.MAX_ITERATIONS,
-            multistarts: Int = Fitter.MULTISTARTS,
-            multistartIter: Int = Fitter.MULTISTART_ITERATIONS
         ): SpanPeakCallingExperimentNB3ZHMM<out ClassificationModel> {
             check(paths.isNotEmpty()) { "No data" }
             val fitInformation = SpanAnalyzeFitInformation.createFitInformation(
@@ -59,12 +57,7 @@ class SpanPeakCallingExperimentNB3ZHMM<Model : ClassificationModel> private cons
             require(paths.size == 1) { "Multiple replicates are not supported" }
             return SpanPeakCallingExperimentNB3ZHMM(
                 fitInformation,
-                when {
-                    multistarts > 0 ->
-                        NB3ZHMM.fitter().multiStarted(multistarts, multistartIter)
-                    else ->
-                        NB3ZHMM.fitter()
-                },
+                NB3ZHMM.fitter(),
                 NB3ZHMM::class.java,
                 fixedModelPath,
                 threshold,
@@ -93,14 +86,14 @@ class NB3ZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) : FreeNBZHMM(nbMean
         fun fitter() = object : Fitter<NB3ZHMM> {
             override fun guess(
                 preprocessed: Preprocessed<DataFrame>, title: String,
-                threshold: Double, maxIter: Int, attempt: Int
-            ): NB3ZHMM = guess(listOf(preprocessed), title, threshold, maxIter, attempt)
+                threshold: Double, maxIter: Int
+            ): NB3ZHMM = guess(listOf(preprocessed), title, threshold, maxIter)
 
             override fun guess(
                 preprocessed: List<Preprocessed<DataFrame>>, title: String,
-                threshold: Double, maxIter: Int, attempt: Int
+                threshold: Double, maxIter: Int
             ): NB3ZHMM {
-                val (means, failures) = guess(preprocessed, 3, attempt)
+                val (means, failures) = guess(preprocessed, 3)
                 return NB3ZHMM(means, failures)
             }
         }

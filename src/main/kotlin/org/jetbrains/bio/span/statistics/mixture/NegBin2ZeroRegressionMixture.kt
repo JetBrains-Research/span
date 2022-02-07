@@ -22,7 +22,7 @@ import kotlin.math.exp
  * @author Elena Kartysheva
  * @date 1/26/20
  */
-class NegBinRegressionMixture(
+class NegBin2ZeroRegressionMixture(
     weights: F64Array,
     covariateLabels: List<String>,
     regressionCoefficients: Array<DoubleArray>
@@ -76,9 +76,9 @@ class NegBinRegressionMixture(
         @JvmField
         var VERSION = 2
 
-        val LOG: Logger = LoggerFactory.getLogger(NegBinRegressionMixture::class.java)
+        val LOG: Logger = LoggerFactory.getLogger(NegBin2ZeroRegressionMixture::class.java)
 
-        fun fitter() = object : Fitter<NegBinRegressionMixture> {
+        fun fitter() = object : Fitter<NegBin2ZeroRegressionMixture> {
             /**
              * We assume that the response vector is the integer-valued column 0,
              * and that the remaining columns are the double-valued covariates.
@@ -87,9 +87,8 @@ class NegBinRegressionMixture(
                 preprocessed: Preprocessed<DataFrame>,
                 title: String,
                 threshold: Double,
-                maxIter: Int,
-                attempt: Int
-            ) = guess(listOf(preprocessed), title, threshold, maxIter, attempt)
+                maxIter: Int
+            ) = guess(listOf(preprocessed), title, threshold, maxIter)
 
             /**
              * We assume that the response vector is the integer-valued column 0,
@@ -99,16 +98,15 @@ class NegBinRegressionMixture(
                 preprocessed: List<Preprocessed<DataFrame>>,
                 title: String,
                 threshold: Double,
-                maxIter: Int,
-                attempt: Int
-            ): NegBinRegressionMixture {
+                maxIter: Int
+            ): NegBin2ZeroRegressionMixture {
                 // Filter out 0s, since they are covered by dedicated ZERO state
                 val emissions = preprocessed.flatMap {
                     it.get().let { df -> df.sliceAsInt(df.labels.first()).toList() }
                 }.filter { it != 0 }.toIntArray()
                 check(emissions.isNotEmpty()) { "Model can't be trained on empty coverage, exiting." }
                 val df = preprocessed[0].get()
-                return NegBinRegressionMixture(
+                return NegBin2ZeroRegressionMixture(
                     doubleArrayOf(1 / 3.0, 1 / 3.0, 1 / 3.0).asF64Array(),
                     df.labels.drop(1),
                     arrayOf(
@@ -119,7 +117,7 @@ class NegBinRegressionMixture(
             }
         }
 
-        internal fun NegBinRegressionMixture.flipStatesIfNecessary() {
+        internal fun NegBin2ZeroRegressionMixture.flipStatesIfNecessary() {
             val lowScheme = this[1] as NegBinRegressionEmissionScheme
             val highScheme = this[2] as NegBinRegressionEmissionScheme
             if (weights[1] < weights[2]) {

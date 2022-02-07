@@ -13,7 +13,6 @@ import org.jetbrains.bio.span.peaks.getPeaks
 import org.jetbrains.bio.span.semisupervised.LocationLabel
 import org.jetbrains.bio.span.semisupervised.SpanSemiSupervised
 import org.jetbrains.bio.span.semisupervised.TuningResults
-import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.util.*
 import org.slf4j.event.Level
 import java.nio.file.Path
@@ -46,17 +45,6 @@ object SpanCLAAnalyze {
                 .availableIf("peaks")
                 .withRequiredArg()
                 .withValuesConvertedBy(PathConverter.exists())
-            acceptsAll(
-                listOf("ms", "multistarts"),
-                "Number of multistart runs using different model initialization. Use 0 to disable"
-            )
-                .withRequiredArg()
-                .ofType(Int::class.java)
-                .defaultsTo(Fitter.MULTISTARTS)
-            acceptsAll(listOf("msi", "ms-iterations"), "Number of iterations for each multistart run")
-                .withRequiredArg()
-                .ofType(Int::class.java)
-                .defaultsTo(Fitter.MULTISTART_ITERATIONS)
             acceptsAll(listOf("ext"), "Save extended information to model file")
             if (experimental) {
                 accepts(
@@ -268,20 +256,6 @@ object SpanCLAAnalyze {
         return paths
     }
 
-    internal fun getMultistarts(
-        options: OptionSet, log: Boolean = false
-    ) = SpanCLA.getProperty(
-        options.valueOf("multistarts") as Int?, null, Fitter.MULTISTARTS,
-        "multistarts", "MULTISTARTS", log
-    )
-
-    internal fun getMultistartIterations(
-        options: OptionSet, log: Boolean = false
-    ) = SpanCLA.getProperty(
-        options.valueOf("ms-iterations") as Int?, null, Fitter.MULTISTART_ITERATIONS,
-        "multistart iterations", "MULTISTART ITERATIONS", log
-    )
-
     /**
      * Configure logging and get [SpanFitResults] in a most concise and effective way.
      * Parses and logs most of the command line arguments.
@@ -290,9 +264,9 @@ object SpanCLAAnalyze {
     private fun peakCallingResults(options: OptionSet, experimental: Boolean): Lazy<SpanFitResults> {
         val modelPath = options.valueOf("model") as Path?
         if (modelPath != null) {
-            require(modelPath.extension == "span") {
-                "Unrecognized model extension '.${modelPath.extension}', should be '.span'."
-            }
+//            require(modelPath.extension == "span") {
+//                "Unrecognized model extension '.${modelPath.extension}', should be '.span'."
+//            }
             SpanCLA.LOG.info("MODEL: $modelPath")
         }
         if (modelPath != null && modelPath.exists && modelPath.size.isNotEmpty()) {
@@ -323,8 +297,6 @@ object SpanCLAAnalyze {
             val fragment = SpanCLA.getFragment(options, log = true)
             val unique = SpanCLA.getUnique(options, log = true)
             val maxIter = SpanCLA.getMaxIter(options, log = true)
-            val multistarts = getMultistarts(options, log = true)
-            val multistartIterations = getMultistartIterations(options, log = true)
             val threshold = SpanCLA.getThreshold(options, log = true)
             val modelType: SpanModelType
             val mapabilityPath: Path?
@@ -348,44 +320,39 @@ object SpanCLAAnalyze {
                     SpanModelType.NB2Z_HMM ->
                         SpanPeakCallingExperiment.getExperiment(
                             genomeQuery, data, bin, fragment, unique, modelPath,
-                            threshold, maxIter, multistarts, multistartIterations,
+                            threshold, maxIter,
                             saveExtendedInfo
                         )
                     SpanModelType.NB2Z_MIXTURE ->
-                        SpanPeakCallingExperimentNB2ZM.getExperiment(
+                        SpanPeakCallingExperimentNB2ZMixture.getExperiment(
                             genomeQuery, data, fragment, bin, unique, modelPath,
+                            threshold, maxIter,
+                            saveExtendedInfo
+                        )
+                    SpanModelType.NB2_HMM ->
+                        SpanPeakCallingExperimentNB2HMM.getExperiment(
+                            genomeQuery, data, bin, fragment, unique, modelPath,
                             threshold, maxIter,
                             saveExtendedInfo
                         )
                     SpanModelType.NB3Z_HMM ->
                         SpanPeakCallingExperimentNB3ZHMM.getExperiment(
                             genomeQuery, data, bin, fragment, unique, modelPath,
-                            threshold, maxIter, multistarts, multistartIterations
-                        )
-                    SpanModelType.NB2_HMM ->
-                        SpanPeakCallingExperimentNB2HMM.getExperiment(
-                            genomeQuery, data, bin, fragment, unique, modelPath,
-                            threshold, maxIter, multistarts, multistartIterations
+                            threshold, maxIter,
                         )
                     SpanModelType.NB3_HMM3 ->
                         SpanPeakCallingExperimentNB3HMM.getExperiment(
                             genomeQuery, data, bin, fragment, unique, modelPath,
-                            threshold, maxIter, multistarts, multistartIterations
+                            threshold, maxIter,
                         )
                     SpanModelType.POISSON_REGRESSION_MIXTURE -> {
-                        if (multistarts > 0) {
-                            SpanCLA.LOG.error("Multistart is not supported for $modelType")
-                        }
-                        SpanPeakCallingExperimentP2ZRM.getExperiment(
+                        SpanPeakCallingExperimentP2ZRegrMixture.getExperiment(
                             genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath,
                             threshold, maxIter
                         )
                     }
                     SpanModelType.NEGBIN_REGRESSION_MIXTURE -> {
-                        if (multistarts > 0) {
-                            SpanCLA.LOG.error("Multistart is not supported for $modelType")
-                        }
-                        SpanPeakCallingExperimentNB2ZRM.getExperiment(
+                        SpanPeakCallingExperimentNB2ZRegrMixture.getExperiment(
                             genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath,
                             threshold, maxIter
                         )

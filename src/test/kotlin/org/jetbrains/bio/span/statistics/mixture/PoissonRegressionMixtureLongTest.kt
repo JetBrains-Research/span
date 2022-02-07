@@ -2,7 +2,6 @@ package org.jetbrains.bio.span.statistics.mixture
 
 import org.jetbrains.bio.Tests
 import org.jetbrains.bio.dataframe.DataFrame
-import org.jetbrains.bio.span.statistics.mixture.PoissonRegressionMixture
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.span.statistics.regression.PoissonRegressionEmissionScheme
@@ -14,7 +13,7 @@ import kotlin.random.Random
 class PoissonRegressionMixtureLongTest {
     @Test
     fun sampleAndFit() {
-        val original = PoissonRegressionMixture(
+        val original = PoissonRegression2Mixture(
             F64Array.of(0.2, 0.7, 0.1), listOf("foo", "bar"),
             arrayOf(
                 doubleArrayOf(-1.0, 1.0, 1.0),
@@ -27,7 +26,7 @@ class PoissonRegressionMixtureLongTest {
             .with("foo", DoubleArray(rows) { random.nextDouble() })
             .with("bar", DoubleArray(rows) { random.nextDouble() })
         original.sample(df, intArrayOf(0))
-        val fitted = PoissonRegressionMixture.fitter().fit(
+        val fitted = PoissonRegression2Mixture.fitter().fit(
             Preprocessed.of(df),
             title = "test", threshold = Fitter.THRESHOLD, maxIter = Fitter.MAX_ITERATIONS
         )

@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory
  * @author Oleg Shpynov
  * @date 1/29/22
  */
-class NegBinMixture(
+class NB2ZMixture(
     nbMeans: DoubleArray, nbFailures: DoubleArray,
     weights: F64Array,
 ) : MLFreeMixture(numComponents = 3, numDimensions = 1, weights = weights) {
@@ -69,33 +69,31 @@ class NegBinMixture(
         @JvmField
         var VERSION = 2
 
-        val LOG: Logger = LoggerFactory.getLogger(NegBinMixture::class.java)
+        val LOG: Logger = LoggerFactory.getLogger(NB2ZMixture::class.java)
 
-        fun fitter() = object : Fitter<NegBinMixture> {
+        fun fitter() = object : Fitter<NB2ZMixture> {
             override fun guess(
                 preprocessed: Preprocessed<DataFrame>,
                 title: String,
                 threshold: Double,
-                maxIter: Int,
-                attempt: Int
-            ) = guess(listOf(preprocessed), title, threshold, maxIter, attempt)
+                maxIter: Int
+            ) = guess(listOf(preprocessed), title, threshold, maxIter)
 
             override fun guess(
                 preprocessed: List<Preprocessed<DataFrame>>,
                 title: String,
                 threshold: Double,
-                maxIter: Int,
-                attempt: Int
-            ): NegBinMixture {
-                val (means, failures) = FreeNBZHMM.guess(preprocessed, 2, attempt)
-                return NegBinMixture(
+                maxIter: Int
+            ): NB2ZMixture {
+                val (means, failures) = FreeNBZHMM.guess(preprocessed, 2)
+                return NB2ZMixture(
                     means, failures,
                     doubleArrayOf(1 / 3.0, 1 / 3.0, 1 / 3.0).asF64Array()
                 )
             }
         }
 
-        internal fun NegBinMixture.flipStatesIfNecessary() {
+        internal fun NB2ZMixture.flipStatesIfNecessary() {
             val lowScheme = negBinEmissionSchemes[0]
             val highScheme = negBinEmissionSchemes[1]
             val meanLow = lowScheme.mean

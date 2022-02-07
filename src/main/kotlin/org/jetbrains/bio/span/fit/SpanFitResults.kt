@@ -4,9 +4,9 @@ import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.TrackAboutDoubleColumnType
 import org.jetbrains.bio.genome.TrackAboutMetricValue
 import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
-import org.jetbrains.bio.span.statistics.mixture.NegBinMixture
-import org.jetbrains.bio.span.statistics.mixture.NegBinRegressionMixture
-import org.jetbrains.bio.span.statistics.mixture.PoissonRegressionMixture
+import org.jetbrains.bio.span.statistics.mixture.NB2ZMixture
+import org.jetbrains.bio.span.statistics.mixture.NegBin2ZeroRegressionMixture
+import org.jetbrains.bio.span.statistics.mixture.PoissonRegression2Mixture
 import org.jetbrains.bio.statistics.model.ClassificationModel
 import org.slf4j.LoggerFactory
 
@@ -46,7 +46,7 @@ open class SpanFitResults(
                     CT_SIGNAL_TO_NOISE to ((signalMean + 1e-10) / (noiseMean + 1e-10))
                 )
             }
-            is NegBinMixture -> {
+            is NB2ZMixture -> {
                 val signalMean = model.means[1]
                 val noiseMean = model.means[0]
                 listOf(
@@ -55,8 +55,8 @@ open class SpanFitResults(
                     CT_SIGNAL_TO_NOISE to ((signalMean + 1e-10) / (noiseMean + 1e-10))
                 )
             }
-            is PoissonRegressionMixture -> listOf(CT_SIGNAL_TO_NOISE to model.signalToNoise)
-            is NegBinRegressionMixture -> listOf(CT_SIGNAL_TO_NOISE to model.signalToNoise)
+            is PoissonRegression2Mixture -> listOf(CT_SIGNAL_TO_NOISE to model.signalToNoise)
+            is NegBin2ZeroRegressionMixture -> listOf(CT_SIGNAL_TO_NOISE to model.signalToNoise)
             else -> emptyList()
         }
     }

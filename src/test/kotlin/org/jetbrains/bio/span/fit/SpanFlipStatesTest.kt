@@ -4,8 +4,8 @@ import org.jetbrains.bio.span.statistics.hmm.ConstrainedNBZHMM
 import org.jetbrains.bio.span.statistics.hmm.ConstrainedNBZHMM.Companion.flipStatesIfNecessary
 import org.jetbrains.bio.span.statistics.hmm.FreeNBZHMM
 import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
-import org.jetbrains.bio.span.statistics.mixture.PoissonRegressionMixture
-import org.jetbrains.bio.span.statistics.mixture.PoissonRegressionMixture.Companion.flipStatesIfNecessary
+import org.jetbrains.bio.span.statistics.mixture.PoissonRegression2Mixture
+import org.jetbrains.bio.span.statistics.mixture.PoissonRegression2Mixture.Companion.flipStatesIfNecessary
 import org.jetbrains.bio.span.statistics.regression.PoissonRegressionEmissionScheme
 import org.jetbrains.bio.viktor.F64Array
 import org.junit.Test
@@ -282,7 +282,7 @@ class SpanFlipStatesTest {
             doubleArrayOf(-4.0, 1.0),
             doubleArrayOf(-5.0, 2.0)
         )
-        val model = PoissonRegressionMixture(
+        val model = PoissonRegression2Mixture(
             F64Array.of(0.5, 0.4, 0.1),
             listOf("first", "second"),
             regressionCoefficients
@@ -299,7 +299,7 @@ class SpanFlipStatesTest {
             doubleArrayOf(-5.0, 2.0),
             doubleArrayOf(-4.0, 1.0)
         )
-        val model = PoissonRegressionMixture(
+        val model = PoissonRegression2Mixture(
             F64Array.of(0.5, 0.1, 0.4),
             listOf("first", "second"),
             regressionCoefficients

@@ -1,20 +1,21 @@
 package org.jetbrains.bio.span.fit.experimental
 
 import org.jetbrains.bio.dataframe.DataFrame
+import org.jetbrains.bio.span.statistics.emission.NegBinUtil.guessByData
 import org.jetbrains.bio.span.statistics.emission.NegBinEmissionScheme
-import org.jetbrains.bio.span.statistics.hmm.FreeNBZHMM.Companion.multiStartSignalToNoise
 import org.jetbrains.bio.statistics.Preprocessed
-import org.jetbrains.bio.statistics.distribution.NegativeBinomialDistribution
 import org.jetbrains.bio.statistics.emission.IntegerEmissionScheme
 import org.jetbrains.bio.statistics.hmm.MLFreeHMM
-import org.jetbrains.bio.statistics.standardDeviation
 import org.jetbrains.bio.viktor.F64Array
 import org.slf4j.LoggerFactory
-import kotlin.math.pow
 
-open class FreeNBHMM(nbMeans: DoubleArray, nbFailures: Double) : MLFreeHMM(nbMeans.size, 1) {
+/**
+ * Abstract hidden Markov model with multidimensional integer-valued emissions.
+ * Consists of abstract number of Negative binomial states.
+ */
+open class FreeNBHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) : MLFreeHMM(nbMeans.size, 1) {
     private val negBinEmissionSchemes: Array<NegBinEmissionScheme> =
-        Array(nbMeans.size) { NegBinEmissionScheme(nbMeans[it], nbFailures) }
+        Array(nbMeans.size) { NegBinEmissionScheme(nbMeans[it], nbFailures[it]) }
 
     override fun getEmissionScheme(i: Int, d: Int): IntegerEmissionScheme {
         return negBinEmissionSchemes[i]
@@ -41,18 +42,12 @@ open class FreeNBHMM(nbMeans: DoubleArray, nbFailures: Double) : MLFreeHMM(nbMea
     companion object {
         private val LOG = LoggerFactory.getLogger(NB2HMM::class.java)
 
-        fun guess(preprocessed: List<Preprocessed<DataFrame>>, n: Int, attempt: Int): Pair<DoubleArray, Double> {
-            val emissions = preprocessed.flatMap {
+        fun guess(preprocessed: List<Preprocessed<DataFrame>>, n: Int): Pair<DoubleArray, DoubleArray> {
+            val data = preprocessed.flatMap {
                 it.get().let { df -> df.sliceAsInt(df.labels.first()).toList() }
-            }.toIntArray()
-            check(emissions.isNotEmpty()) { "Model can't be trained on empty coverage, exiting." }
-            val mean = emissions.average()
-            val sd = emissions.standardDeviation()
-            val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, sd * sd)
-            val snr = multiStartSignalToNoise(attempt)
-            val means = DoubleArray(n) { mean / snr.pow((n / 2 - it).toDouble()) }
-            LOG.debug("Guess $attempt emissions $means, failures $fs")
-            return means to fs
+            }.sorted()
+            check(data.isNotEmpty()) { "Model can't be trained on empty coverage, exiting." }
+            return guessByData(data, n)
         }
 
         /**
