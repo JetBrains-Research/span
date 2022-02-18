@@ -60,7 +60,7 @@ class SpanPeakCallingExperimentNB2ZRegrMixture private constructor(
             threshold: Double,
             maxIterations: Int
         ): SpanPeakCallingExperimentNB2ZRegrMixture {
-            check(data.size == 1) { "Negative binomial regression mixture currently accepts a single data track." }
+            require(data.size == 1) { "Negative binomial regression mixture currently accepts a single data track." }
             val fitInformation = SpanRMAnalyzeFitInformation(
                 genomeQuery, data.single(), mapabilityPath, fragment, unique, binSize
             )

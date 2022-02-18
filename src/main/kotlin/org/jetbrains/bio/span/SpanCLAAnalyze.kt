@@ -124,16 +124,16 @@ object SpanCLAAnalyze {
 
                 val labelsPath = options.valueOf("labels") as Path?
                 val gap = options.valueOf("gap") as Int
-                check(gap >= 0) { "Negative gap: $gap" }
+                require(gap >= 0) { "Negative gap: $gap" }
                 val fdr = options.valueOf("fdr") as Double
-                check(0 < fdr && fdr <= 1) { "Illegal fdr: $fdr, expected range: (0, 1)" }
+                require(0 < fdr && fdr <= 1) { "Illegal fdr: $fdr, expected range: (0, 1)" }
                 val peaksTypeCmd = options.valueOf("peaks-type") as String
-                check(peaksTypeCmd in PeaksType.values().map { it.cmd }) {
+                require(peaksTypeCmd in PeaksType.values().map { it.cmd }) {
                     "Unknown peaks-type: $peaksTypeCmd, expected ${PeaksType.values().joinToString(", ") { it.cmd }}"
                 }
                 val peaksType = PeaksType.getTypeFromCmd(peaksTypeCmd)
                 val threads = options.valueOf("threads") as Int?
-                check(threads == null || threads > 0) {
+                require(threads == null || threads > 0) {
                     "Not positive threads option: $threads"
                 }
 

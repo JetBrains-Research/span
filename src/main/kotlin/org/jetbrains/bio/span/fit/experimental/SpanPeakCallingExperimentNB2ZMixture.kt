@@ -55,7 +55,7 @@ class SpanPeakCallingExperimentNB2ZMixture private constructor(
             multistartIterations: Int = Fitter.MULTISTART_ITERATIONS,
             saveExtendedInfo: Boolean = false
         ): SpanPeakCallingExperimentNB2ZMixture {
-            check(paths.size == 1) { "Mixture currently accepts a single data track." }
+            require(paths.size == 1) { "Mixture currently accepts a single data track." }
             val fitInformation = createFitInformation(
                 genomeQuery, paths, MultiLabels.generate(SpanPeakCallingExperiment.TRACK_PREFIX, paths.size).toList(),
                 fragment, unique, binSize

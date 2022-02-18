@@ -87,7 +87,7 @@ class SpanDifferentialPeakCallingExperiment private constructor(
             threshold: Double,
             maxIterations: Int
         ): SpanDifferentialPeakCallingExperiment {
-            check(paths1.isNotEmpty() && paths2.isNotEmpty()) { "No data" }
+            require(paths1.isNotEmpty() && paths2.isNotEmpty()) { "No data" }
             val fitInformation = SpanCompareFitInformation.effective(
                 genomeQuery,
                 paths1, paths2,
