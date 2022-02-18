@@ -28,7 +28,7 @@ class PoissonRegressionMixtureLongTest {
         original.sample(df, intArrayOf(0))
         val fitted = PoissonRegression2Mixture.fitter().fit(
             Preprocessed.of(df),
-            title = "test", threshold = Fitter.THRESHOLD, maxIter = Fitter.MAX_ITERATIONS
+            title = "test", threshold = Fitter.THRESHOLD, maxIterations = Fitter.MAX_ITERATIONS
         )
         Tests.assertEquals(
             (original[1] as PoissonRegressionEmissionScheme).regressionCoefficients,

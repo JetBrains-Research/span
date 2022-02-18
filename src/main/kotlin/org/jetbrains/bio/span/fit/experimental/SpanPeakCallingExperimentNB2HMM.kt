@@ -25,11 +25,11 @@ class SpanPeakCallingExperimentNB2HMM<Model : ClassificationModel> private const
     modelClass: Class<Model>,
     fixedModelPath: Path?,
     threshold: Double,
-    maxIter: Int,
+    maxIterations: Int,
     saveExtendedInfo: Boolean
 ) : SpanModelFitExperiment<Model, SpanAnalyzeFitInformation, LH>(
     fitInformation, modelFitter, modelClass, LH.values(), NullHypothesis.of(LH.L), fixedModelPath,
-    threshold, maxIter, saveExtendedInfo = saveExtendedInfo
+    threshold, maxIterations, saveExtendedInfo = saveExtendedInfo
 ) {
 
     override val defaultModelPath: Path =
@@ -45,7 +45,9 @@ class SpanPeakCallingExperimentNB2HMM<Model : ClassificationModel> private const
             unique: Boolean = true,
             fixedModelPath: Path? = null,
             threshold: Double = Fitter.THRESHOLD,
-            maxIter: Int = Fitter.MAX_ITERATIONS,
+            maxIterations: Int = Fitter.MAX_ITERATIONS,
+            multistarts: Int = Fitter.MULTISTARTS,
+            multistartIterations: Int = Fitter.MULTISTART_ITERATIONS,
             saveExtendedInfo: Boolean
         ): SpanPeakCallingExperimentNB2HMM<out ClassificationModel> {
             check(paths.isNotEmpty()) { "No data" }
@@ -56,11 +58,16 @@ class SpanPeakCallingExperimentNB2HMM<Model : ClassificationModel> private const
             require(paths.size == 1) { "Multiple replicates are not supported by the model" }
             return SpanPeakCallingExperimentNB2HMM(
                 fitInformation,
-                NB2HMM.fitter(),
+                when {
+                    multistarts > 1 ->
+                        NB2HMM.fitter().multiStarted(multistarts, multistartIterations)
+                    else ->
+                        NB2HMM.fitter()
+                },
                 NB2HMM::class.java,
                 fixedModelPath,
                 threshold,
-                maxIter,
+                maxIterations,
                 saveExtendedInfo
             )
         }
@@ -84,15 +91,21 @@ class NB2HMM(nbMeans: DoubleArray, nbFailures: DoubleArray) : FreeNBHMM(nbMeans,
 
         fun fitter() = object : Fitter<NB2HMM> {
             override fun guess(
-                preprocessed: Preprocessed<DataFrame>, title: String,
-                threshold: Double, maxIter: Int
-            ): NB2HMM = guess(listOf(preprocessed), title, threshold, maxIter)
+                preprocessed: Preprocessed<DataFrame>,
+                title: String,
+                threshold: Double,
+                maxIterations: Int,
+                attempt: Int
+            ): NB2HMM = guess(listOf(preprocessed), title, threshold, maxIterations, attempt)
 
             override fun guess(
-                preprocessed: List<Preprocessed<DataFrame>>, title: String,
-                threshold: Double, maxIter: Int
+                preprocessed: List<Preprocessed<DataFrame>>,
+                title: String,
+                threshold: Double,
+                maxIterations: Int,
+                attempt: Int
             ): NB2HMM {
-                val (means, fs) = guess(preprocessed, 2)
+                val (means, fs) = guess(preprocessed, 2, attempt)
                 return NB2HMM(means, fs)
             }
         }

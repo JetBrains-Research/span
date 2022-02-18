@@ -43,7 +43,7 @@ abstract class SpanModelFitExperiment<
     private val nullHypothesis: NullHypothesis<State>,
     private val fixedModelPath: Path? = null,
     private val threshold: Double = Fitter.THRESHOLD,
-    private val maxIter: Int = Fitter.MAX_ITERATIONS,
+    private val maxIterations: Int = Fitter.MAX_ITERATIONS,
     private val saveExtendedInfo: Boolean = false
 ) : Experiment("fit") {
 
@@ -80,7 +80,7 @@ abstract class SpanModelFitExperiment<
     private val modelPath get() = fixedModelPath ?: defaultModelPath
 
     private fun calculateModel(): Model {
-        return modelFitter.fit(preprocessedData, title = dataQuery.id, threshold = threshold, maxIter = maxIter)
+        return modelFitter.fit(preprocessedData, title = dataQuery.id, threshold = threshold, maxIterations = maxIterations)
     }
 
     private fun calculateStatesDataFrame(model: Model): DataFrame = DataFrame.rowBind(

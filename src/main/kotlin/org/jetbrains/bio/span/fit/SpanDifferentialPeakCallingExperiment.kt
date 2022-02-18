@@ -31,14 +31,14 @@ import java.nio.file.Path
 class SpanDifferentialPeakCallingExperiment private constructor(
     fitInformation: SpanCompareFitInformation,
     threshold: Double,
-    maxIter: Int
+    maxIterations: Int
 ) : SpanModelFitExperiment<ConstrainedNBZHMM, SpanCompareFitInformation, ZLHID>(
     fitInformation,
     ConstrainedNBZHMM.fitter(fitInformation.data1.size, fitInformation.data2.size),
     ConstrainedNBZHMM::class.java,
     ZLHID.values(), NullHypothesis.of(ZLHID.same()),
     threshold = threshold,
-    maxIter = maxIter
+    maxIterations = maxIterations
 ) {
 
     override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span"
@@ -85,7 +85,7 @@ class SpanDifferentialPeakCallingExperiment private constructor(
             fragment: Fragment,
             unique: Boolean,
             threshold: Double,
-            maxIter: Int
+            maxIterations: Int
         ): SpanDifferentialPeakCallingExperiment {
             check(paths1.isNotEmpty() && paths2.isNotEmpty()) { "No data" }
             val fitInformation = SpanCompareFitInformation.effective(
@@ -95,7 +95,7 @@ class SpanDifferentialPeakCallingExperiment private constructor(
                 MultiLabels.generate(TRACK2_PREFIX, paths2.size).toList(),
                 fragment, unique, bin
             )
-            return SpanDifferentialPeakCallingExperiment(fitInformation, threshold, maxIter)
+            return SpanDifferentialPeakCallingExperiment(fitInformation, threshold, maxIterations)
         }
     }
 }

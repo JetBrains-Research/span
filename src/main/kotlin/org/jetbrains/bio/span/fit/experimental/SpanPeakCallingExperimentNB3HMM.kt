@@ -26,10 +26,10 @@ class SpanPeakCallingExperimentNB3HMM<Model : ClassificationModel> private const
     modelClass: Class<Model>,
     fixedModelPath: Path?,
     threshold: Double,
-    maxIter: Int
+    maxIterations: Int
 ) : SpanModelFitExperiment<Model, SpanAnalyzeFitInformation, LMH>(
     fitInformation, modelFitter, modelClass, LMH.values(), NullHypothesis.of(LMH.L, LMH.M), fixedModelPath,
-    threshold, maxIter
+    threshold, maxIterations
 ) {
 
     override val defaultModelPath: Path =
@@ -45,7 +45,9 @@ class SpanPeakCallingExperimentNB3HMM<Model : ClassificationModel> private const
             unique: Boolean = true,
             fixedModelPath: Path? = null,
             threshold: Double = Fitter.THRESHOLD,
-            maxIter: Int = Fitter.MAX_ITERATIONS,
+            maxIterations: Int = Fitter.MAX_ITERATIONS,
+            multistarts: Int = Fitter.MULTISTARTS,
+            multistartIterations: Int = Fitter.MULTISTART_ITERATIONS
         ): SpanPeakCallingExperimentNB3HMM<out ClassificationModel> {
             check(paths.isNotEmpty()) { "No data" }
             val fitInformation = SpanAnalyzeFitInformation.createFitInformation(
@@ -55,11 +57,16 @@ class SpanPeakCallingExperimentNB3HMM<Model : ClassificationModel> private const
             require(paths.size == 1) { "Multiple replicates are not supported" }
             return SpanPeakCallingExperimentNB3HMM(
                 fitInformation,
-                NB3HMM.fitter(),
+                when {
+                    multistarts > 1 ->
+                        NB3HMM.fitter().multiStarted(multistarts, multistartIterations)
+                    else ->
+                        NB3HMM.fitter()
+                },
                 NB3HMM::class.java,
                 fixedModelPath,
                 threshold,
-                maxIter
+                maxIterations
             )
         }
     }
@@ -82,15 +89,21 @@ class NB3HMM(nbMeans: DoubleArray, nbFailures: DoubleArray) : FreeNBHMM(nbMeans,
 
         fun fitter() = object : Fitter<NB3HMM> {
             override fun guess(
-                preprocessed: Preprocessed<DataFrame>, title: String,
-                threshold: Double, maxIter: Int
-            ): NB3HMM = guess(listOf(preprocessed), title, threshold, maxIter)
+                preprocessed: Preprocessed<DataFrame>, 
+                title: String,
+                threshold: Double, 
+                maxIterations: Int,
+                attempt: Int
+            ): NB3HMM = guess(listOf(preprocessed), title, threshold, maxIterations, attempt)
 
             override fun guess(
-                preprocessed: List<Preprocessed<DataFrame>>, title: String,
-                threshold: Double, maxIter: Int
+                preprocessed: List<Preprocessed<DataFrame>>,
+                title: String,
+                threshold: Double,
+                maxIterations: Int,
+                attempt: Int
             ): NB3HMM {
-                val (means, fs) = guess(preprocessed, 3)
+                val (means, fs) = guess(preprocessed, 3, attempt)
                 return NB3HMM(means, fs)
             }
         }

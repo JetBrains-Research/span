@@ -178,12 +178,12 @@ object SpanCLACompare {
         val bin = SpanCLA.getBin(options, log = true)
         val fragment = SpanCLA.getFragment(options, log = true)
         val unique = SpanCLA.getUnique(options, log = true)
-        val maxIter = SpanCLA.getMaxIter(options, log = true)
+        val maxIterations = SpanCLA.getMaxIter(options, log = true)
         val threshold = SpanCLA.getThreshold(options, log = true)
         return lazy {
             val experiment = SpanDifferentialPeakCallingExperiment.getExperiment(
                 genomeQuery, data1, data2, bin, fragment, unique,
-                threshold, maxIter
+                threshold, maxIterations
             )
             experiment.results
         }

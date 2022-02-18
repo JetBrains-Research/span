@@ -33,11 +33,11 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
     modelClass: Class<Model>,
     fixedModelPath: Path?,
     threshold: Double,
-    maxIter: Int,
+    maxIterations: Int,
     saveExtendedInfo: Boolean = false
 ) : SpanModelFitExperiment<Model, SpanAnalyzeFitInformation, ZLH>(
     fitInformation, modelFitter, modelClass, ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L), fixedModelPath,
-    threshold, maxIter, saveExtendedInfo
+    threshold, maxIterations, saveExtendedInfo
 ) {
 
     override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span"
@@ -65,7 +65,9 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
             unique: Boolean = true,
             fixedModelPath: Path? = null,
             threshold: Double = Fitter.THRESHOLD,
-            maxIter: Int = Fitter.MAX_ITERATIONS,
+            maxIterations: Int = Fitter.MAX_ITERATIONS,
+            multistarts: Int = Fitter.MULTISTARTS,
+            multistartIterations: Int = Fitter.MULTISTART_ITERATIONS,
             saveExtendedInfo: Boolean = false
         ): SpanPeakCallingExperiment<out ClassificationModel> {
             check(paths.isNotEmpty()) { "No data" }
@@ -73,25 +75,37 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
                 genomeQuery, paths, MultiLabels.generate(TRACK_PREFIX, paths.size).toList(),
                 fragment, unique, bin
             )
-            return if (paths.size == 1)
+            return if (paths.size == 1) {
                 SpanPeakCallingExperiment(
                     fitInformation,
-                    NB2ZHMM.fitter(),
+                    when {
+                        multistarts > 1 -> 
+                            NB2ZHMM.fitter().multiStarted(multistarts, multistartIterations)
+                        else -> 
+                            NB2ZHMM.fitter()
+                    },
                     NB2ZHMM::class.java,
                     fixedModelPath,
                     threshold,
-                    maxIter,
+                    maxIterations,
                     saveExtendedInfo
-                ) else
+                )
+            } else {
                 SpanPeakCallingExperiment(
                     fitInformation,
-                    ConstrainedNBZHMM.fitter(paths.size),
+                    when {
+                        multistarts > 1 -> ConstrainedNBZHMM.fitter(paths.size)
+                            .multiStarted(multistarts, multistartIterations)
+                        else -> 
+                            ConstrainedNBZHMM.fitter(paths.size)
+                    },
                     ConstrainedNBZHMM::class.java,
                     fixedModelPath,
                     threshold,
-                    maxIter,
+                    maxIterations,
                     saveExtendedInfo
                 )
+            }
         }
     }
 }

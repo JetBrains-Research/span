@@ -57,9 +57,9 @@ class NB2ZMixture(
             negBinEmissionSchemes[it].successProbability
         }
 
-    override fun fit(preprocessed: List<Preprocessed<DataFrame>>, title: String, threshold: Double, maxIter: Int) {
+    override fun fit(preprocessed: List<Preprocessed<DataFrame>>, title: String, threshold: Double, maxIterations: Int) {
         val data = DataFrame.rowBind(preprocessed.map { it.get() }.toTypedArray())
-        super.fit(Preprocessed.of(data), title, threshold, maxIter)
+        super.fit(Preprocessed.of(data), title, threshold, maxIterations)
         flipStatesIfNecessary()
     }
 
@@ -76,16 +76,18 @@ class NB2ZMixture(
                 preprocessed: Preprocessed<DataFrame>,
                 title: String,
                 threshold: Double,
-                maxIter: Int
-            ) = guess(listOf(preprocessed), title, threshold, maxIter)
+                maxIterations: Int,
+                attempt: Int
+            ) = guess(listOf(preprocessed), title, threshold, maxIterations, attempt)
 
             override fun guess(
                 preprocessed: List<Preprocessed<DataFrame>>,
                 title: String,
                 threshold: Double,
-                maxIter: Int
+                maxIterations: Int,
+                attempt: Int
             ): NB2ZMixture {
-                val (means, failures) = FreeNBZHMM.guess(preprocessed, 2)
+                val (means, failures) = FreeNBZHMM.guess(preprocessed, 2, attempt)
                 return NB2ZMixture(
                     means, failures,
                     doubleArrayOf(1 / 3.0, 1 / 3.0, 1 / 3.0).asF64Array()

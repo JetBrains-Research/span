@@ -8,6 +8,7 @@ import org.jetbrains.bio.statistics.emission.IntegerEmissionScheme
 import org.jetbrains.bio.statistics.hmm.MLFreeHMM
 import org.jetbrains.bio.viktor.F64Array
 import org.slf4j.LoggerFactory
+import kotlin.math.pow
 
 /**
  * Abstract hidden Markov model with multidimensional integer-valued emissions.
@@ -21,8 +22,8 @@ open class FreeNBHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) : MLFreeHMM(
         return negBinEmissionSchemes[i]
     }
 
-    override fun fit(preprocessed: List<Preprocessed<DataFrame>>, title: String, threshold: Double, maxIter: Int) {
-        super.fit(preprocessed, title, threshold, maxIter)
+    override fun fit(preprocessed: List<Preprocessed<DataFrame>>, title: String, threshold: Double, maxIterations: Int) {
+        super.fit(preprocessed, title, threshold, maxIterations)
         flipStatesIfNecessary(negBinEmissionSchemes, logPriorProbabilities, logTransitionProbabilities)
     }
 
@@ -42,12 +43,11 @@ open class FreeNBHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) : MLFreeHMM(
     companion object {
         private val LOG = LoggerFactory.getLogger(NB2HMM::class.java)
 
-        fun guess(preprocessed: List<Preprocessed<DataFrame>>, n: Int): Pair<DoubleArray, DoubleArray> {
-            val data = preprocessed.flatMap {
+        fun guess(preprocessed: List<Preprocessed<DataFrame>>, n: Int, attempt: Int): Pair<DoubleArray, DoubleArray> {
+            val emissions = preprocessed.flatMap {
                 it.get().let { df -> df.sliceAsInt(df.labels.first()).toList() }
-            }.sorted()
-            check(data.isNotEmpty()) { "Model can't be trained on empty coverage, exiting." }
-            return guessByData(data, n)
+            }.toIntArray()
+            return guessByData(emissions, n, attempt)
         }
 
         /**

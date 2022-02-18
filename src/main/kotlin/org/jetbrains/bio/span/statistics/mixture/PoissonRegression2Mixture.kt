@@ -62,9 +62,9 @@ class PoissonRegression2Mixture(
      * We assume that the response vector is the integer-valued column 0,
      * and that the remaining columns include all the covariate labels as the double-valued covariates.
      */
-    override fun fit(preprocessed: List<Preprocessed<DataFrame>>, title: String, threshold: Double, maxIter: Int) {
+    override fun fit(preprocessed: List<Preprocessed<DataFrame>>, title: String, threshold: Double, maxIterations: Int) {
         val data = DataFrame.rowBind(preprocessed.map { it.get() }.toTypedArray())
-        super.fit(Preprocessed.of(data), title, threshold, maxIter)
+        super.fit(Preprocessed.of(data), title, threshold, maxIterations)
         flipStatesIfNecessary()
     }
 
@@ -85,8 +85,9 @@ class PoissonRegression2Mixture(
                 preprocessed: Preprocessed<DataFrame>,
                 title: String,
                 threshold: Double,
-                maxIter: Int
-            ) = guess(listOf(preprocessed), title, threshold, maxIter)
+                maxIterations: Int,
+                attempt: Int
+            ) = guess(listOf(preprocessed), title, threshold, maxIterations, attempt)
 
             /**
              * We assume that the response vector is the integer-valued column 0,
@@ -96,8 +97,10 @@ class PoissonRegression2Mixture(
                 preprocessed: List<Preprocessed<DataFrame>>,
                 title: String,
                 threshold: Double,
-                maxIter: Int
+                maxIterations: Int,
+                attempt: Int
             ): PoissonRegression2Mixture {
+                require(attempt <= 1) { "Multistart is not supported." }
                 // Filter out 0s, since they are covered by dedicated ZERO state
                 val emissions = preprocessed.flatMap {
                     it.get().let { df -> df.sliceAsInt(df.labels.first()).toList() }

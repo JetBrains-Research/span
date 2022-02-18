@@ -6,6 +6,7 @@ import org.jetbrains.bio.span.fit.*
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation.Companion.createFitInformation
 import org.jetbrains.bio.span.statistics.mixture.NB2ZMixture
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
+import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.statistics.model.MultiLabels
 import org.jetbrains.bio.util.div
 import java.nio.file.Path
@@ -20,15 +21,17 @@ import java.nio.file.Path
  */
 class SpanPeakCallingExperimentNB2ZMixture private constructor(
     fitInformation: SpanAnalyzeFitInformation,
+    fitter: Fitter<NB2ZMixture>,
     fixedModelPath: Path?,
     threshold: Double,
-    maxIter: Int,
+    maxIterations: Int,
     saveExtendedInfo: Boolean = true
 ) : SpanModelFitExperiment<NB2ZMixture, SpanAnalyzeFitInformation, ZLH>(
     fitInformation,
-    NB2ZMixture.fitter(), NB2ZMixture::class.java,
+    fitter,
+    NB2ZMixture::class.java,
     ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
-    fixedModelPath, threshold, maxIter, saveExtendedInfo
+    fixedModelPath, threshold, maxIterations, saveExtendedInfo
 ) {
 
     override val defaultModelPath: Path =
@@ -46,8 +49,10 @@ class SpanPeakCallingExperimentNB2ZMixture private constructor(
             binSize: Int,
             unique: Boolean,
             fixedModelPath: Path?,
-            threshold: Double,
-            maxIter: Int,
+            threshold: Double = Fitter.THRESHOLD,
+            maxIterations: Int = Fitter.MAX_ITERATIONS,
+            multistarts: Int = Fitter.MULTISTARTS,
+            multistartIterations: Int = Fitter.MULTISTART_ITERATIONS,
             saveExtendedInfo: Boolean = false
         ): SpanPeakCallingExperimentNB2ZMixture {
             check(paths.size == 1) { "Mixture currently accepts a single data track." }
@@ -55,7 +60,19 @@ class SpanPeakCallingExperimentNB2ZMixture private constructor(
                 genomeQuery, paths, MultiLabels.generate(SpanPeakCallingExperiment.TRACK_PREFIX, paths.size).toList(),
                 fragment, unique, binSize
             )
-            return SpanPeakCallingExperimentNB2ZMixture(fitInformation, fixedModelPath, threshold, maxIter, saveExtendedInfo)
+            return SpanPeakCallingExperimentNB2ZMixture(
+                fitInformation,
+                when {
+                    multistarts > 1 ->
+                        NB2ZMixture.fitter().multiStarted(multistarts, multistartIterations)
+                    else ->
+                        NB2ZMixture.fitter()
+                },
+                fixedModelPath,
+                threshold,
+                maxIterations,
+                saveExtendedInfo
+            )
         }
     }
 }

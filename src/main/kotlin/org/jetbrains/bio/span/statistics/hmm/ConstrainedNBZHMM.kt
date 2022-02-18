@@ -91,19 +91,20 @@ class ConstrainedNBZHMM(
                     preprocessed: Preprocessed<DataFrame>,
                     title: String,
                     threshold: Double,
-                    maxIter: Int
+                    maxIterations: Int,
+                    attempt: Int
                 ): ConstrainedNBZHMM {
                     val df = preprocessed.get()
                     val means = DoubleArray(numReplicates * 2)
                     val failures = DoubleArray(numReplicates * 2)
                     for (d in 0 until numReplicates) {
                         // Filter out 0s, since they are covered by dedicated ZERO state
-                        val data = df.sliceAsInt(df.labels[d]).filter { it != 0 }.sorted()
-                        check(data.isNotEmpty()) {
+                        val emissions = df.sliceAsInt(df.labels[d]).filter { it != 0 }.toIntArray()
+                        check(emissions.isNotEmpty()) {
                             "Model can't be trained on empty coverage, exiting."
                         }
                         LOG.debug("Replicate $d")
-                        val (meansD, failuresD) = guessByData(data, 2)
+                        val (meansD, failuresD) = guessByData(emissions, 2, attempt)
                         means[d] = meansD[0]
                         means[d + numReplicates] = meansD[1]
                         failures[d] = failuresD[0]
@@ -117,8 +118,9 @@ class ConstrainedNBZHMM(
                     preprocessed: List<Preprocessed<DataFrame>>,
                     title: String,
                     threshold: Double,
-                    maxIter: Int,
-                ) = super.fit(preprocessed, title, threshold, maxIter).apply {
+                    maxIterations: Int,
+                    attempt: Int
+                ) = super.fit(preprocessed, title, threshold, maxIterations, attempt).apply {
                     flipStatesIfNecessary(numReplicates)
                 }
             }
@@ -135,26 +137,28 @@ class ConstrainedNBZHMM(
                     preprocessed: Preprocessed<DataFrame>,
                     title: String,
                     threshold: Double,
-                    maxIter: Int
-                ) = guess(listOf(preprocessed), title, threshold, maxIter)
+                    maxIterations: Int,
+                    attempt: Int
+                ) = guess(listOf(preprocessed), title, threshold, maxIterations, attempt)
 
                 override fun guess(
                     preprocessed: List<Preprocessed<DataFrame>>,
                     title: String,
                     threshold: Double,
-                    maxIter: Int
+                    maxIterations: Int,
+                    attempt: Int
                 ): ConstrainedNBZHMM {
                     val df = DataFrame.rowBind(preprocessed.map { it.get() }.toTypedArray())
                     val means = DoubleArray((numReplicates1 + numReplicates2) * 2)
                     val failures = DoubleArray((numReplicates1 + numReplicates2) * 2)
                     for (d1 in 0 until numReplicates1) {
                         // Filter out 0s, since they are covered by dedicated ZERO state
-                        val data1 = df.sliceAsInt(df.labels[d1]).filter { it != 0 }.sorted()
-                        check(data1.isNotEmpty()) {
+                        val emissions1 = df.sliceAsInt(df.labels[d1]).filter { it != 0 }.toIntArray()
+                        check(emissions1.isNotEmpty()) {
                             "Model can't be trained on empty coverage (track $d1), exiting."
                         }
                         LOG.debug("Replicate $d1")
-                        val (meansD1, failuresD1) = guessByData(data1, 2)
+                        val (meansD1, failuresD1) = guessByData(emissions1, 2, attempt)
                         means[d1] = meansD1[0]
                         means[d1 + numReplicates1] = meansD1[1]
                         failures[d1] = failuresD1[0]
@@ -162,12 +166,12 @@ class ConstrainedNBZHMM(
                     }
                     for (d2 in 0 until numReplicates2) {
                         // Filter out 0s, since they are covered by dedicated ZERO state
-                        val data2 = df.sliceAsInt(df.labels[d2 + numReplicates1]).filter { it != 0 }.sorted()
-                        check(data2.isNotEmpty()) {
+                        val emissions2 = df.sliceAsInt(df.labels[d2 + numReplicates1]).filter { it != 0 }.toIntArray()
+                        check(emissions2.isNotEmpty()) {
                             "Model can't be trained on empty coverage (track ${d2 + numReplicates1}), exiting."
                         }
                         LOG.debug("Replicate $d2")
-                        val (meansD2, failuresD2) = guessByData(data2, 2)
+                        val (meansD2, failuresD2) = guessByData(emissions2, 2, attempt)
                         means[d2 + numReplicates1 * 2] = meansD2[0]
                         means[d2 + numReplicates2 + numReplicates1 * 2] = meansD2[1]
                         failures[d2 + numReplicates1 * 2] = failuresD2[0]
@@ -180,8 +184,9 @@ class ConstrainedNBZHMM(
                     preprocessed: List<Preprocessed<DataFrame>>,
                     title: String,
                     threshold: Double,
-                    maxIter: Int
-                ) = super.fit(preprocessed, title, threshold, maxIter).apply {
+                    maxIterations: Int,
+                    attempt: Int
+                ) = super.fit(preprocessed, title, threshold, maxIterations, attempt).apply {
                     flipStatesIfNecessary(numReplicates1, numReplicates2)
                 }
             }

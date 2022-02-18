@@ -5,10 +5,16 @@ import org.jetbrains.bio.span.fit.experimental.FreeNBHMM
 import org.jetbrains.bio.span.statistics.emission.NegBinEmissionScheme
 import org.jetbrains.bio.span.statistics.emission.NegBinUtil.guessByData
 import org.jetbrains.bio.statistics.Preprocessed
+import org.jetbrains.bio.statistics.distribution.NegativeBinomialDistribution
 import org.jetbrains.bio.statistics.emission.ConstantIntegerEmissionScheme
 import org.jetbrains.bio.statistics.emission.IntegerEmissionScheme
 import org.jetbrains.bio.statistics.hmm.MLFreeHMM
+import org.jetbrains.bio.statistics.standardDeviation
 import org.jetbrains.bio.viktor.F64Array
+import org.slf4j.LoggerFactory
+import kotlin.math.floor
+import kotlin.math.max
+import kotlin.math.pow
 
 /**
  * Abstract hidden Markov model with multidimensional integer-valued emissions.
@@ -36,8 +42,8 @@ open class FreeNBZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) : MLFreeHMM
         }
     }
 
-    override fun fit(preprocessed: List<Preprocessed<DataFrame>>, title: String, threshold: Double, maxIter: Int) {
-        super.fit(preprocessed, title, threshold, maxIter)
+    override fun fit(preprocessed: List<Preprocessed<DataFrame>>, title: String, threshold: Double, maxIterations: Int) {
+        super.fit(preprocessed, title, threshold, maxIterations)
         flipStatesIfNecessary()
     }
 
@@ -66,13 +72,13 @@ open class FreeNBZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) : MLFreeHMM
         @JvmField
         val VERSION: Int = 1
 
-        fun guess(preprocessed: List<Preprocessed<DataFrame>>, n: Int): Pair<DoubleArray, DoubleArray> {
+        fun guess(preprocessed: List<Preprocessed<DataFrame>>, n: Int, attempt: Int): Pair<DoubleArray, DoubleArray> {
             // Filter out 0s, since they are covered by dedicated ZERO state
-            val data = preprocessed.flatMap {
+            val emissions = preprocessed.flatMap {
                 it.get().let { df -> df.sliceAsInt(df.labels.first()).toList() }
-            }.filter { it != 0 }.sorted()
-            check(data.isNotEmpty()) { "Model can't be trained on empty coverage, exiting." }
-            return guessByData(data, n)
+            }.filter { it != 0 }.toIntArray()
+            check(emissions.isNotEmpty()) { "Model can't be trained on empty coverage, exiting." }
+            return guessByData(emissions, n, attempt)
         }
 
     }
