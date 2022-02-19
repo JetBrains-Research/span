@@ -29,11 +29,11 @@ import java.nio.file.Path
  * - HIGH state employs another Poisson GLM with the covariates listed above
  */
 class SpanPeakCallingExperimentP2ZRegrMixture private constructor(
-    fitInformation: SpanRMAnalyzeFitInformation,
+    fitInformation: SpanRegrMixtureAnalyzeFitInformation,
     fixedModelPath: Path?,
     threshold: Double,
     maxIterations: Int
-) : SpanModelFitExperiment<PoissonRegression2Mixture, SpanRMAnalyzeFitInformation, ZLH>(
+) : SpanModelFitExperiment<PoissonRegression2Mixture, SpanRegrMixtureAnalyzeFitInformation, ZLH>(
     fitInformation,
     PoissonRegression2Mixture.fitter(), PoissonRegression2Mixture::class.java,
     ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
@@ -61,7 +61,7 @@ class SpanPeakCallingExperimentP2ZRegrMixture private constructor(
             maxIterations: Int
         ): SpanPeakCallingExperimentP2ZRegrMixture {
             require(data.size == 1) { "Poisson regression mixture currently accepts a single data track." }
-            val fitInformation = SpanRMAnalyzeFitInformation(
+            val fitInformation = SpanRegrMixtureAnalyzeFitInformation(
                 genomeQuery, data.single(), mapabilityPath, fragment, unique, binSize
             )
             return SpanPeakCallingExperimentP2ZRegrMixture(fitInformation, fixedModelPath, threshold, maxIterations)

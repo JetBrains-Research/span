@@ -4,7 +4,7 @@ import com.google.gson.JsonParseException
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.FixedFragment
-import org.jetbrains.bio.span.fit.experimental.SpanRMAnalyzeFitInformation
+import org.jetbrains.bio.span.fit.experimental.SpanRegrMixtureAnalyzeFitInformation
 import org.jetbrains.bio.util.bufferedReader
 import org.jetbrains.bio.util.bufferedWriter
 import org.jetbrains.bio.util.toPath
@@ -98,7 +98,7 @@ class SpanFitInformationTest {
 
     @Test
     fun checkLoad() {
-        val info = SpanRMAnalyzeFitInformation(
+        val info = SpanRegrMixtureAnalyzeFitInformation(
             gq, SpanDataPaths("path_to_file".toPath(), "path_to_control".toPath()),
             "mapability.bigWig".toPath(), FixedFragment(42), false, 200
         )

@@ -310,7 +310,7 @@ object SpanCLAAnalyze {
             SpanCLA.getBin(options, results.fitInfo, log = true)
             SpanCLA.getFragment(options, results.fitInfo, log = true)
             SpanCLA.getUnique(options, results.fitInfo, log = true)
-            if (results.fitInfo is SpanRMAnalyzeFitInformation) {
+            if (results.fitInfo is SpanRegrMixtureAnalyzeFitInformation) {
                 getMapabilityPath(options, results.fitInfo, log = true)
             }
             return lazyOf(results)
@@ -392,7 +392,7 @@ object SpanCLAAnalyze {
     }
 
     private fun getMapabilityPath(
-        options: OptionSet, fitInfo: SpanRMAnalyzeFitInformation? = null, log: Boolean = false
+        options: OptionSet, fitInfo: SpanRegrMixtureAnalyzeFitInformation? = null, log: Boolean = false
     ) = SpanCLA.getProperty(
         options.valueOf("mapability") as Path?,
         fitInfo?.mapabilityPath,

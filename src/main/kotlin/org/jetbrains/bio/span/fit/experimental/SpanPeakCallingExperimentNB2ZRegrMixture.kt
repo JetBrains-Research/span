@@ -29,11 +29,11 @@ import java.nio.file.Path
  * - HIGH state employs another negative binomial GLM with the covariates listed above
  */
 class SpanPeakCallingExperimentNB2ZRegrMixture private constructor(
-    fitInformation: SpanRMAnalyzeFitInformation,
+    fitInformation: SpanRegrMixtureAnalyzeFitInformation,
     fixedModelPath: Path?,
     threshold: Double,
     maxIterations: Int
-) : SpanModelFitExperiment<NegBin2ZeroRegressionMixture, SpanRMAnalyzeFitInformation, ZLH>(
+) : SpanModelFitExperiment<NegBin2ZeroRegressionMixture, SpanRegrMixtureAnalyzeFitInformation, ZLH>(
     fitInformation,
     NegBin2ZeroRegressionMixture.fitter(), NegBin2ZeroRegressionMixture::class.java,
     ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
@@ -61,7 +61,7 @@ class SpanPeakCallingExperimentNB2ZRegrMixture private constructor(
             maxIterations: Int
         ): SpanPeakCallingExperimentNB2ZRegrMixture {
             require(data.size == 1) { "Negative binomial regression mixture currently accepts a single data track." }
-            val fitInformation = SpanRMAnalyzeFitInformation(
+            val fitInformation = SpanRegrMixtureAnalyzeFitInformation(
                 genomeQuery, data.single(), mapabilityPath, fragment, unique, binSize
             )
             return SpanPeakCallingExperimentNB2ZRegrMixture(fitInformation, fixedModelPath, threshold, maxIterations)

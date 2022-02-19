@@ -20,7 +20,7 @@ class SpanRMFitInformationTest {
         val chrX = to1["chrX"]!!
         val binSize = 200
         /* for tests purposes we only generate mapability data for chrX */
-        val mapabilityX = SpanRMAnalyzeFitInformation.binnedMapability(chrX, path, binSize)
+        val mapabilityX = SpanRegrMixtureAnalyzeFitInformation.binnedMapability(chrX, path, binSize)
         sanityCheck(mapabilityX, chrX, binSize)
         val genomeMeanMapability = mapabilityX.sum() / mapabilityX.size
         assertTrue(genomeMeanMapability > 0.0, "Total mean mapability was 0.0")
@@ -30,7 +30,7 @@ class SpanRMFitInformationTest {
         */
         val precision = 100.0 / chrX.length
         to1.get().filter { it != chrX }.forEach { chr ->
-            val mapability = SpanRMAnalyzeFitInformation.binnedMapability(chr, path, binSize)
+            val mapability = SpanRegrMixtureAnalyzeFitInformation.binnedMapability(chr, path, binSize)
             sanityCheck(mapability, chr, binSize)
             mapability.forEachIndexed { index, value ->
                 assertEquals(

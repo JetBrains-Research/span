@@ -20,7 +20,7 @@ import org.jetbrains.bio.util.stemGz
 import org.jetbrains.bio.viktor.asF64Array
 import java.nio.file.Path
 
-data class SpanRMAnalyzeFitInformation constructor(
+data class SpanRegrMixtureAnalyzeFitInformation constructor(
     override val build: String,
     override val data: List<SpanDataPaths>,
     val mapabilityPath: Path?,
