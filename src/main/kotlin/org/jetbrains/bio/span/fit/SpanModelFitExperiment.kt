@@ -80,7 +80,12 @@ abstract class SpanModelFitExperiment<
     private val modelPath get() = fixedModelPath ?: defaultModelPath
 
     private fun calculateModel(): Model {
-        return modelFitter.fit(preprocessedData, title = dataQuery.id, threshold = threshold, maxIterations = maxIterations)
+        return modelFitter.fit(
+            preprocessedData,
+            title = dataQuery.id,
+            threshold = threshold,
+            maxIterations = maxIterations
+        )
     }
 
     private fun calculateStatesDataFrame(model: Model): DataFrame = DataFrame.rowBind(
@@ -134,20 +139,16 @@ abstract class SpanModelFitExperiment<
         modelPath.checkOrRecalculate("Model fit") { (p) ->
             withTempDirectory(modelPath.stem) { dir ->
                 val modelPath = dir / MODEL_JSON
-                LOG.info("Computing data model")
+                LOG.info("Computing data model...")
                 val model = calculateModel()
                 LOG.info("Done computing data model")
-                LOG.info("Saving model information...")
+                LOG.info("Saving model information")
                 model.save(modelPath)
                 LOG.debug("Model saved to $modelPath")
-                ClassificationModel.load<Model>(modelPath)
-                LOG.debug("Sanity check: model loaded")
 
                 val informationPath = dir / INFORMATION_JSON
                 fitInformation.save(informationPath)
                 LOG.debug("Fit information saved to $informationPath")
-                SpanFitInformation.load<SpanFitInformation>(informationPath)
-                LOG.debug("Sanity check: information loaded")
 
                 LOG.debug("Computing states dataframe")
                 val statesDataFrame = calculateStatesDataFrame(model)
@@ -245,14 +246,19 @@ abstract class SpanModelFitExperiment<
                 }
                 nonEmptyChromosomes.addAll(chromosomes.filter { coverage.getBothStrandsCoverage(it.range.on(it)) > 0 })
             }
-            chromosomes.filter { it !in nonEmptyChromosomes }.forEach {
-                LOG.info("${it.name}: no reads detected, ignoring.")
-            }
+
             if (nonEmptyChromosomes.isEmpty()) {
                 val errMessage = "Model can't be trained on empty coverage, exiting."
                 LOG.error(errMessage)
                 throw IllegalStateException(errMessage)
             }
+
+            val emptyChromosomes = chromosomes.filter { it !in nonEmptyChromosomes }
+            if (emptyChromosomes.isNotEmpty()) {
+                LOG.info("Chromosomes with no reads detected are ignored. Use --debug for details.")
+                LOG.debug("Ignored chromosomes: ${emptyChromosomes.joinToString(",") { it.name }}")
+            }
+
             return GenomeQuery(genomeQuery.genome, *nonEmptyChromosomes.map { it.name }.toTypedArray())
         }
 
@@ -297,7 +303,7 @@ abstract class SpanModelFitExperiment<
                         LOG.info("Loading coverage data for $chromosome")
                         coveragesDfMap[chromosome] = DataFrame.load(chrCoveragePath)
                     } else {
-                        LOG.info("No coverage information available for $chromosome")
+                        LOG.debug("No coverage information available for $chromosome")
                     }
                 }
                 LOG.info("Completed loading extended model: $tarPath")
