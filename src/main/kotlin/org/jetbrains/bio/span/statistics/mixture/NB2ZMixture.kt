@@ -104,27 +104,27 @@ class NB2ZMixture(
             val pHigh = highScheme.successProbability
             val meanFlipped = meanLow > meanHigh
             if (meanFlipped) {
-                LOG.warn(
+                LOG.debug(
                     "After fitting the model, mean emission in LOW state ($meanLow) is higher than " +
                             "mean emission in HIGH state ($meanHigh)."
                 )
             }
             val pFlipped = pLow > pHigh
             if (pFlipped) {
-                LOG.warn(
+                LOG.debug(
                     "After fitting the model, emission's parameter p in LOW state ($pLow) is higher than " +
                             "emission's parameter p in HIGH state ($pHigh)."
                 )
             }
             if (meanFlipped && pFlipped) {
-                LOG.warn("This usually indicates that the states were flipped during fitting. We will now flip them back.")
+                LOG.debug("Updated flipped states.")
                 negBinEmissionSchemes[0] = highScheme
                 negBinEmissionSchemes[1] = lowScheme
                 val tmp = weights[1]
                 weights[1] = weights[2]
                 weights[2] = tmp
             } else if (meanFlipped || pFlipped) {
-                LOG.warn("This is generally harmless, but could indicate low quality of data.")
+                LOG.warn("Low quality of data detected after fitting the model.")
             }
         }
     }

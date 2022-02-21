@@ -240,12 +240,13 @@ LABELS, FDR, GAP options are ignored.
                             "-cs", chromsizes,
                             "--workdir", it.toString(),
                             "-t", path.toString(),
-                            "--threads", THREADS.toString()
+                            "--threads", THREADS.toString(),
+                            "--debug"
                         )
                     )
                 }
                 assertTrue("After fitting the model, emission's parameter p in LOW state" in out)
-                assertTrue("This is generally harmless, but could indicate low quality of data." in  out)
+                assertTrue("Low quality of data detected after fitting the model." in  out)
             }
         }
     }
