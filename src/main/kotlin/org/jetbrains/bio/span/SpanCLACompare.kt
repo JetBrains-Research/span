@@ -108,7 +108,7 @@ object SpanCLACompare {
                     SpanCLA.LOG.info("TYPE: $peaksType")
                     SpanCLA.LOG.info("PEAKS: $peaksPath")
                 } else {
-                    SpanCLA.LOG.info("NO output path given, process model fitting only.")
+                    SpanCLA.LOG.info("NO peaks path given, process model fitting only.")
                     SpanCLA.LOG.info("LABELS, FDR, GAP options are ignored.")
                 }
                 configureParallelism(threads)
