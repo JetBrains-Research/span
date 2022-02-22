@@ -33,11 +33,10 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
     modelClass: Class<Model>,
     fixedModelPath: Path?,
     threshold: Double,
-    maxIterations: Int,
-    saveExtendedInfo: Boolean = false
+    maxIterations: Int
 ) : SpanModelFitExperiment<Model, SpanAnalyzeFitInformation, ZLH>(
     fitInformation, modelFitter, modelClass, ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L), fixedModelPath,
-    threshold, maxIterations, saveExtendedInfo
+    threshold, maxIterations
 ) {
 
     override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span"
@@ -67,8 +66,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
             threshold: Double = Fitter.THRESHOLD,
             maxIterations: Int = Fitter.MAX_ITERATIONS,
             multistarts: Int = Fitter.MULTISTARTS,
-            multistartIterations: Int = Fitter.MULTISTART_ITERATIONS,
-            saveExtendedInfo: Boolean = false
+            multistartIterations: Int = Fitter.MULTISTART_ITERATIONS
         ): SpanPeakCallingExperiment<out ClassificationModel> {
             require(paths.isNotEmpty()) { "No data" }
             val fitInformation = SpanAnalyzeFitInformation.createFitInformation(
@@ -87,8 +85,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
                     NB2ZHMM::class.java,
                     fixedModelPath,
                     threshold,
-                    maxIterations,
-                    saveExtendedInfo
+                    maxIterations
                 )
             } else {
                 SpanPeakCallingExperiment(
@@ -102,8 +99,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
                     ConstrainedNBZHMM::class.java,
                     fixedModelPath,
                     threshold,
-                    maxIterations,
-                    saveExtendedInfo
+                    maxIterations
                 )
             }
         }

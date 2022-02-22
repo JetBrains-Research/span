@@ -22,7 +22,8 @@ import org.slf4j.LoggerFactory
 open class SpanFitResults(
     val fitInfo: SpanFitInformation,
     val model: ClassificationModel,
-    val logNullMemberships: Map<String, DataFrame>
+    val logNullMemberships: Map<String, DataFrame>,
+    val statesDataFrameMap: Map<String, DataFrame>
 ) {
     companion object {
         internal val LOG = LoggerFactory.getLogger(SpanFitResults::class.java)

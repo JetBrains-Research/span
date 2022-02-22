@@ -211,7 +211,7 @@ PEAKS: $peaksPath
                     )
                 }
                 assertIn(
-                    """NO output path given, process model fitting only.
+                    """NO peaks path given, process model fitting only.
 LABELS, FDR, GAP options are ignored.
 """, out
                 )
@@ -499,7 +499,7 @@ CONVERGENCE THRESHOLD: ${Fitter.THRESHOLD}
 """, out
                 )
                 assertFalse(
-                    """NO output path given, process model fitting only.
+                    """NO peaks path given, process model fitting only.
     LABELS, FDR, GAP options are ignored.
     """ in out
                 )

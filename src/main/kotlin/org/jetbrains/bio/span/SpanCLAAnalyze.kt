@@ -57,7 +57,6 @@ object SpanCLAAnalyze {
                 .withRequiredArg()
                 .ofType(Int::class.java)
                 .defaultsTo(Fitter.MULTISTART_ITERATIONS)
-            acceptsAll(listOf("ext"), "Save extended information to model file")
             if (experimental) {
                 accepts(
                     "model-type",
@@ -343,35 +342,31 @@ object SpanCLAAnalyze {
                 mapabilityPath = null
             }
             return lazy {
-                val saveExtendedInfo = options.has("ext")
                 val experiment = when (modelType) {
                     SpanModelType.NB2Z_HMM ->
                         SpanPeakCallingExperiment.getExperiment(
                             genomeQuery, data, bin, fragment, unique, modelPath,
-                            threshold, maxIterations, multistarts, multistartIterations,
-                            saveExtendedInfo
+                            threshold, maxIterations, multistarts, multistartIterations
                         )
                     SpanModelType.NB2Z_MIXTURE ->
                         SpanPeakCallingExperimentNB2ZMixture.getExperiment(
                             genomeQuery, data, fragment, bin, unique, modelPath,
-                            threshold, maxIterations, multistarts, multistartIterations,
-                            saveExtendedInfo
+                            threshold, maxIterations, multistarts, multistartIterations
                         )
                     SpanModelType.NB2_HMM ->
                         SpanPeakCallingExperimentNB2HMM.getExperiment(
                             genomeQuery, data, bin, fragment, unique, modelPath,
-                            threshold, maxIterations, multistarts, multistartIterations,
-                            saveExtendedInfo
+                            threshold, maxIterations, multistarts, multistartIterations
                         )
                     SpanModelType.NB3Z_HMM ->
                         SpanPeakCallingExperimentNB3ZHMM.getExperiment(
                             genomeQuery, data, bin, fragment, unique, modelPath,
-                            threshold, maxIterations, multistarts, multistartIterations,
+                            threshold, maxIterations, multistarts, multistartIterations
                         )
                     SpanModelType.NB3_HMM3 ->
                         SpanPeakCallingExperimentNB3HMM.getExperiment(
                             genomeQuery, data, bin, fragment, unique, modelPath,
-                            threshold, maxIterations, multistarts, multistartIterations,
+                            threshold, maxIterations, multistarts, multistartIterations
                         )
                     SpanModelType.POISSON_REGRESSION_MIXTURE -> {
                         SpanPeakCallingExperimentP2ZRegrMixture.getExperiment(

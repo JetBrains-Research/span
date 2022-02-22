@@ -21,9 +21,7 @@ class CoverageScoresQueryTest {
             data[chromosome1, Strand.PLUS].addAll(intArrayOf(0, 2, 4, 6, 10, 12, 14, 20, 21, 22, 25))
         }.build(unique = false)
 
-        assertTrue(Precision.equals(0.72, CoverageScoresQuery.computeScale(genomeQuery, cond, control), 0.01))
-        assertEquals(0, CoverageScoresQuery.getScore(ChromosomeRange(0, 30, chromosome1), cond, control, 1.0))
-        assertEquals(2, CoverageScoresQuery.getScore(ChromosomeRange(0, 5, chromosome1), cond, control, 0.5))
+        assertTrue(Precision.equals(0.72, CoverageScoresQuery.computeScales(genomeQuery, cond, control)!!.first, 0.01))
     }
 }
 

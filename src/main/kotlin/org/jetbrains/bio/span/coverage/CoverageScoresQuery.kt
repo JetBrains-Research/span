@@ -2,7 +2,6 @@ package org.jetbrains.bio.span.coverage
 
 import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
-import org.jetbrains.bio.genome.Strand
 import org.jetbrains.bio.genome.coverage.Coverage
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.genome.query.Query
@@ -10,17 +9,17 @@ import org.jetbrains.bio.genome.query.ReadsQuery
 import org.jetbrains.bio.util.exists
 import org.jetbrains.bio.util.reduceIds
 import org.jetbrains.bio.util.stemGz
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import java.nio.file.Path
 import kotlin.math.ceil
 import kotlin.math.max
-import kotlin.math.min
 
 /**
- * Coverage query to reproduce DiffBind-like scores.
+ * Coverage query with scaling down to smallest of treatment or control libraries
  * 1. Reads are computed using [unique] option
  * 2. Preprocessed reads are converted into tags using [Fragment] option
- * 3. Control coverage is scaled to match treatment
- * 4. Resulting score is treatment - scale * control
+ * 3. Treatment and control scales are computed
  */
 class CoverageScoresQuery(
     val genomeQuery: GenomeQuery,
@@ -42,11 +41,11 @@ class CoverageScoresQuery(
         get() = "Treatment: $treatmentPath, Control: $controlPath, " +
                 "Fragment: $fragment, Keep-dup: ${!unique}"
 
-    private val treatmentCoverage by lazy {
+    val treatmentReads by lazy {
         ReadsQuery(genomeQuery, treatmentPath, unique, fragment, showLibraryInfo = showLibraryInfo)
     }
 
-    private val controlCoverage by lazy {
+    val controlReads by lazy {
         controlPath?.let {
             ReadsQuery(genomeQuery, it, unique, fragment, showLibraryInfo = showLibraryInfo)
         }
@@ -56,63 +55,61 @@ class CoverageScoresQuery(
      * Shows whether the relevant caches are present.
      */
     val ready: Boolean
-        get() = treatmentCoverage.npzPath().exists && controlCoverage?.npzPath()?.exists ?: true
+        get() = treatmentReads.npzPath().exists && controlReads?.npzPath()?.exists ?: true
 
-    val scale: Double by lazy {
-        if (!ready || controlCoverage == null) {
-            return@lazy 0.0  // When no caches
-        }
-        return@lazy computeScale(genomeQuery, treatmentCoverage.get(), controlCoverage!!.get())
+    val scales: Pair<Double, Double>? by lazy {
+        computeScales(genomeQuery, treatmentReads.get(), controlReads?.get())
     }
 
     override fun apply(t: ChromosomeRange): Int {
-        return getScore(t, treatmentCoverage.get(), controlCoverage?.get(), scale)
+        if (controlReads == null) {
+            return treatmentReads.get().getBothStrandsCoverage(t)
+        }
+        val (tS, cS) = scales!!
+        return max(0, ceil(
+            treatmentReads.get().getBothStrandsCoverage(t) * tS -
+                    controlReads!!.get().getBothStrandsCoverage(t) * cS).toInt())
     }
 
     companion object {
+        private val LOG: Logger = LoggerFactory.getLogger(CoverageScoresQuery::class.java)
 
         /**
-         * Compute multiplier to scale control coverage to match treatment
+         * Compute multipliers to scale bigger library to smaller
          */
-        internal fun computeScale(
+        fun computeScales(
             genomeQuery: GenomeQuery,
             treatmentCoverage: Coverage,
-            controlCoverage: Coverage
-        ): Double {
-            val conditionSize = genomeQuery.get().sumOf {
-                treatmentCoverage.getCoverage(it.range.on(it).on(Strand.PLUS)).toLong() +
-                        treatmentCoverage.getCoverage(it.range.on(it).on(Strand.MINUS)).toLong()
+            controlCoverage: Coverage?
+        ): Pair<Double, Double>? {
+            if (controlCoverage == null) {
+                return null
             }
-            val controlSize = genomeQuery.get().sumOf {
-                controlCoverage.getCoverage(it.range.on(it).on(Strand.PLUS)).toLong() +
-                        controlCoverage.getCoverage(it.range.on(it).on(Strand.MINUS)).toLong()
+            val treatmentTotal = genomeQuery.get().sumOf {
+                treatmentCoverage.getBothStrandsCoverage(it.range.on(it)).toLong()
             }
-            return min(1.0, conditionSize.toDouble() / controlSize)
-        }
-
-        internal fun getScore(
-            t: ChromosomeRange,
-            treatmentReads: Coverage,
-            controlReads: Coverage?,
-            scale: Double
-        ): Int {
-            return if (controlReads != null) {
-                val plusStrandBin = t.on(Strand.PLUS)
-                val plusStrandScore = max(
-                    0,
-                    treatmentReads.getCoverage(plusStrandBin) -
-                            ceil(controlReads.getCoverage(plusStrandBin) * scale).toInt()
+            val controlTotal = genomeQuery.get().sumOf {
+                controlCoverage.getBothStrandsCoverage(it.range.on(it)).toLong()
+            }
+            val rationTreatmentToControl = 1.0 * treatmentTotal / controlTotal
+            val controlScale: Double
+            val treatScale: Double
+            if (treatmentTotal > controlTotal) {
+                controlScale = 1.0
+                treatScale = 1.0 / rationTreatmentToControl
+                LOG.info(
+                    "Scale treatment to control data because treatment is bigger. " +
+                            "Scale factor ${"%.3f".format(treatScale)}"
                 )
-                val minusStrandBin = t.on(Strand.MINUS)
-                val minusStrandScore = max(
-                    0,
-                    treatmentReads.getCoverage(minusStrandBin) -
-                            ceil(controlReads.getCoverage(minusStrandBin) * scale).toInt()
-                )
-                plusStrandScore + minusStrandScore
             } else {
-                treatmentReads.getBothStrandsCoverage(t)
+                treatScale = 1.0
+                controlScale = rationTreatmentToControl
+                LOG.info(
+                    "Scale control to treatment data because control is bigger. " +
+                            "Scale factor ${"%.3f".format(controlScale)}"
+                )
             }
+            return treatScale to controlScale
         }
     }
 

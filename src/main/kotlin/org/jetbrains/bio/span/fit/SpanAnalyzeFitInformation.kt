@@ -73,7 +73,7 @@ data class SpanAnalyzeFitInformation(
         }
 
     @Transient
-    private var scoreQueries: List<CoverageScoresQuery>? = null
+    var scoreQueries: List<CoverageScoresQuery>? = null
 
     override fun prepareScores() {
         scoreQueries = data.map {
