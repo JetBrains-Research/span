@@ -27,7 +27,6 @@ class SpanFitInformationTest {
     val gq = GenomeQuery(Genome["to1"])
     val chr2 = gq.get()[1]
 
-
     @Test
     fun checkWrongBuild() {
         expectedEx.expect(IllegalStateException::class.java)
@@ -96,45 +95,6 @@ class SpanFitInformationTest {
         }
     }
 
-    @Test
-    fun checkLoad() {
-        val info = SpanRegrMixtureAnalyzeFitInformation(
-            gq, SpanDataPaths("path_to_file".toPath(), "path_to_control".toPath()),
-            "mapability.bigWig".toPath(), FixedFragment(42), false, 200
-        )
-        withTempFile("foo", ".tar") { path ->
-            path.bufferedWriter().use {
-                it.write(
-                    """{
-  "build": "to1",
-  "data": [
-    {
-      "treatment": "path_to_file",
-      "control": "path_to_control"
-    }
-  ],
-  "mapability_path": "mapability.bigWig",
-  "labels": [
-    "treatment_control"
-  ],
-  "fragment": 42,
-  "unique": false,
-  "bin_size": 200,
-  "chromosomes_sizes": {
-    "chr1": 10000000,
-    "chr2": 1000000,
-    "chr3": 1000000,
-    "chrM": 10000,
-    "chrX": 1000000
-  },
-  "fit.information.fqn": "org.jetbrains.bio.span.fit.experimental.SpanRMAnalyzeFitInformation",  
-  "version": 4
-}"""
-                )
-            }
-            assertEquals(info, SpanFitInformation.load(path))
-        }
-    }
 
     @Test
     fun checkWrongVersion() {
