@@ -11,6 +11,7 @@ import org.jetbrains.bio.util.Logs
 import org.jetbrains.bio.util.stemGz
 import org.jetbrains.bio.util.withTempFile
 import org.junit.Test
+import org.slf4j.event.Level
 import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -47,15 +48,14 @@ class SpanModelFitExperimentTest {
                 path, GenomeQuery(Genome["to1"], "chr1"), 200, goodQuality = true
             )
             println("Saved sampled track file: $path")
-            val (out, _) = Logs.captureLoggingOutput {
+            val (out, _) = Logs.captureLoggingOutput(Level.DEBUG) {
                 val effectiveGenomeQuery = SpanModelFitExperiment.filterGenomeQueryWithData(
                     GenomeQuery(Genome["to1"]), listOf(SpanDataPaths(path, null)), AutoFragment, true
                 )
                 assertEquals("[chr1]", effectiveGenomeQuery.get().map { it.name }.toString())
             }
-            assertIn("chr2: no reads detected, ignoring", out)
-            assertIn("chr3: no reads detected, ignoring", out)
-            assertIn("chrX: no reads detected, ignoring", out)
+            assertIn("Chromosomes with no reads detected are ignored. Use --debug for details.", out)
+            assertIn("Ignored chromosomes: chr2,chr3,chrX,chrM", out)
         }
     }
 
