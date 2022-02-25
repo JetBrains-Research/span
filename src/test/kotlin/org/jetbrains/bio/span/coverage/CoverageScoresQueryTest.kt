@@ -1,10 +1,12 @@
 package org.jetbrains.bio.span.coverage
 
 import org.apache.commons.math3.util.Precision
-import org.jetbrains.bio.genome.*
+import org.jetbrains.bio.genome.Chromosome
+import org.jetbrains.bio.genome.Genome
+import org.jetbrains.bio.genome.GenomeQuery
+import org.jetbrains.bio.genome.Strand
 import org.jetbrains.bio.genome.coverage.SingleEndCoverage
 import org.junit.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class CoverageScoresQueryTest {
@@ -21,7 +23,9 @@ class CoverageScoresQueryTest {
             data[chromosome1, Strand.PLUS].addAll(intArrayOf(0, 2, 4, 6, 10, 12, 14, 20, 21, 22, 25))
         }.build(unique = false)
 
-        assertTrue(Precision.equals(0.72, CoverageScoresQuery.computeScales(genomeQuery, cond, control)!!.first, 0.01))
+        val (scaleTreatment, scaleControl) = CoverageScoresQuery.computeScales(genomeQuery, cond, control)!!
+        assertTrue(Precision.equals(1.0, scaleTreatment, 0.1))
+        assertTrue(Precision.equals(0.72, scaleControl, 0.1))
     }
 }
 
