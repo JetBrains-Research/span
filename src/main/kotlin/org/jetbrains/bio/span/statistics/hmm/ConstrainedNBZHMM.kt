@@ -91,8 +91,7 @@ class ConstrainedNBZHMM(
                     preprocessed: Preprocessed<DataFrame>,
                     title: String,
                     threshold: Double,
-                    maxIterations: Int,
-                    attempt: Int
+                    maxIterations: Int
                 ): ConstrainedNBZHMM {
                     val df = preprocessed.get()
                     val means = DoubleArray(numReplicates * 2)
@@ -104,7 +103,7 @@ class ConstrainedNBZHMM(
                             "Model can't be trained on empty coverage, exiting."
                         }
                         LOG.debug("Replicate $d")
-                        val (meansD, failuresD) = guessByData(emissions, 2, attempt)
+                        val (meansD, failuresD) = guessByData(emissions, 2)
                         means[d] = meansD[0]
                         means[d + numReplicates] = meansD[1]
                         failures[d] = failuresD[0]
@@ -118,9 +117,8 @@ class ConstrainedNBZHMM(
                     preprocessed: List<Preprocessed<DataFrame>>,
                     title: String,
                     threshold: Double,
-                    maxIterations: Int,
-                    attempt: Int
-                ) = super.fit(preprocessed, title, threshold, maxIterations, attempt).apply {
+                    maxIterations: Int
+                ) = super.fit(preprocessed, title, threshold, maxIterations).apply {
                     flipStatesIfNecessary(numReplicates)
                 }
             }
@@ -137,16 +135,14 @@ class ConstrainedNBZHMM(
                     preprocessed: Preprocessed<DataFrame>,
                     title: String,
                     threshold: Double,
-                    maxIterations: Int,
-                    attempt: Int
-                ) = guess(listOf(preprocessed), title, threshold, maxIterations, attempt)
+                    maxIterations: Int
+                ) = guess(listOf(preprocessed), title, threshold, maxIterations)
 
                 override fun guess(
                     preprocessed: List<Preprocessed<DataFrame>>,
                     title: String,
                     threshold: Double,
-                    maxIterations: Int,
-                    attempt: Int
+                    maxIterations: Int
                 ): ConstrainedNBZHMM {
                     val df = DataFrame.rowBind(preprocessed.map { it.get() }.toTypedArray())
                     val means = DoubleArray((numReplicates1 + numReplicates2) * 2)
@@ -158,7 +154,7 @@ class ConstrainedNBZHMM(
                             "Model can't be trained on empty coverage (track $d1), exiting."
                         }
                         LOG.debug("Replicate $d1")
-                        val (meansD1, failuresD1) = guessByData(emissions1, 2, attempt)
+                        val (meansD1, failuresD1) = guessByData(emissions1, 2)
                         means[d1] = meansD1[0]
                         means[d1 + numReplicates1] = meansD1[1]
                         failures[d1] = failuresD1[0]
@@ -171,7 +167,7 @@ class ConstrainedNBZHMM(
                             "Model can't be trained on empty coverage (track ${d2 + numReplicates1}), exiting."
                         }
                         LOG.debug("Replicate $d2")
-                        val (meansD2, failuresD2) = guessByData(emissions2, 2, attempt)
+                        val (meansD2, failuresD2) = guessByData(emissions2, 2)
                         means[d2 + numReplicates1 * 2] = meansD2[0]
                         means[d2 + numReplicates2 + numReplicates1 * 2] = meansD2[1]
                         failures[d2 + numReplicates1 * 2] = failuresD2[0]
@@ -184,9 +180,8 @@ class ConstrainedNBZHMM(
                     preprocessed: List<Preprocessed<DataFrame>>,
                     title: String,
                     threshold: Double,
-                    maxIterations: Int,
-                    attempt: Int
-                ) = super.fit(preprocessed, title, threshold, maxIterations, attempt).apply {
+                    maxIterations: Int
+                ) = super.fit(preprocessed, title, threshold, maxIterations).apply {
                     flipStatesIfNecessary(numReplicates1, numReplicates2)
                 }
             }

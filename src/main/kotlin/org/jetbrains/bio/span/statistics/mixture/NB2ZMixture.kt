@@ -76,18 +76,16 @@ class NB2ZMixture(
                 preprocessed: Preprocessed<DataFrame>,
                 title: String,
                 threshold: Double,
-                maxIterations: Int,
-                attempt: Int
-            ) = guess(listOf(preprocessed), title, threshold, maxIterations, attempt)
+                maxIterations: Int
+            ) = guess(listOf(preprocessed), title, threshold, maxIterations)
 
             override fun guess(
                 preprocessed: List<Preprocessed<DataFrame>>,
                 title: String,
                 threshold: Double,
-                maxIterations: Int,
-                attempt: Int
+                maxIterations: Int
             ): NB2ZMixture {
-                val (means, failures) = FreeNBZHMM.guess(preprocessed, 2, attempt)
+                val (means, failures) = FreeNBZHMM.guess(preprocessed, 2)
                 return NB2ZMixture(
                     means, failures,
                     doubleArrayOf(1 / 3.0, 1 / 3.0, 1 / 3.0).asF64Array()

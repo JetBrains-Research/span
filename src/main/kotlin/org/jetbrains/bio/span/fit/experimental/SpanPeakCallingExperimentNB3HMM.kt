@@ -45,9 +45,7 @@ class SpanPeakCallingExperimentNB3HMM<Model : ClassificationModel> private const
             unique: Boolean = true,
             fixedModelPath: Path? = null,
             threshold: Double = Fitter.THRESHOLD,
-            maxIterations: Int = Fitter.MAX_ITERATIONS,
-            multistarts: Int = Fitter.MULTISTARTS,
-            multistartIterations: Int = Fitter.MULTISTART_ITERATIONS
+            maxIterations: Int = Fitter.MAX_ITERATIONS
         ): SpanPeakCallingExperimentNB3HMM<out ClassificationModel> {
             require(paths.isNotEmpty()) { "No data" }
             val fitInformation = SpanAnalyzeFitInformation.createFitInformation(
@@ -57,12 +55,7 @@ class SpanPeakCallingExperimentNB3HMM<Model : ClassificationModel> private const
             require(paths.size == 1) { "Multiple replicates are not supported" }
             return SpanPeakCallingExperimentNB3HMM(
                 fitInformation,
-                when {
-                    multistarts > 1 ->
-                        NB3HMM.fitter().multiStarted(multistarts, multistartIterations)
-                    else ->
-                        NB3HMM.fitter()
-                },
+                NB3HMM.fitter(),
                 NB3HMM::class.java,
                 fixedModelPath,
                 threshold,
@@ -92,18 +85,16 @@ class NB3HMM(nbMeans: DoubleArray, nbFailures: DoubleArray) : FreeNBHMM(nbMeans,
                 preprocessed: Preprocessed<DataFrame>, 
                 title: String,
                 threshold: Double, 
-                maxIterations: Int,
-                attempt: Int
-            ): NB3HMM = guess(listOf(preprocessed), title, threshold, maxIterations, attempt)
+                maxIterations: Int
+            ): NB3HMM = guess(listOf(preprocessed), title, threshold, maxIterations)
 
             override fun guess(
                 preprocessed: List<Preprocessed<DataFrame>>,
                 title: String,
                 threshold: Double,
-                maxIterations: Int,
-                attempt: Int
+                maxIterations: Int
             ): NB3HMM {
-                val (means, fs) = guess(preprocessed, 3, attempt)
+                val (means, fs) = guess(preprocessed, 3)
                 return NB3HMM(means, fs)
             }
         }

@@ -50,8 +50,6 @@ class SpanPeakCallingExperimentNB2ZMixture private constructor(
             fixedModelPath: Path?,
             threshold: Double = Fitter.THRESHOLD,
             maxIterations: Int = Fitter.MAX_ITERATIONS,
-            multistarts: Int = Fitter.MULTISTARTS,
-            multistartIterations: Int = Fitter.MULTISTART_ITERATIONS
         ): SpanPeakCallingExperimentNB2ZMixture {
             require(paths.size == 1) { "Mixture currently accepts a single data track." }
             val fitInformation = createFitInformation(
@@ -60,12 +58,7 @@ class SpanPeakCallingExperimentNB2ZMixture private constructor(
             )
             return SpanPeakCallingExperimentNB2ZMixture(
                 fitInformation,
-                when {
-                    multistarts > 1 ->
-                        NB2ZMixture.fitter().multiStarted(multistarts, multistartIterations)
-                    else ->
-                        NB2ZMixture.fitter()
-                },
+                NB2ZMixture.fitter(),
                 fixedModelPath,
                 threshold,
                 maxIterations

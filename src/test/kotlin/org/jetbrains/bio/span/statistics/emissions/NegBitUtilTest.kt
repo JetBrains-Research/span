@@ -1,26 +1,24 @@
 package org.jetbrains.bio.span.statistics.emissions
 
+import org.jetbrains.bio.span.statistics.emission.NegBinEmissionScheme
 import org.jetbrains.bio.span.statistics.emission.NegBinUtil
-import org.junit.Assert
 import org.junit.Test
 import kotlin.test.assertEquals
 
 class NegBitUtilTest {
-    @Test
-    fun testSNR() {
-        val snrs = DoubleArray(5) { NegBinUtil.multiStartSignalToNoise(it) }
-        Assert.assertTrue(doubleArrayOf(10.0, 20.0, 5.0, 40.0, 2.5).contentEquals(snrs))
-    }
 
     @Test
     fun testGuessByData() {
-        val emissions = IntArray(20) {1} + IntArray(20) {10} + IntArray(20) {200}
+        val s1 = NegBinEmissionScheme(40.0, 1.0).sampler()
+        val s2 = NegBinEmissionScheme(0.5, 100.0).sampler()
+
+        val emissions = IntArray(100) {s1.asInt + 1} + IntArray(10000) {s2.asInt + 1}
         val (means0, failures0) = NegBinUtil.guessByData(
-            emissions, 2, 0
+            emissions, 2
         )
-        assertEquals(70.33, means0[0], 1e-2)
-        assertEquals(703.33, means0[1], 1e-2)
-        assertEquals(77.36, failures0[0], 1e-2)
-        assertEquals(773.66, failures0[1], 1e-2)
+        assertEquals(1.87, means0[0], 1.0)
+        assertEquals(18.66, means0[1], 1.0)
+        assertEquals(2.05, failures0[0], 1.0)
+        assertEquals(20.52, failures0[1], 1.0)
     }
 }

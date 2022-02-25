@@ -87,9 +87,8 @@ class NegBin2ZeroRegressionMixture(
                 preprocessed: Preprocessed<DataFrame>,
                 title: String,
                 threshold: Double,
-                maxIterations: Int,
-                attempt: Int
-            ) = guess(listOf(preprocessed), title, threshold, maxIterations, attempt)
+                maxIterations: Int
+            ) = guess(listOf(preprocessed), title, threshold, maxIterations)
 
             /**
              * We assume that the response vector is the integer-valued column 0,
@@ -99,10 +98,8 @@ class NegBin2ZeroRegressionMixture(
                 preprocessed: List<Preprocessed<DataFrame>>,
                 title: String,
                 threshold: Double,
-                maxIterations: Int,
-                attempt: Int
+                maxIterations: Int
             ): NegBin2ZeroRegressionMixture {
-                require(attempt <= 1) { "Multistart not supported." }
                 // Filter out 0s, since they are covered by dedicated ZERO state
                 val emissions = preprocessed.flatMap {
                     it.get().let { df -> df.sliceAsInt(df.labels.first()).toList() }

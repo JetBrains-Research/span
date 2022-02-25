@@ -64,9 +64,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
             unique: Boolean = true,
             fixedModelPath: Path? = null,
             threshold: Double = Fitter.THRESHOLD,
-            maxIterations: Int = Fitter.MAX_ITERATIONS,
-            multistarts: Int = Fitter.MULTISTARTS,
-            multistartIterations: Int = Fitter.MULTISTART_ITERATIONS
+            maxIterations: Int = Fitter.MAX_ITERATIONS
         ): SpanPeakCallingExperiment<out ClassificationModel> {
             require(paths.isNotEmpty()) { "No data" }
             val fitInformation = SpanAnalyzeFitInformation.createFitInformation(
@@ -76,12 +74,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
             return if (paths.size == 1) {
                 SpanPeakCallingExperiment(
                     fitInformation,
-                    when {
-                        multistarts > 1 -> 
-                            NB2ZHMM.fitter().multiStarted(multistarts, multistartIterations)
-                        else -> 
-                            NB2ZHMM.fitter()
-                    },
+                    NB2ZHMM.fitter(),
                     NB2ZHMM::class.java,
                     fixedModelPath,
                     threshold,
@@ -90,12 +83,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
             } else {
                 SpanPeakCallingExperiment(
                     fitInformation,
-                    when {
-                        multistarts > 1 -> ConstrainedNBZHMM.fitter(paths.size)
-                            .multiStarted(multistarts, multistartIterations)
-                        else -> 
-                            ConstrainedNBZHMM.fitter(paths.size)
-                    },
+                    ConstrainedNBZHMM.fitter(paths.size),
                     ConstrainedNBZHMM::class.java,
                     fixedModelPath,
                     threshold,

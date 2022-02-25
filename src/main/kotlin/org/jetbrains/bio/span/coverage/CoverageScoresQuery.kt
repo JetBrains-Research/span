@@ -62,13 +62,7 @@ class CoverageScoresQuery(
     }
 
     override fun apply(t: ChromosomeRange): Int {
-        if (controlReads == null) {
-            return treatmentReads.get().getBothStrandsCoverage(t)
-        }
-        val (tS, cS) = scales!!
-        return max(0, ceil(
-            treatmentReads.get().getBothStrandsCoverage(t) * tS -
-                    controlReads!!.get().getBothStrandsCoverage(t) * cS).toInt())
+        return treatmentReads.get().getBothStrandsCoverage(t)
     }
 
     companion object {

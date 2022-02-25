@@ -44,9 +44,7 @@ class SpanPeakCallingExperimentNB2HMM<Model : ClassificationModel> private const
             unique: Boolean = true,
             fixedModelPath: Path? = null,
             threshold: Double = Fitter.THRESHOLD,
-            maxIterations: Int = Fitter.MAX_ITERATIONS,
-            multistarts: Int = Fitter.MULTISTARTS,
-            multistartIterations: Int = Fitter.MULTISTART_ITERATIONS
+            maxIterations: Int = Fitter.MAX_ITERATIONS
         ): SpanPeakCallingExperimentNB2HMM<out ClassificationModel> {
             require(paths.isNotEmpty()) { "No data" }
             val fitInformation = SpanAnalyzeFitInformation.createFitInformation(
@@ -56,12 +54,7 @@ class SpanPeakCallingExperimentNB2HMM<Model : ClassificationModel> private const
             require(paths.size == 1) { "Multiple replicates are not supported by the model" }
             return SpanPeakCallingExperimentNB2HMM(
                 fitInformation,
-                when {
-                    multistarts > 1 ->
-                        NB2HMM.fitter().multiStarted(multistarts, multistartIterations)
-                    else ->
-                        NB2HMM.fitter()
-                },
+                NB2HMM.fitter(),
                 NB2HMM::class.java,
                 fixedModelPath,
                 threshold,
@@ -91,18 +84,16 @@ class NB2HMM(nbMeans: DoubleArray, nbFailures: DoubleArray) : FreeNBHMM(nbMeans,
                 preprocessed: Preprocessed<DataFrame>,
                 title: String,
                 threshold: Double,
-                maxIterations: Int,
-                attempt: Int
-            ): NB2HMM = guess(listOf(preprocessed), title, threshold, maxIterations, attempt)
+                maxIterations: Int
+            ): NB2HMM = guess(listOf(preprocessed), title, threshold, maxIterations)
 
             override fun guess(
                 preprocessed: List<Preprocessed<DataFrame>>,
                 title: String,
                 threshold: Double,
                 maxIterations: Int,
-                attempt: Int
             ): NB2HMM {
-                val (means, fs) = guess(preprocessed, 2, attempt)
+                val (means, fs) = guess(preprocessed, 2)
                 return NB2HMM(means, fs)
             }
         }

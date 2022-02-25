@@ -85,9 +85,8 @@ class PoissonRegression2Mixture(
                 preprocessed: Preprocessed<DataFrame>,
                 title: String,
                 threshold: Double,
-                maxIterations: Int,
-                attempt: Int
-            ) = guess(listOf(preprocessed), title, threshold, maxIterations, attempt)
+                maxIterations: Int
+            ) = guess(listOf(preprocessed), title, threshold, maxIterations)
 
             /**
              * We assume that the response vector is the integer-valued column 0,
@@ -97,10 +96,8 @@ class PoissonRegression2Mixture(
                 preprocessed: List<Preprocessed<DataFrame>>,
                 title: String,
                 threshold: Double,
-                maxIterations: Int,
-                attempt: Int
+                maxIterations: Int
             ): PoissonRegression2Mixture {
-                require(attempt <= 1) { "Multistart is not supported." }
                 // Filter out 0s, since they are covered by dedicated ZERO state
                 val emissions = preprocessed.flatMap {
                     it.get().let { df -> df.sliceAsInt(df.labels.first()).toList() }

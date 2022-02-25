@@ -1,14 +1,13 @@
 package org.jetbrains.bio.span.fit.experimental
 
 import org.jetbrains.bio.dataframe.DataFrame
-import org.jetbrains.bio.span.statistics.emission.NegBinUtil.guessByData
 import org.jetbrains.bio.span.statistics.emission.NegBinEmissionScheme
+import org.jetbrains.bio.span.statistics.emission.NegBinUtil.guessByData
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.emission.IntegerEmissionScheme
 import org.jetbrains.bio.statistics.hmm.MLFreeHMM
 import org.jetbrains.bio.viktor.F64Array
 import org.slf4j.LoggerFactory
-import kotlin.math.pow
 
 /**
  * Abstract hidden Markov model with multidimensional integer-valued emissions.
@@ -22,7 +21,12 @@ open class FreeNBHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) : MLFreeHMM(
         return negBinEmissionSchemes[i]
     }
 
-    override fun fit(preprocessed: List<Preprocessed<DataFrame>>, title: String, threshold: Double, maxIterations: Int) {
+    override fun fit(
+        preprocessed: List<Preprocessed<DataFrame>>,
+        title: String,
+        threshold: Double,
+        maxIterations: Int
+    ) {
         super.fit(preprocessed, title, threshold, maxIterations)
         flipStatesIfNecessary(negBinEmissionSchemes, logPriorProbabilities, logTransitionProbabilities)
     }
@@ -43,11 +47,11 @@ open class FreeNBHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) : MLFreeHMM(
     companion object {
         private val LOG = LoggerFactory.getLogger(NB2HMM::class.java)
 
-        fun guess(preprocessed: List<Preprocessed<DataFrame>>, n: Int, attempt: Int): Pair<DoubleArray, DoubleArray> {
+        fun guess(preprocessed: List<Preprocessed<DataFrame>>, n: Int): Pair<DoubleArray, DoubleArray> {
             val emissions = preprocessed.flatMap {
                 it.get().let { df -> df.sliceAsInt(df.labels.first()).toList() }
             }.toIntArray()
-            return guessByData(emissions, n, attempt)
+            return guessByData(emissions, n)
         }
 
         /**
