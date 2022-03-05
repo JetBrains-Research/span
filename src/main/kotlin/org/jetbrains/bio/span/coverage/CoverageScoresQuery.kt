@@ -12,7 +12,6 @@ import org.jetbrains.bio.util.stemGz
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
-import kotlin.math.ceil
 import kotlin.math.max
 
 /**
@@ -27,6 +26,7 @@ class CoverageScoresQuery(
     private val controlPath: Path?,
     val fragment: Fragment,
     val unique: Boolean = true,
+    val subtractControl: Boolean = false,
     val showLibraryInfo: Boolean = true,
 ) : Query<ChromosomeRange, Int> {
 
@@ -57,12 +57,17 @@ class CoverageScoresQuery(
     val ready: Boolean
         get() = treatmentReads.npzPath().exists && controlReads?.npzPath()?.exists ?: true
 
-    val scales: Pair<Double, Double>? by lazy {
-        computeScales(genomeQuery, treatmentReads.get(), controlReads?.get())
-    }
+
 
     override fun apply(t: ChromosomeRange): Int {
-        return treatmentReads.get().getBothStrandsCoverage(t)
+        if (controlPath == null || !subtractControl) {
+            return treatmentReads.get().getBothStrandsCoverage(t)
+        }
+        val (tS, cS) = computeScales(genomeQuery, treatmentReads.get(), controlReads?.get())!!
+        return max(
+            0, (cS * treatmentReads.get().getBothStrandsCoverage(t) -
+                    tS * controlReads!!.get().getBothStrandsCoverage(t)).toInt()
+        )
     }
 
     companion object {

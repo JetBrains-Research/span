@@ -46,7 +46,8 @@ data class SpanCompareFitInformation(
                             it.treatment,
                             it.control,
                             fragment,
-                            unique
+                            unique,
+                            subtractControl = true
                         ), binSize
                     )
                 }
@@ -61,17 +62,33 @@ data class SpanCompareFitInformation(
         }
 
     @Transient
-    private var scoreQueries1: List<CoverageScoresQuery>? = null
+    var scoreQueries1: List<CoverageScoresQuery>? = null
 
     @Transient
-    private var scoreQueries2: List<CoverageScoresQuery>? = null
+    var scoreQueries2: List<CoverageScoresQuery>? = null
 
     override fun prepareScores() {
         scoreQueries1 = data1.map {
-            CoverageScoresQuery(genomeQuery(), it.treatment, it.control, fragment, unique, showLibraryInfo = false)
+            CoverageScoresQuery(
+                genomeQuery(),
+                it.treatment,
+                it.control,
+                fragment,
+                unique,
+                subtractControl = true,
+                showLibraryInfo = false
+            )
         }
         scoreQueries2 = data2.map {
-            CoverageScoresQuery(genomeQuery(), it.treatment, it.control, fragment, unique, showLibraryInfo = false)
+            CoverageScoresQuery(
+                genomeQuery(),
+                it.treatment,
+                it.control,
+                fragment,
+                unique,
+                subtractControl = true,
+                showLibraryInfo = false
+            )
         }
     }
 
@@ -79,7 +96,7 @@ data class SpanCompareFitInformation(
      * Return log2 fold change of average summary coverage across data
      */
     override fun score(chromosomeRange: ChromosomeRange): Double {
-        check (scoreQueries1 != null && scoreQueries2 != null) {
+        check(scoreQueries1 != null && scoreQueries2 != null) {
             "Please use prepareScores before!"
         }
 

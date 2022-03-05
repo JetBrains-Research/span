@@ -8,8 +8,8 @@ Version 1.0
 
 Released on XXX 2022
 
-- Switched to new procedure for computing peaks from HMM - islands:
- * 1) Estimate posterior probabilities
+- Switched to new procedure for computing peaks from HMM:
+ * 1) Estimate HMM posterior error probabilities
  * 2) Pick candidate bins with relaxed posterior error probability, e.g. sqrt(fdr).
  * This mitigates the problem of wide marks peaks split on strong fdrs.
  * 3) Using gap merge bins into candidate islands.

@@ -67,7 +67,6 @@ object SpanCLACompare {
 
                 val gap = options.valueOf("gap") as Int
                 val fdr = options.valueOf("fdr") as Double
-                val peaksType = options.valueOf("peaks-type") as String
                 val peaksPath = options.valueOf("peaks") as Path?
                 val threads = options.valueOf("threads") as Int?
 
@@ -105,7 +104,6 @@ object SpanCLACompare {
                 SpanCLA.LOG.info("FDR: $fdr")
                 SpanCLA.LOG.info("GAP: $gap")
                 if (peaksPath != null) {
-                    SpanCLA.LOG.info("TYPE: $peaksType")
                     SpanCLA.LOG.info("PEAKS: $peaksPath")
                 } else {
                     SpanCLA.LOG.info("NO peaks path given, process model fitting only.")

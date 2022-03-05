@@ -115,22 +115,11 @@ arguments.
 `-w, --workdir PATH`<br>
 Path to the working directory (stores coverage and model caches).
 
-`--peaks-type PEAKS_TYPE`<br>
-Peaks computation method.<br>
-Use 'islands' to merge consequent blocks of enriched bins with relaxed gaps, or 'simple' to merge fdr enriched HMM bins
-with gap into peaks (previous). (default: 'islands')
-
 `--threads THREADS`<br>
 Configures the parallelism level. SPAN utilizes both multithreading and specialized processor extensions like SSE2, AVX,
 etc.
 
-`--ms, --multistarts`<br>
-Number of multi-start runs using different model initializations. Use 0 to disable (default: 5)
-
-`--ms-iterations, --msi`<br>
-Number of iterations for each multi-start run (default: 2)
-
-`--ms-iterations, --msi`<br>
+`-i, --iterations`<br>
 Maximum number of iterations for EM algorithm. (default: 20)
 
 `--threshold, --tr`<br>

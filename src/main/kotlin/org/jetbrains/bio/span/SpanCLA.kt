@@ -13,7 +13,6 @@ import org.jetbrains.bio.span.fit.SpanFitInformation
 import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_BIN
 import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_FDR
 import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_GAP
-import org.jetbrains.bio.span.peaks.PeaksType
 import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.util.*
 import org.jetbrains.bio.util.FileSize.Companion.GB
@@ -157,16 +156,6 @@ experimental                    Experimental features
                 .withRequiredArg()
                 .ofType(Int::class.java)
                 .defaultsTo(SPAN_DEFAULT_GAP)
-            accepts(
-                "peaks-type",
-                """
-                    Peaks computation method.
-                   '${PeaksType.PEAKS_TYPE_ISLANDS.cmd}' - Compute candidate peaks with relaxed fdr and gap, followed by fdr test. 
-                   '${PeaksType.PEAKS_TYPE_FDR_GAP.cmd}' - Merge single fdr enriched bins with gap into peaks (previous).
-                """.trimIndent()
-            )
-                .withRequiredArg()
-                .defaultsTo(PeaksType.PEAKS_TYPE_ISLANDS.cmd)
             acceptsAll(listOf("w", "workdir"), "Path to the working dir")
                 .withRequiredArg().withValuesConvertedBy(PathConverter.exists())
                 .defaultsTo(System.getProperty("user.dir").toPath())

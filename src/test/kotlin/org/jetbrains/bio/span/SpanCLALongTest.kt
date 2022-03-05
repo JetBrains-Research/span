@@ -146,7 +146,6 @@ FRAGMENT: auto
 BIN: $BIN
 FDR: $FDR
 GAP: $GAP
-TYPE: islands
 PEAKS: $peaksPath
 """, out
                 )

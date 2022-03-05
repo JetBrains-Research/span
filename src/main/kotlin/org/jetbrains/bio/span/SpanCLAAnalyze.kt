@@ -8,7 +8,6 @@ import org.jetbrains.bio.genome.coverage.FixedFragment
 import org.jetbrains.bio.span.fit.*
 import org.jetbrains.bio.span.fit.experimental.*
 import org.jetbrains.bio.span.peaks.Peak
-import org.jetbrains.bio.span.peaks.PeaksType
 import org.jetbrains.bio.span.peaks.getPeaks
 import org.jetbrains.bio.span.semisupervised.LocationLabel
 import org.jetbrains.bio.span.semisupervised.SpanSemiSupervised
@@ -114,11 +113,6 @@ object SpanCLAAnalyze {
                 require(gap >= 0) { "Negative gap: $gap" }
                 val fdr = options.valueOf("fdr") as Double
                 require(0 < fdr && fdr <= 1) { "Illegal fdr: $fdr, expected range: (0, 1)" }
-                val peaksTypeCmd = options.valueOf("peaks-type") as String
-                require(peaksTypeCmd in PeaksType.values().map { it.cmd }) {
-                    "Unknown peaks-type: $peaksTypeCmd, expected ${PeaksType.values().joinToString(", ") { it.cmd }}"
-                }
-                val peaksType = PeaksType.getTypeFromCmd(peaksTypeCmd)
                 val threads = options.valueOf("threads") as Int?
                 require(threads == null || threads > 0) {
                     "Not positive threads option: $threads"
@@ -132,7 +126,6 @@ object SpanCLAAnalyze {
                         SpanCLA.LOG.info("FDR: $fdr")
                         SpanCLA.LOG.info("GAP: $gap")
                     }
-                    SpanCLA.LOG.info("TYPE: ${peaksType.cmd}")
                     SpanCLA.LOG.info("PEAKS: $peaksPath")
                 } else {
                     SpanCLA.LOG.info("NO peaks path given, process model fitting only.")
@@ -155,7 +148,7 @@ object SpanCLAAnalyze {
 
                 if (peaksPath != null) {
                     if (labelsPath == null) {
-                        val peaks = spanResults.getPeaks(genomeQuery, fdr, gap, peaksType = peaksType)
+                        val peaks = spanResults.getPeaks(genomeQuery, fdr, gap)
                         Peak.savePeaks(
                             peaks, peaksPath,
                             "peak${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
@@ -181,8 +174,7 @@ object SpanCLAAnalyze {
                             genomeQuery,
                             labels,
                             "",
-                            SpanSemiSupervised.PARAMETERS,
-                            peaksType
+                            SpanSemiSupervised.PARAMETERS
                         )
                         SpanCLA.LOG.info("Tuning model on the loaded labels complete.")
                         val (optimalFDR, optimalGap) = SpanSemiSupervised.PARAMETERS[optimalIndex]
@@ -201,7 +193,7 @@ object SpanCLAAnalyze {
                             peaksPath.parent
                                     / "${peaksPath.fileName.stem}_parameters.csv"
                         )
-                        val peaks = spanResults.getPeaks(genomeQuery, optimalFDR, optimalGap, peaksType = peaksType)
+                        val peaks = spanResults.getPeaks(genomeQuery, optimalFDR, optimalGap)
                         Peak.savePeaks(
                             peaks, peaksPath,
                             "peak${if (fragment is FixedFragment) "_$fragment" else ""}_" +
