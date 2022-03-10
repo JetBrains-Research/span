@@ -17,7 +17,7 @@ import kotlin.test.assertTrue
 /**
  * RM - regression mixture
  */
-class SpanRMCLALongTest {
+class SpanRegrMixtureCLALongTest {
 
     @Before
     fun setUp() {

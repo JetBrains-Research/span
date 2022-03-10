@@ -22,7 +22,7 @@ import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class SpanMCLALongTest {
+class SpanMixtureCLALongTest {
 
     @Before
     fun setUp() {
@@ -114,7 +114,6 @@ class SpanMCLALongTest {
                         "-fdr", "0.05",
                         "-t", path.toString(),
                         "--model-type", SpanModelType.NB2Z_MIXTURE.id,
-                        "--ext"
                     )
                 )
                 // Check created bed file
