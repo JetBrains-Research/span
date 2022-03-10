@@ -13,6 +13,7 @@ import org.jetbrains.bio.span.fit.SpanCompareFitInformation
 import org.jetbrains.bio.span.fit.SpanFitResults
 import org.jetbrains.bio.span.fit.SpanFitResults.Companion.LOG
 import org.jetbrains.bio.span.fit.SpanModelFitExperiment
+import org.jetbrains.bio.span.fit.experimental.SpanRegrMixtureAnalyzeFitInformation
 import org.jetbrains.bio.statistics.f64Array
 import org.jetbrains.bio.statistics.hypothesis.Fdr
 import org.jetbrains.bio.util.CancellableState
@@ -140,6 +141,9 @@ private fun SpanFitResults.getChromosomePeaks(
         val scales = computeScales(fitInfo.genomeQuery(), treatmentCoverage, controlCoverage)!!
         treatmentScale = scales.first
         controlScale = scales.second
+    } else if (fitInfo is SpanRegrMixtureAnalyzeFitInformation) {
+        treatmentCoverage = fitInfo.scoreQuery!!.treatmentReads.get()
+        controlCoverage = null
     } else {
         throw IllegalStateException("Incorrect fitInfo: ${fitInfo.javaClass.name}")
     }

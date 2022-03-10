@@ -87,7 +87,7 @@ data class SpanRegrMixtureAnalyzeFitInformation constructor(
         }
 
     @Transient
-    private lateinit var scoreQuery: CoverageScoresQuery
+    var scoreQuery: CoverageScoresQuery? = null
 
     override fun prepareScores() {
         scoreQuery =
@@ -100,7 +100,7 @@ data class SpanRegrMixtureAnalyzeFitInformation constructor(
     /**
      * Return coverage.
      */
-    override fun score(chromosomeRange: ChromosomeRange): Double = scoreQuery.apply(chromosomeRange).toDouble()
+    override fun score(chromosomeRange: ChromosomeRange): Double = scoreQuery!!.apply(chromosomeRange).toDouble()
 
     companion object {
         @Suppress("MayBeConstant", "unused")
