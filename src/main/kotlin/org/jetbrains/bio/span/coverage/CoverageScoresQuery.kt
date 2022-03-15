@@ -7,6 +7,7 @@ import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.genome.query.Query
 import org.jetbrains.bio.genome.query.ReadsQuery
 import org.jetbrains.bio.util.exists
+import org.jetbrains.bio.util.isAccessible
 import org.jetbrains.bio.util.reduceIds
 import org.jetbrains.bio.util.stemGz
 import org.slf4j.Logger
@@ -55,7 +56,7 @@ class CoverageScoresQuery(
      * Shows whether the relevant caches are present.
      */
     val ready: Boolean
-        get() = treatmentReads.npzPath().exists && controlReads?.npzPath()?.exists ?: true
+        get() = treatmentReads.npzPath().isAccessible() && controlReads?.npzPath()?.isAccessible() ?: true
 
 
 

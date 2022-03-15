@@ -18,6 +18,8 @@ import org.jetbrains.bio.statistics.f64Array
 import org.jetbrains.bio.statistics.hypothesis.Fdr
 import org.jetbrains.bio.util.CancellableState
 import org.jetbrains.bio.util.Progress
+import org.jetbrains.bio.util.exists
+import org.jetbrains.bio.util.isAccessible
 import org.jetbrains.bio.viktor.F64Array
 import org.jetbrains.bio.viktor.KahanSum
 import org.jetbrains.bio.viktor.logAddExp
@@ -123,34 +125,36 @@ private fun SpanFitResults.getChromosomePeaks(
     // 1) The more strict FDR, the fewer peaks with smaller average length
     // 2) Peaks should not disappear when relaxing FDR
     // Peak score is computed as length-weighted average p-value in its consequent enriched bins.
-    val treatmentCoverage: Coverage
+    val treatmentCoverage: Coverage?
     val controlCoverage: Coverage?
     var treatmentScale = 1.0
     var controlScale = 1.0
     if (fitInfo is SpanAnalyzeFitInformation) {
-        treatmentCoverage = fitInfo.scoreQueries!!.single().treatmentReads.get()
-        controlCoverage = fitInfo.scoreQueries!!.single().controlReads?.get()
-        if (controlCoverage != null) {
-            val scales = computeScales(fitInfo.genomeQuery(), treatmentCoverage, controlCoverage)!!
-            treatmentScale = scales.first
-            controlScale = scales.second
-        }
+        val treatmentReads = fitInfo.scoreQueries!!.single().treatmentReads
+        treatmentCoverage = if (treatmentReads.isAccessible()) treatmentReads.get() else null
+        val controlReads = fitInfo.scoreQueries!!.single().controlReads
+        controlCoverage = if (controlReads?.isAccessible() == true) controlReads.get() else null
     } else if (fitInfo is SpanCompareFitInformation) {
-        treatmentCoverage = fitInfo.scoreQueries1!!.single().treatmentReads.get()
-        controlCoverage = fitInfo.scoreQueries2!!.single().treatmentReads.get()
-        val scales = computeScales(fitInfo.genomeQuery(), treatmentCoverage, controlCoverage)!!
-        treatmentScale = scales.first
-        controlScale = scales.second
+        val treatmentReads = fitInfo.scoreQueries1!!.single().treatmentReads
+        treatmentCoverage = if (treatmentReads.isAccessible()) treatmentReads.get() else null
+        val controlReads = fitInfo.scoreQueries2!!.single().treatmentReads
+        controlCoverage = if (controlReads.isAccessible()) controlReads.get() else null
     } else if (fitInfo is SpanRegrMixtureAnalyzeFitInformation) {
-        treatmentCoverage = fitInfo.scoreQuery!!.treatmentReads.get()
+        val treatmentReads = fitInfo.scoreQuery!!.treatmentReads
+        treatmentCoverage = if (treatmentReads.isAccessible()) treatmentReads.get() else null
         controlCoverage = null
     } else {
         throw IllegalStateException("Incorrect fitInfo: ${fitInfo.javaClass.name}")
     }
+    if (treatmentCoverage != null && controlCoverage != null) {
+        val scales = computeScales(fitInfo.genomeQuery(), treatmentCoverage, controlCoverage)!!
+        treatmentScale = scales.first
+        controlScale = scales.second
+    }
     val islandsLogPs = F64Array(candidateIslands.size) { islandIndex ->
         val blocks = strictBins.findConsequentBlocks(candidateIslands[islandIndex])
         val blocksLogPs = blocks.map { (from, to) ->
-            if (controlCoverage != null) {
+            if (treatmentCoverage != null && controlCoverage != null) {
                 // Estimate enrichment vs local coverage in control track
                 val start = offsets[from]
                 val end = if (to < offsets.size) offsets[to] else chromosome.length
