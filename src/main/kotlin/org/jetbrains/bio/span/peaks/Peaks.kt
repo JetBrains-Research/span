@@ -129,22 +129,27 @@ private fun SpanFitResults.getChromosomePeaks(
     val controlCoverage: Coverage?
     var treatmentScale = 1.0
     var controlScale = 1.0
-    if (fitInfo is SpanAnalyzeFitInformation) {
-        val treatmentReads = fitInfo.scoreQueries!!.single().treatmentReads
-        treatmentCoverage = if (treatmentReads.isAccessible()) treatmentReads.get() else null
-        val controlReads = fitInfo.scoreQueries!!.single().controlReads
-        controlCoverage = if (controlReads?.isAccessible() == true) controlReads.get() else null
-    } else if (fitInfo is SpanCompareFitInformation) {
-        val treatmentReads = fitInfo.scoreQueries1!!.single().treatmentReads
-        treatmentCoverage = if (treatmentReads.isAccessible()) treatmentReads.get() else null
-        val controlReads = fitInfo.scoreQueries2!!.single().treatmentReads
-        controlCoverage = if (controlReads.isAccessible()) controlReads.get() else null
-    } else if (fitInfo is SpanRegrMixtureAnalyzeFitInformation) {
-        val treatmentReads = fitInfo.scoreQuery!!.treatmentReads
-        treatmentCoverage = if (treatmentReads.isAccessible()) treatmentReads.get() else null
-        controlCoverage = null
-    } else {
-        throw IllegalStateException("Incorrect fitInfo: ${fitInfo.javaClass.name}")
+    when (fitInfo) {
+        is SpanAnalyzeFitInformation -> {
+            val treatmentReads = fitInfo.scoreQueries!!.single().treatmentReads
+            treatmentCoverage = if (treatmentReads.isAccessible()) treatmentReads.get() else null
+            val controlReads = fitInfo.scoreQueries!!.single().controlReads
+            controlCoverage = if (controlReads?.isAccessible() == true) controlReads.get() else null
+        }
+        is SpanCompareFitInformation -> {
+            val treatmentReads = fitInfo.scoreQueries1!!.single().treatmentReads
+            treatmentCoverage = if (treatmentReads.isAccessible()) treatmentReads.get() else null
+            val controlReads = fitInfo.scoreQueries2!!.single().treatmentReads
+            controlCoverage = if (controlReads.isAccessible()) controlReads.get() else null
+        }
+        is SpanRegrMixtureAnalyzeFitInformation -> {
+            val treatmentReads = fitInfo.scoreQuery!!.treatmentReads
+            treatmentCoverage = if (treatmentReads.isAccessible()) treatmentReads.get() else null
+            controlCoverage = null
+        }
+        else -> {
+            throw IllegalStateException("Incorrect fitInfo: ${fitInfo.javaClass.name}")
+        }
     }
     if (treatmentCoverage != null && controlCoverage != null) {
         val scales = computeScales(fitInfo.genomeQuery(), treatmentCoverage, controlCoverage)!!
