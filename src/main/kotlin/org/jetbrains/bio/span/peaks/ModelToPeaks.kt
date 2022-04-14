@@ -228,7 +228,7 @@ object ModelToPeaks {
         return sum.result() / l
     }
 
-    private fun relaxedLogFdr(logFdr: Double, relaxPower: Double) = min(ln(0.1), logFdr * relaxPower)
+    fun relaxedLogFdr(logFdr: Double, relaxPower: Double = RELAX_POWER_DEFAULT) = min(ln(0.1), logFdr * relaxPower)
 
     private const val RELAX_POWER_DEFAULT = 0.5
 
