@@ -4,7 +4,7 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.span.fit.SpanFitResults
 import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment
-import org.jetbrains.bio.span.peaks.getPeaks
+import org.jetbrains.bio.span.peaks.SpanModelToPeaks
 import org.jetbrains.bio.span.semisupervised.LocationLabel.Companion.computeErrors
 import org.jetbrains.bio.util.CancellableState
 import org.jetbrains.bio.util.MultitaskProgress
@@ -52,7 +52,7 @@ object SpanSemiSupervised {
                 Callable {
                     cancellableState.checkCanceled()
                     val peaksOnLabeledGenomeQuery =
-                        results.getPeaks(labeledGenomeQuery, fdr, gap)
+                        SpanModelToPeaks.computeChromosomePeaks(results, labeledGenomeQuery, fdr, gap)
                     labelErrorsGrid[index] = computeErrors(
                         labels,
                         LocationsMergingList.create(

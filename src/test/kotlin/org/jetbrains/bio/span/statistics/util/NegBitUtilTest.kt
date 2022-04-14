@@ -1,7 +1,6 @@
-package org.jetbrains.bio.span.statistics.emissions
+package org.jetbrains.bio.span.statistics.util
 
 import org.jetbrains.bio.span.statistics.emission.NegBinEmissionScheme
-import org.jetbrains.bio.span.statistics.emission.NegBinUtil
 import org.junit.Test
 import kotlin.test.assertEquals
 

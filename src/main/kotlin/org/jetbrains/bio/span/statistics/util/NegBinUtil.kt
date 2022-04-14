@@ -1,4 +1,4 @@
-package org.jetbrains.bio.span.statistics.emission
+package org.jetbrains.bio.span.statistics.util
 
 import org.jetbrains.bio.statistics.distribution.NegativeBinomialDistribution
 import org.jetbrains.bio.statistics.standardDeviation

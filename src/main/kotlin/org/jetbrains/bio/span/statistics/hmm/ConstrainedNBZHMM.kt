@@ -3,7 +3,7 @@ package org.jetbrains.bio.span.statistics.hmm
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.span.fit.ZLH
 import org.jetbrains.bio.span.fit.ZLHID
-import org.jetbrains.bio.span.statistics.emission.NegBinUtil.guessByData
+import org.jetbrains.bio.span.statistics.util.NegBinUtil.guessByData
 import org.jetbrains.bio.span.statistics.emission.NegBinEmissionScheme
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.emission.ConstantIntegerEmissionScheme

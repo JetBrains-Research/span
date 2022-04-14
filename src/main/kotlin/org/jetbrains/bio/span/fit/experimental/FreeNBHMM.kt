@@ -2,7 +2,7 @@ package org.jetbrains.bio.span.fit.experimental
 
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.span.statistics.emission.NegBinEmissionScheme
-import org.jetbrains.bio.span.statistics.emission.NegBinUtil.guessByData
+import org.jetbrains.bio.span.statistics.util.NegBinUtil.guessByData
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.emission.IntegerEmissionScheme
 import org.jetbrains.bio.statistics.hmm.MLFreeHMM

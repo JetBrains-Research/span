@@ -7,8 +7,8 @@ import org.jetbrains.bio.genome.PeaksInfo
 import org.jetbrains.bio.genome.coverage.FixedFragment
 import org.jetbrains.bio.span.fit.*
 import org.jetbrains.bio.span.fit.experimental.*
+import org.jetbrains.bio.span.peaks.SpanModelToPeaks
 import org.jetbrains.bio.span.peaks.Peak
-import org.jetbrains.bio.span.peaks.getPeaks
 import org.jetbrains.bio.span.semisupervised.LocationLabel
 import org.jetbrains.bio.span.semisupervised.SpanSemiSupervised
 import org.jetbrains.bio.span.semisupervised.TuningResults
@@ -148,7 +148,7 @@ object SpanCLAAnalyze {
 
                 if (peaksPath != null) {
                     if (labelsPath == null) {
-                        val peaks = spanResults.getPeaks(genomeQuery, fdr, gap)
+                        val peaks = SpanModelToPeaks.computeChromosomePeaks(spanResults, genomeQuery, fdr, gap)
                         Peak.savePeaks(
                             peaks, peaksPath,
                             "peak${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
@@ -193,7 +193,7 @@ object SpanCLAAnalyze {
                             peaksPath.parent
                                     / "${peaksPath.fileName.stem}_parameters.csv"
                         )
-                        val peaks = spanResults.getPeaks(genomeQuery, optimalFDR, optimalGap)
+                        val peaks = SpanModelToPeaks.computeChromosomePeaks(spanResults, genomeQuery, optimalFDR, optimalGap)
                         Peak.savePeaks(
                             peaks, peaksPath,
                             "peak${if (fragment is FixedFragment) "_$fragment" else ""}_" +

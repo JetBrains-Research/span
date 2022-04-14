@@ -7,8 +7,8 @@ import org.jetbrains.bio.genome.coverage.FixedFragment
 import org.jetbrains.bio.span.fit.SpanDataPaths
 import org.jetbrains.bio.span.fit.SpanDifferentialPeakCallingExperiment
 import org.jetbrains.bio.span.fit.SpanFitResults
+import org.jetbrains.bio.span.peaks.SpanModelToPeaks
 import org.jetbrains.bio.span.peaks.Peak
-import org.jetbrains.bio.span.peaks.getPeaks
 import org.jetbrains.bio.util.*
 import org.slf4j.event.Level
 import java.nio.file.Path
@@ -117,7 +117,7 @@ object SpanCLACompare {
                 val differentialPeakCallingResults = lazyDifferentialPeakCallingResults.value
                 val genomeQuery = differentialPeakCallingResults.fitInfo.genomeQuery()
                 if (peaksPath != null) {
-                    val peaks = differentialPeakCallingResults.getPeaks(genomeQuery, fdr, gap)
+                    val peaks = SpanModelToPeaks.computeChromosomePeaks(differentialPeakCallingResults, genomeQuery, fdr, gap)
                     Peak.savePeaks(
                         peaks, peaksPath,
                         "diff${if (fragment is FixedFragment) "_$fragment" else ""}_${binSize}_${fdr}_${gap}"
