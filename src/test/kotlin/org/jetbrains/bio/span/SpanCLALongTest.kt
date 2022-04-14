@@ -3,25 +3,21 @@ package org.jetbrains.bio.span
 import kotlinx.support.jdk7.use
 import org.jetbrains.bio.Tests
 import org.jetbrains.bio.Tests.assertIn
-import org.jetbrains.bio.big.BedEntry
 import org.jetbrains.bio.experiment.Configuration
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.Location
-import org.jetbrains.bio.genome.containers.GenomeMap
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.format.BedFormat
-import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
+import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
 import org.jetbrains.bio.statistics.distribution.Sampling
-import org.jetbrains.bio.statistics.model.ClassificationModel
 import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.util.*
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import java.io.FileReader
-import java.nio.file.Path
 import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -245,7 +241,7 @@ LABELS, FDR, GAP options are ignored.
                     )
                 }
                 assertTrue("After fitting the model, emission's parameter p in LOW state" in out)
-                assertTrue("Low quality of data detected after fitting the model." in  out)
+                assertTrue("Low quality of data detected after fitting the model." in out)
             }
         }
     }
@@ -748,54 +744,6 @@ CONVERGENCE THRESHOLD: ${Fitter.THRESHOLD}
         fun assertLinesEqual(expected: String, actual: String) =
             assertEquals(expected.lines(), actual.lines())
 
-        fun sampleCoverage(path: Path, genomeQuery: GenomeQuery, bin: Int, goodQuality: Boolean) =
-            sampleCoverage(
-                path,
-                genomeQuery, bin,
-                genomeMap(genomeQuery) { BitSet() },
-                genomeMap(genomeQuery) { BitSet() },
-                goodQuality
-            )
-
-        fun sampleCoverage(
-            path: Path,
-            genomeQuery: GenomeQuery, bin: Int,
-            fulls: GenomeMap<BitSet>, zeroes: GenomeMap<BitSet>,
-            goodQuality: Boolean
-        ) {
-            withResource(
-                SpanCLALongTest::class.java,
-                if (goodQuality)
-                    "GSM646345_H1_H3K4me3_rep1_hg19_model.json"
-                else
-                    "yd6_k27ac_failed_model.json"
-            ) { modelPath ->
-                val model = ClassificationModel.load<NB2ZHMM>(modelPath)
-                model.logPriorProbabilities[0] = Double.NEGATIVE_INFINITY
-                BedFormat().print(path).use {
-                    genomeQuery.get().forEach { chr ->
-                        val bins = chr.length / bin
-                        val coverage = run {
-                            (0..9).forEach {
-                                val sample = model.sample(bins).sliceAsInt("d0")
-                                if (sample.any { it != 0 }) return@run sample
-                            }
-                            throw IllegalStateException("Couldn't sample coverage.")
-                        }
-                        for (b in 0 until bins) {
-                            val enriched = fulls[chr][b]
-                            val zero = zeroes[chr][b]
-                            check(!(enriched && zero)) { "Both enriched and zero for $b" }
-                            val c = if (enriched) bin else if (zero) 0 else coverage[b]
-                            for (i in 0 until c) {
-                                val start = b * bin + i
-                                it.print(BedEntry(chr.name, start, start + 1))
-                            }
-                        }
-                    }
-                }
-            }
-        }
 
         inline fun withSystemProperty(property: String, value: String, block: () -> Any) {
             val oldValue = System.setProperty(property, value)
