@@ -6,7 +6,7 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.span.SpanCLALongTest
-import org.jetbrains.bio.span.peaks.SpanModelToPeaks
+import org.jetbrains.bio.span.peaks.ModelToPeaks
 import org.jetbrains.bio.util.Logs
 import org.jetbrains.bio.util.stemGz
 import org.jetbrains.bio.util.withTempFile
@@ -73,7 +73,7 @@ class SpanModelFitExperimentTest {
                 fullGenomeQuery, listOf(SpanDataPaths(path, null)), 200, AutoFragment
             )
             assertTrue(
-                SpanModelToPeaks.computeChromosomePeaks(peakCallingExperiment.results, fullGenomeQuery, 0.05, 0).isNotEmpty(),
+                ModelToPeaks.computeChromosomePeaks(peakCallingExperiment.results, fullGenomeQuery, 0.05, 0).isNotEmpty(),
                 "Expected peak set not to be empty."
             )
         }

@@ -25,7 +25,7 @@ import kotlin.math.ln
 import kotlin.math.min
 
 
-object SpanModelToPeaks {
+object ModelToPeaks {
 
     /**
      * Main method to compute peaks from model.
