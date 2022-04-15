@@ -6,6 +6,7 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.span.SpanCLALongTest
+import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
 import org.jetbrains.bio.span.peaks.ModelToPeaks
 import org.jetbrains.bio.util.Logs
 import org.jetbrains.bio.util.stemGz
@@ -26,7 +27,7 @@ class SpanModelFitExperimentTest {
     fun testDataQuery() {
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
         withTempFile("track", ".bed.gz") { path ->
-            SpanCLALongTest.sampleCoverage(path, GenomeQuery(Genome["to1"]), 200, goodQuality = true)
+            sampleCoverage(path, GenomeQuery(Genome["to1"]), 200, goodQuality = true)
             println("Saved sampled track file: $path")
             val dataQuery = SpanAnalyzeFitInformation.createFitInformation(
                 GenomeQuery(Genome["to1"]), listOf(SpanDataPaths(path, null)),
@@ -44,7 +45,7 @@ class SpanModelFitExperimentTest {
     fun testEffectiveGenomeQueryEmptyChromosomes() {
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
         withTempFile("track", ".bed.gz") { path ->
-            SpanCLALongTest.sampleCoverage(
+            sampleCoverage(
                 path, GenomeQuery(Genome["to1"], "chr1"), 200, goodQuality = true
             )
             println("Saved sampled track file: $path")
@@ -65,7 +66,7 @@ class SpanModelFitExperimentTest {
         val fullGenomeQuery = GenomeQuery(Genome["to1"])
         val emptyMaps = genomeMap(effectiveGenomeQuery) { BitSet() }
         withTempFile("track", ".bed.gz") { path ->
-            SpanCLALongTest.sampleCoverage(
+            sampleCoverage(
                 path, effectiveGenomeQuery, 200, emptyMaps, emptyMaps, goodQuality = true
             )
             println("Saved sampled track file: $path")

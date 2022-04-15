@@ -10,7 +10,7 @@ import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.span.SpanCLALongTest.Companion.BIN
 import org.jetbrains.bio.span.SpanCLALongTest.Companion.THREADS
 import org.jetbrains.bio.span.SpanCLALongTest.Companion.TO
-import org.jetbrains.bio.span.SpanCLALongTest.Companion.sampleCoverage
+import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
 import org.jetbrains.bio.span.fit.SpanModelType
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.util.*

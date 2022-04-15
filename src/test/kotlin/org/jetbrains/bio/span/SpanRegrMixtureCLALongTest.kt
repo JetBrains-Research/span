@@ -4,6 +4,7 @@ import org.jetbrains.bio.Tests
 import org.jetbrains.bio.experiment.Configuration
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.format.BedFormat
+import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
 import org.jetbrains.bio.span.fit.SpanModelType
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.util.*
@@ -35,11 +36,11 @@ class SpanRegrMixtureCLALongTest {
     @Test
     fun testMultipleTracks() {
         withTempFile("trackA", ".bed.gz") { pathA ->
-            SpanCLALongTest.sampleCoverage(pathA, SpanCLALongTest.TO, SpanCLALongTest.BIN, goodQuality = true)
+            sampleCoverage(pathA, SpanCLALongTest.TO, SpanCLALongTest.BIN, goodQuality = true)
             println("Saved sampled track file: $pathA")
 
             withTempFile("trackB", ".bed.gz") { pathB ->
-                SpanCLALongTest.sampleCoverage(pathA, SpanCLALongTest.TO, SpanCLALongTest.BIN, goodQuality = false)
+                sampleCoverage(pathA, SpanCLALongTest.TO, SpanCLALongTest.BIN, goodQuality = false)
                 println("Saved sampled track file: $pathA")
 
                 withTempDirectory("work") { dir ->
@@ -71,7 +72,7 @@ class SpanRegrMixtureCLALongTest {
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
         withTempFile("track", ".bed.gz") { path ->
 
-            SpanCLALongTest.sampleCoverage(path, SpanCLALongTest.TO, SpanCLALongTest.BIN, goodQuality = true)
+            sampleCoverage(path, SpanCLALongTest.TO, SpanCLALongTest.BIN, goodQuality = true)
             println("Saved sampled track file: $path")
 
             withTempDirectory("work") {
@@ -122,8 +123,8 @@ class SpanRegrMixtureCLALongTest {
             withTempFile("track", ".bed.gz", dir) { path ->
                 withTempFile("control", ".bed.gz", dir) { control ->
                     // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
-                    SpanCLALongTest.sampleCoverage(path, SpanCLALongTest.TO, SpanCLALongTest.BIN, goodQuality = true)
-                    SpanCLALongTest.sampleCoverage(
+                    sampleCoverage(path, SpanCLALongTest.TO, SpanCLALongTest.BIN, goodQuality = true)
+                    sampleCoverage(
                         control,
                         SpanCLALongTest.TO,
                         SpanCLALongTest.BIN,
@@ -187,7 +188,7 @@ class SpanRegrMixtureCLALongTest {
         withTempDirectory("work") { dir ->
             withTempFile("track", ".bed.gz", dir) { path ->
                 // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
-                SpanCLALongTest.sampleCoverage(path, SpanCLALongTest.TO, SpanCLALongTest.BIN, goodQuality = true)
+                sampleCoverage(path, SpanCLALongTest.TO, SpanCLALongTest.BIN, goodQuality = true)
 
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
 
