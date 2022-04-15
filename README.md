@@ -27,7 +27,7 @@ JBR Genome Browser. Bioinformatics. 2021 May 21.
 
 The Latest release
 --------------
-Version [0.13.5244](https://github.com/JetBrains-Research/span/releases/tag/0.13.5244) released on Aug 12th, 2020.
+See [releases](https://github.com/JetBrains-Research/span/releases) section for actual information.
 
 Requirements
 ------------
@@ -44,8 +44,7 @@ $ java -jar span.jar analyze --help
 ```
 
 The `<output.bed>` file will contain predicted and FDR-controlled peaks in the
-ENCODE [broadPeak](https://genome.ucsc.edu/FAQ/FAQformat.html#format13) (BED 6+3) format
-(like [MACS2](https://github.com/taoliu/MACS)):
+ENCODE [broadPeak](https://genome.ucsc.edu/FAQ/FAQformat.html#format13) (BED 6+3) format:
 
 ```
 <chromosome> <peak start offset> <peak end offset> <peak_name> <score> . <coverage or fold/change> <-log p-value> <-log Q-value>
@@ -111,6 +110,9 @@ Resulting peaks file in ENCODE broadPeak* (BED 6+3) format. If omitted, only the
 `-m, --model MODEL`<br>
 This option is used to specify SPAN model path, if not provided, model name is composed of input names and other
 arguments.
+
+`--noclip`<br>
+Do not perform additional peaks clipping to increase reads density.
 
 `-w, --workdir PATH`<br>
 Path to the working directory (stores coverage and model caches).
