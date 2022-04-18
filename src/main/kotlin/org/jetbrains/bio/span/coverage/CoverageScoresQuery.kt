@@ -97,14 +97,14 @@ class CoverageScoresQuery(
             if (treatmentTotal > controlTotal) {
                 controlScale = 1.0
                 treatScale = 1.0 / rationTreatmentToControl
-                LOG.info(
+                LOG.debug(
                     "Scale treatment to control data because treatment is bigger. " +
                             "Scale factor ${"%.3f".format(treatScale)}"
                 )
             } else {
                 treatScale = 1.0
                 controlScale = rationTreatmentToControl
-                LOG.info(
+                LOG.debug(
                     "Scale control to treatment data because control is bigger. " +
                             "Scale factor ${"%.3f".format(controlScale)}"
                 )
