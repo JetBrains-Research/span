@@ -45,6 +45,7 @@ object ModelToPeaks {
         genomeQuery: GenomeQuery,
         fdr: Double,
         gap: Int,
+        clip: Boolean = true,
         cancellableState: CancellableState? = null
     ): List<Peak> {
         resetCounters()
@@ -52,7 +53,7 @@ object ModelToPeaks {
         spanFitResults.fitInfo.prepareScores()
         val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
             cancellableState?.checkCanceled()
-            val chromosomePeaks = computeChromosomePeaks(spanFitResults, chromosome, fdr, gap)
+            val chromosomePeaks = computeChromosomePeaks(spanFitResults, chromosome, fdr, gap, clip)
             progress.report(1)
             chromosomePeaks
         }
@@ -70,6 +71,7 @@ object ModelToPeaks {
         chromosome: Chromosome,
         fdr: Double,
         gap: Int,
+        clip: Boolean = true
     ): List<Peak> {
         // Check that we have information for requested chromosome
         val chromosomeIslands = if (chromosome.name in spanFitResults.fitInfo.chromosomesSizes) {
@@ -80,6 +82,7 @@ object ModelToPeaks {
                 spanFitResults.fitInfo.offsets(chromosome),
                 fdr,
                 gap,
+                clip = clip
             )
         } else {
             LOG.debug("NO peaks information for chromosome: ${chromosome.name} in fitInfo ${spanFitResults.fitInfo.build}")
@@ -96,6 +99,7 @@ object ModelToPeaks {
         fdr: Double,
         gap: Int,
         relaxPower: Double = RELAX_POWER_DEFAULT,
+        clip: Boolean = true,
         pseudoCount: Int = 1
     ): List<Peak> {
         // Compute candidate bins and islands with relaxed settings
@@ -180,18 +184,41 @@ object ModelToPeaks {
         val resultIslandsIndexes = candidateIslands.indices.filter {
             islandsLogQValues[it] < logFdr
         }
+        // Compute max clip density
+        val maxClippedDensity = if (clip)
+            computeClippedDensityThreshold(chromosome, fitInfo, candidateIslands, resultIslandsIndexes, offsets)
+        else
+            0.0
+
+        var clipStart = 0L
+        var clipEnd = 0L
         val resultIslands = resultIslandsIndexes.map { idx ->
             val (from, to) = candidateIslands[idx]
             val start = offsets[from]
             val end = if (to < offsets.size) offsets[to] else chromosome.length
+            // Optimize length
+            val (clippedStart, clippedEnd) = if (clip)
+                clipPeak(
+                    start,
+                    end,
+                    ((end - start) * MAX_CLIPPED_LENGTH).toInt(),
+                    maxClippedDensity
+                ) { s: Int, e: Int ->
+                    fitInfo.score(ChromosomeRange(s, e, chromosome)) / (e - s)
+                }
+            else
+                start to end
+            clipStart += (clippedStart - start)
+            clipEnd += (end - clippedEnd)
+
             Peak(
                 chromosome = chromosome,
-                startOffset = start,
-                endOffset = end,
+                startOffset = clippedStart,
+                endOffset = clippedEnd,
                 mlogpvalue = -islandsLogPs[idx] / LOG_10,
                 mlogqvalue = -islandsLogQValues[idx] / LOG_10,
                 // Value is either coverage of fold change
-                value = fitInfo.score(ChromosomeRange(start, end, chromosome)),
+                value = fitInfo.score(ChromosomeRange(clippedStart, clippedEnd, chromosome)),
                 // Score should be proportional original q-value
                 score = min(1000.0, -10 * islandsLogQValues[idx] / LOG_10).toInt()
             )
@@ -199,7 +226,12 @@ object ModelToPeaks {
 
         Peak.LOG.debug(
             "$chromosome: candidate bins / candidate/result islands " +
-                    "${candidateBins.cardinality()} / ${candidateIslands.size}/${resultIslands.size}"
+                    "${candidateBins.cardinality()} / ${candidateIslands.size}/${resultIslands.size}; " +
+                    "average clip start/end " +
+                    "${clipStart.toDouble() / max(1, resultIslands.size)}/${
+                        clipEnd.toDouble() / max(1, resultIslands.size)
+                    }"
+
         )
         candidateBinsCounter.addAndGet(candidateBins.cardinality())
         candidateIslandsCounter.addAndGet(candidateIslands.size)
@@ -226,6 +258,95 @@ object ModelToPeaks {
             l += b.toIndex - b.fromIndex
         }
         return sum.result() / l
+    }
+
+    private const val MAX_CLIPPED_DENSITY = 0.20
+    private const val MAX_CLIPPED_LENGTH = 0.20
+    private val CLIP_STEPS = intArrayOf(1, 2, 5, 10, 20, 50, 100, 200, 500, 1000)
+
+    /**
+     * Compute density threshold as
+     * noise_density + [maxClippedDensity] * (signal_density - noise_density).
+     */
+    private fun computeClippedDensityThreshold(
+        chromosome: Chromosome,
+        fitInfo: SpanFitInformation,
+        candidateIslands: List<BitRange>,
+        resultIslandsIndexes: List<Int>,
+        offsets: IntArray,
+        maxClippedDensity: Double = MAX_CLIPPED_DENSITY
+    ): Double {
+        var sumSignalScore = 0.0
+        var sumSignalLength = 0L
+        resultIslandsIndexes.forEach { idx ->
+            val (i, j) = candidateIslands[idx]
+            val start = offsets[i]
+            val end = if (j < offsets.size) offsets[j] else chromosome.length
+            sumSignalScore += fitInfo.score(ChromosomeRange(start, end, chromosome))
+            sumSignalLength += end - start
+        }
+        val avgSignalDensity = if (sumSignalLength > 0) sumSignalScore / sumSignalLength else 0.0
+        val sumNoiseScore = fitInfo.score(chromosome.range.on(chromosome)) - sumSignalScore
+        val sumNoiseLength = chromosome.length - sumSignalLength
+        val avgNoiseDensity = sumNoiseScore / sumNoiseLength
+        return avgNoiseDensity + maxClippedDensity * (avgSignalDensity - avgNoiseDensity)
+    }
+
+    /**
+     * Tries to reduce range by [CLIP_STEPS] from both sides while increasing [densityFunction].
+     *
+     * @param start Peak start
+     * @param end Peak end
+     * @param maxClippedLength Limits maximum length to be clipped
+     * @param maxClippedDensity Limits maximum density of clipped out fragment
+     * @param densityFunction Density function, i.e. coverage / length
+     */
+    private fun clipPeak(
+        start: Int,
+        end: Int,
+        maxClippedLength: Int,
+        maxClippedDensity: Double,
+        densityFunction: (Int, Int) -> (Double)
+    ): Pair<Int, Int> {
+        // Try to change left boundary
+        val maxStart = start + maxClippedLength
+        var currentStart = start
+        var step = CLIP_STEPS.size - 1
+        while (step >= 0 && currentStart <= maxStart) {
+            val newStart = currentStart + CLIP_STEPS[step]
+            if (newStart > maxStart) {
+                step -= 1
+                continue
+            }
+            // Clip while clipped part density is less than average density
+            val clipDensity = densityFunction(start, newStart)
+            if (clipDensity < maxClippedDensity) {
+                currentStart = newStart
+                step = min(step + 1, CLIP_STEPS.size - 1)
+            } else {
+                step -= 1
+            }
+        }
+        // Try to change right boundary
+        val minEnd = end - maxClippedLength
+        var currentEnd = end
+        step = CLIP_STEPS.size - 1
+        while (step >= 0 && currentEnd >= minEnd) {
+            val newEnd = currentEnd - CLIP_STEPS[step]
+            if (newEnd < minEnd) {
+                step -= 1
+                continue
+            }
+            // Clip while clipped part density is less than average density
+            val clipDensity = densityFunction(newEnd, end)
+            if (clipDensity < maxClippedDensity) {
+                currentEnd = newEnd
+                step = min(step + 1, CLIP_STEPS.size - 1)
+            } else {
+                step -= 1
+            }
+        }
+        return currentStart to currentEnd
     }
 
     fun relaxedLogFdr(logFdr: Double, relaxPower: Double = RELAX_POWER_DEFAULT) = min(ln(0.1), logFdr * relaxPower)

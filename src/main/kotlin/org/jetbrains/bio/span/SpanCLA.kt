@@ -177,6 +177,7 @@ experimental                    Experimental features
                 .withRequiredArg()
                 .ofType(Double::class.java)
                 .defaultsTo(Fitter.THRESHOLD)
+            accepts("noclip", "Do not perform additional peaks clipping to increase reads density")
         }
     }
 

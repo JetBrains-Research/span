@@ -148,7 +148,10 @@ object SpanCLAAnalyze {
 
                 if (peaksPath != null) {
                     if (labelsPath == null) {
-                        val peaks = ModelToPeaks.computeChromosomePeaks(spanResults, genomeQuery, fdr, gap)
+                        val peaks = ModelToPeaks.computeChromosomePeaks(
+                            spanResults, genomeQuery, fdr, gap,
+                            clip = !options.contains("noclip")
+                        )
                         Peak.savePeaks(
                             peaks, peaksPath,
                             "peak${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
@@ -193,7 +196,10 @@ object SpanCLAAnalyze {
                             peaksPath.parent
                                     / "${peaksPath.fileName.stem}_parameters.csv"
                         )
-                        val peaks = ModelToPeaks.computeChromosomePeaks(spanResults, genomeQuery, optimalFDR, optimalGap)
+                        val peaks = ModelToPeaks.computeChromosomePeaks(
+                            spanResults, genomeQuery, optimalFDR, optimalGap,
+                            clip = !options.contains("noclip")
+                        )
                         Peak.savePeaks(
                             peaks, peaksPath,
                             "peak${if (fragment is FixedFragment) "_$fragment" else ""}_" +
