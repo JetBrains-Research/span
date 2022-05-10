@@ -247,10 +247,10 @@ abstract class SpanModelFitExperiment<
         ): SpanFitResults {
             LOG.info("Loading model: $tarPath")
             return withTempDirectory(tarPath.stem) { dir ->
-                LOG.debug("Started model file decompress: $tarPath")
+                LOG.debug("Started model file decompress: ${tarPath.stem}")
                 Tar.decompress(tarPath, dir.toFile())
 
-                LOG.debug("Completed model file decompress and started loading: $tarPath")
+                LOG.debug("Completed model file decompress and started loading: ${tarPath.stem}")
                 val info = SpanFitInformation.load<SpanFitInformation>(dir / INFORMATION_JSON)
                 // Check genome build
                 genomeQuery?.let { info.checkGenome(it.genome) }
@@ -259,9 +259,9 @@ abstract class SpanModelFitExperiment<
                 val logNullMembershipsDF = DataFrame.load(dir / NULL_NPZ)
                 val logNullMembershipsMap = info.split(logNullMembershipsDF, genomeQuery)
                 val statesPath = dir / "states.npz"
-                LOG.info("Loading states data frame")
+                LOG.info("Loading states data frame ${tarPath.stem}")
                 val statesDfMap = info.split(DataFrame.load(statesPath), genomeQuery)
-                LOG.info("Completed loading model: $tarPath")
+                LOG.info("Completed loading model: ${tarPath.stem}")
                 return@withTempDirectory SpanFitResults(info, model, logNullMembershipsMap, statesDfMap)
             }
         }
