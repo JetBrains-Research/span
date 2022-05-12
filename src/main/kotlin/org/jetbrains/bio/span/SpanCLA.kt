@@ -60,10 +60,8 @@ Option                          Description
 -v, --version                   Show version
 analyze                         Peak calling mode
 compare                         Differential peak calling mode 
-experimental                    Experimental features
 """
     private const val ANALYZE = "analyze"
-    private const val EXPERIMENTAL = "experimental"
     private const val COMPARE = "compare"
 
     @JvmStatic
@@ -73,8 +71,7 @@ experimental                    Experimental features
             System.err.println(HELP)
         } else {
             when (args[0]) {
-                ANALYZE -> SpanCLAAnalyze.analyze(args.copyOfRange(1, args.size), false)
-                EXPERIMENTAL -> SpanCLAAnalyze.analyze(args.copyOfRange(1, args.size), true)
+                ANALYZE -> SpanCLAAnalyze.analyze(args.copyOfRange(1, args.size))
                 COMPARE -> SpanCLACompare.compare(args.copyOfRange(1, args.size))
 
                 "-?", "-h", "--help" -> println(HELP)

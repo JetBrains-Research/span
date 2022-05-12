@@ -50,7 +50,7 @@ class SpanRegrMixtureCLALongTest {
                         SpanCLALongTest.withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
                             SpanCLA.main(
                                 arrayOf(
-                                    "experimental",
+                                    "analyze",
                                     "-cs", chromsizes,
                                     "--workdir", dir.toString(),
                                     "-t", listOf(pathA, pathB).joinToString(","),
@@ -81,7 +81,7 @@ class SpanRegrMixtureCLALongTest {
                 val (out, _) = Logs.captureLoggingOutput {
                     SpanCLA.main(
                         arrayOf(
-                            "experimental", "-cs", chromsizes,
+                            "analyze", "-cs", chromsizes,
                             "--workdir", it.toString(),
                             "-t", path.toString(),
                             "--threads", SpanCLALongTest.THREADS.toString(),
@@ -134,7 +134,7 @@ class SpanRegrMixtureCLALongTest {
                     val chromsizes = Genome["to1"].chromSizesPath.toString()
                     SpanCLA.main(
                         arrayOf(
-                            "experimental",
+                            "analyze",
                             "-cs", chromsizes,
                             "--workdir", dir.toString(),
                             "-t", path.toString(),
@@ -178,10 +178,9 @@ class SpanRegrMixtureCLALongTest {
 
     /**
      * Model extension is used to determine the model type.
-     * .span = negative binomial HMM (default SPAN)
-     * .span2 = Poisson regression mixture (experimental SPAN)
-     * any other = error, unrecognized type.
-     * If the model extension contradicts the provided '--type' command line argument, Span should exit with an error.
+     * @see [SpanModelType] for details
+     * If the model extension contradicts the provided '--model-type' command line argument,
+     * Span should exit with an error.
      */
     @Test
     fun testCustomModelPathWrongExtension() {
@@ -197,7 +196,7 @@ class SpanRegrMixtureCLALongTest {
                     SpanCLALongTest.withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
                         SpanCLA.main(
                             arrayOf(
-                                "experimental",
+                                "analyze",
                                 "-cs", chromsizes,
                                 "--workdir", dir.toString(),
                                 "-t", path.toString(),

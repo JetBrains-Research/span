@@ -49,7 +49,7 @@ class SpanMixtureCLALongTest {
                     val chromsizes = Genome["to1"].chromSizesPath.toString()
                     SpanCLA.main(
                         arrayOf(
-                            "experimental",
+                            "analyze",
                             "-cs", chromsizes,
                             "--workdir", dir.toString(),
                             "-t", path.toString(),
@@ -106,7 +106,7 @@ class SpanMixtureCLALongTest {
                 val bedPath = dir / "result.bed"
                 SpanCLA.main(
                     arrayOf(
-                        "experimental",
+                        "analyze",
                         "--debug",
                         "-cs", Genome["to1"].chromSizesPath.toString(),
                         "-w", dir.toString(),

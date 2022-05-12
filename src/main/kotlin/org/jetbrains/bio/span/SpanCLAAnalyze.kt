@@ -19,7 +19,7 @@ import java.nio.file.Path
 
 object SpanCLAAnalyze {
 
-    internal fun analyze(params: Array<String>, experimental: Boolean) {
+    internal fun analyze(params: Array<String>) {
         with(SpanCLA.getOptionParser()) {
             acceptsAll(
                 listOf("t", "treatment"),
@@ -44,21 +44,23 @@ object SpanCLAAnalyze {
                 .availableIf("peaks")
                 .withRequiredArg()
                 .withValuesConvertedBy(PathConverter.exists())
-            if (experimental) {
-                accepts(
-                    "model-type",
-                    """
-                        Model type.
+            accepts(
+                "model-type",
+                """
+                        Model type. Experimental.
                         ${SpanModelType.values().joinToString("\n") { "'${it.id}' - ${it.description}" }}
                     """.trimIndent()
-                )
-                    .withRequiredArg()
-                    .defaultsTo(SpanModelType.NB2Z_HMM.id)
-                accepts("mapability", "Mapability bigWig file.")
-                    .availableIf("treatment")
-                    .withRequiredArg()
-                    .withValuesConvertedBy(PathConverter.exists())
-            }
+            )
+                .withRequiredArg()
+                .defaultsTo(SpanModelType.NB2Z_HMM.id)
+            accepts(
+                "mapability",
+                "Mapability bigWig file. Requires --model-type " +
+                        "${SpanModelType.POISSON_REGRESSION_MIXTURE} or ${SpanModelType.NEGBIN_REGRESSION_MIXTURE}"
+            )
+                .availableIf("treatment")
+                .withRequiredArg()
+                .withValuesConvertedBy(PathConverter.exists())
 
             parse(params) { options ->
                 if ("quiet" in options) {
@@ -68,8 +70,7 @@ object SpanCLAAnalyze {
                 }
                 SpanCLA.LOG.info("SPAN ${SpanCLA.version()}")
                 SpanCLA.LOG.info(
-                    "COMMAND: " +
-                            "analyze${if (experimental) "-experimental" else ""} ${params.joinToString(" ")}"
+                    "COMMAND: analyze ${params.joinToString(" ")}"
                 )
 
                 val peaksPath = options.valueOf("peaks") as Path?
@@ -106,7 +107,7 @@ object SpanCLAAnalyze {
                 SpanCLA.LOG.info("LOG: $logPath")
 
                 // Call now to preserve params logging order
-                val lazySpanResults = peakCallingResults(options, experimental)
+                val lazySpanResults = peakCallingResults(options)
 
                 val labelsPath = options.valueOf("labels") as Path?
                 val gap = options.valueOf("gap") as Int
@@ -258,7 +259,7 @@ object SpanCLAAnalyze {
      * Parses and logs most of the command line arguments.
      * Doesn't fit the model; this happens only if .value is invoked
      */
-    private fun peakCallingResults(options: OptionSet, experimental: Boolean): Lazy<SpanFitResults> {
+    private fun peakCallingResults(options: OptionSet): Lazy<SpanFitResults> {
         val modelPath = options.valueOf("model") as Path?
         if (modelPath != null) {
             require(modelPath.extension == "span") {
@@ -295,21 +296,15 @@ object SpanCLAAnalyze {
             val unique = SpanCLA.getUnique(options, log = true)
             val threshold = SpanCLA.getThreshold(options, log = true)
             val maxIterations = SpanCLA.getMaxIter(options, log = true)
-            val modelType: SpanModelType
             val mapabilityPath: Path?
-            if (experimental) {
-                modelType = getModelType(options, modelPath)
-                mapabilityPath = if (
-                    modelType == SpanModelType.POISSON_REGRESSION_MIXTURE ||
-                    modelType == SpanModelType.NEGBIN_REGRESSION_MIXTURE
-                ) {
-                    getMapabilityPath(options, log = true)
-                } else {
-                    null
-                }
+            val modelType: SpanModelType = getModelType(options, modelPath)
+            mapabilityPath = if (
+                modelType == SpanModelType.POISSON_REGRESSION_MIXTURE ||
+                modelType == SpanModelType.NEGBIN_REGRESSION_MIXTURE
+            ) {
+                getMapabilityPath(options, log = true)
             } else {
-                modelType = SpanModelType.NB2Z_HMM
-                mapabilityPath = null
+                null
             }
             return lazy {
                 val experiment = when (modelType) {

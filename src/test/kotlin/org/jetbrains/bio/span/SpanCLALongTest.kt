@@ -76,7 +76,6 @@ Option                          Description
 -v, --version                   Show version
 analyze                         Peak calling mode
 compare                         Differential peak calling mode 
-experimental                    Experimental features
 """.trim(), out.trim()
         )
     }
