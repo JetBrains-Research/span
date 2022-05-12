@@ -371,7 +371,7 @@ LABELS, FDR, GAP options are ignored.
                             )
                         )
                     }
-                    assertIn("Completed loading model: $modelPath", reloadOut)
+                    assertIn("Completed loading model: ${modelPath.stem}", reloadOut)
                     assertEquals("", reloadErr)
 
                     val (_, invalidErr) = Logs.captureLoggingOutput {
