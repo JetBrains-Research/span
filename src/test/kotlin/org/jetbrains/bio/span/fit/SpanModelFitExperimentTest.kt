@@ -5,7 +5,6 @@ import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.AutoFragment
-import org.jetbrains.bio.span.SpanCLALongTest
 import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
 import org.jetbrains.bio.span.peaks.ModelToPeaks
 import org.jetbrains.bio.util.Logs

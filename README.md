@@ -1,4 +1,5 @@
 [![JetBrains Research](https://jb.gg/badges/research.svg)](https://confluence.jetbrains.com/display/ALL/JetBrains+on+GitHub)
+[![JetBrains Research](https://jb.gg/badges/research.svg)](https://confluence.jetbrains.com/display/ALL/JetBrains+on+GitHub)
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://opensource.org/licenses/MIT)
 [![tests](http://teamcity.jetbrains.com/app/rest/builds/buildType:(id:Biolabs_Span)/statusIcon.svg)](http://teamcity.jetbrains.com/viewType.html?buildTypeId=Biolabs_Span&guest=1)
 
@@ -110,9 +111,6 @@ Resulting peaks file in ENCODE broadPeak* (BED 6+3) format. If omitted, only the
 `-m, --model MODEL`<br>
 This option is used to specify SPAN model path, if not provided, model name is composed of input names and other
 arguments.
-
-`--noclip`<br>
-Do not perform additional peaks clipping to increase reads density.
 
 `-w, --workdir PATH`<br>
 Path to the working directory (stores coverage and model caches).
