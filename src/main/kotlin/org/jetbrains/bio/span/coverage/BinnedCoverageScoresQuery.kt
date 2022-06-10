@@ -13,7 +13,7 @@ import org.jetbrains.bio.genome.query.CachingQuery
  * See [CoverageScoresQuery] for realization details.
  */
 class BinnedCoverageScoresQuery(
-    val coverageScoresQuery: CoverageScoresQuery,
+    private val coverageScoresQuery: CoverageScoresQuery,
     val binSize: Int
 ) : CachingQuery<Chromosome, IntArray>() {
 
@@ -34,13 +34,11 @@ class BinnedCoverageScoresQuery(
         }
     }
 
-    val ready: Boolean get() = coverageScoresQuery.ready
-
     /**
      * Returns the scores of a given [chromosome] sliced into binSizes with [binSize] width.
      * Score is precisely [Coverage] within bins if no control given, or DiffBind-like score.
      */
-    internal fun computeBinnedScores(chromosome: Chromosome, binSize: Int): IntArray {
+    private fun computeBinnedScores(chromosome: Chromosome, binSize: Int): IntArray {
         return chromosome.range.slice(binSize).mapToInt { bin ->
             coverageScoresQuery.apply(bin.on(chromosome))
         }.toArray()

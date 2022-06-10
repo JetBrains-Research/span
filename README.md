@@ -112,6 +112,9 @@ Resulting peaks file in ENCODE broadPeak* (BED 6+3) format. If omitted, only the
 This option is used to specify SPAN model path, if not provided, model name is composed of input names and other
 arguments.
 
+`--ext`<br>
+Save extended states information to model file.
+
 `-w, --workdir PATH`<br>
 Path to the working directory (stores coverage and model caches).
 

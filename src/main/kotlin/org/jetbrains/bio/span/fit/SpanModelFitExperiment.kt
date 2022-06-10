@@ -43,7 +43,8 @@ abstract class SpanModelFitExperiment<
     private val nullHypothesis: NullHypothesis<State>,
     private val fixedModelPath: Path? = null,
     private val threshold: Double = Fitter.THRESHOLD,
-    private val maxIterations: Int = Fitter.MAX_ITERATIONS
+    private val maxIterations: Int = Fitter.MAX_ITERATIONS,
+    private val saveExtendedInfo: Boolean = false
 ) : Experiment("fit") {
 
     val genomeQuery = fitInformation.genomeQuery()
@@ -165,19 +166,32 @@ abstract class SpanModelFitExperiment<
                 val logNullMembershipsPath = dir / NULL_NPZ
                 logNullMembershipsDF.save(logNullMembershipsPath)
                 LOG.debug("LogNullMemberships saved to $logNullMembershipsPath")
-
-                LOG.debug("Saving full states dataframe")
-                val statesDataFramePath = dir / "states.npz"
-                statesDataFrame.save(statesDataFramePath)
-                LOG.debug("States saved to $statesDataFramePath")
-                Tar.compress(
-                    p,
-                    *listOf(modelPath, informationPath, logNullMembershipsPath, statesDataFramePath).map(Path::toFile)
-                        .toTypedArray()
-                )
+                var statesDataFrameMap: Map<String, DataFrame>? = null
+                if (saveExtendedInfo) {
+                    LOG.debug("Saving full states dataframe")
+                    val statesDataFramePath = dir / "states.npz"
+                    statesDataFrame.save(statesDataFramePath)
+                    LOG.debug("States saved to $statesDataFramePath")
+                    Tar.compress(
+                        p,
+                        *listOf(
+                            modelPath,
+                            informationPath,
+                            logNullMembershipsPath,
+                            statesDataFramePath
+                        ).map(Path::toFile)
+                            .toTypedArray()
+                    )
+                    statesDataFrameMap = fitInformation.split(statesDataFrame, genomeQuery)
+                } else {
+                    Tar.compress(
+                        p,
+                        *listOf(modelPath, informationPath, logNullMembershipsPath).map(Path::toFile)
+                            .toTypedArray()
+                    )
+                }
 
                 val logNullMembershipsMap = fitInformation.split(logNullMembershipsDF, genomeQuery)
-                val statesDataFrameMap = fitInformation.split(statesDataFrame, genomeQuery)
                 computedResults = SpanFitResults(fitInformation, model, logNullMembershipsMap, statesDataFrameMap)
                 LOG.info("Done saving model.")
 
@@ -258,9 +272,12 @@ abstract class SpanModelFitExperiment<
                 val model = ClassificationModel.load<ClassificationModel>(dir / MODEL_JSON)
                 val logNullMembershipsDF = DataFrame.load(dir / NULL_NPZ)
                 val logNullMembershipsMap = info.split(logNullMembershipsDF, genomeQuery)
+                var statesDfMap: Map<String, DataFrame>? = null
                 val statesPath = dir / "states.npz"
                 LOG.info("Loading states data frame ${tarPath.stem}")
-                val statesDfMap = info.split(DataFrame.load(statesPath), genomeQuery)
+                if (statesPath.exists) {
+                    statesDfMap = info.split(DataFrame.load(statesPath), genomeQuery)
+                }
                 LOG.info("Completed loading model: ${tarPath.stem}")
                 return@withTempDirectory SpanFitResults(info, model, logNullMembershipsMap, statesDfMap)
             }

@@ -131,6 +131,7 @@ compare                         Differential peak calling mode
                 "Chromosome sizes path, can be downloaded at\n" +
                         "https://hgdownload.cse.ucsc.edu/goldenPath/<build>/bigZips/<build>.chrom.sizes"
             ).requiredUnless("model").withRequiredArg().withValuesConvertedBy(PathConverter.exists())
+            acceptsAll(listOf("ext"), "Save extended states information to model file")
             acceptsAll(
                 listOf("p", "peaks"), "Path to result peaks file in ENCODE broadPeak (BED 6+3) format"
             ).withRequiredArg().withValuesConvertedBy(PathConverter.noCheck())

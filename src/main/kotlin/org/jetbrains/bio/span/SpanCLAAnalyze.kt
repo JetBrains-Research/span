@@ -5,6 +5,7 @@ import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.PeaksInfo
 import org.jetbrains.bio.genome.coverage.FixedFragment
+import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.fit.*
 import org.jetbrains.bio.span.fit.experimental.*
 import org.jetbrains.bio.span.peaks.ModelToPeaks
@@ -12,6 +13,7 @@ import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.span.semisupervised.LocationLabel
 import org.jetbrains.bio.span.semisupervised.SpanSemiSupervised
 import org.jetbrains.bio.span.semisupervised.TuningResults
+import org.jetbrains.bio.statistics.model.ClassificationModel
 import org.jetbrains.bio.util.*
 import org.slf4j.event.Level
 import java.nio.file.Path
@@ -301,48 +303,69 @@ object SpanCLAAnalyze {
                 null
             }
             return lazy {
-                val experiment = when (modelType) {
-                    SpanModelType.NB2Z_HMM ->
-                        SpanPeakCallingExperiment.getExperiment(
-                            genomeQuery, data, bin, fragment, unique, modelPath,
-                            threshold, maxIterations
-                        )
-                    SpanModelType.NB2Z_MIXTURE ->
-                        SpanPeakCallingExperimentNB2ZMixture.getExperiment(
-                            genomeQuery, data, fragment, bin, unique, modelPath,
-                            threshold, maxIterations
-                        )
-                    SpanModelType.NB2_HMM ->
-                        SpanPeakCallingExperimentNB2HMM.getExperiment(
-                            genomeQuery, data, bin, fragment, unique, modelPath,
-                            threshold, maxIterations
-                        )
-                    SpanModelType.NB3Z_HMM ->
-                        SpanPeakCallingExperimentNB3ZHMM.getExperiment(
-                            genomeQuery, data, bin, fragment, unique, modelPath,
-                            threshold, maxIterations
-                        )
-                    SpanModelType.NB3_HMM3 ->
-                        SpanPeakCallingExperimentNB3HMM.getExperiment(
-                            genomeQuery, data, bin, fragment, unique, modelPath,
-                            threshold, maxIterations
-                        )
-                    SpanModelType.POISSON_REGRESSION_MIXTURE -> {
-                        SpanPeakCallingExperimentP2ZRegrMixture.getExperiment(
-                            genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath,
-                            threshold, maxIterations
-                        )
-                    }
-                    SpanModelType.NEGBIN_REGRESSION_MIXTURE -> {
-                        SpanPeakCallingExperimentNB2ZRegrMixture.getExperiment(
-                            genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath,
-                            threshold, maxIterations
-                        )
-                    }
-                }
+                val saveExtendedInfo = options.has("ext")
+                val experiment = getExperiment(
+                    modelType, genomeQuery, data, unique, fragment, bin, modelPath,
+                    threshold, maxIterations, saveExtendedInfo, mapabilityPath
+                )
                 experiment.results
             }
         }
+    }
+
+    private fun getExperiment(
+        modelType: SpanModelType,
+        genomeQuery: GenomeQuery,
+        data: List<SpanDataPaths>,
+        unique: Boolean,
+        fragment: Fragment,
+        bin: Int,
+        modelPath: Path?,
+        threshold: Double,
+        maxIterations: Int,
+        saveExtendedInfo: Boolean,
+        mapabilityPath: Path?
+    ): SpanModelFitExperiment<ClassificationModel, AbstractSpanAnalyzeFitInformation, out Enum<*>> {
+        val experiment = when (modelType) {
+            SpanModelType.NB2Z_HMM ->
+                SpanPeakCallingExperiment.getExperiment(
+                    genomeQuery, data, bin, fragment, unique, modelPath,
+                    threshold, maxIterations, saveExtendedInfo
+                )
+            SpanModelType.NB2Z_MIXTURE ->
+                SpanPeakCallingExperimentNB2ZMixture.getExperiment(
+                    genomeQuery, data, fragment, bin, unique, modelPath,
+                    threshold, maxIterations, saveExtendedInfo
+                )
+            SpanModelType.NB2_HMM ->
+                SpanPeakCallingExperimentNB2HMM.getExperiment(
+                    genomeQuery, data, bin, fragment, unique, modelPath,
+                    threshold, maxIterations
+                )
+            SpanModelType.NB3Z_HMM ->
+                SpanPeakCallingExperimentNB3ZHMM.getExperiment(
+                    genomeQuery, data, bin, fragment, unique, modelPath,
+                    threshold, maxIterations
+                )
+            SpanModelType.NB3_HMM3 ->
+                SpanPeakCallingExperimentNB3HMM.getExperiment(
+                    genomeQuery, data, bin, fragment, unique, modelPath,
+                    threshold, maxIterations
+                )
+            SpanModelType.POISSON_REGRESSION_MIXTURE -> {
+                SpanPeakCallingExperimentP2ZRegrMixture.getExperiment(
+                    genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath,
+                    threshold, maxIterations
+                )
+            }
+            SpanModelType.NEGBIN_REGRESSION_MIXTURE -> {
+                SpanPeakCallingExperimentNB2ZRegrMixture.getExperiment(
+                    genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath,
+                    threshold, maxIterations
+                )
+            }
+        }
+        return experiment
     }
 
     private fun getMapabilityPath(

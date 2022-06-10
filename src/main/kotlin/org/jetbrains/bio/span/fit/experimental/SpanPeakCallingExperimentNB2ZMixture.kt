@@ -24,13 +24,14 @@ class SpanPeakCallingExperimentNB2ZMixture private constructor(
     fitter: Fitter<NB2ZMixture>,
     fixedModelPath: Path?,
     threshold: Double,
-    maxIterations: Int
+    maxIterations: Int,
+    saveExtendedInfo: Boolean = false
 ) : SpanModelFitExperiment<NB2ZMixture, SpanAnalyzeFitInformation, ZLH>(
     fitInformation,
     fitter,
     NB2ZMixture::class.java,
     ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
-    fixedModelPath, threshold, maxIterations
+    fixedModelPath, threshold, maxIterations, saveExtendedInfo
 ) {
 
     override val defaultModelPath: Path =
@@ -50,6 +51,7 @@ class SpanPeakCallingExperimentNB2ZMixture private constructor(
             fixedModelPath: Path?,
             threshold: Double = Fitter.THRESHOLD,
             maxIterations: Int = Fitter.MAX_ITERATIONS,
+            saveExtendedInfo: Boolean = false
         ): SpanPeakCallingExperimentNB2ZMixture {
             require(paths.size == 1) { "Mixture currently accepts a single data track." }
             val fitInformation = createFitInformation(
@@ -61,7 +63,8 @@ class SpanPeakCallingExperimentNB2ZMixture private constructor(
                 NB2ZMixture.fitter(),
                 fixedModelPath,
                 threshold,
-                maxIterations
+                maxIterations,
+                saveExtendedInfo
             )
         }
     }
