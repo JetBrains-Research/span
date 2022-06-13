@@ -138,13 +138,10 @@ object ModelToPeaks {
                     val start = offsets[from]
                     val end = if (to < offsets.size) offsets[to] else chromosome.length
                     val chromosomeRange = ChromosomeRange(start, end, chromosome)
-                    // Scaling down by (to - from) allows to align p-values,
-                    // but results in less peaks in low frip conditions
-                    val lengthScale = 10.0 / (to - from)
                     val peakTreatment =
-                        treatmentCoverage.getBothStrandsCoverage(chromosomeRange) * treatmentScale / lengthScale
+                        treatmentCoverage.getBothStrandsCoverage(chromosomeRange) * treatmentScale
                     val peakControl =
-                        controlCoverage.getBothStrandsCoverage(chromosomeRange) * controlScale / lengthScale
+                        controlCoverage.getBothStrandsCoverage(chromosomeRange) * controlScale
                     PoissonUtil.logPoissonCdf(ceil(peakTreatment).toInt() + pseudoCount, peakControl + pseudoCount)
                 } else {
                     // Average posterior log error probability for block
