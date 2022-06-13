@@ -197,7 +197,7 @@ object ModelToPeaks {
         val controlScale: Double
     )
 
-    private fun analyzeCoverages(fitInfo: SpanFitInformation): CoverageInfo {
+    fun analyzeCoverages(fitInfo: SpanFitInformation): CoverageInfo {
         // We want two invariants from islands pvalues:
         // 1) The more strict FDR, the fewer peaks with smaller average length
         // 2) Peaks should not disappear when relaxing FDR
