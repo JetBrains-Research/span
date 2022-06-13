@@ -6,7 +6,6 @@ import org.jetbrains.bio.genome.coverage.Coverage
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.genome.query.Query
 import org.jetbrains.bio.genome.query.ReadsQuery
-import org.jetbrains.bio.util.exists
 import org.jetbrains.bio.util.isAccessible
 import org.jetbrains.bio.util.reduceIds
 import org.jetbrains.bio.util.stemGz
@@ -58,16 +57,21 @@ class CoverageScoresQuery(
     val ready: Boolean
         get() = treatmentReads.npzPath().isAccessible() && controlReads?.npzPath()?.isAccessible() ?: true
 
-
+    /**
+     * Cached value for treatment and control scales, see [computeScales]
+     */
+    val treatmentAndControlScales by lazy {
+        computeScales(genomeQuery, treatmentReads.get(), controlReads?.get())
+    }
 
     override fun apply(t: ChromosomeRange): Int {
         if (controlPath == null || !subtractControl) {
             return treatmentReads.get().getBothStrandsCoverage(t)
         }
-        val (tS, cS) = computeScales(genomeQuery, treatmentReads.get(), controlReads?.get())!!
+        val (treatmentScale, controlScale) = treatmentAndControlScales
         return max(
-            0, (cS * treatmentReads.get().getBothStrandsCoverage(t) -
-                    tS * controlReads!!.get().getBothStrandsCoverage(t)).toInt()
+            0, (controlScale * treatmentReads.get().getBothStrandsCoverage(t) -
+                    treatmentScale * controlReads!!.get().getBothStrandsCoverage(t)).toInt()
         )
     }
 
@@ -75,15 +79,16 @@ class CoverageScoresQuery(
         private val LOG: Logger = LoggerFactory.getLogger(CoverageScoresQuery::class.java)
 
         /**
-         * Compute multipliers to scale bigger library to smaller
+         * Compute multipliers to upscale smaller library to bigger,
+         * whenever possible use [treatmentAndControlScales] cached value
          */
         fun computeScales(
             genomeQuery: GenomeQuery,
             treatmentCoverage: Coverage,
             controlCoverage: Coverage?
-        ): Pair<Double, Double>? {
+        ): Pair<Double, Double> {
             if (controlCoverage == null) {
-                return null
+                return 1.0 to 1.0
             }
             val treatmentTotal = genomeQuery.get().sumOf {
                 treatmentCoverage.getBothStrandsCoverage(it.range.on(it)).toLong()
@@ -94,19 +99,18 @@ class CoverageScoresQuery(
             val rationTreatmentToControl = 1.0 * treatmentTotal / controlTotal
             val controlScale: Double
             val treatScale: Double
-            if (treatmentTotal > controlTotal) {
-                controlScale = 1.0
+            // Scale to the biggest depth
+            if (rationTreatmentToControl <= 1) {
                 treatScale = 1.0 / rationTreatmentToControl
+                controlScale = 1.0
                 LOG.debug(
-                    "Scale treatment to control data because treatment is bigger. " +
-                            "Scale factor ${"%.3f".format(treatScale)}"
+                    "Upscale treatment($treatmentTotal) to control($controlTotal) x${"%.3f".format(treatScale)}"
                 )
             } else {
-                treatScale = 1.0
                 controlScale = rationTreatmentToControl
+                treatScale = 1.0
                 LOG.debug(
-                    "Scale control to treatment data because control is bigger. " +
-                            "Scale factor ${"%.3f".format(controlScale)}"
+                    "Upscale control($controlTotal) to treatment($treatmentTotal) x${"%.3f".format(controlScale)}"
                 )
             }
             return treatScale to controlScale

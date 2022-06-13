@@ -133,7 +133,7 @@ object ModelToPeaks {
                 blocks = listOf(candidateIslands[islandIndex])
             }
             val blocksLogPs = blocks.map { (from, to) ->
-                if (treatmentCoverage != null && controlCoverage != null) {
+                if (controlCoverage != null) {
                     // Estimate enrichment vs local coverage in control track
                     val start = offsets[from]
                     val end = if (to < offsets.size) offsets[to] else chromosome.length
@@ -191,53 +191,45 @@ object ModelToPeaks {
     }
 
     data class CoverageInfo(
-        val treatmentCoverage: Coverage?,
+        val treatmentCoverage: Coverage,
         val controlCoverage: Coverage?,
-        var treatmentScale: Double,
+        val treatmentScale: Double,
         val controlScale: Double
     )
 
-    fun analyzeCoverages(fitInfo: SpanFitInformation): CoverageInfo {
-        // We want two invariants from islands pvalues:
-        // 1) The more strict FDR, the fewer peaks with smaller average length
-        // 2) Peaks should not disappear when relaxing FDR
-        // Peak score is computed as length-weighted average p-value in its consequent enriched bins.
-        val treatmentCoverage: Coverage?
-        val controlCoverage: Coverage?
-        var treatmentScale = 1.0
-        var controlScale = 1.0
+    fun analyzeCoverages(fitInfo: SpanFitInformation): CoverageInfo =
         when (fitInfo) {
             is SpanAnalyzeFitInformation -> {
-                val treatmentReads = fitInfo.scoreQueries!!.single().treatmentReads
-                treatmentCoverage = if (treatmentReads.isAccessible()) treatmentReads.get() else null
-                val controlReads = fitInfo.scoreQueries!!.single().controlReads
-                controlCoverage = if (controlReads?.isAccessible() == true) controlReads.get() else null
+                val coverageScoresQuery = fitInfo.scoreQueries!!.single()
+                val treatmentReads = coverageScoresQuery.treatmentReads
+                val treatmentCoverage = if (treatmentReads.isAccessible()) treatmentReads.get() else null
+                val controlReads = coverageScoresQuery.controlReads
+                val controlCoverage = if (controlReads?.isAccessible() == true) controlReads.get() else null
+                // Use cached scales values
+                val (treatmentScale, controlScale) = coverageScoresQuery.treatmentAndControlScales
+                CoverageInfo(treatmentCoverage!!, controlCoverage, treatmentScale, controlScale)
             }
 
             is SpanCompareFitInformation -> {
                 val treatmentReads = fitInfo.scoreQueries1!!.single().treatmentReads
-                treatmentCoverage = if (treatmentReads.isAccessible()) treatmentReads.get() else null
+                val treatmentCoverage = if (treatmentReads.isAccessible()) treatmentReads.get() else null
                 val controlReads = fitInfo.scoreQueries2!!.single().treatmentReads
-                controlCoverage = if (controlReads.isAccessible()) controlReads.get() else null
+                val controlCoverage = if (controlReads.isAccessible()) controlReads.get() else null
+                val (treatmentScale, controlScale) =
+                    computeScales(fitInfo.genomeQuery(), treatmentCoverage!!, controlCoverage)
+                CoverageInfo(treatmentCoverage, controlCoverage, treatmentScale, controlScale)
             }
 
             is SpanRegrMixtureAnalyzeFitInformation -> {
                 val treatmentReads = fitInfo.scoreQuery!!.treatmentReads
-                treatmentCoverage = if (treatmentReads.isAccessible()) treatmentReads.get() else null
-                controlCoverage = null
+                val treatmentCoverage = if (treatmentReads.isAccessible()) treatmentReads.get() else null
+                CoverageInfo(treatmentCoverage!!, null, 1.0, 1.0)
             }
 
             else -> {
                 throw IllegalStateException("Incorrect fitInfo: ${fitInfo.javaClass.name}")
             }
         }
-        if (treatmentCoverage != null && controlCoverage != null) {
-            val scales = computeScales(fitInfo.genomeQuery(), treatmentCoverage, controlCoverage)!!
-            treatmentScale = scales.first
-            controlScale = scales.second
-        }
-        return CoverageInfo(treatmentCoverage, controlCoverage, treatmentScale, controlScale)
-    }
 
     /**
      * We want summary score to be robust wrt appending blocks of low significance,

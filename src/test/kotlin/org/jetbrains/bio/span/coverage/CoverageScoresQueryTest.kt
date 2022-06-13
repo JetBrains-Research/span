@@ -23,9 +23,9 @@ class CoverageScoresQueryTest {
             data[chromosome1, Strand.PLUS].addAll(intArrayOf(0, 2, 4, 6, 10, 12, 14, 20, 21, 22, 25))
         }.build(unique = false)
 
-        val (scaleTreatment, scaleControl) = CoverageScoresQuery.computeScales(genomeQuery, cond, control)!!
-        assertTrue(Precision.equals(1.0, scaleTreatment, 0.1))
-        assertTrue(Precision.equals(0.72, scaleControl, 0.1))
+        val (scaleTreatment, scaleControl) = CoverageScoresQuery.computeScales(genomeQuery, cond, control)
+        assertTrue(Precision.equals(1.375, scaleTreatment, 0.1))
+        assertTrue(Precision.equals(1.0, scaleControl, 0.1))
     }
 }
 
