@@ -89,18 +89,25 @@ data class SpanRegrMixtureAnalyzeFitInformation constructor(
     @Transient
     var scoreQuery: CoverageScoresQuery? = null
 
-    override fun prepareScores() {
-        scoreQuery =
-            CoverageScoresQuery(
-                genomeQuery(), data.single().treatment, data.single().control,
-                fragment, unique, showLibraryInfo = false
-            )
+    @Synchronized
+    override fun prepareData() {
+        if (scoreQuery == null) {
+            scoreQuery =
+                CoverageScoresQuery(
+                    genomeQuery(), data.single().treatment, data.single().control,
+                    fragment, unique, showLibraryInfo = false
+                )
+        }
     }
 
     /**
      * Return coverage.
      */
-    override fun score(chromosomeRange: ChromosomeRange): Double = scoreQuery!!.apply(chromosomeRange).toDouble()
+    override fun score(chromosomeRange: ChromosomeRange): Double =
+        throw java.lang.UnsupportedOperationException("score")
+
+    override fun scaledTreatmentScore(chromosomeRange: ChromosomeRange): Double = 0.0
+    override fun scaledControlScore(chromosomeRange: ChromosomeRange): Double? = null
 
     companion object {
         @Suppress("MayBeConstant", "unused")

@@ -36,28 +36,16 @@ data class SpanCompareFitInformation(
 
     override val dataQuery: Query<Chromosome, DataFrame>
         get() {
-            val data = data1 + data2
+            prepareData()
+            val binnedScoresQueries = (scoreQueries1!! + scoreQueries2!!).map { BinnedCoverageScoresQuery(it, binSize) }
             val labels = labels1 + labels2
             return object : CachingQuery<Chromosome, DataFrame>() {
-                val scores = data.map {
-                    BinnedCoverageScoresQuery(
-                        CoverageScoresQuery(
-                            genomeQuery(),
-                            it.treatment,
-                            it.control,
-                            fragment,
-                            unique,
-                            subtractControl = true
-                        ), binSize
-                    )
-                }
-
                 override fun getUncached(input: Chromosome): DataFrame {
-                    return scores.binsScoresDataFrame(input, labels.toTypedArray())
+                    return binnedScoresQueries.binsScoresDataFrame(input, labels.toTypedArray())
                 }
 
                 override val id: String
-                    get() = reduceIds(scores.zip(labels).flatMap { (s, l) -> listOf(s.id, l) })
+                    get() = reduceIds(binnedScoresQueries.zip(labels).flatMap { (s, l) -> listOf(s.id, l) })
             }
         }
 
@@ -67,37 +55,41 @@ data class SpanCompareFitInformation(
     @Transient
     var scoreQueries2: List<CoverageScoresQuery>? = null
 
-    override fun prepareScores() {
-        scoreQueries1 = data1.map {
-            CoverageScoresQuery(
-                genomeQuery(),
-                it.treatment,
-                it.control,
-                fragment,
-                unique,
-                subtractControl = true,
-                showLibraryInfo = false
-            )
+    @Synchronized
+    override fun prepareData() {
+        if (scoreQueries1 == null) {
+            scoreQueries1 = data1.map {
+                CoverageScoresQuery(
+                    genomeQuery(),
+                    it.treatment,
+                    it.control,
+                    fragment,
+                    unique,
+                    showLibraryInfo = false
+                )
+            }
         }
-        scoreQueries2 = data2.map {
-            CoverageScoresQuery(
-                genomeQuery(),
-                it.treatment,
-                it.control,
-                fragment,
-                unique,
-                subtractControl = true,
-                showLibraryInfo = false
-            )
+        if (scoreQueries2 == null) {
+            scoreQueries2 = data2.map {
+                CoverageScoresQuery(
+                    genomeQuery(),
+                    it.treatment,
+                    it.control,
+                    fragment,
+                    unique,
+                    showLibraryInfo = false
+                )
+            }
         }
     }
 
     /**
      * Return log2 fold change of average summary coverage across data
      */
+    @Synchronized
     override fun score(chromosomeRange: ChromosomeRange): Double {
         check(scoreQueries1 != null && scoreQueries2 != null) {
-            "Please use prepareScores before!"
+            "Please use prepareData before!"
         }
 
         return if (scoreQueries1!!.all { it.ready } && scoreQueries2!!.all { it.ready }) {
@@ -107,6 +99,22 @@ data class SpanCompareFitInformation(
         } else {
             0.0
         }
+    }
+
+    @Synchronized
+    override fun scaledTreatmentScore(chromosomeRange: ChromosomeRange): Double {
+        check(scoreQueries1 != null && scoreQueries2 != null) {
+            "Please use prepareData before!"
+        }
+        return scoreQueries1!!.sumOf { it.scaledTreatment(chromosomeRange) } / scoreQueries1!!.size
+    }
+
+    @Synchronized
+    override fun scaledControlScore(chromosomeRange: ChromosomeRange): Double {
+        check(scoreQueries1 != null && scoreQueries2 != null) {
+            "Please use prepareData before!"
+        }
+        return scoreQueries2!!.sumOf { it.scaledTreatment(chromosomeRange) } / scoreQueries1!!.size
     }
 
     companion object {

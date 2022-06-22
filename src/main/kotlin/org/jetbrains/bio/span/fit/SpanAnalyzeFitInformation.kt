@@ -51,48 +51,63 @@ data class SpanAnalyzeFitInformation(
         )
 
     override val dataQuery: Query<Chromosome, DataFrame>
-        get() = object : CachingQuery<Chromosome, DataFrame>() {
-            val scores = data.map {
-                BinnedCoverageScoresQuery(
-                    CoverageScoresQuery(
-                        genomeQuery(),
-                        it.treatment,
-                        it.control,
-                        fragment,
-                        unique
-                    ), binSize
-                )
-            }
+        get() {
+            prepareData()
+            val binnedScoresQueries = scoreQueries!!.map { BinnedCoverageScoresQuery(it, binSize) }
+            return object : CachingQuery<Chromosome, DataFrame>() {
+                override fun getUncached(input: Chromosome): DataFrame {
+                    return binnedScoresQueries.binsScoresDataFrame(input, labels.toTypedArray())
+                }
 
-            override fun getUncached(input: Chromosome): DataFrame {
-                return scores.binsScoresDataFrame(input, labels.toTypedArray())
+                override val id: String
+                    get() = reduceIds(binnedScoresQueries.zip(labels).flatMap { (s, l) -> listOf(s.id, l) })
             }
-
-            override val id: String
-                get() = reduceIds(scores.zip(labels).flatMap { (s, l) -> listOf(s.id, l) })
         }
 
     @Transient
     var scoreQueries: List<CoverageScoresQuery>? = null
 
-    override fun prepareScores() {
-        scoreQueries = data.map {
-            CoverageScoresQuery(genomeQuery(), it.treatment, it.control, fragment, unique, showLibraryInfo = false)
+    @Synchronized
+    override fun prepareData() {
+        if (scoreQueries == null) {
+            scoreQueries = data.map {
+                CoverageScoresQuery(genomeQuery(), it.treatment, it.control, fragment, unique, showLibraryInfo = false)
+            }
         }
     }
 
     /**
-     * Returns summary coverage averaged by tracks
+     * Returns average coverage by tracks
      */
+    @Synchronized
     override fun score(chromosomeRange: ChromosomeRange): Double {
         check(scoreQueries != null) {
-            "Please use prepareScores before!"
+            "Please use prepareData before!"
         }
         return if (scoreQueries!!.all { it.ready }) {
             scoreQueries!!.sumOf { it.apply(chromosomeRange) }.toDouble() / scoreQueries!!.size
         } else {
             0.0
         }
+    }
+
+    @Synchronized
+    override fun scaledTreatmentScore(chromosomeRange: ChromosomeRange): Double {
+        check(scoreQueries != null) {
+            "Please use prepareData before!"
+        }
+        return scoreQueries!!.sumOf { it.scaledTreatment(chromosomeRange) } / scoreQueries!!.size
+    }
+
+    @Synchronized
+    override fun scaledControlScore(chromosomeRange: ChromosomeRange): Double? {
+        check(scoreQueries != null) {
+            "Please use prepareData before!"
+        }
+        if (scoreQueries!!.any { it.controlReads == null }) {
+            return null
+        }
+        return scoreQueries!!.sumOf { it.scaledControl(chromosomeRange)!! } / scoreQueries!!.size
     }
 
     companion object {

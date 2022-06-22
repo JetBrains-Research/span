@@ -26,7 +26,6 @@ class CoverageScoresQuery(
     private val controlPath: Path?,
     val fragment: Fragment,
     val unique: Boolean = true,
-    val subtractControl: Boolean = false,
     val showLibraryInfo: Boolean = true,
 ) : Query<ChromosomeRange, Int> {
 
@@ -64,8 +63,19 @@ class CoverageScoresQuery(
         computeScales(genomeQuery, treatmentReads.get(), controlReads?.get())
     }
 
+    fun scaledTreatment(chromosomeRange: ChromosomeRange): Double {
+        return treatmentReads.get().getBothStrandsCoverage(chromosomeRange) * treatmentAndControlScales.first
+    }
+
+    fun scaledControl(chromosomeRange: ChromosomeRange): Double? {
+        if (controlReads == null) {
+            return null
+        }
+        return controlReads!!.get().getBothStrandsCoverage(chromosomeRange) * treatmentAndControlScales.second
+    }
+
     override fun apply(t: ChromosomeRange): Int {
-        if (controlPath == null || !subtractControl) {
+        if (controlPath == null) {
             return treatmentReads.get().getBothStrandsCoverage(t)
         }
         val (treatmentScale, controlScale) = treatmentAndControlScales

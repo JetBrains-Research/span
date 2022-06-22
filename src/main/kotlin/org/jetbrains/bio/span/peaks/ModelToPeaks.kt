@@ -6,11 +6,10 @@ import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
-import org.jetbrains.bio.genome.coverage.Coverage
-import org.jetbrains.bio.span.coverage.CoverageScoresQuery.Companion.computeScales
-import org.jetbrains.bio.span.fit.*
+import org.jetbrains.bio.span.fit.SpanFitInformation
+import org.jetbrains.bio.span.fit.SpanFitResults
 import org.jetbrains.bio.span.fit.SpanFitResults.Companion.LOG
-import org.jetbrains.bio.span.fit.experimental.SpanRegrMixtureAnalyzeFitInformation
+import org.jetbrains.bio.span.fit.SpanModelFitExperiment
 import org.jetbrains.bio.span.statistics.util.PoissonUtil
 import org.jetbrains.bio.statistics.f64Array
 import org.jetbrains.bio.statistics.hypothesis.Fdr
@@ -49,7 +48,6 @@ object ModelToPeaks {
     ): List<Peak> {
         resetCounters()
         val progress = Progress { title = "Computing peaks fdr=$fdr gap=$gap" }.bounded(genomeQuery.get().size.toLong())
-        spanFitResults.fitInfo.prepareScores()
         val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
             cancellableState?.checkCanceled()
             val chromosomePeaks =
@@ -75,6 +73,7 @@ object ModelToPeaks {
     ): List<Peak> {
         // Check that we have information for requested chromosome
         val chromosomeIslands = if (chromosome.name in spanFitResults.fitInfo.chromosomesSizes) {
+            spanFitResults.fitInfo.prepareData()
             getChromosomePeaks(
                 chromosome,
                 spanFitResults.fitInfo,
@@ -118,21 +117,6 @@ object ModelToPeaks {
         if (candidateIslands.isEmpty()) {
             return emptyList()
         }
-        // Fetch coverage info and scales
-        val treatmentCoverage: Coverage?
-        val controlCoverage: Coverage?
-        var treatmentScale = 1.0
-        var controlScale = 1.0
-        val coverageInfo = analyzeCoverages(fitInfo)
-        if (coverageInfo != null) {
-            treatmentCoverage = coverageInfo.treatmentCoverage
-            controlCoverage = coverageInfo.controlCoverage
-            treatmentScale = coverageInfo.treatmentScale
-            controlScale = coverageInfo.controlScale
-        } else {
-            treatmentCoverage = null
-            controlCoverage = null
-        }
 
         // We want two invariants from islands pvalues:
         // 1) The more strict FDR, the fewer peaks with smaller average length
@@ -146,18 +130,16 @@ object ModelToPeaks {
                 blocks = listOf(candidateIslands[islandIndex])
             }
             val blocksLogPs = blocks.map { (from, to) ->
-                if (treatmentCoverage != null && controlCoverage != null) {
-                    // Estimate enrichment vs local coverage in control track
-                    val start = offsets[from]
-                    val end = if (to < offsets.size) offsets[to] else chromosome.length
-                    val chromosomeRange = ChromosomeRange(start, end, chromosome)
-                    val peakTreatment =
-                        treatmentCoverage.getBothStrandsCoverage(chromosomeRange) * treatmentScale
-                    val peakControl =
-                        controlCoverage.getBothStrandsCoverage(chromosomeRange) * controlScale
+                // Estimate enrichment vs local coverage in control track
+                val start = offsets[from]
+                val end = if (to < offsets.size) offsets[to] else chromosome.length
+                val chromosomeRange = ChromosomeRange(start, end, chromosome)
+                try {
+                    val peakTreatment = fitInfo.scaledTreatmentScore(chromosomeRange)
+                    val peakControl = fitInfo.scaledControlScore(chromosomeRange)!!
                     PoissonUtil.logPoissonCdf(ceil(peakTreatment).toInt() + pseudoCount, peakControl + pseudoCount)
-                } else {
-                    // Otherwise fallback to average posterior log error probability for block
+                } catch (_: Throwable) {
+                    // Fallback to average posterior log error probability for block
                     KahanSum().apply {
                         (from until to).forEach { feed(logNullMemberships[it]) }
                     }.result() / (to - from)
@@ -166,26 +148,28 @@ object ModelToPeaks {
             islandsLengthWeightedScores(blocks, blocksLogPs)
         }
 
-        // Filter result islands by Q values
         val islandsLogQValues = Fdr.qvalidate(islandsLogPs, logResults = true)
-        val resultIslandsIndexes = candidateIslands.indices.filter {
-            islandsLogQValues[it] < logFdr
-        }
-        val resultIslands = resultIslandsIndexes.map { idx ->
+
+        // Filter result islands by Q values
+        val resultIslands = candidateIslands.mapIndexedNotNull { i, (from, to) ->
             cancellableState?.checkCanceled()
-            val (from, to) = candidateIslands[idx]
+            val logQValue = islandsLogQValues[i]
+            if (logQValue > logFdr) {
+                return@mapIndexedNotNull null
+            }
             val startOffset = offsets[from]
             val endOffset = if (to < offsets.size) offsets[to] else chromosome.length
+            val logPValue = islandsLogPs[i]
             Peak(
                 chromosome = chromosome,
                 startOffset = startOffset,
                 endOffset = endOffset,
-                mlogpvalue = -islandsLogPs[idx] / LOG_10,
-                mlogqvalue = -islandsLogQValues[idx] / LOG_10,
+                mlogpvalue = -logPValue / LOG_10,
+                mlogqvalue = -logQValue / LOG_10,
                 // Value is either coverage of fold change
                 value = fitInfo.score(ChromosomeRange(startOffset, endOffset, chromosome)),
                 // Score should be proportional original q-value
-                score = min(1000.0, -10 * islandsLogQValues[idx] / LOG_10).toInt()
+                score = min(1000.0, -10 * logQValue / LOG_10).toInt()
             )
         }
 
@@ -198,61 +182,6 @@ object ModelToPeaks {
         candidateIslandsCounter.addAndGet(candidateIslands.size)
         resultIslandsCounter.addAndGet(resultIslands.size)
         return resultIslands
-    }
-
-    data class CoverageInfo(
-        val treatmentCoverage: Coverage,
-        val controlCoverage: Coverage?,
-        val treatmentScale: Double,
-        val controlScale: Double
-    )
-
-    /**
-     * Returns null if both treatment reads and control reads are not available,
-     * i.e. when loading SPAN model, without actual reads information.
-     */
-    fun analyzeCoverages(fitInfo: SpanFitInformation): CoverageInfo? {
-        when (fitInfo) {
-            is SpanAnalyzeFitInformation -> {
-                val coverageScoresQuery = fitInfo.scoreQueries!!.single()
-                val treatmentReads = coverageScoresQuery.treatmentReads
-                val treatmentCoverage = if (treatmentReads.isAccessible()) treatmentReads.get() else null
-                val controlReads = coverageScoresQuery.controlReads
-                val controlCoverage = if (controlReads?.isAccessible() == true) controlReads.get() else null
-                if (treatmentCoverage == null) {
-                    return null
-                }
-                // Use cached scales values
-                val (treatmentScale, controlScale) = coverageScoresQuery.treatmentAndControlScales
-                return CoverageInfo(treatmentCoverage, controlCoverage, treatmentScale, controlScale)
-            }
-
-            is SpanCompareFitInformation -> {
-                val treatmentReads = fitInfo.scoreQueries1!!.single().treatmentReads
-                val treatmentCoverage = if (treatmentReads.isAccessible()) treatmentReads.get() else null
-                val controlReads = fitInfo.scoreQueries2!!.single().treatmentReads
-                val controlCoverage = if (controlReads.isAccessible()) controlReads.get() else null
-                if (treatmentCoverage == null) {
-                    return null
-                }
-                val (treatmentScale, controlScale) =
-                    computeScales(fitInfo.genomeQuery(), treatmentCoverage, controlCoverage)
-                return CoverageInfo(treatmentCoverage, controlCoverage, treatmentScale, controlScale)
-            }
-
-            is SpanRegrMixtureAnalyzeFitInformation -> {
-                val treatmentReads = fitInfo.scoreQuery!!.treatmentReads
-                val treatmentCoverage = if (treatmentReads.isAccessible()) treatmentReads.get() else null
-                if (treatmentCoverage == null) {
-                    return null
-                }
-                return CoverageInfo(treatmentCoverage, null, 1.0, 1.0)
-            }
-
-            else -> {
-                throw IllegalStateException("Incorrect fitInfo: ${fitInfo.javaClass.name}")
-            }
-        }
     }
 
     /**

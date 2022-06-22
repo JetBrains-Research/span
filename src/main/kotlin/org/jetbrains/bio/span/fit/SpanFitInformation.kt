@@ -54,15 +54,27 @@ interface SpanFitInformation {
 
 
     /**
-     * Prepares scores for [score] function, initialize required queries.
+     * Prepares data queries for [score] function.
      */
-    fun prepareScores()
+    fun prepareData()
 
     /**
-     * Generate range score, it can be either coverage for analyze experiment or log2 fold change for difference.
-     * Call [prepareScores] beforehand!
+     * Computes range score, either coverage for analyze experiment or log2 fold change for difference.
+     * Call [prepareData] beforehand!
      */
     fun score(chromosomeRange: ChromosomeRange): Double
+
+    /**
+     * Returns scaled treatment score.
+     * Call [prepareData] beforehand!
+     */
+    fun scaledTreatmentScore(chromosomeRange: ChromosomeRange): Double
+
+    /**
+     * Returns scaled control score or null if not available.
+     * Call [prepareData] beforehand!
+     */
+    fun scaledControlScore(chromosomeRange: ChromosomeRange): Double?
 
     fun genomeQuery(): GenomeQuery =
         GenomeQuery(Genome[build, chromosomesSizes], *chromosomesSizes.keys.toTypedArray())
@@ -239,7 +251,7 @@ interface SpanFitInformation {
          * Loads a [SpanFitInformation] instance from a JSON file.
          *
          * Inverse of [SpanFitInformation.save]. Since "save" stores the fully-qualified class name,
-         * "load" instantiates the correct class. If this class is not castable to [T],
+         * "load" instantiates the correct class. If this class cannot be cast to [T],
          * [IllegalStateException] is thrown.
          */
         @Suppress("unchecked_cast")
