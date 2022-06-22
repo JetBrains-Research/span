@@ -130,13 +130,16 @@ object ModelToPeaks {
                 blocks = listOf(candidateIslands[islandIndex])
             }
             val blocksLogPs = blocks.map { (from, to) ->
-                // Estimate enrichment vs local coverage in control track
+                cancellableState?.checkCanceled()
                 val start = offsets[from]
                 val end = if (to < offsets.size) offsets[to] else chromosome.length
                 val chromosomeRange = ChromosomeRange(start, end, chromosome)
                 try {
-                    val peakTreatment = fitInfo.scaledTreatmentScore(chromosomeRange)
-                    val peakControl = fitInfo.scaledControlScore(chromosomeRange)!!
+                    // Estimate enrichment vs local coverage in control track
+                    // Scaling down by (to - from) allows to align p-values,
+                    // but results in less peaks in low frip conditions
+                    val peakTreatment = fitInfo.scaledTreatmentScore(chromosomeRange) / (to - from)
+                    val peakControl = fitInfo.scaledControlScore(chromosomeRange)!! / (to - from)
                     PoissonUtil.logPoissonCdf(ceil(peakTreatment).toInt() + pseudoCount, peakControl + pseudoCount)
                 } catch (_: Throwable) {
                     // Fallback to average posterior log error probability for block
@@ -148,9 +151,8 @@ object ModelToPeaks {
             islandsLengthWeightedScores(blocks, blocksLogPs)
         }
 
-        val islandsLogQValues = Fdr.qvalidate(islandsLogPs, logResults = true)
-
         // Filter result islands by Q values
+        val islandsLogQValues = Fdr.qvalidate(islandsLogPs, logResults = true)
         val resultIslands = candidateIslands.mapIndexedNotNull { i, (from, to) ->
             cancellableState?.checkCanceled()
             val logQValue = islandsLogQValues[i]
