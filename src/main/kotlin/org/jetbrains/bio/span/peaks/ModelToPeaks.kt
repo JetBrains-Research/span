@@ -136,16 +136,12 @@ object ModelToPeaks {
                 val chromosomeRange = ChromosomeRange(start, end, chromosome)
                 try {
                     // Estimate enrichment vs local coverage in control track
-                    // Scaling down by (to - from) allows to align p-values,
-                    // but results in less peaks in low frip conditions
-                    val peakTreatment = fitInfo.scaledTreatmentScore(chromosomeRange) / (to - from)
-                    val peakControl = fitInfo.scaledControlScore(chromosomeRange)!! / (to - from)
+                    val peakTreatment = fitInfo.scaledTreatmentScore(chromosomeRange)
+                    val peakControl = fitInfo.scaledControlScore(chromosomeRange)!!
                     PoissonUtil.logPoissonCdf(ceil(peakTreatment).toInt() + pseudoCount, peakControl + pseudoCount)
                 } catch (_: Throwable) {
                     // Fallback to average posterior log error probability for block
-                    KahanSum().apply {
-                        (from until to).forEach { feed(logNullMemberships[it]) }
-                    }.result() / (to - from)
+                    (from until to).sumOf { logNullMemberships[it] } / (to - from)
                 }
             }
             islandsLengthWeightedScores(blocks, blocksLogPs)
@@ -155,13 +151,13 @@ object ModelToPeaks {
         val islandsLogQValues = Fdr.qvalidate(islandsLogPs, logResults = true)
         val resultIslands = candidateIslands.mapIndexedNotNull { i, (from, to) ->
             cancellableState?.checkCanceled()
+            val logPValue = islandsLogPs[i]
             val logQValue = islandsLogQValues[i]
-            if (logQValue > logFdr) {
+            if (logPValue > logFdr || logQValue > logFdr) {
                 return@mapIndexedNotNull null
             }
             val startOffset = offsets[from]
             val endOffset = if (to < offsets.size) offsets[to] else chromosome.length
-            val logPValue = islandsLogPs[i]
             Peak(
                 chromosome = chromosome,
                 startOffset = startOffset,
@@ -171,7 +167,7 @@ object ModelToPeaks {
                 // Value is either coverage of fold change
                 value = fitInfo.score(ChromosomeRange(startOffset, endOffset, chromosome)),
                 // Score should be proportional original q-value
-                score = min(1000.0, -10 * logQValue / LOG_10).toInt()
+                score = min(1000.0, -logQValue / LOG_10).toInt()
             )
         }
 
