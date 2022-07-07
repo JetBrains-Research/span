@@ -110,6 +110,13 @@ data class SpanAnalyzeFitInformation(
         return scoreQueries!!.sumOf { it.scaledControl(chromosomeRange)!! } / scoreQueries!!.size
     }
 
+    override fun hasControlData(): Boolean {
+        check(scoreQueries != null) {
+            "Please use prepareData before!"
+        }
+        return scoreQueries!!.any { it.controlPath != null }
+    }
+
     companion object {
         @Suppress("MayBeConstant", "unused")
         @Transient

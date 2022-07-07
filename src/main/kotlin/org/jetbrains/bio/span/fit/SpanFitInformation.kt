@@ -76,6 +76,8 @@ interface SpanFitInformation {
      */
     fun scaledControlScore(chromosomeRange: ChromosomeRange): Double?
 
+    fun hasControlData(): Boolean
+
     fun genomeQuery(): GenomeQuery =
         GenomeQuery(Genome[build, chromosomesSizes], *chromosomesSizes.keys.toTypedArray())
 

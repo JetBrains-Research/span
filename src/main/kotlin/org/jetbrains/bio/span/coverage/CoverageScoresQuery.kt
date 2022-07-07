@@ -22,8 +22,8 @@ import kotlin.math.max
  */
 class CoverageScoresQuery(
     val genomeQuery: GenomeQuery,
-    private val treatmentPath: Path,
-    private val controlPath: Path?,
+    val treatmentPath: Path,
+    val controlPath: Path?,
     val fragment: Fragment,
     val unique: Boolean = true,
     val showLibraryInfo: Boolean = true,

@@ -114,7 +114,14 @@ data class SpanCompareFitInformation(
         check(scoreQueries1 != null && scoreQueries2 != null) {
             "Please use prepareData before!"
         }
-        return scoreQueries2!!.sumOf { it.scaledTreatment(chromosomeRange) } / scoreQueries1!!.size
+        return scoreQueries2!!.sumOf { it.scaledTreatment(chromosomeRange) } / scoreQueries2!!.size
+    }
+
+    override fun hasControlData(): Boolean {
+        check(scoreQueries1 != null && scoreQueries2 != null) {
+            "Please use prepareData before!"
+        }
+        return true
     }
 
     companion object {

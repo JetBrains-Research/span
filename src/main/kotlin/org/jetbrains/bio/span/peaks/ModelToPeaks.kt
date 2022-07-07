@@ -97,7 +97,6 @@ object ModelToPeaks {
         offsets: IntArray,
         fdr: Double,
         gap: Int,
-        relaxPower: Double = RELAX_POWER_DEFAULT,
         pseudoCount: Int = 1,
         cancellableState: CancellableState? = null
     ): List<Peak> {
@@ -107,13 +106,7 @@ object ModelToPeaks {
         // 2) Mitigate the problem when number of peaks for strict FDR is much bigger than for relaxed FDR
         val logFdr = ln(fdr)
         val strictFdrBins = BitterSet(logNullMemberships.size) { logNullMemberships[it] <= logFdr }
-        val relaxedLogFdr = relaxedLogFdr(logFdr, relaxPower)
-        val relaxedFdrBins = BitterSet(logNullMemberships.size).apply {
-            0.until(size()).filter { logNullMemberships[it] <= relaxedLogFdr }.forEach(::set)
-        }
-        val candidateIslands = relaxedFdrBins.aggregate(gap).filter { (from, to) ->
-            (from until to).any { logNullMemberships[it] <= logFdr }
-        }
+        val (candidateBins, candidateIslands) = computeCandidateBinsAndIslands(logNullMemberships, logFdr, gap)
         if (candidateIslands.isEmpty()) {
             return emptyList()
         }
@@ -134,12 +127,12 @@ object ModelToPeaks {
                 val start = offsets[from]
                 val end = if (to < offsets.size) offsets[to] else chromosome.length
                 val chromosomeRange = ChromosomeRange(start, end, chromosome)
-                try {
+                if (fitInfo.hasControlData()) {
                     // Estimate enrichment vs local coverage in control track
                     val peakTreatment = fitInfo.scaledTreatmentScore(chromosomeRange)
                     val peakControl = fitInfo.scaledControlScore(chromosomeRange)!!
                     PoissonUtil.logPoissonCdf(ceil(peakTreatment).toInt() + pseudoCount, peakControl + pseudoCount)
-                } catch (_: Throwable) {
+                } else {
                     // Fallback to average posterior log error probability for block
                     (from until to).sumOf { logNullMemberships[it] } / (to - from)
                 }
@@ -151,21 +144,21 @@ object ModelToPeaks {
         val islandsLogQValues = Fdr.qvalidate(islandsLogPs, logResults = true)
         val resultIslands = candidateIslands.mapIndexedNotNull { i, (from, to) ->
             cancellableState?.checkCanceled()
+            val start = offsets[from]
+            val end = if (to < offsets.size) offsets[to] else chromosome.length
             val logPValue = islandsLogPs[i]
             val logQValue = islandsLogQValues[i]
             if (logPValue > logFdr || logQValue > logFdr) {
                 return@mapIndexedNotNull null
             }
-            val startOffset = offsets[from]
-            val endOffset = if (to < offsets.size) offsets[to] else chromosome.length
             Peak(
                 chromosome = chromosome,
-                startOffset = startOffset,
-                endOffset = endOffset,
+                startOffset = start,
+                endOffset = end,
                 mlogpvalue = -logPValue / LOG_10,
                 mlogqvalue = -logQValue / LOG_10,
                 // Value is either coverage of fold change
-                value = fitInfo.score(ChromosomeRange(startOffset, endOffset, chromosome)),
+                value = fitInfo.score(ChromosomeRange(start, end, chromosome)),
                 // Score should be proportional original q-value
                 score = min(1000.0, -logQValue / LOG_10).toInt()
             )
@@ -173,13 +166,28 @@ object ModelToPeaks {
 
         Peak.LOG.debug(
             "$chromosome: candidate bins / candidate/result islands " +
-                    "${relaxedFdrBins.cardinality()} / ${candidateIslands.size}/${resultIslands.size};"
+                    "${candidateBins.cardinality()} / ${candidateIslands.size}/${resultIslands.size};"
 
         )
-        candidateBinsCounter.addAndGet(relaxedFdrBins.cardinality())
+        candidateBinsCounter.addAndGet(candidateBins.cardinality())
         candidateIslandsCounter.addAndGet(candidateIslands.size)
         resultIslandsCounter.addAndGet(resultIslands.size)
         return resultIslands
+    }
+
+    fun computeCandidateBinsAndIslands(
+        logNullMemberships: F64Array,
+        logFdr: Double,
+        gap: Int
+    ): Pair<BitterSet, List<BitRange>> {
+        val relaxedLogFdr = relaxedLogFdr(logFdr)
+        val candidateBins = BitterSet(logNullMemberships.size).apply {
+            0.until(size()).filter { logNullMemberships[it] <= relaxedLogFdr }.forEach(::set)
+        }
+        val candidateIslands = candidateBins.aggregate(gap).filter { (from, to) ->
+            (from until to).any { logNullMemberships[it] <= logFdr }
+        }
+        return Pair(candidateBins, candidateIslands)
     }
 
     /**
@@ -204,7 +212,8 @@ object ModelToPeaks {
     }
 
 
-    fun relaxedLogFdr(logFdr: Double, relaxPower: Double = RELAX_POWER_DEFAULT) = min(ln(0.1), logFdr * relaxPower)
+    private fun relaxedLogFdr(logFdr: Double, relaxPower: Double = RELAX_POWER_DEFAULT) =
+        min(ln(0.1), logFdr * relaxPower)
 
     private const val RELAX_POWER_DEFAULT = 0.5
 
