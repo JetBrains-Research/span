@@ -1,6 +1,7 @@
 package org.jetbrains.bio.span.statistics.util
 
 import org.jetbrains.bio.span.statistics.emission.NegBinEmissionScheme
+import org.jetbrains.bio.statistics.distribution.Sampling
 import org.junit.Test
 import kotlin.test.assertEquals
 
@@ -8,6 +9,7 @@ class NegBitUtilTest {
 
     @Test
     fun testGuessByData() {
+        Sampling.RANDOM_DATA_GENERATOR.reSeed(100)
         val s1 = NegBinEmissionScheme(40.0, 1.0).sampler()
         val s2 = NegBinEmissionScheme(0.5, 100.0).sampler()
 
