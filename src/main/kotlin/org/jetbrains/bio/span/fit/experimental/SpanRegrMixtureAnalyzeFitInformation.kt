@@ -100,7 +100,12 @@ data class SpanRegrMixtureAnalyzeFitInformation constructor(
         }
     }
 
-    override fun score(chromosomeRange: ChromosomeRange): Double = 0.0
+    override fun score(chromosomeRange: ChromosomeRange): Double {
+        check(scoreQuery != null) {
+            "Please use prepareData before!"
+        }
+        return scoreQuery!!.apply(chromosomeRange).toDouble()
+    }
     override fun scaledTreatmentScore(chromosomeRange: ChromosomeRange): Double = 0.0
     override fun scaledControlScore(chromosomeRange: ChromosomeRange): Double? = null
 
