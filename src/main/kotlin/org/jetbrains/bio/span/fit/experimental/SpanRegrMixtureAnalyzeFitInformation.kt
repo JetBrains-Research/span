@@ -100,12 +100,7 @@ data class SpanRegrMixtureAnalyzeFitInformation constructor(
         }
     }
 
-    /**
-     * Return coverage.
-     */
-    override fun score(chromosomeRange: ChromosomeRange): Double =
-        throw java.lang.UnsupportedOperationException("score")
-
+    override fun score(chromosomeRange: ChromosomeRange): Double = 0.0
     override fun scaledTreatmentScore(chromosomeRange: ChromosomeRange): Double = 0.0
     override fun scaledControlScore(chromosomeRange: ChromosomeRange): Double? = null
 
