@@ -195,7 +195,7 @@ compare                         Differential peak calling mode
         propertyId: String, log: Boolean
     ): T {
         check(fitInfoValue == null || commandLineValue == null || commandLineValue == fitInfoValue) {
-            "Stored $propertyName ($fitInfoValue) differs from the command line argument ($commandLineValue)"
+            "$propertyName ($fitInfoValue) differs from the command line argument ($commandLineValue)"
         }
         val property = commandLineValue ?: fitInfoValue ?: default
         if (log) {

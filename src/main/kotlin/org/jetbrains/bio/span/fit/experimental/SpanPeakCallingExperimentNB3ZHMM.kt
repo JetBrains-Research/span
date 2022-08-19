@@ -28,10 +28,11 @@ class SpanPeakCallingExperimentNB3ZHMM<Model : ClassificationModel> private cons
     modelClass: Class<Model>,
     fixedModelPath: Path?,
     threshold: Double,
-    maxIterations: Int
+    maxIterations: Int,
+    saveExtendedInfo: Boolean
 ) : SpanModelFitExperiment<Model, SpanAnalyzeFitInformation, ZLMH>(
     fitInformation, modelFitter, modelClass, ZLMH.values(), NullHypothesis.of(ZLMH.Z, ZLMH.M, ZLMH.L), fixedModelPath,
-    threshold, maxIterations
+    threshold, maxIterations, saveExtendedInfo
 ) {
 
     override val defaultModelPath: Path =
@@ -47,7 +48,8 @@ class SpanPeakCallingExperimentNB3ZHMM<Model : ClassificationModel> private cons
             unique: Boolean = true,
             fixedModelPath: Path? = null,
             threshold: Double = Fitter.THRESHOLD,
-            maxIterations: Int = Fitter.MAX_ITERATIONS
+            maxIterations: Int = Fitter.MAX_ITERATIONS,
+            saveExtendedInfo: Boolean = false
         ): SpanPeakCallingExperimentNB3ZHMM<out ClassificationModel> {
             require(paths.isNotEmpty()) { "No data" }
             val fitInformation = SpanAnalyzeFitInformation.createFitInformation(
@@ -61,7 +63,8 @@ class SpanPeakCallingExperimentNB3ZHMM<Model : ClassificationModel> private cons
                 NB3ZHMM::class.java,
                 fixedModelPath,
                 threshold,
-                maxIterations
+                maxIterations,
+                saveExtendedInfo
             )
         }
     }

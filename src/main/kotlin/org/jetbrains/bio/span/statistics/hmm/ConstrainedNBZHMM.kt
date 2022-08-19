@@ -209,7 +209,7 @@ class ConstrainedNBZHMM(
         /**
          * Flip states in case when states with HIGH get lower mean than LOW
          */
-        internal fun ConstrainedNBZHMM.flipStatesIfNecessary(tracks: Int) {
+        fun ConstrainedNBZHMM.flipStatesIfNecessary(tracks: Int) {
             val means = this.means
             val ps = this.successProbabilities
             val switchNeeded = (0 until tracks).filter { means[it] > means[it + tracks] && ps[it] > ps[it + tracks] }
@@ -239,7 +239,7 @@ class ConstrainedNBZHMM(
         /**
          * Flip states in case when states with HIGH get lower mean than LOW
          */
-        internal fun ConstrainedNBZHMM.flipStatesIfNecessary(tracks1: Int, tracks2: Int) {
+        fun ConstrainedNBZHMM.flipStatesIfNecessary(tracks1: Int, tracks2: Int) {
             val means = means
             val ps = successProbabilities
             val switchNeeded1 =

@@ -25,9 +25,9 @@ object NegBinUtil {
         // Otherwise, failures will be set to +Inf and won't be updated during EM steps.
         val fs = NegativeBinomialDistribution.estimateFailuresUsingMoments(mean, max(1.1 * mean, sd * sd))
         // Make means and failures inverse proportional to snr.
-        val means = DoubleArray(n) { mean * snr.pow(((it + 1) / n).toDouble()) }
+        val means = DoubleArray(n) { mean * snr.pow((it.toDouble() + 1) / n) }
         // NegativeBinomialDistribution variance greater than mean guard
-        val failures = DoubleArray(n) { max(means[it] * 1.1, fs * snr.pow(((it - n) / n).toDouble())) }
+        val failures = DoubleArray(n) { max(means[it] * 1.1, fs * snr.pow((it.toDouble() - n) / n)) }
         LOG.debug("Guess emissions ${means.joinToString(",")}, failures ${failures.joinToString(",")}")
         return means to failures
     }

@@ -118,7 +118,7 @@ class PoissonRegression2Mixture(
         /**
          * Flip states in case when states with HIGH get lower mean than LOW
          */
-        internal fun PoissonRegression2Mixture.flipStatesIfNecessary() {
+        fun PoissonRegression2Mixture.flipStatesIfNecessary() {
             val lowScheme = this[1] as PoissonRegressionEmissionScheme
             val highScheme = this[2] as PoissonRegressionEmissionScheme
             if (weights[1] < weights[2]) {

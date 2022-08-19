@@ -258,9 +258,6 @@ object SpanCLAAnalyze {
     private fun peakCallingResults(options: OptionSet): Lazy<SpanFitResults> {
         val modelPath = options.valueOf("model") as Path?
         if (modelPath != null) {
-            require(modelPath.extension == "span") {
-                "Unrecognized model extension '.${modelPath.extension}', should be '.span'."
-            }
             SpanCLA.LOG.info("MODEL: $modelPath")
         }
         if (modelPath != null && modelPath.exists && modelPath.size.isNotEmpty()) {
@@ -340,28 +337,28 @@ object SpanCLAAnalyze {
             SpanModelType.NB2_HMM ->
                 SpanPeakCallingExperimentNB2HMM.getExperiment(
                     genomeQuery, data, bin, fragment, unique, modelPath,
-                    threshold, maxIterations
+                    threshold, maxIterations, saveExtendedInfo
                 )
             SpanModelType.NB3Z_HMM ->
                 SpanPeakCallingExperimentNB3ZHMM.getExperiment(
                     genomeQuery, data, bin, fragment, unique, modelPath,
-                    threshold, maxIterations
+                    threshold, maxIterations, saveExtendedInfo
                 )
             SpanModelType.NB3_HMM3 ->
                 SpanPeakCallingExperimentNB3HMM.getExperiment(
                     genomeQuery, data, bin, fragment, unique, modelPath,
-                    threshold, maxIterations
+                    threshold, maxIterations, saveExtendedInfo
                 )
             SpanModelType.POISSON_REGRESSION_MIXTURE -> {
                 SpanPeakCallingExperimentP2ZRegrMixture.getExperiment(
                     genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath,
-                    threshold, maxIterations
+                    threshold, maxIterations, saveExtendedInfo
                 )
             }
             SpanModelType.NEGBIN_REGRESSION_MIXTURE -> {
                 SpanPeakCallingExperimentNB2ZRegrMixture.getExperiment(
                     genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath,
-                    threshold, maxIterations
+                    threshold, maxIterations, saveExtendedInfo
                 )
             }
         }

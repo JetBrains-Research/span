@@ -169,7 +169,9 @@ class SpanRegrMixtureCLALongTest {
                     assertEquals(
                         1,
                         (Configuration.experimentsPath / "fit")
-                            .glob("${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}.${SpanModelType.POISSON_REGRESSION_MIXTURE.extension}").size
+                            .glob("${reduceIds(listOf(path.stemGz, control.stemGz, "200"))}." +
+                                    SpanModelType.POISSON_REGRESSION_MIXTURE.extension
+                            ).size
                     )
                 }
             }
@@ -208,7 +210,7 @@ class SpanRegrMixtureCLALongTest {
                     }
                 }
                 Tests.assertIn(
-                    "Stored model type (${SpanModelType.NB2Z_HMM}) " +
+                    "model type (${SpanModelType.NB2Z_HMM}) " +
                             "differs from the command line argument (${SpanModelType.POISSON_REGRESSION_MIXTURE})",
                     wrongErr
                 )

@@ -32,13 +32,14 @@ class SpanPeakCallingExperimentNB2ZRegrMixture private constructor(
     fitInformation: SpanRegrMixtureAnalyzeFitInformation,
     fixedModelPath: Path?,
     threshold: Double,
-    maxIterations: Int
+    maxIterations: Int,
+    saveExtendedInfo: Boolean
 ) : SpanModelFitExperiment<NegBin2ZeroRegressionMixture, SpanRegrMixtureAnalyzeFitInformation, ZLH>(
     fitInformation,
     NegBin2ZeroRegressionMixture.fitter(), NegBin2ZeroRegressionMixture::class.java,
     ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
     fixedModelPath,
-    threshold, maxIterations
+    threshold, maxIterations, saveExtendedInfo
 ) {
 
     override val defaultModelPath: Path =
@@ -58,13 +59,20 @@ class SpanPeakCallingExperimentNB2ZRegrMixture private constructor(
             unique: Boolean,
             fixedModelPath: Path?,
             threshold: Double,
-            maxIterations: Int
+            maxIterations: Int,
+            saveExtendedInfo: Boolean
         ): SpanPeakCallingExperimentNB2ZRegrMixture {
             require(data.size == 1) { "Negative binomial regression mixture currently accepts a single data track." }
             val fitInformation = SpanRegrMixtureAnalyzeFitInformation(
                 genomeQuery, data.single(), mapabilityPath, fragment, unique, binSize
             )
-            return SpanPeakCallingExperimentNB2ZRegrMixture(fitInformation, fixedModelPath, threshold, maxIterations)
+            return SpanPeakCallingExperimentNB2ZRegrMixture(
+                fitInformation,
+                fixedModelPath,
+                threshold,
+                maxIterations,
+                saveExtendedInfo
+            )
         }
     }
 }

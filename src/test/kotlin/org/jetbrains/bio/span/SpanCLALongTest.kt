@@ -387,7 +387,7 @@ LABELS, FDR, GAP options are ignored.
                             )
                         }
                     }
-                    assertIn("Stored bin size (200) differs from the command line argument (137)", invalidErr)
+                    assertIn("bin size (200) differs from the command line argument (137)", invalidErr)
                 }
             }
         }

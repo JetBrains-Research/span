@@ -32,13 +32,14 @@ class SpanPeakCallingExperimentP2ZRegrMixture private constructor(
     fitInformation: SpanRegrMixtureAnalyzeFitInformation,
     fixedModelPath: Path?,
     threshold: Double,
-    maxIterations: Int
+    maxIterations: Int,
+    saveExtendedInfo: Boolean
 ) : SpanModelFitExperiment<PoissonRegression2Mixture, SpanRegrMixtureAnalyzeFitInformation, ZLH>(
     fitInformation,
     PoissonRegression2Mixture.fitter(), PoissonRegression2Mixture::class.java,
     ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
     fixedModelPath,
-    threshold, maxIterations
+    threshold, maxIterations, saveExtendedInfo
 ) {
 
     override val defaultModelPath: Path =
@@ -58,13 +59,20 @@ class SpanPeakCallingExperimentP2ZRegrMixture private constructor(
             unique: Boolean,
             fixedModelPath: Path?,
             threshold: Double,
-            maxIterations: Int
+            maxIterations: Int,
+            saveExtendedInfo: Boolean
         ): SpanPeakCallingExperimentP2ZRegrMixture {
             require(data.size == 1) { "Poisson regression mixture currently accepts a single data track." }
             val fitInformation = SpanRegrMixtureAnalyzeFitInformation(
                 genomeQuery, data.single(), mapabilityPath, fragment, unique, binSize
             )
-            return SpanPeakCallingExperimentP2ZRegrMixture(fitInformation, fixedModelPath, threshold, maxIterations)
+            return SpanPeakCallingExperimentP2ZRegrMixture(
+                fitInformation,
+                fixedModelPath,
+                threshold,
+                maxIterations,
+                saveExtendedInfo
+            )
         }
     }
 }
