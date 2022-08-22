@@ -105,7 +105,6 @@ object ModelToPeaks {
         // 1) Return broad peaks in case of broad modifications even for strict FDR settings
         // 2) Mitigate the problem when number of peaks for strict FDR is much bigger than for relaxed FDR
         val logFdr = ln(fdr)
-        val strictFdrBins = BitterSet(logNullMemberships.size) { logNullMemberships[it] <= logFdr }
         val (candidateBins, candidateIslands) = computeCandidateBinsAndIslands(logNullMemberships, logFdr, gap)
         if (candidateIslands.isEmpty()) {
             return emptyList()
@@ -115,6 +114,7 @@ object ModelToPeaks {
         // 1) The more strict FDR, the fewer peaks with smaller average length
         // 2) Peaks should not disappear when relaxing FDR
         // Peak score is computed as length-weighted average p-value in its consequent enriched bins.
+        val strictFdrBins = BitterSet(logNullMemberships.size) { logNullMemberships[it] <= logFdr }
         val islandsLogPs = F64Array(candidateIslands.size) { islandIndex ->
             cancellableState?.checkCanceled()
             var blocks = strictFdrBins.findConsequentBlocks(candidateIslands[islandIndex])
@@ -184,9 +184,7 @@ object ModelToPeaks {
         val candidateBins = BitterSet(logNullMemberships.size).apply {
             0.until(size()).filter { logNullMemberships[it] <= relaxedLogFdr }.forEach(::set)
         }
-        val candidateIslands = candidateBins.aggregate(gap).filter { (from, to) ->
-            (from until to).any { logNullMemberships[it] <= logFdr }
-        }
+        val candidateIslands = candidateBins.aggregate(gap)
         return Pair(candidateBins, candidateIslands)
     }
 
