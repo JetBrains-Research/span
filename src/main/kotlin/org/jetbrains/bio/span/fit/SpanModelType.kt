@@ -5,8 +5,12 @@ import org.jetbrains.bio.span.SpanCLA.LOG
 enum class SpanModelType(val id: String, val extension: String, val description: String) {
     // Default SPAN model
     NB2Z_HMM("nb2zhmm", "span", "Negative binomial HMM 2 states with zero inflation"),
+    // Experimental
     NB2Z_MIXTURE("nb2zm", "span-nb2zm", "Negative binomial 2 states mixture with zero inflation"),
+
     NB3Z_HMM("nb3zhmm", "span-nb3zhmm", "Negative binomial HMM 3 states with zero inflation"),
+    NB5Z_HMM("nb5zhmm", "span-nb5zhmm", "Negative binomial HMM 5 states with zero inflation"),
+
     NB2_HMM("nb2hmm", "span-nb2hmm", "Negative binomial HMM 2 states"),
     NB3_HMM3("nb3hmm", "span-nb3hmm", "Negative binomial HMM 3 states"),
     POISSON_REGRESSION_MIXTURE(

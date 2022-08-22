@@ -344,6 +344,11 @@ object SpanCLAAnalyze {
                     genomeQuery, data, bin, fragment, unique, modelPath,
                     threshold, maxIterations, saveExtendedInfo
                 )
+            SpanModelType.NB5Z_HMM ->
+                SpanPeakCallingExperimentNB5ZHMM.getExperiment(
+                    genomeQuery, data, bin, fragment, unique, modelPath,
+                    threshold, maxIterations, saveExtendedInfo
+                )
             SpanModelType.NB3_HMM3 ->
                 SpanPeakCallingExperimentNB3HMM.getExperiment(
                     genomeQuery, data, bin, fragment, unique, modelPath,
