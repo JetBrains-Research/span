@@ -25,7 +25,7 @@ apply plugin: "kotlin"
 
 mainClassName = "org.jetbrains.bio.span.SpanCLA"
 
-sourceCompatibility = 1.8
+sourceCompatibility = 11
 targetCompatibility = sourceCompatibility
 compileKotlin { kotlinOptions.jvmTarget = sourceCompatibility }
 compileTestKotlin { kotlinOptions.jvmTarget = sourceCompatibility }
@@ -43,9 +43,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-support-jdk8:0.1")
 
     // Logging dependencies
-    implementation("ch.qos.logback:logback-classic:1.2.3")
-    implementation("ch.qos.logback:logback-core:1.2.3")
-    implementation("org.slf4j:slf4j-api:1.7.25")
+    implementation("ch.qos.logback:logback-classic:1.4.3")
+    implementation("ch.qos.logback:logback-core:1.4.3")
 
 
     compile project(":bioinf-commons")

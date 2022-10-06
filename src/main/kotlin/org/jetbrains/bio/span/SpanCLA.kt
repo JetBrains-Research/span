@@ -39,8 +39,7 @@ object SpanCLA {
      * SpanCLA fails to set up correct working directory, if launched within the same process.
      * This is a HACK.
      */
-    @VisibleForTesting
-    var ignoreConfigurePaths: Boolean = false
+        var ignoreConfigurePaths: Boolean = false
 
     init {
         // Load build properties
