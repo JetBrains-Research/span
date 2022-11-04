@@ -1,7 +1,6 @@
 package org.jetbrains.bio.span.statistics.regression
 
 import org.jetbrains.bio.Tests
-import org.jetbrains.bio.span.statistics.regression.WLSRegression
 import org.jetbrains.bio.viktor.asF64Array
 import org.junit.Assert.assertEquals
 import org.junit.Test

@@ -1,6 +1,5 @@
 package org.jetbrains.bio.span
 
-import com.google.common.annotations.VisibleForTesting
 import joptsimple.OptionParser
 import joptsimple.OptionSet
 import org.jetbrains.bio.experiment.Configuration
