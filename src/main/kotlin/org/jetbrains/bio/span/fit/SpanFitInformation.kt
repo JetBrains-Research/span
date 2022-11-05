@@ -68,13 +68,13 @@ interface SpanFitInformation {
      * Returns scaled treatment score.
      * Call [prepareData] beforehand!
      */
-    fun scaledTreatmentScore(chromosomeRange: ChromosomeRange): Double
+    fun scaledTreatmentCoverage(chromosomeRange: ChromosomeRange): Double
 
     /**
      * Returns scaled control score or null if not available.
      * Call [prepareData] beforehand!
      */
-    fun scaledControlScore(chromosomeRange: ChromosomeRange): Double?
+    fun scaledControlCoverage(chromosomeRange: ChromosomeRange): Double?
 
     fun hasControlData(): Boolean
 

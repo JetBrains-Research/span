@@ -7,9 +7,9 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.genome.query.CachingQuery
 import org.jetbrains.bio.genome.query.Query
-import org.jetbrains.bio.span.coverage.BinnedCoverageScoresQuery
-import org.jetbrains.bio.span.coverage.CoverageScoresQuery
-import org.jetbrains.bio.span.coverage.binsScoresDataFrame
+import org.jetbrains.bio.span.coverage.BinnedNormalizedCoverageQuery
+import org.jetbrains.bio.span.coverage.NormalizedCoverageQuery
+import org.jetbrains.bio.span.coverage.binnedCoverageDataFrame
 import org.jetbrains.bio.util.reduceIds
 import org.jetbrains.bio.util.stemGz
 
@@ -53,25 +53,33 @@ data class SpanAnalyzeFitInformation(
     override val dataQuery: Query<Chromosome, DataFrame>
         get() {
             prepareData()
-            val binnedScoresQueries = scoreQueries!!.map { BinnedCoverageScoresQuery(it, binSize) }
+            val binnedNormalizedCoverageQueries =
+                normalizedCoverageQueries!!.map { BinnedNormalizedCoverageQuery(it, binSize) }
             return object : CachingQuery<Chromosome, DataFrame>() {
                 override fun getUncached(input: Chromosome): DataFrame {
-                    return binnedScoresQueries.binsScoresDataFrame(input, labels.toTypedArray())
+                    return binnedNormalizedCoverageQueries.binnedCoverageDataFrame(input, labels.toTypedArray())
                 }
 
                 override val id: String
-                    get() = reduceIds(binnedScoresQueries.zip(labels).flatMap { (s, l) -> listOf(s.id, l) })
+                    get() = reduceIds(binnedNormalizedCoverageQueries.zip(labels).flatMap { (s, l) -> listOf(s.id, l) })
             }
         }
 
     @Transient
-    var scoreQueries: List<CoverageScoresQuery>? = null
+    var normalizedCoverageQueries: List<NormalizedCoverageQuery>? = null
 
     @Synchronized
     override fun prepareData() {
-        if (scoreQueries == null) {
-            scoreQueries = data.map {
-                CoverageScoresQuery(genomeQuery(), it.treatment, it.control, fragment, unique, showLibraryInfo = false)
+        if (normalizedCoverageQueries == null) {
+            normalizedCoverageQueries = data.map {
+                NormalizedCoverageQuery(
+                    genomeQuery(),
+                    it.treatment,
+                    it.control,
+                    fragment,
+                    unique,
+                    showLibraryInfo = false
+                )
             }
         }
     }
@@ -81,40 +89,43 @@ data class SpanAnalyzeFitInformation(
      */
     @Synchronized
     override fun score(chromosomeRange: ChromosomeRange): Double {
-        check(scoreQueries != null) {
+        check(normalizedCoverageQueries != null) {
             "Please use prepareData before!"
         }
-        return if (scoreQueries!!.all { it.ready }) {
-            scoreQueries!!.sumOf { it.apply(chromosomeRange) }.toDouble() / scoreQueries!!.size
+        return if (normalizedCoverageQueries!!.all { it.ready }) {
+            normalizedCoverageQueries!!.sumOf { it.apply(chromosomeRange) }
+                .toDouble() / normalizedCoverageQueries!!.size
         } else {
             0.0
         }
     }
 
     @Synchronized
-    override fun scaledTreatmentScore(chromosomeRange: ChromosomeRange): Double {
-        check(scoreQueries != null) {
+    override fun scaledTreatmentCoverage(chromosomeRange: ChromosomeRange): Double {
+        check(normalizedCoverageQueries != null) {
             "Please use prepareData before!"
         }
-        return scoreQueries!!.sumOf { it.scaledTreatment(chromosomeRange) } / scoreQueries!!.size
+        return normalizedCoverageQueries!!.sumOf { it.scaledTreatment(chromosomeRange) } /
+                normalizedCoverageQueries!!.size
     }
 
     @Synchronized
-    override fun scaledControlScore(chromosomeRange: ChromosomeRange): Double? {
-        check(scoreQueries != null) {
+    override fun scaledControlCoverage(chromosomeRange: ChromosomeRange): Double? {
+        check(normalizedCoverageQueries != null) {
             "Please use prepareData before!"
         }
-        if (scoreQueries!!.any { it.controlReads == null }) {
+        if (normalizedCoverageQueries!!.any { it.controlReads == null }) {
             return null
         }
-        return scoreQueries!!.sumOf { it.scaledControl(chromosomeRange)!! } / scoreQueries!!.size
+        return normalizedCoverageQueries!!.sumOf { it.scaledControl(chromosomeRange)!! } /
+                normalizedCoverageQueries!!.size
     }
 
     override fun hasControlData(): Boolean {
-        check(scoreQueries != null) {
+        check(normalizedCoverageQueries != null) {
             "Please use prepareData before!"
         }
-        return scoreQueries!!.any { it.controlPath != null }
+        return normalizedCoverageQueries!!.any { it.controlPath != null }
     }
 
     companion object {

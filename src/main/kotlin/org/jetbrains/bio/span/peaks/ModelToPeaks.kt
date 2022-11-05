@@ -129,8 +129,8 @@ object ModelToPeaks {
                 val chromosomeRange = ChromosomeRange(start, end, chromosome)
                 if (fitInfo.hasControlData()) {
                     // Estimate enrichment vs local coverage in control track
-                    val peakTreatment = fitInfo.scaledTreatmentScore(chromosomeRange)
-                    val peakControl = fitInfo.scaledControlScore(chromosomeRange)!!
+                    val peakTreatment = fitInfo.scaledTreatmentCoverage(chromosomeRange)
+                    val peakControl = fitInfo.scaledControlCoverage(chromosomeRange)!!
                     PoissonUtil.logPoissonCdf(ceil(peakTreatment).toInt() + pseudoCount, peakControl + pseudoCount)
                 } else {
                     // Fallback to average posterior log error probability for block

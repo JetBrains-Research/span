@@ -3,7 +3,7 @@ package org.jetbrains.bio.span.fit
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
-import org.jetbrains.bio.span.coverage.BinnedCoverageScoresQuery
+import org.jetbrains.bio.span.coverage.BinnedNormalizedCoverageQuery
 import org.jetbrains.bio.span.statistics.hmm.ConstrainedNBZHMM
 import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
@@ -16,8 +16,8 @@ import java.nio.file.Path
 /**
  * Corresponds to Span `analyze --type nbhmm` invocation.
  *
- * For each treatment-control pair, we compute binned DiffBind-like scores (see [BinnedCoverageScoresQuery] for details).
- * These scores are used as the input for a three-state multidimensional negative binomial HMM.
+ * For each treatment-control pair, we compute binned normalized coverage [BinnedNormalizedCoverageQuery].
+ * These coverages are used as the input for a three-state multidimensional negative binomial HMM.
  * For each dimension `d`, there are two negative binomial distributions, low_d and high_d.
  * - ZERO state corresponds to zero emissions for all dimensions
  * - LOW state employs `low_d` emission for each dimension `d`

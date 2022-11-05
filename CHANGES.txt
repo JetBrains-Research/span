@@ -17,13 +17,15 @@ Released on Oct 12th, 2022
  *    Each block is assigned P as average posterior log error probability for bins in blocks.
  *    50% top significant blocks scores are aggregated using length-weighted average as P for island.
  * 5) Compute qvalues on islands p-values, filter by alpha.
+- Improved treatment and control normalization, use beta minimizing absolute correlation between
+  corrected signal and control: |correlation(scaled-treatment - beta * scaled-control, scaled-control)|
 - Improved multistart initial NB states guess - use different params for each model
 - Safeguard against infinite failures as initial guess for NB, which effectively converts NB to Poisson
-- Reduced time required for peak calling
 - Show progress while computing peaks from model
 - Updated defaults values for SPAN peaks: fdr 0.05, gap 3
 - Updated defaults for SPAN model: total iterations 20, log-likelihood threshold 1
-- Added advanced SPAN model viewer
+- Reduced time required for peak calling
+- Added advanced SPAN model viewer in JBR genome browser
 - Bugfixes
 
 

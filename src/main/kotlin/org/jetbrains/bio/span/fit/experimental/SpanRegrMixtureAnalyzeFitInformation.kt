@@ -11,7 +11,7 @@ import org.jetbrains.bio.genome.query.CachingQuery
 import org.jetbrains.bio.genome.query.Query
 import org.jetbrains.bio.genome.query.ReadsQuery
 import org.jetbrains.bio.genome.sequence.CpGContent
-import org.jetbrains.bio.span.coverage.CoverageScoresQuery
+import org.jetbrains.bio.span.coverage.NormalizedCoverageQuery
 import org.jetbrains.bio.span.fit.AbstractSpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanDataPaths
 import org.jetbrains.bio.span.fit.SpanFitInformation
@@ -87,13 +87,13 @@ data class SpanRegrMixtureAnalyzeFitInformation constructor(
         }
 
     @Transient
-    var scoreQuery: CoverageScoresQuery? = null
+    var normalizedCoverageQuery: NormalizedCoverageQuery? = null
 
     @Synchronized
     override fun prepareData() {
-        if (scoreQuery == null) {
-            scoreQuery =
-                CoverageScoresQuery(
+        if (normalizedCoverageQuery == null) {
+            normalizedCoverageQuery =
+                NormalizedCoverageQuery(
                     genomeQuery(), data.single().treatment, data.single().control,
                     fragment, unique, showLibraryInfo = false
                 )
@@ -101,13 +101,13 @@ data class SpanRegrMixtureAnalyzeFitInformation constructor(
     }
 
     override fun score(chromosomeRange: ChromosomeRange): Double {
-        check(scoreQuery != null) {
+        check(normalizedCoverageQuery != null) {
             "Please use prepareData before!"
         }
-        return scoreQuery!!.apply(chromosomeRange).toDouble()
+        return normalizedCoverageQuery!!.apply(chromosomeRange).toDouble()
     }
-    override fun scaledTreatmentScore(chromosomeRange: ChromosomeRange): Double = 0.0
-    override fun scaledControlScore(chromosomeRange: ChromosomeRange): Double? = null
+    override fun scaledTreatmentCoverage(chromosomeRange: ChromosomeRange): Double = 0.0
+    override fun scaledControlCoverage(chromosomeRange: ChromosomeRange): Double? = null
 
     override fun hasControlData(): Boolean {
         return false
