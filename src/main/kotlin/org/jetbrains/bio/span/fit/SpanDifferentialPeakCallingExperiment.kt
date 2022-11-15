@@ -48,7 +48,7 @@ class SpanDifferentialPeakCallingExperiment private constructor(
         gap: Int
     ): Pair<List<Peak>, List<Peak>> {
         val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
-            ModelToPeaks.computeChromosomePeaks(results, chromosome, fdr, gap)
+            ModelToPeaks.computeChromosomePeaks(results, chromosome, fdr, gap, true)
         }
         val highLow = arrayListOf<Peak>()
         val lowHigh = arrayListOf<Peak>()

@@ -44,6 +44,7 @@ object ModelToPeaks {
         genomeQuery: GenomeQuery,
         fdr: Double,
         gap: Int,
+        clip: Boolean,
         cancellableState: CancellableState? = null
     ): List<Peak> {
         resetCounters()
@@ -51,7 +52,10 @@ object ModelToPeaks {
         val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
             cancellableState?.checkCanceled()
             val chromosomePeaks =
-                computeChromosomePeaks(spanFitResults, chromosome, fdr, gap, cancellableState = cancellableState)
+                computeChromosomePeaks(
+                    spanFitResults, chromosome, fdr, gap, clip,
+                    cancellableState = cancellableState
+                )
             progress.report(1)
             chromosomePeaks
         }
@@ -69,6 +73,7 @@ object ModelToPeaks {
         chromosome: Chromosome,
         fdr: Double,
         gap: Int,
+        clip: Boolean,
         cancellableState: CancellableState? = null
     ): List<Peak> {
         // Check that we have information for requested chromosome
@@ -81,6 +86,7 @@ object ModelToPeaks {
                 spanFitResults.fitInfo.offsets(chromosome),
                 fdr,
                 gap,
+                clip,
                 cancellableState = cancellableState
             )
         } else {
@@ -97,7 +103,7 @@ object ModelToPeaks {
         offsets: IntArray,
         fdr: Double,
         gap: Int,
-        pseudoCount: Int = 1,
+        clip: Boolean,
         cancellableState: CancellableState? = null
     ): List<Peak> {
         // Compute candidate bins and islands with relaxed settings
@@ -131,13 +137,28 @@ object ModelToPeaks {
                     // Estimate enrichment vs local coverage in control track
                     val peakTreatment = fitInfo.scaledTreatmentCoverage(chromosomeRange)
                     val peakControl = fitInfo.scaledControlCoverage(chromosomeRange)!!
-                    PoissonUtil.logPoissonCdf(ceil(peakTreatment).toInt() + pseudoCount, peakControl + pseudoCount)
+                    PoissonUtil.logPoissonCdf(
+                        ceil(peakTreatment).toInt() + PSEUDO_COUNT, peakControl + PSEUDO_COUNT
+                    )
                 } else {
                     // Fallback to average posterior log error probability for block
                     (from until to).sumOf { logNullMemberships[it] } / (to - from)
                 }
             }
             islandsLengthWeightedScores(blocks, blocksLogPs)
+        }
+
+        // Additionally clip islands by coverage
+        val (avgSignal, avgNoise) = if (clip)
+            estimateSignalAndNoiseDensity(
+                chromosome, fitInfo, candidateIslands, offsets
+            ) else
+                0.0 to 0.0
+        var totalClipStart = 0L
+        var totalClipEnd = 0L
+        val maxClippedScore = avgNoise + MAX_CLIPPED_DELTA * (avgSignal - avgNoise)
+        if (clip) {
+            LOG.debug("Signal density $avgSignal, noise density $avgNoise")
         }
 
         // Filter result islands by Q values
@@ -151,14 +172,23 @@ object ModelToPeaks {
             if (logPValue > logFdr || logQValue > logFdr) {
                 return@mapIndexedNotNull null
             }
+
+            val (clippedStart, clippedEnd) = if (clip)
+                clipPeakByScore(
+                    chromosome, start, end, fitInfo,
+                    (MAX_CLIPPED_LENGTH * (end - start)).toInt(), maxClippedScore
+                )
+            else start to end
+            totalClipStart += clippedStart - start
+            totalClipEnd += end - clippedEnd
             Peak(
                 chromosome = chromosome,
-                startOffset = start,
-                endOffset = end,
+                startOffset = clippedStart,
+                endOffset = clippedEnd,
                 mlogpvalue = -logPValue / LOG_10,
                 mlogqvalue = -logQValue / LOG_10,
                 // Value is either coverage of fold change
-                value = fitInfo.score(ChromosomeRange(start, end, chromosome)),
+                value = fitInfo.score(ChromosomeRange(clippedStart, clippedEnd, chromosome)),
                 // Score should be proportional original q-value
                 score = min(1000.0, -logQValue / LOG_10).toInt()
             )
@@ -190,6 +220,92 @@ object ModelToPeaks {
         return Pair(candidateBins, candidateIslands)
     }
 
+    private fun estimateSignalAndNoiseDensity(
+        chromosome: Chromosome,
+        fitInfo: SpanFitInformation,
+        islands: List<BitRange>,
+        offsets: IntArray
+    ): Pair<Double, Double> {
+        var sumSignalScore = 0.0
+        var sumSignalLength = 0L
+        var sumNoiseScore = 0.0
+        var sumNoiseLength = 0L
+        var prevNoiseStart = 0
+        islands.forEach { (from, to) ->
+            val start = offsets[from]
+            val end = if (to < offsets.size) offsets[to] else chromosome.length
+            sumSignalScore += fitInfo.score(ChromosomeRange(start, end, chromosome))
+            sumSignalLength += end - start
+            sumNoiseScore += fitInfo.score(ChromosomeRange(prevNoiseStart, start, chromosome))
+            sumNoiseLength += start - prevNoiseStart
+            prevNoiseStart = end
+        }
+        if (prevNoiseStart < chromosome.length) {
+            sumNoiseScore += fitInfo.score(ChromosomeRange(prevNoiseStart, chromosome.length, chromosome))
+            sumNoiseLength += chromosome.length - prevNoiseStart
+        }
+        val avgSignalDensity = if (sumSignalLength > 0) sumSignalScore / sumSignalLength else 0.0
+        val avgNoiseDensity = if (sumNoiseLength > 0) sumNoiseScore / sumNoiseLength else 0.0
+        if (sumSignalLength != 0L && sumNoiseLength != 0L && avgSignalDensity <= avgNoiseDensity) {
+            LOG.warn("Average signal density $avgSignalDensity <= average noise density $avgNoiseDensity")
+            return avgNoiseDensity to avgSignalDensity
+        }
+        return avgSignalDensity to avgNoiseDensity
+    }
+
+    /**
+     * Tries to reduce range by [CLIP_STEPS] from both sides while increasing score.
+     */
+    private fun clipPeakByScore(
+        chromosome: Chromosome,
+        start: Int,
+        end: Int,
+        fitInfo: SpanFitInformation,
+        maxClippedLength: Int,
+        maxClippedScore: Double
+    ): Pair<Int, Int> {
+        // Try to change left boundary
+        val maxStart = start + maxClippedLength
+        var clippedStart = start
+        var step = CLIP_STEPS.size - 1
+        while (step >= 0 && clippedStart <= maxStart) {
+            val newStart = clippedStart + CLIP_STEPS[step]
+            if (newStart > maxStart) {
+                step -= 1
+                continue
+            }
+            // Clip while clipped part score is less than average density
+            val clipScore = fitInfo.score(ChromosomeRange(start, newStart, chromosome))
+            if (clipScore < maxClippedScore) {
+                clippedStart = newStart
+                step = min(step + 1, CLIP_STEPS.size - 1)
+            } else {
+                step -= 1
+            }
+        }
+        // Try to change right boundary
+        val minEnd = end - maxClippedLength
+        var clippedEnd = end
+        step = CLIP_STEPS.size - 1
+        while (step >= 0 && clippedEnd >= minEnd) {
+            val newEnd = clippedEnd - CLIP_STEPS[step]
+            if (newEnd < minEnd) {
+                step -= 1
+                continue
+            }
+            // Clip while clipped part score is less than average density
+            val clipScore = fitInfo.score(ChromosomeRange(newEnd, end, chromosome))
+            if (clipScore < maxClippedScore) {
+                clippedEnd = newEnd
+                step = min(step + 1, CLIP_STEPS.size - 1)
+            } else {
+                step -= 1
+            }
+        }
+        return clippedStart to clippedEnd
+    }
+
+
     /**
      * We want summary score to be robust wrt appending blocks of low significance,
      * so take into account top 50% blocks p-values, otherwise we'll get fdr-blinking peaks, i.e.
@@ -204,10 +320,12 @@ object ModelToPeaks {
         require(blocks.size == scores.size) { "Different lengths of blocks and scores lists" }
         val sum = KahanSum()
         var l = 0
-        blocks.zip(scores).sortedBy { it.second }.take(max(1, (blocks.size * fraction).toInt())).forEach { (b, p) ->
-            sum += p * (b.toIndex - b.fromIndex)
-            l += b.toIndex - b.fromIndex
-        }
+        blocks.zip(scores).sortedBy { it.second }
+            .take(max(1, ceil(blocks.size * fraction).toInt()))
+            .forEach { (b, p) ->
+                sum += p * (b.toIndex - b.fromIndex)
+                l += b.toIndex - b.fromIndex
+            }
         return sum.result() / l
     }
 
@@ -216,6 +334,12 @@ object ModelToPeaks {
         min(ln(0.1), logFdr * relaxPower)
 
     private const val RELAX_POWER_DEFAULT = 0.5
+
+    private const val PSEUDO_COUNT: Int = 1
+
+    private val CLIP_STEPS = intArrayOf(1, 2, 5, 10, 20, 50, 100, 200, 500, 1000)
+    private const val MAX_CLIPPED_LENGTH = 0.25
+    private const val MAX_CLIPPED_DELTA = 0.5
 
     private val LOG_10 = ln(10.0)
 

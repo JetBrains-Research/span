@@ -132,7 +132,7 @@ data class SpanCompareFitInformation(
         check(normalizedCoverageQueries1 != null && normalizedCoverageQueries2 != null) {
             "Please use prepareData before!"
         }
-        return true
+        return false
     }
 
     companion object {

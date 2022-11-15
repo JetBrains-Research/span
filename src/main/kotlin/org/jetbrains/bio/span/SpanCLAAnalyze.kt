@@ -55,6 +55,8 @@ object SpanCLAAnalyze {
             )
                 .withRequiredArg()
                 .defaultsTo(SpanModelType.NB2Z_HMM.id)
+            accepts("clip", "Clip peaks to improve density")
+
             accepts(
                 "mapability",
                 "Mapability bigWig file. Requires --model-type " +
@@ -150,8 +152,9 @@ object SpanCLAAnalyze {
                 val bin = fitInfo.binSize
 
                 if (peaksPath != null) {
+                    val clip = "clip" in options
                     if (labelsPath == null) {
-                        val peaks = ModelToPeaks.computeChromosomePeaks(spanResults, genomeQuery, fdr, gap)
+                        val peaks = ModelToPeaks.computeChromosomePeaks(spanResults, genomeQuery, fdr, gap, clip)
                         Peak.savePeaks(
                             peaks, peaksPath,
                             "peak${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
@@ -196,7 +199,9 @@ object SpanCLAAnalyze {
                             peaksPath.parent
                                     / "${peaksPath.fileName.stem}_parameters.csv"
                         )
-                        val peaks = ModelToPeaks.computeChromosomePeaks(spanResults, genomeQuery, optimalFDR, optimalGap)
+                        val peaks = ModelToPeaks.computeChromosomePeaks(
+                            spanResults, genomeQuery, optimalFDR, optimalGap, clip
+                        )
                         Peak.savePeaks(
                             peaks, peaksPath,
                             "peak${if (fragment is FixedFragment) "_$fragment" else ""}_" +

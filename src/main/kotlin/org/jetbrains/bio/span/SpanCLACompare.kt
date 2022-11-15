@@ -52,7 +52,7 @@ object SpanCLACompare {
                 .withRequiredArg()
                 .withValuesSeparatedBy(",")
                 .withValuesConvertedBy(PathConverter.exists())
-
+            accepts("clip", "Clip peaks to improve density")
 
             parse(params) { options ->
                 if ("quiet" in options) {
@@ -117,7 +117,10 @@ object SpanCLACompare {
                 val differentialPeakCallingResults = lazyDifferentialPeakCallingResults.value
                 val genomeQuery = differentialPeakCallingResults.fitInfo.genomeQuery()
                 if (peaksPath != null) {
-                    val peaks = ModelToPeaks.computeChromosomePeaks(differentialPeakCallingResults, genomeQuery, fdr, gap)
+                    val clip = "clip" in options
+                    val peaks = ModelToPeaks.computeChromosomePeaks(
+                        differentialPeakCallingResults, genomeQuery, fdr, gap, clip
+                    )
                     Peak.savePeaks(
                         peaks, peaksPath,
                         "diff${if (fragment is FixedFragment) "_$fragment" else ""}_${binSize}_${fdr}_${gap}"
