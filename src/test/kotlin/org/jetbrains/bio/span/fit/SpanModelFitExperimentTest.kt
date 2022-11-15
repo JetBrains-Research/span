@@ -73,7 +73,8 @@ class SpanModelFitExperimentTest {
                 fullGenomeQuery, listOf(SpanDataPaths(path, null)), 200, AutoFragment
             )
             assertTrue(
-                ModelToPeaks.computeChromosomePeaks(peakCallingExperiment.results, fullGenomeQuery, 0.05, 0).isNotEmpty(),
+                ModelToPeaks.computeChromosomePeaks(peakCallingExperiment.results, fullGenomeQuery, 0.05, 0, false)
+                    .isNotEmpty(),
                 "Expected peak set not to be empty."
             )
         }
