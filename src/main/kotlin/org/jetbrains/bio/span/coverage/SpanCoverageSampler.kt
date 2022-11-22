@@ -21,6 +21,7 @@ object SpanCoverageSampler {
      * @param zero bins which should have zero coverage
      * @param goodQuality true if sampling is done from good quality data model
      * @param totalCoverage summary number of reads to sample, null to ignore
+     * @param firstZeros Artificially add zeroes to avoid problem with enriched first bin
      */
     fun sampleCoverage(
         path: Path,
@@ -28,7 +29,8 @@ object SpanCoverageSampler {
         high: GenomeMap<BitSet> = genomeMap(genomeQuery) { BitSet() },
         zero: GenomeMap<BitSet> = genomeMap(genomeQuery) { BitSet() },
         goodQuality: Boolean = true,
-        totalCoverage: Long? = null
+        totalCoverage: Long? = null,
+        firstZeros: Int = 10
     ) {
         withResource(
             SpanCoverageSampler::class.java,
@@ -57,7 +59,7 @@ object SpanCoverageSampler {
                         (chr.length.toFloat() / genomeLength) * (totalCoverage.toFloat() / totalSampledCoverage)
                     else
                         null
-                    for (b in 0 until bins) {
+                    for (b in firstZeros until bins) {
                         val binIsEnriched = high[chr][b]
                         val binIsZero = zero[chr][b]
                         check(!(binIsEnriched && binIsZero)) { "Both enriched and zero for $b" }
