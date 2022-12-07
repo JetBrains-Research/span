@@ -234,7 +234,7 @@ abstract class SpanModelFitExperiment<
                 if (c != null) {
                     // we have to be sure that the control coverage cache is calculated for the full genome query,
                     // otherwise we can get some very hard-to-catch bugs later
-                    ReadsQuery(genomeQuery, c, unique, fragment).get()
+                    ReadsQuery(genomeQuery, c, unique, fragment, showLibraryInfo = false).get()
                 }
                 nonEmptyChromosomes.addAll(chromosomes.filter { coverage.getBothStrandsCoverage(it.range.on(it)) > 0 })
             }
