@@ -106,6 +106,7 @@ data class SpanRegrMixtureAnalyzeFitInformation constructor(
         }
         return normalizedCoverageQuery!!.apply(chromosomeRange).toDouble()
     }
+
     override fun scaledTreatmentCoverage(chromosomeRange: ChromosomeRange): Double = 0.0
     override fun scaledControlCoverage(chromosomeRange: ChromosomeRange): Double? = null
 
@@ -120,38 +121,21 @@ data class SpanRegrMixtureAnalyzeFitInformation constructor(
         val VERSION = 4
 
         fun binnedCoverage(chr: Chromosome, coverage: Coverage, binSize: Int): IntArray {
-            val len = (chr.length - 1) / binSize + 1
-            val res = IntArray(len)
-            for (i in 0 until len - 1) {
-                res[i] = coverage.getBothStrandsCoverage(
-                    ChromosomeRange(i * binSize, (i + 1) * binSize, chr)
-                )
-            }
-            res[len - 1] = coverage.getBothStrandsCoverage(
-                ChromosomeRange((len - 1) * binSize, chr.length, chr)
-            )
-            return res
+            return chr.range.slice(binSize).mapToInt { range ->
+                coverage.getBothStrandsCoverage(range.on(chr))
+            }.toArray()
         }
 
         fun binnedMapability(chr: Chromosome, mapabilityPath: Path, binSize: Int): DoubleArray {
             val bwFile = BigWigFile.read(mapabilityPath)
-
-            val len = (chr.length - 1) / binSize + 1
-
-            if (!bwFile.chromosomes.containsValue(chr.name)) {
-                // the chromosome isn't present in the bigWig file, use mean genome mapability for all bins
-                val meanMapability = bwFile.totalSummary.sum / bwFile.totalSummary.count
-                return DoubleArray(len) { meanMapability }
-            }
-
-            val mapSummary = bwFile.summarize(chr.name, 0, (len - 1) * binSize, numBins = len - 1)
-            val res = DoubleArray(len)
-            for (i in 0 until len - 1) {
-                res[i] = mapSummary[i].sum / binSize
-            }
-            res[len - 1] = bwFile.summarize(chr.name, (len - 1) * binSize, chr.length).single().sum /
-                    (chr.length - (len - 1) * binSize)
-            return res
+            // Mean genome mapability for all bins
+            val meanMapability = bwFile.totalSummary.sum / bwFile.totalSummary.count
+            return chr.range.slice(binSize).mapToDouble { range ->
+                if (!bwFile.chromosomes.containsValue(chr.name)) {
+                    return@mapToDouble meanMapability
+                }
+                bwFile.summarize(chr.name, range.startOffset, range.endOffset).single().sum / binSize
+            }.toArray()
         }
     }
 }
