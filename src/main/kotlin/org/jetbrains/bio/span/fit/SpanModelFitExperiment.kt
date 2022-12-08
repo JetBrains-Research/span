@@ -150,9 +150,8 @@ abstract class SpanModelFitExperiment<
                 fitInformation.save(informationPath)
                 LOG.debug("Fit information saved to $informationPath")
 
-                LOG.debug("Computing states dataframe")
+                LOG.info("Analyzing model bins enrichment")
                 val statesDataFrame = calculateStatesDataFrame(model)
-                LOG.debug("Computing null hypothesis log memberships")
                 val chromosomes = genomeQuery.get()
                 val chromosomeToDataFrameMap = chromosomes.associate {
                     val logMemberships = getLogMemberships(sliceStatesDataFrame(statesDataFrame, it))
