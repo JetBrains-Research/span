@@ -15,6 +15,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.max
 
 /**
@@ -38,6 +39,7 @@ class NormalizedCoverageQuery(
     val controlPath: Path?,
     val fragment: Fragment,
     val unique: Boolean = true,
+    val binSize: Int = SPAN_DEFAULT_BIN,
     val showLibraryInfo: Boolean = true,
 ) : Query<ChromosomeRange, Int> {
 
@@ -72,7 +74,7 @@ class NormalizedCoverageQuery(
      * Cached value for treatment and control scales, see [analyzeCoverage]
      */
     val coveragesNormalizedInfo by lazy {
-        analyzeCoverage(genomeQuery, treatmentReads.get(), controlReads?.get())
+        analyzeCoverage(genomeQuery, treatmentReads.get(), controlReads?.get(), binSize)
     }
 
     fun scaledTreatment(chromosomeRange: ChromosomeRange): Double {
@@ -91,9 +93,11 @@ class NormalizedCoverageQuery(
             return treatmentReads.get().getBothStrandsCoverage(t)
         }
         val (treatmentScale, controlScale, beta) = coveragesNormalizedInfo
+        val treatmentCoverage = treatmentReads.get().getBothStrandsCoverage(t)
+        val controlCoverage = controlReads!!.get().getBothStrandsCoverage(t)
         return max(
-            0, (controlScale * treatmentReads.get().getBothStrandsCoverage(t) -
-                    beta * treatmentScale * controlReads!!.get().getBothStrandsCoverage(t)).toInt()
+            0,
+            ceil(treatmentCoverage * controlScale - controlCoverage * treatmentScale * beta).toInt()
         )
     }
 
@@ -114,7 +118,8 @@ class NormalizedCoverageQuery(
         fun analyzeCoverage(
             genomeQuery: GenomeQuery,
             treatmentCoverage: Coverage,
-            controlCoverage: Coverage?
+            controlCoverage: Coverage?,
+            binSize: Int
         ): NormalizedCoverageInfo {
             if (controlCoverage == null) {
                 return NormalizedCoverageInfo(1.0, 1.0, 0.0)
@@ -143,8 +148,10 @@ class NormalizedCoverageQuery(
                 )
             }
             LOG.debug("Estimating beta")
-            val beta = estimateBeta(genomeQuery, treatmentCoverage, treatmentScale, controlCoverage, controlScale)
-            LOG.info("Beta for signal control correction: $beta")
+            val beta = estimateBeta(
+                genomeQuery, treatmentCoverage, treatmentScale, controlCoverage, controlScale, binSize
+            )
+            LOG.info("Beta for signal control correction: ${"%.3f".format(beta)}")
             return NormalizedCoverageInfo(treatmentScale, controlScale, beta)
         }
 

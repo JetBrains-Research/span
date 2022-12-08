@@ -95,7 +95,7 @@ data class SpanRegrMixtureAnalyzeFitInformation constructor(
             normalizedCoverageQuery =
                 NormalizedCoverageQuery(
                     genomeQuery(), data.single().treatment, data.single().control,
-                    fragment, unique, showLibraryInfo = false
+                    fragment, unique, binSize, showLibraryInfo = false
                 )
         }
     }

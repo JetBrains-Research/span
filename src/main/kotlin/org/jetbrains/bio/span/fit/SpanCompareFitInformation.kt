@@ -71,6 +71,7 @@ data class SpanCompareFitInformation(
                     it.control,
                     fragment,
                     unique,
+                    binSize,
                     showLibraryInfo = false
                 )
             }
@@ -83,6 +84,7 @@ data class SpanCompareFitInformation(
                     it.control,
                     fragment,
                     unique,
+                    binSize,
                     showLibraryInfo = false
                 )
             }

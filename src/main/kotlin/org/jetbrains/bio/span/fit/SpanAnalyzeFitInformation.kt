@@ -78,6 +78,7 @@ data class SpanAnalyzeFitInformation(
                     it.control,
                     fragment,
                     unique,
+                    binSize,
                     showLibraryInfo = false
                 )
             }
