@@ -8,7 +8,6 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.genome.query.CachingQuery
 import org.jetbrains.bio.genome.query.Query
-import org.jetbrains.bio.span.coverage.BinnedNormalizedCoverageQuery
 import org.jetbrains.bio.span.coverage.NormalizedCoverageQuery
 import org.jetbrains.bio.span.coverage.binnedCoverageDataFrame
 import org.jetbrains.bio.util.reduceIds
@@ -37,21 +36,18 @@ data class SpanCompareFitInformation(
     override val dataQuery: Query<Chromosome, DataFrame>
         get() {
             prepareData()
-            val binnedNormalizedCoverageQueries = (normalizedCoverageQueries1!! + normalizedCoverageQueries2!!)
-                .map {
-                    BinnedNormalizedCoverageQuery(
-                        it,
-                        binSize
-                    )
-                }
+            val queries = normalizedCoverageQueries1!! + normalizedCoverageQueries2!!
             val labels = labels1 + labels2
             return object : CachingQuery<Chromosome, DataFrame>() {
                 override fun getUncached(input: Chromosome): DataFrame {
-                    return binnedNormalizedCoverageQueries.binnedCoverageDataFrame(input, labels.toTypedArray())
+                    return queries.binnedCoverageDataFrame(input, binSize, labels.toTypedArray())
                 }
 
                 override val id: String
-                    get() = reduceIds(binnedNormalizedCoverageQueries.zip(labels).flatMap { (s, l) -> listOf(s.id, l) })
+                    get() = reduceIds(
+                        queries.zip(labels).flatMap { (s, l) -> listOf(s.id, l) }
+                                + listOf(binSize.toString())
+                    )
             }
         }
 

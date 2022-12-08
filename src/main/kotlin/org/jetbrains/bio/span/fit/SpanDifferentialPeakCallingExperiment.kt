@@ -3,7 +3,6 @@ package org.jetbrains.bio.span.fit
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.Fragment
-import org.jetbrains.bio.span.coverage.BinnedNormalizedCoverageQuery
 import org.jetbrains.bio.span.peaks.ModelToPeaks
 import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.span.statistics.hmm.ConstrainedNBZHMM
@@ -17,7 +16,7 @@ import java.nio.file.Path
  *
  * The treatment-control pairs are split into two sets that are to compare.
  *
- * For each treatment-control pair, we compute binned normalized coverage [BinnedNormalizedCoverageQuery].
+ * For each treatment-control pair, we compute binned normalized coverage.
  * These coverages are used as the input for a five-state multidimensional negative binomial HMM.
  * For each dimension `d`, there are two negative binomial distributions, low_d and high_d.
  * - ZERO state corresponds to zero emissions for all dimensions

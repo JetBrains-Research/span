@@ -1,6 +1,8 @@
 package org.jetbrains.bio.span.coverage
 
 import org.apache.commons.math3.stat.correlation.PearsonsCorrelation
+import org.jetbrains.bio.dataframe.DataFrame
+import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.Coverage
@@ -192,4 +194,19 @@ class NormalizedCoverageQuery(
         }
     }
 
+}
+
+fun List<NormalizedCoverageQuery>.binnedCoverageDataFrame(
+    chromosome: Chromosome,
+    binSize: Int,
+    labels: Array<String>
+): DataFrame {
+    var res = DataFrame()
+    forEachIndexed { d, inputQuery ->
+        val binnedCoverage = chromosome.range.slice(binSize).mapToInt { range ->
+            inputQuery.apply(range.on(chromosome))
+        }.toArray()
+        res = res.with(labels[d], binnedCoverage)
+    }
+    return res
 }
