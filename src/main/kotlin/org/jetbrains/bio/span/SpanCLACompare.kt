@@ -114,10 +114,12 @@ object SpanCLACompare {
 
                 SpanCLA.checkMemory()
 
+                val clip = "clip" in options
+                SpanCLA.LOG.info("CLIP: $clip")
+
                 val differentialPeakCallingResults = lazyDifferentialPeakCallingResults.value
                 val genomeQuery = differentialPeakCallingResults.fitInfo.genomeQuery()
                 if (peaksPath != null) {
-                    val clip = "clip" in options
                     val peaks = ModelToPeaks.computeChromosomePeaks(
                         differentialPeakCallingResults, genomeQuery, fdr, gap, clip
                     )

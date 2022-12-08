@@ -140,6 +140,9 @@ object SpanCLAAnalyze {
                 configureParallelism(threads)
                 SpanCLA.LOG.info("THREADS: ${parallelismLevel()}")
 
+                val clip = "clip" in options
+                SpanCLA.LOG.info("CLIP: $clip")
+
                 SpanCLA.checkMemory()
 
                 val spanResults = lazySpanResults.value
@@ -152,7 +155,6 @@ object SpanCLAAnalyze {
                 val bin = fitInfo.binSize
 
                 if (peaksPath != null) {
-                    val clip = "clip" in options
                     if (labelsPath == null) {
                         val peaks = ModelToPeaks.computeChromosomePeaks(spanResults, genomeQuery, fdr, gap, clip)
                         Peak.savePeaks(
@@ -306,6 +308,7 @@ object SpanCLAAnalyze {
             }
             return lazy {
                 val saveExtendedInfo = options.has("ext")
+                SpanCLA.LOG.info("EXTENDED MODEL INFO: $saveExtendedInfo")
                 val experiment = getExperiment(
                     modelType, genomeQuery, data, unique, fragment, bin, modelPath,
                     threshold, maxIterations, saveExtendedInfo, mapabilityPath
