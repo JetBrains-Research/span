@@ -490,6 +490,8 @@ CHROM.SIZES: $chromsizes
 FRAGMENT: auto
 MAX ITERATIONS: ${Fitter.MAX_ITERATIONS}
 CONVERGENCE THRESHOLD: ${Fitter.THRESHOLD}
+CLIP: false
+EXTENDED MODEL INFO: false
 """, out
                 )
                 assertFalse(
