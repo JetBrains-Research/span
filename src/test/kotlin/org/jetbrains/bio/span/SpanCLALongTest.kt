@@ -492,6 +492,11 @@ MAX ITERATIONS: ${Fitter.MAX_ITERATIONS}
 CONVERGENCE THRESHOLD: ${Fitter.THRESHOLD}
 CLIP: false
 EXTENDED MODEL INFO: false
+Library: ${path.fileName}, Depth:
+100.00% (
+Source: $peaksPath
+FRIP: 
+Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
 """, out
                 )
                 assertFalse(
@@ -499,9 +504,6 @@ EXTENDED MODEL INFO: false
     LABELS, FDR, GAP options are ignored.
     """ in out
                 )
-                assertIn("100.00% (", out)
-                assertIn("Source: $peaksPath", out)
-                assertIn("FRIP: ", out)
 
                 /* Check that coverage is being generated */
                 val format = BedFormat.from("bed6+3")
