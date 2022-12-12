@@ -136,17 +136,17 @@ class NormalizedCoverageQuery(
             val controlScale: Double
             val treatmentScale: Double
             // Scale to the biggest depth
-            if (rationTreatmentToControl <= 1) {
+            if (rationTreatmentToControl >= 1) {
                 treatmentScale = 1.0 / rationTreatmentToControl
                 controlScale = 1.0
                 LOG.info(
-                    "Upscale treatment($treatmentTotal) to control($controlTotal) x${"%.3f".format(treatmentScale)}"
+                    "Downscale treatment($treatmentTotal) to control($controlTotal) x${"%.3f".format(treatmentScale)}"
                 )
             } else {
                 controlScale = rationTreatmentToControl
                 treatmentScale = 1.0
                 LOG.info(
-                    "Upscale control($controlTotal) to treatment($treatmentTotal) x${"%.3f".format(controlScale)}"
+                    "Downscale control($controlTotal) to treatment($treatmentTotal) x${"%.3f".format(controlScale)}"
                 )
             }
             LOG.debug("Estimating beta")

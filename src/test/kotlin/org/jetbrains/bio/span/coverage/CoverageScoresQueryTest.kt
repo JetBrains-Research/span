@@ -25,9 +25,9 @@ class CoverageScoresQueryTest {
 
         val (scaleTreatment, scaleControl, beta) =
             NormalizedCoverageQuery.analyzeCoverage(genomeQuery, cond, control, 200)
-        assertTrue(Precision.equals(1.375, scaleTreatment, 0.1))
-        assertTrue(Precision.equals(1.0, scaleControl, 0.1))
-        assertTrue(Precision.equals(0.63, beta, 0.01))
+        assertTrue(Precision.equals(1.0, scaleTreatment, 0.1))
+        assertTrue(Precision.equals(0.72, scaleControl, 0.1))
+        assertTrue(Precision.equals(0.21, beta, 0.01))
     }
 }
 
