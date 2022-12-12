@@ -48,7 +48,8 @@ object ModelToPeaks {
         cancellableState: CancellableState? = null
     ): List<Peak> {
         resetCounters()
-        val progress = Progress { title = "Computing peaks fdr=$fdr gap=$gap" }.bounded(genomeQuery.get().size.toLong())
+        val progress = Progress { title = "Computing peaks fdr=$fdr gap=$gap" }
+            .bounded(genomeQuery.get().size.toLong())
         val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
             cancellableState?.checkCanceled()
             val chromosomePeaks =
@@ -90,7 +91,8 @@ object ModelToPeaks {
                 cancellableState = cancellableState
             )
         } else {
-            LOG.debug("NO peaks information for chromosome: ${chromosome.name} in fitInfo ${spanFitResults.fitInfo.build}")
+            LOG.debug("NO peaks information for chromosome: ${chromosome.name} " +
+                    "in fitInfo ${spanFitResults.fitInfo.build}")
             emptyList()
         }
         return chromosomeIslands
@@ -138,7 +140,7 @@ object ModelToPeaks {
                     val peakTreatment = fitInfo.scaledTreatmentCoverage(chromosomeRange)
                     val peakControl = fitInfo.scaledControlCoverage(chromosomeRange)!!
                     PoissonUtil.logPoissonCdf(
-                        ceil(peakTreatment).toInt() + PSEUDO_COUNT, peakControl + PSEUDO_COUNT
+                        ceil(peakTreatment).toInt() + PSEUDO_COUNT, ceil(peakControl) + PSEUDO_COUNT
                     )
                 } else {
                     // Fallback to average posterior log error probability for block
