@@ -38,7 +38,7 @@ object SpanCLA {
      * SpanCLA fails to set up correct working directory, if launched within the same process.
      * This is a HACK.
      */
-        var ignoreConfigurePaths: Boolean = false
+    var ignoreConfigurePaths: Boolean = false
 
     init {
         // Load build properties
@@ -86,14 +86,14 @@ compare                         Differential peak calling mode
 
     internal fun checkMemory() {
         val maxMemory = Runtime.getRuntime().maxMemory()
-        // [Shpynov] This is a hack: since -Xmx4G results in about 3.5G max memory available
+        // [Shpynov] This is a hack: since -Xmx8G results in about 7G max memory available
         // The reason of such a discrepancy is the size of the garbage collector's survivor space.
         // https://stackoverflow.com/questions/23701207/why-do-xmx-and-runtime-maxmemory-not-agree
-        // 3.5 works, however use decreased level to be sure.
-        if (maxMemory < 3 * GB) {
+        if (maxMemory < 7 * GB) {
             LOG.warn(
-                "Recommended memory settings ${FileSize(4 * GB)} are not set. Current settings: ${FileSize(maxMemory)}.\n" +
-                        "Please use java memory option '-Xmx4G' to configure memory available for SPAN."
+                "Recommended memory settings ${FileSize(8 * GB)} are not set. " +
+                        "Current settings: ${FileSize(maxMemory)}.\n" +
+                        "Please use java memory option '-Xmx8G' to configure memory available for SPAN."
             )
         }
     }
@@ -280,6 +280,7 @@ compare                         Differential peak calling mode
             when (commandLineControlPaths.size) {
                 1 ->
                     Array(commandLineTreatmentPaths.size) { commandLineControlPaths.single() }.toList()
+
                 commandLineTreatmentPaths.size -> commandLineControlPaths
                 else -> throw IllegalArgumentException(
                     "Expected either: no control files, a single control file, " +

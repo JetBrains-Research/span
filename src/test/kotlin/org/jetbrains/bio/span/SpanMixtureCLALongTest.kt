@@ -7,11 +7,11 @@ import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.Location
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.genome.containers.genomeMap
-import org.jetbrains.bio.span.SpanCLALongTest.Companion.BIN
 import org.jetbrains.bio.span.SpanCLALongTest.Companion.THREADS
 import org.jetbrains.bio.span.SpanCLALongTest.Companion.TO
 import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
 import org.jetbrains.bio.span.fit.SpanModelType
+import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.util.*
 import org.junit.After
@@ -43,8 +43,8 @@ class SpanMixtureCLALongTest {
             withTempFile("track", ".bed.gz", dir) { path ->
                 withTempFile("control", ".bed.gz", dir) { control ->
                     // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
-                    sampleCoverage(path, TO, BIN, goodQuality = true)
-                    sampleCoverage(control, TO, BIN, goodQuality = false)
+                    sampleCoverage(path, TO, SpanPeakCallingExperiment.SPAN_DEFAULT_BIN, goodQuality = true)
+                    sampleCoverage(control, TO, SpanPeakCallingExperiment.SPAN_DEFAULT_BIN, goodQuality = false)
 
                     val chromsizes = Genome["to1"].chromSizesPath.toString()
                     SpanCLA.main(
@@ -70,7 +70,7 @@ class SpanMixtureCLALongTest {
                                         listOf(
                                             path.stemGz,
                                             control.stemGz,
-                                            "200"
+                                            "50"
                                         )
                                     )
                                 }.${SpanModelType.NB2Z_MIXTURE.extension}"
@@ -100,7 +100,14 @@ class SpanMixtureCLALongTest {
                 }
                 zeroes
             }
-            sampleCoverage(path, TO, BIN, enrichedRegions, zeroRegions, goodQuality = true)
+            sampleCoverage(
+                path,
+                TO,
+                SpanPeakCallingExperiment.SPAN_DEFAULT_BIN,
+                enrichedRegions,
+                zeroRegions,
+                goodQuality = true
+            )
             println("Saved sampled track file: $path")
             withTempDirectory("work") { dir ->
                 val bedPath = dir / "result.bed"
@@ -118,7 +125,11 @@ class SpanMixtureCLALongTest {
                 )
                 // Check created bed file
                 assertTrue(
-                    Location(1100 * BIN, 1900 * BIN, TO.get().first())
+                    Location(
+                        1100 * SpanPeakCallingExperiment.SPAN_DEFAULT_BIN,
+                        1900 * SpanPeakCallingExperiment.SPAN_DEFAULT_BIN,
+                        TO.get().first()
+                    )
                             in LocationsMergingList.load(TO, bedPath),
                     "Expected location not found in called peaks"
                 )
