@@ -53,11 +53,11 @@ ENCODE [broadPeak](https://genome.ucsc.edu/FAQ/FAQformat.html#format13) (BED 6+3
 Examples:
 
 * Regular peak calling<br>
-  `java -Xmx4G -jar span.jar analyze -t ChIP.bam -c Control.bam --cs Chrom.sizes -p Results.peak`
+  `java -Xmx8G -jar span.jar analyze -t ChIP.bam -c Control.bam --cs Chrom.sizes -p Results.peak`
 * Semi-supervised peak calling<br>
-  `java -Xmx4G -jar span.jar analyze -t ChIP.bam -c Control.bam --cs Chrom.sizes -l Labels.bed -p Results.peak`
+  `java -Xmx8G -jar span.jar analyze -t ChIP.bam -c Control.bam --cs Chrom.sizes -l Labels.bed -p Results.peak`
 * Model fitting only<br>
-  `java -Xmx4G -jar span.jar analyze -t ChIP.bam -c Control.bam --cs Chrom.sizes`
+  `java -Xmx8G -jar span.jar analyze -t ChIP.bam -c Control.bam --cs Chrom.sizes`
 
 Differential peak calling
 -------------------------
@@ -93,7 +93,7 @@ Keep duplicates. By default, SPAN filters out redundant reads aligned at the sam
 `--keep-dup` argument is necessary for single cell ATAC-Seq data processing.
 
 `-b, --bin BIN_SIZE`<br>
-Peak analysis is performed on read coverage tiled into consequent bins of configurable size. (default: 200)
+Peak analysis is performed on read coverage tiled into consequent bins of configurable size. (default: 50)
 
 `-f, --fdr FDR`<br>
 Minimum FDR cutoff to call significant regions. (default: 0.05)
@@ -110,6 +110,9 @@ Resulting peaks file in ENCODE broadPeak* (BED 6+3) format. If omitted, only the
 `-m, --model MODEL`<br>
 This option is used to specify SPAN model path, if not provided, model name is composed of input names and other
 arguments.
+
+`--clip`<br>
+Clip peaks to improve density.
 
 `--ext`<br>
 Save extended states information to model file.
@@ -138,12 +141,10 @@ Example
 Step-by-step example with test dataset is available [here](https://github.com/JetBrains-Research/span/wiki).
 
 
-Galaxy
-------
-
-SPAN is available as a tool in the official [ToolShed](https://toolshed.g2.bx.psu.edu/view/jetbrains/span/66b2c9a128ab)
-for
-[Galaxy](https://galaxyproject.org/). You can ask your Galaxy administrator to install it.
+Snakemake
+---------
+SPAN can be used as a part of [snakemake](https://snakemake.readthedocs.io/en/stable/) pipeline.\
+Example of ChIP-seq analysis pipeline from raw reads to visualization and peak calling can be found [here](https://github.com/JetBrains-Research/chipseq-smk-pipeline).
 
 Build from sources
 ------------------
