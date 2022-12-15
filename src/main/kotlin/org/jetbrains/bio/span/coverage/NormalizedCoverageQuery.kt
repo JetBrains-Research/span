@@ -19,6 +19,7 @@ import java.nio.file.Path
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.max
+import kotlin.math.min
 
 /**
  * Normalized coverage query.
@@ -132,23 +133,14 @@ class NormalizedCoverageQuery(
             val controlTotal = genomeQuery.get().sumOf {
                 controlCoverage.getBothStrandsCoverage(it.range.on(it)).toLong()
             }
-            val rationTreatmentToControl = 1.0 * treatmentTotal / controlTotal
-            val controlScale: Double
-            val treatmentScale: Double
-            // Scale to the biggest depth
-            if (rationTreatmentToControl >= 1) {
-                treatmentScale = 1.0 / rationTreatmentToControl
-                controlScale = 1.0
-                LOG.info(
-                    "Downscale treatment($treatmentTotal) to control($controlTotal) x${"%.3f".format(treatmentScale)}"
-                )
-            } else {
-                controlScale = rationTreatmentToControl
-                treatmentScale = 1.0
-                LOG.info(
-                    "Downscale control($controlTotal) to treatment($treatmentTotal) x${"%.3f".format(controlScale)}"
-                )
-            }
+            // Coverage to scale to
+            val targetCoverage = min(treatmentTotal, controlTotal)
+            val treatmentScale = 1.0 * targetCoverage / treatmentTotal
+            val controlScale = 1.0 * targetCoverage / controlTotal
+            LOG.info(
+                "Scale treatment ${"%,d".format(treatmentTotal)} x ${"%.3f".format(treatmentScale)}, " +
+                        "control ${"%,d".format(controlTotal)} x ${"%.3f".format(controlScale)}"
+            )
             LOG.debug("Estimating beta")
             val beta = estimateBeta(
                 genomeQuery, treatmentCoverage, treatmentScale, controlCoverage, controlScale, binSize
