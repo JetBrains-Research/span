@@ -236,6 +236,7 @@ LABELS, FDR, GAP options are ignored.
                             "--workdir", it.toString(),
                             "-t", path.toString(),
                             "--bin", "200",
+                            "--it", "20",
                             "--debug"
                         )
                     )
