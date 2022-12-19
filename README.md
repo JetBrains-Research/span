@@ -125,10 +125,10 @@ Configures the parallelism level. SPAN utilizes both multithreading and speciali
 etc.
 
 `-i, --iterations`<br>
-Maximum number of iterations for EM algorithm. (default: 20)
+Maximum number of iterations for EM algorithm. (default: 50)
 
 `--threshold, --tr`<br>
-Convergence threshold for EM algorithm, use `--debug` option to see detailed info (default: 1)
+Convergence threshold for EM algorithm, use `--debug` option to see detailed info (default: 0.1)
 
 `-d, --debug`<br>
 Print all the debug information, used for troubleshooting.
