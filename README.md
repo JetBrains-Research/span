@@ -26,7 +26,7 @@ replicates and noise by leveraging limited manual annotation information.
 JBR Genome Browser. Bioinformatics. 2021 May 21.
 
 The Latest release
---------------
+------------------
 See [releases](https://github.com/JetBrains-Research/span/releases) section for actual information.
 
 Requirements
@@ -68,7 +68,7 @@ The compare two (possibly replicated) biological conditions use the `compare`. S
 $ java -jar span.jar compare --help
 ```
 
-SPAN Command line options
+Command line options
 -------------------------
 
 `-t, --treatment TREATMENT`<br>
@@ -141,8 +141,8 @@ Example
 Step-by-step example with test dataset is available [here](https://github.com/JetBrains-Research/span/wiki).
 
 
-Snakemake
----------
+Pipeline
+--------
 SPAN can be used as a part of [snakemake](https://snakemake.readthedocs.io/en/stable/) pipeline.\
 Example of ChIP-seq analysis pipeline from raw reads to visualization and peak calling can be found [here](https://github.com/JetBrains-Research/chipseq-smk-pipeline).
 
