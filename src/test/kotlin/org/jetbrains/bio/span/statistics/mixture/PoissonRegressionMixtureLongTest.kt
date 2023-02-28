@@ -30,8 +30,8 @@ class PoissonRegressionMixtureLongTest {
         val fitted = PoissonRegression2Mixture.fitter().fit(
             Preprocessed.of(df),
             title = "test",
-            threshold = SpanPeakCallingExperiment.SPAN_FIT_THRESHOLD,
-            maxIterations = SpanPeakCallingExperiment.SPAN_FIT_MAX_ITERATIONS
+            threshold = 0.1,
+            maxIterations = 20
         )
         Tests.assertEquals(
             (original[1] as PoissonRegressionEmissionScheme).regressionCoefficients,
