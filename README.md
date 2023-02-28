@@ -93,13 +93,13 @@ Keep duplicates. By default, SPAN filters out redundant reads aligned at the sam
 `--keep-dup` argument is necessary for single cell ATAC-Seq data processing.
 
 `-b, --bin BIN_SIZE`<br>
-Peak analysis is performed on read coverage tiled into consequent bins of configurable size. (default: 50)
+Peak analysis is performed on read coverage tiled into consequent bins of configurable size.
 
 `-f, --fdr FDR`<br>
-Minimum FDR cutoff to call significant regions. (default: 0.05)
+Minimum FDR cutoff to call significant regions.
 
 `-g, --gap GAP`<br>
-Gap size to merge spatially close peaks. Useful for wide histone modifications. (default: 3)
+Gap size to merge spatially close peaks. Useful for wide histone modifications.
 
 `--labels LABELS`<br>
 Labels BED file. Used in semi-supervised peak calling.
@@ -125,10 +125,10 @@ Configures the parallelism level. SPAN utilizes both multithreading and speciali
 etc.
 
 `-i, --iterations`<br>
-Maximum number of iterations for EM algorithm. (default: 50)
+Maximum number of iterations for EM algorithm.
 
 `--threshold, --tr`<br>
-Convergence threshold for EM algorithm, use `--debug` option to see detailed info (default: 0.1)
+Convergence threshold for EM algorithm, use `--debug` option to see detailed info.
 
 `-d, --debug`<br>
 Print all the debug information, used for troubleshooting.
