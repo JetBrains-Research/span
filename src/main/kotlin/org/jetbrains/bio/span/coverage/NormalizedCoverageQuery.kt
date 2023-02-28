@@ -133,8 +133,8 @@ class NormalizedCoverageQuery(
             val controlTotal = genomeQuery.get().sumOf {
                 controlCoverage.getBothStrandsCoverage(it.range.on(it)).toLong()
             }
-            // Coverage to scale to
-            val targetCoverage = min(treatmentTotal, controlTotal)
+            // Upscale coverage to bigger one
+            val targetCoverage = max(treatmentTotal, controlTotal)
             val treatmentScale = 1.0 * targetCoverage / treatmentTotal
             val controlScale = 1.0 * targetCoverage / controlTotal
             LOG.info(
