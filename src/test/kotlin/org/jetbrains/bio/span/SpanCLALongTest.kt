@@ -147,7 +147,7 @@ PEAKS: $peaksPath
                 )
                 assertIn("Saved result to $peaksPath", out)
                 // Check model fit has a progress
-                assertIn("0.00% (0/${Fitter.MAX_ITERATIONS}), Elapsed time", out)
+                assertIn("0.00% (0/${SpanPeakCallingExperiment.SPAN_FIT_MAX_ITERATIONS}), Elapsed time", out)
                 assertIn("100.00% (", out)
             }
         }
@@ -517,8 +517,8 @@ TREATMENT: $path
 CONTROL: none
 CHROM.SIZES: $chromsizes
 FRAGMENT: auto
-MAX ITERATIONS: ${Fitter.MAX_ITERATIONS}
-CONVERGENCE THRESHOLD: ${Fitter.THRESHOLD}
+MAX ITERATIONS: ${SpanPeakCallingExperiment.SPAN_FIT_MAX_ITERATIONS}
+CONVERGENCE THRESHOLD: ${SpanPeakCallingExperiment.SPAN_FIT_THRESHOLD}
 CLIP: false
 EXTENDED MODEL INFO: false
 Library: ${path.fileName}, Depth:

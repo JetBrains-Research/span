@@ -48,6 +48,9 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
         const val SPAN_DEFAULT_GAP = 3
         const val SPAN_DEFAULT_CLIP = false
 
+        const val SPAN_FIT_THRESHOLD = 0.1
+        const val SPAN_FIT_MAX_ITERATIONS = 20
+
         const val TRACK_PREFIX = "track"
 
         /**
@@ -64,8 +67,8 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
             fragment: Fragment = AutoFragment,
             unique: Boolean = true,
             fixedModelPath: Path? = null,
-            threshold: Double = Fitter.THRESHOLD,
-            maxIterations: Int = Fitter.MAX_ITERATIONS,
+            threshold: Double = SPAN_FIT_THRESHOLD,
+            maxIterations: Int = SPAN_FIT_MAX_ITERATIONS,
             saveExtendedInfo: Boolean = false
         ): SpanPeakCallingExperiment<out ClassificationModel> {
             require(paths.isNotEmpty()) { "No data" }

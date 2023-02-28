@@ -2,6 +2,7 @@ package org.jetbrains.bio.span.statistics.mixture
 
 import org.jetbrains.bio.Tests
 import org.jetbrains.bio.dataframe.DataFrame
+import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.span.statistics.regression.PoissonRegressionEmissionScheme
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.model.Fitter
@@ -28,7 +29,9 @@ class PoissonRegressionMixtureLongTest {
         original.sample(df, intArrayOf(0))
         val fitted = PoissonRegression2Mixture.fitter().fit(
             Preprocessed.of(df),
-            title = "test", threshold = Fitter.THRESHOLD, maxIterations = Fitter.MAX_ITERATIONS
+            title = "test",
+            threshold = SpanPeakCallingExperiment.SPAN_FIT_THRESHOLD,
+            maxIterations = SpanPeakCallingExperiment.SPAN_FIT_MAX_ITERATIONS
         )
         Tests.assertEquals(
             (original[1] as PoissonRegressionEmissionScheme).regressionCoefficients,

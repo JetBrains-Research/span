@@ -4,6 +4,8 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.fit.*
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation.Companion.createFitInformation
+import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_FIT_MAX_ITERATIONS
+import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_FIT_THRESHOLD
 import org.jetbrains.bio.span.statistics.mixture.NB2ZMixture
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.model.Fitter
@@ -49,8 +51,8 @@ class SpanPeakCallingExperimentNB2ZMixture private constructor(
             binSize: Int,
             unique: Boolean,
             fixedModelPath: Path?,
-            threshold: Double = Fitter.THRESHOLD,
-            maxIterations: Int = Fitter.MAX_ITERATIONS,
+            threshold: Double = SPAN_FIT_THRESHOLD,
+            maxIterations: Int = SPAN_FIT_MAX_ITERATIONS,
             saveExtendedInfo: Boolean = false
         ): SpanPeakCallingExperimentNB2ZMixture {
             require(paths.size == 1) { "Mixture currently accepts a single data track." }

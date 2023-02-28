@@ -5,6 +5,8 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.fit.*
+import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_FIT_MAX_ITERATIONS
+import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_FIT_THRESHOLD
 import org.jetbrains.bio.span.statistics.hmm.FreeNBZHMM
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
@@ -47,8 +49,8 @@ class SpanPeakCallingExperimentNB5ZHMM<Model : ClassificationModel> private cons
             fragment: Fragment = AutoFragment,
             unique: Boolean = true,
             fixedModelPath: Path? = null,
-            threshold: Double = Fitter.THRESHOLD,
-            maxIterations: Int = Fitter.MAX_ITERATIONS,
+            threshold: Double = SPAN_FIT_THRESHOLD,
+            maxIterations: Int = SPAN_FIT_MAX_ITERATIONS,
             saveExtendedInfo: Boolean = false
         ): SpanPeakCallingExperimentNB5ZHMM<out ClassificationModel> {
             require(paths.isNotEmpty()) { "No data" }

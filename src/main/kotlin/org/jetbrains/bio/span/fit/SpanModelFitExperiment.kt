@@ -6,6 +6,8 @@ import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.genome.query.ReadsQuery
+import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_FIT_MAX_ITERATIONS
+import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_FIT_THRESHOLD
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.f64Array
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
@@ -42,8 +44,8 @@ abstract class SpanModelFitExperiment<
     private val availableStates: Array<State>,
     private val nullHypothesis: NullHypothesis<State>,
     private val fixedModelPath: Path? = null,
-    private val threshold: Double = Fitter.THRESHOLD,
-    private val maxIterations: Int = Fitter.MAX_ITERATIONS,
+    private val threshold: Double = SPAN_FIT_THRESHOLD,
+    private val maxIterations: Int = SPAN_FIT_MAX_ITERATIONS,
     private val saveExtendedInfo: Boolean = false
 ) : Experiment("fit") {
 

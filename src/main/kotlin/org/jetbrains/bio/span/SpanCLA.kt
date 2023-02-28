@@ -12,6 +12,8 @@ import org.jetbrains.bio.span.fit.SpanFitInformation
 import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_BIN
 import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_FDR
 import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_GAP
+import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_FIT_MAX_ITERATIONS
+import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_FIT_THRESHOLD
 import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.util.*
 import org.jetbrains.bio.util.FileSize.Companion.GB
@@ -165,14 +167,14 @@ compare                         Differential peak calling mode
             acceptsAll(listOf("i", "iterations"), "Maximum number of iterations for EM algorithm")
                 .withRequiredArg()
                 .ofType(Int::class.java)
-                .defaultsTo(Fitter.MAX_ITERATIONS)
+                .defaultsTo(SPAN_FIT_MAX_ITERATIONS)
             acceptsAll(
                 listOf("tr", "threshold"), "Convergence threshold for EM algorithm, " +
                         "use --debug option to see detailed info"
             )
                 .withRequiredArg()
                 .ofType(Double::class.java)
-                .defaultsTo(Fitter.THRESHOLD)
+                .defaultsTo(SPAN_FIT_THRESHOLD)
         }
     }
 
@@ -227,14 +229,14 @@ compare                         Differential peak calling mode
     internal fun getThreshold(
         options: OptionSet, log: Boolean = false
     ) = getProperty(
-        options.valueOf("threshold") as Double?, null, Fitter.THRESHOLD,
+        options.valueOf("threshold") as Double?, null, SPAN_FIT_THRESHOLD,
         "convergence threshold", "CONVERGENCE THRESHOLD", log
     )
 
     internal fun getMaxIter(
         options: OptionSet, log: Boolean = false
     ) = getProperty(
-        options.valueOf("iterations") as Int?, null, Fitter.MAX_ITERATIONS,
+        options.valueOf("iterations") as Int?, null, SPAN_FIT_MAX_ITERATIONS,
         "max iterations", "MAX ITERATIONS", log
     )
 
