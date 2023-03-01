@@ -100,7 +100,7 @@ class NormalizedCoverageQuery(
         val controlCoverage = controlReads!!.get().getBothStrandsCoverage(t)
         return max(
             0,
-            ceil(treatmentCoverage * controlScale - controlCoverage * treatmentScale * beta).toInt()
+            ceil(treatmentCoverage * treatmentScale - controlCoverage * controlScale * beta).toInt()
         )
     }
 
