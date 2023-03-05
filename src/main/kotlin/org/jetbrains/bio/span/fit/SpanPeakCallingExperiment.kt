@@ -43,12 +43,12 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
 
     companion object {
 
-        const val SPAN_DEFAULT_BIN = 50
+        const val SPAN_DEFAULT_BIN = 200
         const val SPAN_DEFAULT_FDR = 0.05
         const val SPAN_DEFAULT_GAP = 3
         const val SPAN_DEFAULT_CLIP = true
 
-        const val SPAN_FIT_THRESHOLD = 0.1
+        const val SPAN_FIT_THRESHOLD = 1.0
         const val SPAN_FIT_MAX_ITERATIONS = 20
 
         const val TRACK_PREFIX = "track"
