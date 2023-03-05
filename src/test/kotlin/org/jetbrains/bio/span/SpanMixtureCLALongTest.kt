@@ -70,7 +70,7 @@ class SpanMixtureCLALongTest {
                                         listOf(
                                             path.stemGz,
                                             control.stemGz,
-                                            "50"
+                                            SpanPeakCallingExperiment.SPAN_DEFAULT_BIN.toString()
                                         )
                                     )
                                 }.${SpanModelType.NB2Z_MIXTURE.extension}"

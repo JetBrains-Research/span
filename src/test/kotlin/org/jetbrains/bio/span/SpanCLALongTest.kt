@@ -416,7 +416,7 @@ LABELS, FDR, GAP options are ignored.
                             )
                         }
                     }
-                    assertIn("bin size (50) differs from the command line argument (137)", invalidErr)
+                    assertIn("bin size (${SpanPeakCallingExperiment.SPAN_DEFAULT_BIN}) differs from the command line argument (137)", invalidErr)
                 }
             }
         }
