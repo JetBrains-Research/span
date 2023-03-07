@@ -91,8 +91,10 @@ object ModelToPeaks {
                 cancellableState = cancellableState
             )
         } else {
-            LOG.debug("NO peaks information for chromosome: ${chromosome.name} " +
-                    "in fitInfo ${spanFitResults.fitInfo.build}")
+            LOG.debug(
+                "NO peaks information for chromosome: ${chromosome.name} " +
+                        "in fitInfo ${spanFitResults.fitInfo.build}"
+            )
             emptyList()
         }
         return chromosomeIslands
@@ -155,7 +157,7 @@ object ModelToPeaks {
             estimateSignalAndNoiseDensity(
                 chromosome, fitInfo, candidateIslands, offsets
             ) else
-                0.0 to 0.0
+            0.0 to 0.0
         var totalClipStart = 0L
         var totalClipEnd = 0L
         val maxClippedScore = avgNoise + MAX_CLIPPED_DELTA * (avgSignal - avgNoise)

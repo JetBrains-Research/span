@@ -13,7 +13,6 @@ import org.jetbrains.bio.genome.format.BedFormat
 import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
 import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.statistics.distribution.Sampling
-import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.util.*
 import org.junit.After
 import org.junit.Before
@@ -416,7 +415,10 @@ LABELS, FDR, GAP options are ignored.
                             )
                         }
                     }
-                    assertIn("bin size (${SpanPeakCallingExperiment.SPAN_DEFAULT_BIN}) differs from the command line argument (137)", invalidErr)
+                    assertIn(
+                        "bin size (${SpanPeakCallingExperiment.SPAN_DEFAULT_BIN}) differs from the command line argument (137)",
+                        invalidErr
+                    )
                 }
             }
         }

@@ -23,9 +23,9 @@ class NB2ZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) : FreeNBZHMM(nbMean
 
         fun fitter() = object : Fitter<NB2ZHMM> {
             override fun guess(
-                preprocessed: Preprocessed<DataFrame>, 
+                preprocessed: Preprocessed<DataFrame>,
                 title: String,
-                threshold: Double, 
+                threshold: Double,
                 maxIterations: Int
             ): NB2ZHMM = guess(listOf(preprocessed), title, threshold, maxIterations)
 

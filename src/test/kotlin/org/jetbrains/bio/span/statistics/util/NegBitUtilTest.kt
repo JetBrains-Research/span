@@ -13,7 +13,7 @@ class NegBitUtilTest {
         val s1 = NegBinEmissionScheme(40.0, 1.0).sampler()
         val s2 = NegBinEmissionScheme(0.5, 100.0).sampler()
 
-        val emissions = IntArray(100) {s1.asInt + 1} + IntArray(10000) {s2.asInt + 1}
+        val emissions = IntArray(100) { s1.asInt + 1 } + IntArray(10000) { s2.asInt + 1 }
         val (means0, failures0) = NegBinUtil.guessByData(
             emissions, 2
         )

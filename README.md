@@ -144,7 +144,8 @@ Step-by-step example with test dataset is available [here](https://github.com/Je
 Pipeline
 --------
 SPAN can be used as a part of [snakemake](https://snakemake.readthedocs.io/en/stable/) pipeline.\
-Example of ChIP-seq analysis pipeline from raw reads to visualization and peak calling can be found [here](https://github.com/JetBrains-Research/chipseq-smk-pipeline).
+Example of ChIP-seq analysis pipeline from raw reads to visualization and peak calling can be
+found [here](https://github.com/JetBrains-Research/chipseq-smk-pipeline).
 
 Build from sources
 ------------------

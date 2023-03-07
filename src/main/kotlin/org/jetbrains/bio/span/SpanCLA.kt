@@ -14,7 +14,6 @@ import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAU
 import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_FIT_MAX_ITERATIONS
 import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_FIT_THRESHOLD
-import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.util.*
 import org.jetbrains.bio.util.FileSize.Companion.GB
 import org.slf4j.LoggerFactory

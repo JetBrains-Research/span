@@ -27,6 +27,7 @@ data class LocationLabel(
             Label.PEAKS -> intersection.isNotEmpty()
             Label.PEAK_START -> intersection.singleOrNull()
                 ?.let { it.startOffset != location.startOffset } == true
+
             Label.PEAK_END -> intersection.singleOrNull()
                 ?.let { it.endOffset != location.endOffset } == true
         }

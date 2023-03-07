@@ -337,37 +337,44 @@ object SpanCLAAnalyze {
                     genomeQuery, data, bin, fragment, unique, modelPath,
                     threshold, maxIterations, saveExtendedInfo
                 )
+
             SpanModelType.NB2Z_MIXTURE ->
                 SpanPeakCallingExperimentNB2ZMixture.getExperiment(
                     genomeQuery, data, fragment, bin, unique, modelPath,
                     threshold, maxIterations, saveExtendedInfo
                 )
+
             SpanModelType.NB2_HMM ->
                 SpanPeakCallingExperimentNB2HMM.getExperiment(
                     genomeQuery, data, bin, fragment, unique, modelPath,
                     threshold, maxIterations, saveExtendedInfo
                 )
+
             SpanModelType.NB3Z_HMM ->
                 SpanPeakCallingExperimentNB3ZHMM.getExperiment(
                     genomeQuery, data, bin, fragment, unique, modelPath,
                     threshold, maxIterations, saveExtendedInfo
                 )
+
             SpanModelType.NB5Z_HMM ->
                 SpanPeakCallingExperimentNB5ZHMM.getExperiment(
                     genomeQuery, data, bin, fragment, unique, modelPath,
                     threshold, maxIterations, saveExtendedInfo
                 )
+
             SpanModelType.NB3_HMM3 ->
                 SpanPeakCallingExperimentNB3HMM.getExperiment(
                     genomeQuery, data, bin, fragment, unique, modelPath,
                     threshold, maxIterations, saveExtendedInfo
                 )
+
             SpanModelType.POISSON_REGRESSION_MIXTURE -> {
                 SpanPeakCallingExperimentP2ZRegrMixture.getExperiment(
                     genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath,
                     threshold, maxIterations, saveExtendedInfo
                 )
             }
+
             SpanModelType.NEGBIN_REGRESSION_MIXTURE -> {
                 SpanPeakCallingExperimentNB2ZRegrMixture.getExperiment(
                     genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath,

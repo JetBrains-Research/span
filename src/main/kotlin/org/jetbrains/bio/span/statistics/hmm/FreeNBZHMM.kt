@@ -36,7 +36,12 @@ open class FreeNBZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) : MLFreeHMM
         }
     }
 
-    override fun fit(preprocessed: List<Preprocessed<DataFrame>>, title: String, threshold: Double, maxIterations: Int) {
+    override fun fit(
+        preprocessed: List<Preprocessed<DataFrame>>,
+        title: String,
+        threshold: Double,
+        maxIterations: Int
+    ) {
         super.fit(preprocessed, title, threshold, maxIterations)
         flipStatesIfNecessary()
     }

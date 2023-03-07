@@ -57,7 +57,12 @@ class NB2ZMixture(
             negBinEmissionSchemes[it].successProbability
         }
 
-    override fun fit(preprocessed: List<Preprocessed<DataFrame>>, title: String, threshold: Double, maxIterations: Int) {
+    override fun fit(
+        preprocessed: List<Preprocessed<DataFrame>>,
+        title: String,
+        threshold: Double,
+        maxIterations: Int
+    ) {
         val data = DataFrame.rowBind(preprocessed.map { it.get() }.toTypedArray())
         super.fit(Preprocessed.of(data), title, threshold, maxIterations)
         flipStatesIfNecessary()

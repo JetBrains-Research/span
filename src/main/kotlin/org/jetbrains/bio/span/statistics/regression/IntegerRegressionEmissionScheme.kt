@@ -28,6 +28,7 @@ abstract class IntegerRegressionEmissionScheme(
     val covariateLabels = covariateLabels.map { it.intern() }
     var regressionCoefficients: DoubleArray = regressionCoefficients
         protected set
+
     @Transient
     var W = DoubleArray(0)
 

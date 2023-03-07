@@ -47,6 +47,7 @@ open class SpanFitResults(
                     CT_SIGNAL_TO_NOISE to ((signalMean + 1e-10) / (noiseMean + 1e-10))
                 )
             }
+
             is NB2ZMixture -> {
                 val signalMean = model.means[1]
                 val noiseMean = model.means[0]
@@ -56,6 +57,7 @@ open class SpanFitResults(
                     CT_SIGNAL_TO_NOISE to ((signalMean + 1e-10) / (noiseMean + 1e-10))
                 )
             }
+
             is PoissonRegression2Mixture -> listOf(CT_SIGNAL_TO_NOISE to model.signalToNoise)
             is NegBin2ZeroRegressionMixture -> listOf(CT_SIGNAL_TO_NOISE to model.signalToNoise)
             else -> emptyList()

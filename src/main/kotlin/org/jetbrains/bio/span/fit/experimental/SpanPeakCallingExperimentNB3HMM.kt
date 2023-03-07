@@ -87,9 +87,9 @@ class NB3HMM(nbMeans: DoubleArray, nbFailures: DoubleArray) : FreeNBHMM(nbMeans,
 
         fun fitter() = object : Fitter<NB3HMM> {
             override fun guess(
-                preprocessed: Preprocessed<DataFrame>, 
+                preprocessed: Preprocessed<DataFrame>,
                 title: String,
-                threshold: Double, 
+                threshold: Double,
                 maxIterations: Int
             ): NB3HMM = guess(listOf(preprocessed), title, threshold, maxIterations)
 
