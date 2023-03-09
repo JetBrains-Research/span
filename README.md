@@ -32,7 +32,7 @@ See [releases](https://github.com/JetBrains-Research/span/releases) section for 
 Requirements
 ------------
 
-Download and install [Java 11](http://www.java.com/en/download/).
+Download and install [Java 8](http://www.java.com/en/download/).
 
 Peak calling
 ------------
@@ -168,7 +168,7 @@ FAQ
 ---
 
 * Q: What is the average running time?<br>
-  A: SPAN is capable of processing a single ChIP-Seq track in less than 1 hour on an average laptop (MacBook Pro 2015).
+  A: SPAN is capable of processing a single ChIP-Seq track in less than 20 minutes on an average laptop.
 * Q: Which operating systems are supported?<br>
   A: SPAN is developed in modern Kotlin programming language and can be executed on any platform supported by java.
 * Q: Where did you get this lovely span picture?<br>
