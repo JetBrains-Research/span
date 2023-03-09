@@ -3,6 +3,16 @@ SPAN Changelog
 
 Here you can see the full list of changes between each release.
 
+Version 1.1
+----------------
+
+Released on XXX XX, 2022
+
+- Bugfix update - fix problem with treatment and control scaling
+- Upscale treatment and control library
+- Slightly tweaked defaults - number of iterations and threshold till convergence
+- Reverted compatibility with Java 8
+
 Version 1.0
 ----------------
 
