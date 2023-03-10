@@ -13,7 +13,7 @@ enum class SpanModelType(val id: String, val extension: String, val description:
     NB5Z_HMM("nb5zhmm", "span-nb5zhmm", "Negative binomial HMM 5 states with zero inflation"),
 
     NB2_HMM("nb2hmm", "span-nb2hmm", "Negative binomial HMM 2 states"),
-    NB3_HMM3("nb3hmm", "span-nb3hmm", "Negative binomial HMM 3 states"),
+    NB3_HMM("nb3hmm", "span-nb3hmm", "Negative binomial HMM 3 states"),
     POISSON_REGRESSION_MIXTURE(
         "p2zrm", "span-p2zrm", "Poisson 2 states regression mixture with zero inflation"
     ),

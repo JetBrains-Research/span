@@ -36,7 +36,7 @@ class SpanPeakCallingExperimentNB3HMM<Model : ClassificationModel> private const
 ) {
 
     override val defaultModelPath: Path =
-        experimentPath / "${fitInformation.id}.${SpanModelType.NB3_HMM3.extension}"
+        experimentPath / "${fitInformation.id}.${SpanModelType.NB3_HMM.extension}"
 
     companion object {
 

@@ -168,7 +168,7 @@ object SpanCLAAnalyze {
                             peaksPath.toUri(),
                             fitInfo.data.map { it.treatment }
                         )
-                        val aboutModel = spanResults.about()
+                        val aboutModel = spanResults.modelInformation()
                         SpanCLA.LOG.info("\n" + (aboutPeaks + aboutModel).joinToString("\n") { (k, v) ->
                             "${k.name}: ${k.render(v)}"
                         })
@@ -362,7 +362,7 @@ object SpanCLAAnalyze {
                     threshold, maxIterations, saveExtendedInfo
                 )
 
-            SpanModelType.NB3_HMM3 ->
+            SpanModelType.NB3_HMM ->
                 SpanPeakCallingExperimentNB3HMM.getExperiment(
                     genomeQuery, data, bin, fragment, unique, modelPath,
                     threshold, maxIterations, saveExtendedInfo
