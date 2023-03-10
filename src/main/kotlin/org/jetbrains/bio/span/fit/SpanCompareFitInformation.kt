@@ -96,8 +96,8 @@ data class SpanCompareFitInformation(
             "Please use prepareData before!"
         }
 
-        return if (normalizedCoverageQueries1!!.all { it.ready } &&
-            normalizedCoverageQueries2!!.all { it.ready }) {
+        return if (normalizedCoverageQueries1!!.all { it.areCachesPresent() } &&
+            normalizedCoverageQueries2!!.all { it.areCachesPresent() }) {
             val score1 = normalizedCoverageQueries1!!.sumOf { it.apply(chromosomeRange) }
                 .toDouble() / normalizedCoverageQueries1!!.size
             val score2 = normalizedCoverageQueries2!!.sumOf { it.apply(chromosomeRange) }
@@ -124,13 +124,6 @@ data class SpanCompareFitInformation(
         }
         return normalizedCoverageQueries2!!.sumOf { it.scaledTreatment(chromosomeRange) } /
                 normalizedCoverageQueries2!!.size
-    }
-
-    override fun hasControlData(): Boolean {
-        check(normalizedCoverageQueries1 != null && normalizedCoverageQueries2 != null) {
-            "Please use prepareData before!"
-        }
-        return false
     }
 
     companion object {

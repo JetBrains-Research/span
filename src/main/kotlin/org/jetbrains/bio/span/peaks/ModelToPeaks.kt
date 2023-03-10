@@ -6,6 +6,7 @@ import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
+import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanFitInformation
 import org.jetbrains.bio.span.fit.SpanFitResults
 import org.jetbrains.bio.span.fit.SpanFitResults.Companion.LOG
@@ -137,17 +138,19 @@ object ModelToPeaks {
                 val start = offsets[from]
                 val end = if (to < offsets.size) offsets[to] else chromosome.length
                 val chromosomeRange = ChromosomeRange(start, end, chromosome)
-                if (fitInfo.hasControlData()) {
+                if (fitInfo is SpanAnalyzeFitInformation &&
+                    fitInfo.hasControlData() &&
+                    fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
+                ) {
                     // Estimate enrichment vs local coverage in control track
                     val peakTreatment = fitInfo.scaledTreatmentCoverage(chromosomeRange)
                     val peakControl = fitInfo.scaledControlCoverage(chromosomeRange)!!
-                    PoissonUtil.logPoissonCdf(
+                    return@map PoissonUtil.logPoissonCdf(
                         ceil(peakTreatment).toInt() + PSEUDO_COUNT, ceil(peakControl) + PSEUDO_COUNT
                     )
-                } else {
-                    // Fallback to average posterior log error probability for block
-                    (from until to).sumOf { logNullMemberships[it] } / (to - from)
                 }
+                // Fallback to average posterior log error probability for block
+                (from until to).sumOf { logNullMemberships[it] } / (to - from)
             }
             islandsLengthWeightedScores(blocks, blocksLogPs)
         }

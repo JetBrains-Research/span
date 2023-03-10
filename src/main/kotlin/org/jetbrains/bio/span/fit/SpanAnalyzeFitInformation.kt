@@ -49,6 +49,13 @@ data class SpanAnalyzeFitInformation(
                     listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
         )
 
+    fun hasControlData(): Boolean {
+        check(normalizedCoverageQueries != null) {
+            "Please use prepareData before!"
+        }
+        return normalizedCoverageQueries!!.any { it.controlPath != null }
+    }
+
     override val dataQuery: Query<Chromosome, DataFrame>
         get() {
             prepareData()
@@ -95,7 +102,7 @@ data class SpanAnalyzeFitInformation(
         check(normalizedCoverageQueries != null) {
             "Please use prepareData before!"
         }
-        return if (normalizedCoverageQueries!!.all { it.ready }) {
+        return if (normalizedCoverageQueries!!.all { it.areCachesPresent() }) {
             normalizedCoverageQueries!!.sumOf { it.apply(chromosomeRange) }
                 .toDouble() / normalizedCoverageQueries!!.size
         } else {
@@ -122,13 +129,6 @@ data class SpanAnalyzeFitInformation(
         }
         return normalizedCoverageQueries!!.sumOf { it.scaledControl(chromosomeRange)!! } /
                 normalizedCoverageQueries!!.size
-    }
-
-    override fun hasControlData(): Boolean {
-        check(normalizedCoverageQueries != null) {
-            "Please use prepareData before!"
-        }
-        return normalizedCoverageQueries!!.any { it.controlPath != null }
     }
 
     companion object {

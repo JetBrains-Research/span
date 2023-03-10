@@ -110,10 +110,6 @@ data class SpanRegrMixtureAnalyzeFitInformation constructor(
     override fun scaledTreatmentCoverage(chromosomeRange: ChromosomeRange): Double = 0.0
     override fun scaledControlCoverage(chromosomeRange: ChromosomeRange): Double? = null
 
-    override fun hasControlData(): Boolean {
-        return false
-    }
-
     companion object {
         @Suppress("MayBeConstant", "unused")
         @Transient

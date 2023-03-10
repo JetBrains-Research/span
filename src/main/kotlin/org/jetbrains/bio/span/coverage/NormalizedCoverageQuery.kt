@@ -56,7 +56,7 @@ class NormalizedCoverageQuery(
         get() = "Treatment: $treatmentPath, Control: $controlPath, " +
                 "Fragment: $fragment, Keep-dup: ${!unique}"
 
-    val treatmentReads by lazy {
+    private val treatmentReads by lazy {
         ReadsQuery(genomeQuery, treatmentPath, unique, fragment, showLibraryInfo = showLibraryInfo)
     }
 
@@ -69,8 +69,8 @@ class NormalizedCoverageQuery(
     /**
      * Shows whether the relevant caches are present.
      */
-    val ready: Boolean
-        get() = treatmentReads.npzPath().isAccessible() && controlReads?.npzPath()?.isAccessible() ?: true
+    fun areCachesPresent(): Boolean =
+        treatmentReads.npzPath().isAccessible() && controlReads?.npzPath()?.isAccessible() ?: true
 
     /**
      * Cached value for treatment and control scales, see [analyzeCoverage]
