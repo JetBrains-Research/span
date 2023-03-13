@@ -122,6 +122,10 @@ object ModelToPeaks {
             return emptyList()
         }
 
+        val isTreatmentAndControlAvailable = fitInfo is SpanAnalyzeFitInformation &&
+                fitInfo.hasControlData() &&
+                fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
+
         // We want two invariants from islands pvalues:
         // 1) The more strict FDR, the fewer peaks with smaller average length
         // 2) Peaks should not disappear when relaxing FDR
@@ -138,25 +142,26 @@ object ModelToPeaks {
                 val start = offsets[from]
                 val end = if (to < offsets.size) offsets[to] else chromosome.length
                 val chromosomeRange = ChromosomeRange(start, end, chromosome)
-                if (fitInfo is SpanAnalyzeFitInformation &&
-                    fitInfo.hasControlData() &&
-                    fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
-                ) {
+                if (isTreatmentAndControlAvailable) {
                     // Estimate enrichment vs local coverage in control track
                     val peakTreatment = fitInfo.scaledTreatmentCoverage(chromosomeRange)
                     val peakControl = fitInfo.scaledControlCoverage(chromosomeRange)!!
-                    return@map PoissonUtil.logPoissonCdf(
+                    PoissonUtil.logPoissonCdf(
                         ceil(peakTreatment).toInt() + PSEUDO_COUNT, ceil(peakControl) + PSEUDO_COUNT
                     )
+                } else {
+                    // Fallback to average posterior log error probability for block
+                    (from until to).sumOf { logNullMemberships[it] } / (to - from)
                 }
-                // Fallback to average posterior log error probability for block
-                (from until to).sumOf { logNullMemberships[it] } / (to - from)
             }
             islandsLengthWeightedScores(blocks, blocksLogPs)
         }
 
         // Additionally clip islands by coverage
-        val (avgSignal, avgNoise) = if (clip)
+        val clipEnabled = clip &&
+                fitInfo is SpanAnalyzeFitInformation &&
+                fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
+        val (avgSignal, avgNoise) = if (clipEnabled)
             estimateSignalAndNoiseDensity(
                 chromosome, fitInfo, candidateIslands, offsets
             ) else
@@ -180,7 +185,7 @@ object ModelToPeaks {
                 return@mapIndexedNotNull null
             }
 
-            val (clippedStart, clippedEnd) = if (clip)
+            val (clippedStart, clippedEnd) = if (clipEnabled)
                 clipPeakByScore(
                     chromosome, start, end, fitInfo,
                     (MAX_CLIPPED_LENGTH * (end - start)).toInt(), maxClippedScore
