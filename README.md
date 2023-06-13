@@ -71,70 +71,27 @@ $ java -jar span.jar compare --help
 Command line options
 -------------------------
 
-`-t, --treatment TREATMENT`<br>
-**Required**. ChIP-seq treatment file. Supported formats: BAM, BED, BED.gz or bigWig file. If multiple files are
-provided, they are treated as replicates. Multiple files should be separated by commas: `-t A,B,C`. Multiple files are
-processed as replicates on the model level.
-
-`-c, --control CONTROL`<br>
-Control file. Multiple files should be separated by commas. A single control file, or a separate file per each treatment
-file is required. Follow the instructions for `-t`, `--treatment` TREATMENT.
-
-`-cs, --chrom.sizes CHROMOSOMES_SIZES`<br>
-**Required**. Chromosome sizes file for the genome build used in TREATMENT and CONTROL files. Can be downloaded
-at [UCSC](https://hgdownload.soe.ucsc.edu/downloads.html).
-
-`--fragment FRAGMENT`<br>
-Fragment size. If provided, reads are shifted appropriately. If not provided, the shift is estimated from the data.
-`--fragment 0` argument is necessary for ATAC-Seq data processing.
-
-`-k, --keep-dup`<br>
-Keep duplicates. By default, SPAN filters out redundant reads aligned at the same genomic position.
-`--keep-dup` argument is necessary for single cell ATAC-Seq data processing.
-
-`-b, --bin BIN_SIZE`<br>
-Peak analysis is performed on read coverage tiled into consequent bins of configurable size.
-
-`-f, --fdr FDR`<br>
-Minimum FDR cutoff to call significant regions.
-
-`-g, --gap GAP`<br>
-Gap size to merge spatially close peaks. Useful for wide histone modifications.
-
-`--labels LABELS`<br>
-Labels BED file. Used in semi-supervised peak calling.
-
-`-p, --peaks PEAKS`<br>
-Resulting peaks file in ENCODE broadPeak* (BED 6+3) format. If omitted, only the model fitting step is performed.
-
-`-m, --model MODEL`<br>
-This option is used to specify SPAN model path, if not provided, model name is composed of input names and other
-arguments.
-
-`--clip`<br>
-Clip peaks to improve density.
-
-`--ext`<br>
-Save extended states information to model file.
-
-`-w, --workdir PATH`<br>
-Path to the working directory (stores coverage and model caches).
-
-`--threads THREADS`<br>
-Configures the parallelism level. SPAN utilizes both multithreading and specialized processor extensions like SSE2, AVX,
-etc.
-
-`-i, --iterations`<br>
-Maximum number of iterations for EM algorithm.
-
-`--threshold, --tr`<br>
-Convergence threshold for EM algorithm, use `--debug` option to see detailed info.
-
-`-d, --debug`<br>
-Print all the debug information, used for troubleshooting.
-
-`-q, --quiet`<br>
-Turn off output.
+| Parameter                                               | Description                                                                                                                                                                                                                                                                   | 
+|---------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `-t, --treatment TREATMENT`<br/> **required**           | ChIP-seq treatment file. Supported formats: BAM, BED, or BED.gz file. <br/>If multiple files are provided, they are treated as replicates. <br/>Multiple files should be separated by commas: `-t A,B,C`. <br/>Multiple files are processed as replicates on the model level. |
+| `-c, --control CONTROL`                                 | Control file. Multiple files should be separated by commas. <br/>A single control file, or a separate file per each treatment file is required. <br/>Follow the instructions for `-t`, `--treatment`.                                                                         |
+| `-cs, --chrom.sizes CHROMOSOMES_SIZES`<br/>**required** | Chromosome sizes file for the genome build used in TREATMENT and CONTROL files. <br/>Can be downloaded at [UCSC](https://hgdownload.soe.ucsc.edu/downloads.html).                                                                                                             |
+| `-b, --bin BIN_SIZE`                                    | Peak analysis is performed on read coverage tiled into consequent bins of configurable size.                                                                                                                                                                                  |
+| `-f, --fdr FDR`                                         | FDR cutoff to call significant regions.                                                                                                                                                                                                                                       |
+| `-g, --gap GAP`                                         | Gap size to merge spatially close peaks. Useful for wide histone modifications.                                                                                                                                                                                               |
+| `-p, --peaks PEAKS`                                     | Resulting peaks file in ENCODE broadPeak* (BED 6+3) format. <br> If omitted, only the model fitting step is performed.                                                                                                                                                        |
+| `--labels LABELS`                                       | Labels BED file. Used in semi-supervised peak calling.                                                                                                                                                                                                                        |
+| `-m, --model MODEL`                                     | This option is used to specify SPAN model path, if not provided, model name is chosen automatically.                                                                                                                                                                          |
+| `-w, --workdir PATH`                                    | Path to the working directory (stores coverage and model caches).                                                                                                                                                                                                             |
+| `--ext`                                                 | Save extended states information to model file.                                                                                                                                                                                                                               |
+| `--clip`                                                | Clip peaks to improve density.                                                                                                                                                                                                                                                |
+| `--fragment FRAGMENT`                                   | Fragment size. If provided, reads are shifted appropriately. <br>If not provided, the shift is estimated from the data.<br> `--fragment 0` argument is necessary for ATAC-Seq data processing.                                                                                |
+| `-k, --keep-dup`                                        | Keep duplicates. By default, SPAN filters out redundant reads aligned at the same genomic position.<br> `--keep-dup` argument is necessary for single cell ATAC-Seq data processing.                                                                                          |
+| `--threads THREADS`                                     | Configures the parallelism level. <br>SPAN utilizes both multithreading and specialized processor extensions like SSE2, AVX, etc.                                                                                                                                             |
+| `-i, --iterations`                                      | Maximum number of iterations for EM algorithm.                                                                                                                                                                                                                                |
+| `--threshold, --tr`                                     | Convergence threshold for EM algorithm, use `--debug` option to see detailed info.                                                                                                                                                                                            |
+| `-d, --debug`                                           | Print all the debug information, used for troubleshooting.                                                                                                                                                                                                                    |
+| `-q, --quiet`                                           | Turn off output.                                                                                                                                                                                                                                                              |
 
 Example
 -------
