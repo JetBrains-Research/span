@@ -1,6 +1,6 @@
 package org.jetbrains.bio.span.peaks
 
-import org.jetbrains.bio.dataframe.BitterSet
+import org.jetbrains.bio.dataframe.BitList
 import org.jetbrains.bio.genome.Range
 import org.junit.Rule
 import org.junit.Test
@@ -20,7 +20,7 @@ class ModelToPeaksTest {
 
     @Test
     fun testEmpty() {
-        val (bins, peaks, cores) = ModelToPeaks.computeBinsCoresAndPeaks(BitterSet(10), BitterSet(10), 0)
+        val (bins, peaks, cores) = ModelToPeaks.computeBinsCoresAndPeaks(BitList(10), BitList(10), 0)
         assertEquals(0, bins.cardinality())
         assertTrue(peaks.isEmpty())
         assertTrue(cores.isEmpty())
@@ -28,8 +28,8 @@ class ModelToPeaksTest {
 
     @Test
     fun testSimple() {
-        val relaxedBins = BitterSet(10).apply { listOf(0, 1, 2, 4, 5).forEach { set(it) } }
-        val strictBins = BitterSet(10).apply { listOf(1, 4, 5).forEach { set(it) } }
+        val relaxedBins = BitList(10).apply { listOf(0, 1, 2, 4, 5).forEach { set(it) } }
+        val strictBins = BitList(10).apply { listOf(1, 4, 5).forEach { set(it) } }
         val (bins, peaks, cores) = ModelToPeaks.computeBinsCoresAndPeaks(relaxedBins, strictBins, 0)
         assertEquals(5, bins.cardinality())
         assertEquals(arrayListOf(Range(0, 3), Range(4, 6)), peaks)
@@ -39,8 +39,8 @@ class ModelToPeaksTest {
 
     @Test
     fun testMultipleCores() {
-        val relaxedBins = BitterSet(10).apply { listOf(0, 1, 2, 3, 4, 5, 8, 9, 10).forEach { set(it) } }
-        val strictBins = BitterSet(10).apply { listOf(0, 2, 3, 9).forEach { set(it) } }
+        val relaxedBins = BitList(10).apply { listOf(0, 1, 2, 3, 4, 5, 8, 9, 10).forEach { set(it) } }
+        val strictBins = BitList(10).apply { listOf(0, 2, 3, 9).forEach { set(it) } }
         val (bins, peaks, cores) = ModelToPeaks.computeBinsCoresAndPeaks(relaxedBins, strictBins, 0)
         assertEquals(9, bins.cardinality())
         assertEquals(arrayListOf(Range(0, 6), Range(8, 10)), peaks)
@@ -49,8 +49,8 @@ class ModelToPeaksTest {
 
     @Test
     fun testGap() {
-        val relaxedBins = BitterSet(10).apply { listOf(0, 1, 2, 3, 4, 5, 8, 9, 10).forEach { set(it) } }
-        val strictBins = BitterSet(10).apply { listOf(0, 2, 3, 9).forEach { set(it) } }
+        val relaxedBins = BitList(10).apply { listOf(0, 1, 2, 3, 4, 5, 8, 9, 10).forEach { set(it) } }
+        val strictBins = BitList(10).apply { listOf(0, 2, 3, 9).forEach { set(it) } }
         val (bins, peaks, cores) = ModelToPeaks.computeBinsCoresAndPeaks(relaxedBins, strictBins, 3)
         assertEquals(9, bins.cardinality())
         assertEquals(arrayListOf(Range(0, 10)), peaks)
@@ -59,8 +59,8 @@ class ModelToPeaksTest {
 
     @Test
     fun emptyCores() {
-        val relaxedBins = BitterSet(10).apply { listOf(0, 1, 2, 3, 4, 5, 8, 9, 10).forEach { set(it) } }
-        val strictBins = BitterSet(10).apply { listOf(0, 2, 3).forEach { set(it) } }
+        val relaxedBins = BitList(10).apply { listOf(0, 1, 2, 3, 4, 5, 8, 9, 10).forEach { set(it) } }
+        val strictBins = BitList(10).apply { listOf(0, 2, 3).forEach { set(it) } }
         val (bins, peaks, cores) = ModelToPeaks.computeBinsCoresAndPeaks(relaxedBins, strictBins, 3)
         assertEquals(9, bins.cardinality())
         assertEquals(arrayListOf(Range(0, 6)), peaks)
@@ -71,8 +71,8 @@ class ModelToPeaksTest {
     fun differentSize() {
         expectedEx.expect(IllegalArgumentException::class.java)
         expectedEx.expectMessage("Different size")
-        val relaxedBins = BitterSet(20).apply { listOf(0, 1, 2, 3, 4, 5, 8, 9, 10).forEach { set(it) } }
-        val strictBins = BitterSet(10).apply { listOf(0, 2, 3).forEach { set(it) } }
+        val relaxedBins = BitList(20).apply { listOf(0, 1, 2, 3, 4, 5, 8, 9, 10).forEach { set(it) } }
+        val strictBins = BitList(10).apply { listOf(0, 2, 3).forEach { set(it) } }
         ModelToPeaks.computeBinsCoresAndPeaks(relaxedBins, strictBins, 3)
     }
 
@@ -81,8 +81,8 @@ class ModelToPeaksTest {
     fun strictNotRelaxes() {
         expectedEx.expect(IllegalArgumentException::class.java)
         expectedEx.expectMessage("Strict positions should be covered in relaxed")
-        val relaxedBins = BitterSet(10).apply { listOf(1, 2, 3, 4, 5, 8, 9, 10).forEach { set(it) } }
-        val strictBins = BitterSet(10).apply { listOf(0, 2, 3).forEach { set(it) } }
+        val relaxedBins = BitList(10).apply { listOf(1, 2, 3, 4, 5, 8, 9, 10).forEach { set(it) } }
+        val strictBins = BitList(10).apply { listOf(0, 2, 3).forEach { set(it) } }
         ModelToPeaks.computeBinsCoresAndPeaks(relaxedBins, strictBins, 3)
     }
 }

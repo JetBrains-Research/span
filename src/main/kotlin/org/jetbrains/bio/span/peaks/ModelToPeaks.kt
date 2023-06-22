@@ -1,6 +1,6 @@
 package org.jetbrains.bio.span.peaks
 
-import org.jetbrains.bio.dataframe.BitterSet
+import org.jetbrains.bio.dataframe.BitList
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
@@ -119,8 +119,8 @@ object ModelToPeaks {
         val logFdr = ln(fdr)
         val relaxedLogFdr = relaxedLogFdr(logFdr)
         require(relaxedLogFdr >= logFdr)
-        val relaxedBins = BitterSet(logNullMemberships.size) { logNullMemberships[it] <= relaxedLogFdr }
-        val strictBins = BitterSet(logNullMemberships.size) { logNullMemberships[it] <= logFdr }
+        val relaxedBins = BitList(logNullMemberships.size) { logNullMemberships[it] <= relaxedLogFdr }
+        val strictBins = BitList(logNullMemberships.size) { logNullMemberships[it] <= logFdr }
         val (candidateBins, candidatePeaks, candidatePeaksCores) =
             computeBinsCoresAndPeaks(relaxedBins, strictBins, gap)
         if (candidatePeaks.isEmpty()) {
@@ -223,10 +223,10 @@ object ModelToPeaks {
     }
 
     fun computeBinsCoresAndPeaks(
-        relaxedBins: BitterSet,
-        strictBins: BitterSet,
+        relaxedBins: BitList,
+        strictBins: BitList,
         gap: Int
-    ): Triple<BitterSet, List<Range>, List<List<Range>>> {
+    ): Triple<BitList, List<Range>, List<List<Range>>> {
         require(relaxedBins.size() == strictBins.size()) { "Different size" }
         (0 until relaxedBins.size()).forEach {
             require(!(strictBins[it] && !relaxedBins[it])) { "Strict positions should be covered in relaxed" }
