@@ -1,10 +1,10 @@
 package org.jetbrains.bio.span.peaks
 
-import org.jetbrains.bio.dataframe.BitRange
 import org.jetbrains.bio.dataframe.BitterSet
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
+import org.jetbrains.bio.genome.Range
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanFitInformation
@@ -18,10 +18,10 @@ import org.jetbrains.bio.util.CancellableState
 import org.jetbrains.bio.util.Progress
 import org.jetbrains.bio.viktor.F64Array
 import org.jetbrains.bio.viktor.KahanSum
-import java.lang.Integer.max
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.ceil
 import kotlin.math.ln
+import kotlin.math.max
 import kotlin.math.min
 
 
@@ -31,14 +31,15 @@ object ModelToPeaks {
      * Main method to compute peaks from model.
      *
      * 1) Estimate posterior probabilities
-     * 2) Pick candidate bins with relaxed posterior error probability, e.g. sqrt(fdr).
+     * 2) Merge candidate bins with relaxed posterior error probability into blocks
      * This mitigates the problem of wide marks peaks split on strong fdrs.
-     * 3) Using gap merge bins into candidate islands.
-     * 4) Assign p-value to each island using based on combined p-values for blocks of consequent enriched bins.
+     * 3) Pick those blocks with at least one confident enriched bin inside
+     * 4) Using gap merge blocks into candidate peaks.
+     * 5) Assign p-value to each peak based on combined p-values for cores(consequent strict enriched bins).
      *    In case when control track is present, we use Poisson CDF to estimate log P value,
      *    otherwise an average log PEP (posterior error probability) for bins in blocks is used.
-     * 5) 50% top significant blocks scores are aggregated using length-weighted average as P for island.
-     * 6) Compute qvalues by islands p-values, filter by alpha.
+     *    50% top significant blocks scores are aggregated using length-weighted average as P for peak.
+     * 6) Compute qvalues by peaks p-values, filter by alpha.
      */
     fun computeChromosomePeaks(
         spanFitResults: SpanFitResults,
@@ -63,8 +64,8 @@ object ModelToPeaks {
         }
         progress.done()
         Peak.LOG.debug(
-            "Total candidate bins/candidate/result islands " +
-                    "${candidateBinsCounter.get()}/${candidateIslandsCounter.get()}/${resultIslandsCounter.get()}"
+            "Total candidate bins/candidate/result peaks " +
+                    "${candidateBinsCounter.get()}/${candidatePeaksCounter.get()}/${resultPeaksCounter.get()}"
         )
         return genomeQuery.get().flatMap { map[it] }
     }
@@ -79,7 +80,7 @@ object ModelToPeaks {
         cancellableState: CancellableState? = null
     ): List<Peak> {
         // Check that we have information for requested chromosome
-        val chromosomeIslands = if (chromosome.name in spanFitResults.fitInfo.chromosomesSizes) {
+        val chromosomePeaks = if (chromosome.name in spanFitResults.fitInfo.chromosomesSizes) {
             spanFitResults.fitInfo.prepareData()
             getChromosomePeaks(
                 chromosome,
@@ -98,7 +99,7 @@ object ModelToPeaks {
             )
             emptyList()
         }
-        return chromosomeIslands
+        return chromosomePeaks
     }
 
     private fun getChromosomePeaks(
@@ -111,14 +112,18 @@ object ModelToPeaks {
         clip: Boolean,
         cancellableState: CancellableState? = null
     ): List<Peak> {
-        // Compute candidate bins and islands with relaxed settings
+        // Compute candidate bins and peaks with relaxed settings
         // Relaxed probability allows for:
         // 1) Return broad peaks in case of broad modifications even for strict FDR settings
         // 2) Mitigate the problem when number of peaks for strict FDR is much bigger than for relaxed FDR
         val logFdr = ln(fdr)
-        val strictFdrBins = BitterSet(logNullMemberships.size) { logNullMemberships[it] <= logFdr }
-        val (candidateBins, candidateIslands) = computeCandidateBinsAndIslands(logNullMemberships, logFdr, gap)
-        if (candidateIslands.isEmpty()) {
+        val relaxedLogFdr = relaxedLogFdr(logFdr)
+        require(relaxedLogFdr >= logFdr)
+        val relaxedBins = BitterSet(logNullMemberships.size) { logNullMemberships[it] <= relaxedLogFdr }
+        val strictBins = BitterSet(logNullMemberships.size) { logNullMemberships[it] <= logFdr }
+        val (candidateBins, candidatePeaks, candidatePeaksCores) =
+            computeBinsCoresAndPeaks(relaxedBins, strictBins, gap)
+        if (candidatePeaks.isEmpty()) {
             return emptyList()
         }
 
@@ -126,18 +131,18 @@ object ModelToPeaks {
                 fitInfo.hasControlData() &&
                 fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
 
-        // We want two invariants from islands pvalues:
+        // We want two invariants from peaks pvalues:
         // 1) The more strict FDR, the fewer peaks with smaller average length
         // 2) Peaks should not disappear when relaxing FDR
         // Peak score is computed as length-weighted average p-value in its consequent enriched bins.
-        val islandsLogPs = F64Array(candidateIslands.size) { islandIndex ->
+        val peaksLogPvalues = F64Array(candidatePeaks.size) { idx ->
             cancellableState?.checkCanceled()
-            var blocks = strictFdrBins.findConsequentBlocks(candidateIslands[islandIndex])
+            var coreBlocks = candidatePeaksCores[idx]
             // No significant bin within candidate
-            if (blocks.isEmpty()) {
-                blocks = listOf(candidateIslands[islandIndex])
+            if (coreBlocks.isEmpty()) {
+                coreBlocks = listOf(candidatePeaks[idx])
             }
-            val blocksLogPs = blocks.map { (from, to) ->
+            val blocksLogPs = coreBlocks.map { (from, to) ->
                 cancellableState?.checkCanceled()
                 val start = offsets[from]
                 val end = if (to < offsets.size) offsets[to] else chromosome.length
@@ -154,16 +159,16 @@ object ModelToPeaks {
                     (from until to).sumOf { logNullMemberships[it] } / (to - from)
                 }
             }
-            islandsLengthWeightedScores(blocks, blocksLogPs)
+            lengthWeightedScores(coreBlocks, blocksLogPs)
         }
 
-        // Additionally clip islands by coverage
+        // Additionally clip peaks by coverage
         val clipEnabled = clip &&
                 fitInfo is SpanAnalyzeFitInformation &&
                 fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
         val (avgSignal, avgNoise) = if (clipEnabled)
             estimateSignalAndNoiseDensity(
-                chromosome, fitInfo, candidateIslands, offsets
+                chromosome, fitInfo, candidatePeaks, offsets
             ) else
             0.0 to 0.0
         var totalClipStart = 0L
@@ -173,14 +178,14 @@ object ModelToPeaks {
             LOG.debug("Signal density $avgSignal, noise density $avgNoise")
         }
 
-        // Filter result islands by Q values
-        val islandsLogQValues = Fdr.qvalidate(islandsLogPs, logResults = true)
-        val resultIslands = candidateIslands.mapIndexedNotNull { i, (from, to) ->
+        // Filter result peaks by Q values
+        val peaksLogQValues = Fdr.qvalidate(peaksLogPvalues, logResults = true)
+        val resultPeaks = candidatePeaks.mapIndexedNotNull { i, (from, to) ->
             cancellableState?.checkCanceled()
             val start = offsets[from]
             val end = if (to < offsets.size) offsets[to] else chromosome.length
-            val logPValue = islandsLogPs[i]
-            val logQValue = islandsLogQValues[i]
+            val logPValue = peaksLogPvalues[i]
+            val logQValue = peaksLogQValues[i]
             if (logPValue > logFdr || logQValue > logFdr) {
                 return@mapIndexedNotNull null
             }
@@ -207,35 +212,86 @@ object ModelToPeaks {
         }
 
         Peak.LOG.debug(
-            "$chromosome: candidate bins / candidate/result islands " +
-                    "${candidateBins.cardinality()} / ${candidateIslands.size}/${resultIslands.size};"
+            "$chromosome: candidate bins / candidate/result peaks " +
+                    "${candidateBins.cardinality()} / ${candidatePeaks.size} / ${resultPeaks.size};"
 
         )
         candidateBinsCounter.addAndGet(candidateBins.cardinality())
-        candidateIslandsCounter.addAndGet(candidateIslands.size)
-        resultIslandsCounter.addAndGet(resultIslands.size)
-        return resultIslands
+        candidatePeaksCounter.addAndGet(candidatePeaks.size)
+        resultPeaksCounter.addAndGet(resultPeaks.size)
+        return resultPeaks
     }
 
-    fun computeCandidateBinsAndIslands(
-        logNullMemberships: F64Array,
-        logFdr: Double,
+    fun computeBinsCoresAndPeaks(
+        relaxedBins: BitterSet,
+        strictBins: BitterSet,
         gap: Int
-    ): Pair<BitterSet, List<BitRange>> {
-        val relaxedLogFdr = relaxedLogFdr(logFdr)
-        val candidateBins = BitterSet(logNullMemberships.size).apply {
-            0.until(size()).filter { logNullMemberships[it] <= relaxedLogFdr }.forEach(::set)
+    ): Triple<BitterSet, List<Range>, List<List<Range>>> {
+        require(relaxedBins.size() == strictBins.size()) { "Different size" }
+        (0 until relaxedBins.size()).forEach {
+            require(!(strictBins[it] && !relaxedBins[it])) { "Strict positions should be covered in relaxed" }
         }
-        val candidateIslands = candidateBins.aggregate(gap).filter { (from, to) ->
-            (from until to).any { logNullMemberships[it] <= logFdr }
+        val cores = strictBins.aggregate()
+        // Relaxed candidates with core inside
+        val candidates = relaxedBins.aggregate().filter { (start, end) ->
+            (start until end).any { strictBins[it] }
         }
-        return Pair(candidateBins, candidateIslands)
+
+        if (candidates.isEmpty()) {
+            return Triple(relaxedBins, emptyList(), emptyList())
+        }
+
+        val candidatePeaks = arrayListOf<Range>()
+        val candidatePeaksCores = arrayListOf<List<Range>>()
+        var coreIdx = 0
+        var currentPeakStart = -1
+        var currentPeakEnd = -1
+        var currentPeaksCores = arrayListOf<Range>()
+        for ((start, end) in candidates) {
+            when {
+                currentPeakStart == -1 -> {
+                    currentPeakStart = start
+                    currentPeakEnd = end
+                }
+
+                start < currentPeakEnd + gap -> {
+                    currentPeakEnd = end
+                }
+
+                else -> {
+                    val currentPeak = Range(currentPeakStart, currentPeakEnd)
+                    while (coreIdx < cores.size && currentPeak.contains(cores[coreIdx])) {
+                        currentPeaksCores.add(cores[coreIdx])
+                        coreIdx++
+                    }
+                    if (currentPeaksCores.isNotEmpty()) {
+                        candidatePeaks.add(currentPeak)
+                        candidatePeaksCores.add(currentPeaksCores)
+                    }
+                    currentPeakStart = start
+                    currentPeakEnd = end
+                    currentPeaksCores = arrayListOf()
+                }
+            }
+        }
+        // Process last candidate peak
+        val currentPeak = Range(currentPeakStart, currentPeakEnd)
+        while (coreIdx < cores.size && currentPeak.contains(cores[coreIdx])) {
+            currentPeaksCores.add(cores[coreIdx])
+            coreIdx++
+        }
+        if (currentPeaksCores.isNotEmpty()) {
+            candidatePeaks.add(currentPeak)
+            candidatePeaksCores.add(currentPeaksCores)
+        }
+
+        return Triple(relaxedBins, candidatePeaks, candidatePeaksCores)
     }
 
     private fun estimateSignalAndNoiseDensity(
         chromosome: Chromosome,
         fitInfo: SpanFitInformation,
-        islands: List<BitRange>,
+        peaks: List<Range>,
         offsets: IntArray
     ): Pair<Double, Double> {
         var sumSignalScore = 0.0
@@ -243,7 +299,7 @@ object ModelToPeaks {
         var sumNoiseScore = 0.0
         var sumNoiseLength = 0L
         var prevNoiseStart = 0
-        islands.forEach { (from, to) ->
+        peaks.forEach { (from, to) ->
             val start = offsets[from]
             val end = if (to < offsets.size) offsets[to] else chromosome.length
             sumSignalScore += fitInfo.score(ChromosomeRange(start, end, chromosome))
@@ -320,12 +376,12 @@ object ModelToPeaks {
 
     /**
      * We want summary score to be robust wrt appending blocks of low significance,
-     * so take into account top 50% blocks p-values, otherwise we'll get fdr-blinking peaks, i.e.
+     * so take into account top N% blocks p-values, otherwise we'll get fdr-blinking peaks, i.e.
      * peaks which are present for stronger fdr, but missing for more relaxed settings
      * Use length weighted mean to take into account difference in blocks lengths
      */
-    private fun islandsLengthWeightedScores(
-        blocks: List<BitRange>,
+    private fun lengthWeightedScores(
+        blocks: List<Range>,
         scores: List<Double>,
         fraction: Double = 0.5
     ): Double {
@@ -335,15 +391,19 @@ object ModelToPeaks {
         blocks.zip(scores).sortedBy { it.second }
             .take(max(1, ceil(blocks.size * fraction).toInt()))
             .forEach { (b, p) ->
-                sum += p * (b.toIndex - b.fromIndex)
-                l += b.toIndex - b.fromIndex
+                sum += p * (b.startOffset - b.endOffset)
+                l += b.startOffset - b.endOffset
             }
         return sum.result() / l
     }
 
 
-    private fun relaxedLogFdr(logFdr: Double, relaxPower: Double = RELAX_POWER_DEFAULT) =
-        min(ln(0.1), logFdr * relaxPower)
+    /**
+     * Relaxed FDR should be useful for strict FDR only,
+     * so limiting its application on relaxed FDR
+     */
+    fun relaxedLogFdr(logFdr: Double, relaxPower: Double = RELAX_POWER_DEFAULT) =
+        max(logFdr, min(ln(0.1), logFdr * relaxPower))
 
     private const val RELAX_POWER_DEFAULT = 0.5
 
@@ -356,13 +416,13 @@ object ModelToPeaks {
     private val LOG_10 = ln(10.0)
 
     private val candidateBinsCounter = AtomicInteger()
-    private val candidateIslandsCounter = AtomicInteger()
-    private val resultIslandsCounter = AtomicInteger()
+    private val candidatePeaksCounter = AtomicInteger()
+    private val resultPeaksCounter = AtomicInteger()
 
     private fun resetCounters() {
         candidateBinsCounter.set(0)
-        candidateIslandsCounter.set(0)
-        resultIslandsCounter.set(0)
+        candidatePeaksCounter.set(0)
+        resultPeaksCounter.set(0)
     }
 
 }
