@@ -157,12 +157,14 @@ class NormalizedCoverageQuery(
             bin: Int = SPAN_DEFAULT_BIN,
             betaStep: Double = 0.01
         ): Double {
-            val maxChromosome = genomeQuery.get().maxByOrNull { it.length }!!
-            val binnedTreatment = maxChromosome.range.slice(bin).mapToDouble { range ->
-                treatmentCoverage.getBothStrandsCoverage(range.on(maxChromosome)) * treatmentScale
+            // Estimate beta corrected signal only on not empty chromosomes
+            val chromosomeWithMaxSignal = genomeQuery.get()
+                .maxByOrNull { treatmentCoverage.getBothStrandsCoverage(it.range.on(it)) } ?: return 0.0
+            val binnedTreatment = chromosomeWithMaxSignal.range.slice(bin).mapToDouble { range ->
+                treatmentCoverage.getBothStrandsCoverage(range.on(chromosomeWithMaxSignal)) * treatmentScale
             }.toArray()
-            val binnedControl = maxChromosome.range.slice(bin).mapToDouble { range ->
-                controlCoverage.getBothStrandsCoverage(range.on(maxChromosome)) * controlScale
+            val binnedControl = chromosomeWithMaxSignal.range.slice(bin).mapToDouble { range ->
+                controlCoverage.getBothStrandsCoverage(range.on(chromosomeWithMaxSignal)) * controlScale
             }.toArray()
             var b = 0.0
             var minCorrelation = 1.0
@@ -181,6 +183,7 @@ class NormalizedCoverageQuery(
                 }
                 b += betaStep
             }
+            check(minB != -1.0) { "Failed to estimate beta-value for control correction" }
             return minB
         }
     }
