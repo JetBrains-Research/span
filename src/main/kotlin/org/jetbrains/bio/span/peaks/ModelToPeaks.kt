@@ -19,6 +19,7 @@ import org.jetbrains.bio.util.Progress
 import org.jetbrains.bio.viktor.F64Array
 import org.jetbrains.bio.viktor.KahanSum
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.ceil
 import kotlin.math.ln
 import kotlin.math.max
@@ -26,6 +27,22 @@ import kotlin.math.min
 
 
 object ModelToPeaks {
+
+    private val CLIP_STEPS = intArrayOf(1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000)
+
+    private const val MAX_CLIPPED_LENGTH = 0.25
+
+    private const val MAX_CLIPPED_THRESHOLD = 0.75
+
+    private const val RELAX_POWER_DEFAULT = 0.5
+
+    /**
+     * Relaxed FDR should be useful for strict FDR only,
+     * so limiting its application on relaxed FDR
+     */
+    fun relaxedLogFdr(logFdr: Double, relaxPower: Double = RELAX_POWER_DEFAULT) =
+        max(logFdr, min(ln(0.1), logFdr * relaxPower))
+
 
     /**
      * Main method to compute peaks from model.
@@ -65,7 +82,8 @@ object ModelToPeaks {
         progress.done()
         Peak.LOG.debug(
             "Total candidate bins/candidate/result peaks " +
-                    "${candidateBinsCounter.get()}/${candidatePeaksCounter.get()}/${resultPeaksCounter.get()}"
+                    "${candidateBinsCounter.get()}/${candidatePeaksCounter.get()}/${resultPeaksCounter.get()}; " +
+                    "clip start/end ${totalClipStart.get()}/${totalClipEnd.get()}"
         )
         return genomeQuery.get().flatMap { map[it] }
     }
@@ -121,8 +139,8 @@ object ModelToPeaks {
         require(relaxedLogFdr >= logFdr)
         val relaxedBins = BitList(logNullMemberships.size) { logNullMemberships[it] <= relaxedLogFdr }
         val strictBins = BitList(logNullMemberships.size) { logNullMemberships[it] <= logFdr }
-        val (candidateBins, candidatePeaks, candidatePeaksCores) =
-            computeBinsCoresAndPeaks(relaxedBins, strictBins, gap)
+        val (candidatePeaks, candidatePeaksCores, _) =
+            computePeaksCoresGaps(relaxedBins, strictBins, gap)
         if (candidatePeaks.isEmpty()) {
             return emptyList()
         }
@@ -151,8 +169,9 @@ object ModelToPeaks {
                     // Estimate enrichment vs local coverage in control track
                     val peakTreatment = fitInfo.scaledTreatmentCoverage(chromosomeRange)
                     val peakControl = fitInfo.scaledControlCoverage(chromosomeRange)!!
+                    // Use +1 as a pseudo count to compute Poisson CDF
                     PoissonUtil.logPoissonCdf(
-                        ceil(peakTreatment).toInt() + PSEUDO_COUNT, ceil(peakControl) + PSEUDO_COUNT
+                        ceil(peakTreatment).toInt() + 1, ceil(peakControl) + 1
                     )
                 } else {
                     // Fallback to average posterior log error probability for block
@@ -171,9 +190,9 @@ object ModelToPeaks {
                 chromosome, fitInfo, candidatePeaks, offsets
             ) else
             0.0 to 0.0
-        var totalClipStart = 0L
-        var totalClipEnd = 0L
-        val maxClippedScore = avgNoise + MAX_CLIPPED_DELTA * (avgSignal - avgNoise)
+        var clipStart = 0L
+        var clipEnd = 0L
+        val maxClippedScore = avgNoise + MAX_CLIPPED_THRESHOLD * (avgSignal - avgNoise)
         if (clip) {
             LOG.debug("Signal density $avgSignal, noise density $avgNoise")
         }
@@ -196,8 +215,8 @@ object ModelToPeaks {
                     (MAX_CLIPPED_LENGTH * (end - start)).toInt(), maxClippedScore
                 )
             else start to end
-            totalClipStart += clippedStart - start
-            totalClipEnd += end - clippedEnd
+            clipStart += clippedStart - start
+            clipEnd += end - clippedEnd
             Peak(
                 chromosome = chromosome,
                 startOffset = clippedStart,
@@ -210,23 +229,19 @@ object ModelToPeaks {
                 score = min(1000.0, -logQValue / LOG_10).toInt()
             )
         }
-
-        Peak.LOG.debug(
-            "$chromosome: candidate bins / candidate/result peaks " +
-                    "${candidateBins.cardinality()} / ${candidatePeaks.size} / ${resultPeaks.size};"
-
-        )
-        candidateBinsCounter.addAndGet(candidateBins.cardinality())
+        candidateBinsCounter.addAndGet(relaxedBins.cardinality())
         candidatePeaksCounter.addAndGet(candidatePeaks.size)
         resultPeaksCounter.addAndGet(resultPeaks.size)
+        totalClipStart.addAndGet(clipStart)
+        totalClipEnd.addAndGet(clipEnd)
         return resultPeaks
     }
 
-    fun computeBinsCoresAndPeaks(
+    fun computePeaksCoresGaps(
         relaxedBins: BitList,
         strictBins: BitList,
         gap: Int
-    ): Triple<BitList, List<Range>, List<List<Range>>> {
+    ): Triple<List<Range>, List<List<Range>>, List<List<Range>>> {
         require(relaxedBins.size() == strictBins.size()) { "Different size" }
         (0 until relaxedBins.size()).forEach {
             require(!(strictBins[it] && !relaxedBins[it])) { "Strict positions should be covered in relaxed" }
@@ -238,15 +253,17 @@ object ModelToPeaks {
         }
 
         if (candidates.isEmpty()) {
-            return Triple(relaxedBins, emptyList(), emptyList())
+            return Triple(emptyList(), emptyList(), emptyList())
         }
 
         val candidatePeaks = arrayListOf<Range>()
         val candidatePeaksCores = arrayListOf<List<Range>>()
+        val candidatePeaksGaps = arrayListOf<List<Range>>()
         var coreIdx = 0
         var currentPeakStart = -1
         var currentPeakEnd = -1
-        var currentPeaksCores = arrayListOf<Range>()
+        var currentPeakCores = arrayListOf<Range>()
+        var currentPeakGaps = arrayListOf<Range>()
         for ((start, end) in candidates) {
             when {
                 currentPeakStart == -1 -> {
@@ -255,37 +272,44 @@ object ModelToPeaks {
                 }
 
                 start < currentPeakEnd + gap -> {
+                    val gapsMask = BitList(start - currentPeakEnd).apply {
+                        (0 until size()).forEach { set(it, !relaxedBins[currentPeakEnd + it]) }
+                    }
+                    for (g in gapsMask.aggregate()) {
+                        currentPeakGaps.add(Range(currentPeakEnd + g.startOffset, currentPeakEnd + g.endOffset))
+                    }
                     currentPeakEnd = end
                 }
 
                 else -> {
                     val currentPeak = Range(currentPeakStart, currentPeakEnd)
                     while (coreIdx < cores.size && currentPeak.contains(cores[coreIdx])) {
-                        currentPeaksCores.add(cores[coreIdx])
+                        currentPeakCores.add(cores[coreIdx])
                         coreIdx++
                     }
-                    if (currentPeaksCores.isNotEmpty()) {
-                        candidatePeaks.add(currentPeak)
-                        candidatePeaksCores.add(currentPeaksCores)
-                    }
+                    check(currentPeakCores.isNotEmpty())
+                    candidatePeaks.add(currentPeak)
+                    candidatePeaksCores.add(currentPeakCores)
+                    candidatePeaksGaps.add(currentPeakGaps)
                     currentPeakStart = start
                     currentPeakEnd = end
-                    currentPeaksCores = arrayListOf()
+                    currentPeakCores = arrayListOf()
+                    currentPeakGaps = arrayListOf()
                 }
             }
         }
         // Process last candidate peak
         val currentPeak = Range(currentPeakStart, currentPeakEnd)
         while (coreIdx < cores.size && currentPeak.contains(cores[coreIdx])) {
-            currentPeaksCores.add(cores[coreIdx])
+            currentPeakCores.add(cores[coreIdx])
             coreIdx++
         }
-        if (currentPeaksCores.isNotEmpty()) {
-            candidatePeaks.add(currentPeak)
-            candidatePeaksCores.add(currentPeaksCores)
-        }
+        check(currentPeakCores.isNotEmpty())
+        candidatePeaks.add(currentPeak)
+        candidatePeaksCores.add(currentPeakCores)
+        candidatePeaksGaps.add(currentPeakGaps)
 
-        return Triple(relaxedBins, candidatePeaks, candidatePeaksCores)
+        return Triple(candidatePeaks, candidatePeaksCores, candidatePeaksGaps)
     }
 
     private fun estimateSignalAndNoiseDensity(
@@ -398,31 +422,20 @@ object ModelToPeaks {
     }
 
 
-    /**
-     * Relaxed FDR should be useful for strict FDR only,
-     * so limiting its application on relaxed FDR
-     */
-    fun relaxedLogFdr(logFdr: Double, relaxPower: Double = RELAX_POWER_DEFAULT) =
-        max(logFdr, min(ln(0.1), logFdr * relaxPower))
-
-    private const val RELAX_POWER_DEFAULT = 0.5
-
-    private const val PSEUDO_COUNT: Int = 1
-
-    private val CLIP_STEPS = intArrayOf(1, 2, 5, 10, 20, 50, 100, 200, 500, 1000)
-    private const val MAX_CLIPPED_LENGTH = 0.25
-    private const val MAX_CLIPPED_DELTA = 0.5
-
     private val LOG_10 = ln(10.0)
 
     private val candidateBinsCounter = AtomicInteger()
     private val candidatePeaksCounter = AtomicInteger()
     private val resultPeaksCounter = AtomicInteger()
+    private val totalClipStart = AtomicLong()
+    private val totalClipEnd = AtomicLong()
 
     private fun resetCounters() {
         candidateBinsCounter.set(0)
         candidatePeaksCounter.set(0)
         resultPeaksCounter.set(0)
+        totalClipStart.set(0)
+        totalClipEnd.set(0)
     }
 
 }
