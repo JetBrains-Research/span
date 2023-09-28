@@ -12,6 +12,8 @@ import org.jetbrains.bio.util.*
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
+import java.text.DecimalFormatSymbols
+import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -102,7 +104,8 @@ class SpanRegrMixtureCLALongTest {
     LABELS, FDR, GAP options are ignored.
     """ in out
                 )
-                Tests.assertIn("100.00% (", out)
+                val ds = DecimalFormatSymbols(Locale.getDefault()).decimalSeparator // XXX: Not so important to make to types of tests for US and EU locales
+                Tests.assertIn("100${ds}00% (", out)
                 Tests.assertIn("MODEL TYPE: ${SpanModelType.POISSON_REGRESSION_MIXTURE}", out)
                 Tests.assertIn("Source: $peaksPath", out)
                 Tests.assertIn("FRIP: ", out)

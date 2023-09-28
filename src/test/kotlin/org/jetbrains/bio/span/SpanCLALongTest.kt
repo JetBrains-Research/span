@@ -18,6 +18,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import java.io.FileReader
+import java.text.DecimalFormatSymbols
 import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -145,9 +146,11 @@ PEAKS: $peaksPath
 """, out
                 )
                 assertIn("Saved result to $peaksPath", out)
-                // Check model fit has a progress
-                assertIn("0.00% (0/${SpanPeakCallingExperiment.SPAN_FIT_MAX_ITERATIONS}), Elapsed time", out)
-                assertIn("100.00% (", out)
+
+                // Check model fit has a progress:
+                val ds = DecimalFormatSymbols(Locale.getDefault()).decimalSeparator // XXX: Not so important to make to types of tests for US and EU locales
+                assertIn("0${ds}00% (0/${SpanPeakCallingExperiment.SPAN_FIT_MAX_ITERATIONS}), Elapsed time", out)
+                assertIn("100${ds}00% (", out)
             }
         }
     }
@@ -509,6 +512,8 @@ LABELS, FDR, GAP options are ignored.
                         )
                     )
                 }
+
+                val ds = DecimalFormatSymbols(Locale.getDefault()).decimalSeparator // XXX: Not so important to make to types of tests for US and EU locales
                 assertIn(
                     """SPAN
 COMMAND:
@@ -524,7 +529,7 @@ CONVERGENCE THRESHOLD: ${SpanPeakCallingExperiment.SPAN_FIT_THRESHOLD}
 CLIP: false
 EXTENDED MODEL INFO: false
 Library: ${path.fileName}, Depth:
-100.00% (
+100${ds}00% (
 Source: $peaksPath
 FRIP: 
 Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
