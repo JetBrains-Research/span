@@ -182,7 +182,8 @@ object SpanCLAAnalyze {
                             genomeQuery,
                             labels,
                             "",
-                            SpanSemiSupervised.PARAMETERS
+                            SpanSemiSupervised.PARAMETERS,
+                            CancellableState.current()
                         )
                         SpanCLA.LOG.info("Tuning model on the loaded labels complete.")
                         val (optimalFDR, optimalGap) = SpanSemiSupervised.PARAMETERS[optimalIndex]

@@ -35,7 +35,7 @@ object SpanSemiSupervised {
         labels: List<LocationLabel>,
         id: String,
         parameters: List<Pair<Double, Int>>,
-        cancellableState: CancellableState = CancellableState.current()
+        cancellableState: CancellableState
     ): Pair<List<LabelErrors>, Int> {
         val labeledGenomeQuery = GenomeQuery(
             genomeQuery.genome,
@@ -52,7 +52,10 @@ object SpanSemiSupervised {
                 Callable {
                     cancellableState.checkCanceled()
                     val peaksOnLabeledGenomeQuery =
-                        ModelToPeaks.computeChromosomePeaks(results, labeledGenomeQuery, fdr, gap, false)
+                        ModelToPeaks.computeChromosomePeaks(
+                            results, labeledGenomeQuery, fdr, gap, false,
+                            CancellableState.current()
+                        )
                     labelErrorsGrid[index] = computeErrors(
                         labels,
                         LocationsMergingList.create(
