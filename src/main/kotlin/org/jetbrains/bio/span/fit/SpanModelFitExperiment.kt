@@ -4,7 +4,6 @@ import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiment.Experiment
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
-import org.jetbrains.bio.genome.containers.GenomeMap
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.genome.query.ReadsQuery
@@ -22,7 +21,6 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
 import java.util.concurrent.Callable
-import javax.xml.datatype.DatatypeFactory
 
 
 /**
@@ -99,18 +97,18 @@ abstract class SpanModelFitExperiment<
         val dataFrames = Array(preprocessedData.size) { empty }
         val tasks = preprocessedData.mapIndexed { index, preprocessed ->
             Callable {
-            val logMemberships = model.evaluate(preprocessed)
-            var df = DataFrame()
-            availableStates.forEachIndexed { j, state ->
-                val f64Array = logMemberships.V[j]
-                // Convert [Double] to [Float] to save space, see #1163
-                df = df.with(state.toString(), f64Array.toFloatArray())
-            }
-            df = df.with(
-                "state", model.predict(preprocessed)
-                    .map { availableStates[it].toString() }.toTypedArray()
-            )
-            dataFrames[index] = df
+                val logMemberships = model.evaluate(preprocessed)
+                var df = DataFrame()
+                availableStates.forEachIndexed { j, state ->
+                    val f64Array = logMemberships.V[j]
+                    // Convert [Double] to [Float] to save space, see #1163
+                    df = df.with(state.toString(), f64Array.toFloatArray())
+                }
+                df = df.with(
+                    "state", model.predict(preprocessed)
+                        .map { availableStates[it].toString() }.toTypedArray()
+                )
+                dataFrames[index] = df
             }
         }
         tasks.await(parallel = true)
