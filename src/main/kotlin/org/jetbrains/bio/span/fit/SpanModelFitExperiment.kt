@@ -4,6 +4,8 @@ import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.experiment.Experiment
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
+import org.jetbrains.bio.genome.containers.GenomeMap
+import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.genome.query.ReadsQuery
 import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_FIT_MAX_ITERATIONS
@@ -19,6 +21,8 @@ import org.jetbrains.bio.viktor.F64Array
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
+import java.util.concurrent.Callable
+import javax.xml.datatype.DatatypeFactory
 
 
 /**
@@ -90,8 +94,11 @@ abstract class SpanModelFitExperiment<
         )
     }
 
-    private fun calculateStatesDataFrame(model: Model): DataFrame = DataFrame.rowBind(
-        preprocessedData.map { preprocessed ->
+    private fun calculateStatesDataFrame(model: Model): DataFrame {
+        val empty = DataFrame()
+        val dataFrames = Array(preprocessedData.size) { empty }
+        val tasks = preprocessedData.mapIndexed { index, preprocessed ->
+            Callable {
             val logMemberships = model.evaluate(preprocessed)
             var df = DataFrame()
             availableStates.forEachIndexed { j, state ->
@@ -103,9 +110,12 @@ abstract class SpanModelFitExperiment<
                 "state", model.predict(preprocessed)
                     .map { availableStates[it].toString() }.toTypedArray()
             )
-            df
-        }.toTypedArray()
-    )
+            dataFrames[index] = df
+            }
+        }
+        tasks.await(parallel = true)
+        return DataFrame.rowBind(dataFrames)
+    }
 
     private val statesDataFrame: DataFrame by lazy {
         @Suppress("UNCHECKED_CAST")
@@ -156,15 +166,16 @@ abstract class SpanModelFitExperiment<
                 val statesDataFrame = calculateStatesDataFrame(model)
                 LOG.debug("States dataframe computed")
                 LOG.debug("Computing model states")
-                val chromosomes = genomeQuery.get()
-                val chromosomeToDataFrameMap = chromosomes.associate {
+                val chromosomeToDataFrameMap = genomeMap(genomeQuery, parallel = true) {
                     val logMemberships = getLogMemberships(sliceStatesDataFrame(statesDataFrame, it))
                     val logNullMemberships = nullHypothesis.apply(logMemberships)
                     // Convert [Double] to [Float] to save space, see #1163
-                    it.name to DataFrame().with(NULL, logNullMemberships.toFloatArray())
+                    DataFrame().with(NULL, logNullMemberships.toFloatArray())
                 }
                 LOG.debug("Model states computed")
-                val logNullMembershipsDF = fitInformation.merge(chromosomeToDataFrameMap)
+                val logNullMembershipsDF = fitInformation.merge(
+                    genomeQuery.get().associate { it.name to chromosomeToDataFrameMap[it] }
+                )
                 LOG.debug("Done null hypothesis log memberships")
 
                 val logNullMembershipsPath = dir / NULL_NPZ

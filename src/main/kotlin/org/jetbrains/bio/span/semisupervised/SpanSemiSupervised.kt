@@ -6,11 +6,9 @@ import org.jetbrains.bio.span.fit.SpanFitResults
 import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.span.peaks.ModelToPeaks
 import org.jetbrains.bio.span.semisupervised.LocationLabel.Companion.computeErrors
-import org.jetbrains.bio.util.CancellableState
-import org.jetbrains.bio.util.MultitaskProgress
-import org.jetbrains.bio.util.awaitAll
-import org.jetbrains.bio.util.parallelismLevel
+import org.jetbrains.bio.util.*
 import java.util.concurrent.Callable
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 object SpanSemiSupervised {
@@ -26,8 +24,6 @@ object SpanSemiSupervised {
         FDRS.sorted().flatMap { fdr ->
             GAPS.sorted().map { gap -> fdr to gap }
         }
-
-    private val TUNING_EXECUTOR = Executors.newWorkStealingPool(parallelismLevel())
 
     fun tune(
         results: SpanFitResults,
@@ -47,27 +43,26 @@ object SpanSemiSupervised {
         // 2. List.parallelStream()....collect(Collectors.toList()) guarantees the same order as in original list.
         // Order is important!
         val labelErrorsGrid = Array<LabelErrors?>(parameters.size) { null }
-        TUNING_EXECUTOR.awaitAll(
-            parameters.mapIndexed { index, (fdr, gap) ->
-                Callable {
-                    cancellableState.checkCanceled()
-                    val peaksOnLabeledGenomeQuery =
-                        ModelToPeaks.computeChromosomePeaks(
-                            results, labeledGenomeQuery, fdr, gap, false,
-                            CancellableState.current()
-                        )
-                    labelErrorsGrid[index] = computeErrors(
-                        labels,
-                        LocationsMergingList.create(
-                            labeledGenomeQuery,
-                            peaksOnLabeledGenomeQuery.map { it.location }.iterator()
-                        )
-                    )
-                    MultitaskProgress.reportTask(id)
-                }
-            }
 
-        )
+        val tasks = parameters.mapIndexed { index, (fdr, gap) ->
+            Callable {
+                cancellableState.checkCanceled()
+                val peaksOnLabeledGenomeQuery =
+                    ModelToPeaks.computeChromosomePeaks(
+                        results, labeledGenomeQuery, fdr, gap, false,
+                        CancellableState.current()
+                    )
+                labelErrorsGrid[index] = computeErrors(
+                    labels,
+                    LocationsMergingList.create(
+                        labeledGenomeQuery,
+                        peaksOnLabeledGenomeQuery.map { it.location }.iterator()
+                    )
+                )
+                MultitaskProgress.reportTask(id)
+            }
+        }
+        tasks.await(parallel = true)
         val minTotalError = labelErrorsGrid.minOf { it!!.error() }
         // Parameters should return desired order for each tool
         return labelErrorsGrid.map { it!! } to
