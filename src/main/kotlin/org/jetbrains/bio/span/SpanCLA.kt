@@ -21,7 +21,6 @@ import java.nio.file.Path
 
 /**
  * Tool for analyzing and comparing ChIP-Seq data.
- * `analyze` and `compare` procedures rely on the Zero Inflated Negative Binomial Restricted Algorithm.
  *
  * See [SpanCLAAnalyze] for peak calling procedure.
  * See [SpanCLACompare] for differential peak calling.
