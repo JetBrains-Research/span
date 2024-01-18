@@ -57,6 +57,7 @@ object SpanCLAAnalyze {
                 .defaultsTo(SpanModelType.NB2Z_HMM.id)
             accepts("clip", "Clip peaks to improve density")
 
+            // Additional parameter for *_REGRESSION_MIXTURE models
             accepts(
                 "mapability",
                 "Mapability bigWig file. Requires --model-type " +
@@ -84,27 +85,13 @@ object SpanCLAAnalyze {
                 val id = peaksPath?.stemGz ?: if (modelPath != null) {
                     modelPath.stem
                 } else {
-                    // No peaks, no model, generate ID from command-line options.
-                    // Option parser guarantees that treatment paths are not empty here.
-                    val data = getAnalyzePaths(options)
-                    val ids = listOf(data.map { it.treatment }, data.mapNotNull { it.control }).flatMap { paths ->
-                        paths.map { it.stemGz }
-                    }.toMutableList()
-                    val bin = SpanCLA.getBin(options)
-                    ids.add(bin.toString())
-                    val fragment = SpanCLA.getFragment(options)
-                    if (fragment is FixedFragment) {
-                        ids.add(fragment.size.toString())
-                    }
-                    val unique = SpanCLA.getUnique(options)
-                    if (unique) {
-                        ids.add("unique")
-                    }
-                    val labelsPath = options.valueOf("labels") as Path?
-                    if (labelsPath != null) {
-                        ids.add(labelsPath.stemGz)
-                    }
-                    reduceIds(ids)
+                    generateExperimentId(
+                        getAnalyzePaths(options),
+                        SpanCLA.getBin(options),
+                        SpanCLA.getFragment(options),
+                        SpanCLA.getUnique(options),
+                        options.valueOf("labels") as Path?
+                    )
                 }
 
                 val logPath = SpanCLA.configureLogFile(workingDir, id)
@@ -156,65 +143,127 @@ object SpanCLAAnalyze {
 
                 if (peaksPath != null) {
                     if (labelsPath == null) {
-                        val peaks = ModelToPeaks.computeChromosomePeaks(spanResults, genomeQuery, fdr, gap, clip)
-                        Peak.savePeaks(
-                            peaks, peaksPath,
-                            "peak${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
-                        )
-                        SpanCLA.LOG.info("Saved result to $peaksPath")
-                        val aboutPeaks = PeaksInfo.compute(
-                            genomeQuery,
-                            peaks.map { it.location }.stream(),
-                            peaksPath.toUri(),
-                            fitInfo.data.map { it.treatment }
-                        )
-                        val aboutModel = spanResults.modelInformation()
-                        SpanCLA.LOG.info("\n" + (aboutPeaks + aboutModel).joinToString("\n") { (k, v) ->
-                            "${k.name}: ${k.render(v)}"
-                        })
+                        savePeaks(spanResults, fitInfo, genomeQuery, bin, fragment, fdr, gap, clip, peaksPath)
                     } else {
-                        val results = TuningResults()
-                        SpanCLA.LOG.info("Loading labels $labelsPath...")
-                        val labels = LocationLabel.loadLabels(labelsPath, genomeQuery.genome)
-                        SpanCLA.LOG.info("Tuning model on the loaded labels...")
-                        val (labelErrorsGrid, optimalIndex) = SpanSemiSupervised.tune(
-                            spanResults,
-                            genomeQuery,
-                            labels,
-                            "",
-                            SpanSemiSupervised.PARAMETERS,
-                            CancellableState.current()
-                        )
-                        SpanCLA.LOG.info("Tuning model on the loaded labels complete.")
-                        val (optimalFDR, optimalGap) = SpanSemiSupervised.PARAMETERS[optimalIndex]
-                        SpanCLA.LOG.info("Optimal settings: FDR=$optimalFDR, GAP=$optimalGap")
-                        labelErrorsGrid.forEachIndexed { i, error ->
-                            val (fdrTuning, gapTuning) = SpanSemiSupervised.PARAMETERS[i]
-                            results.addRecord(
-                                "result",
-                                "${fdrTuning}_${gapTuning}",
-                                error,
-                                i == optimalIndex
-                            )
-                        }
-                        results.saveTuningErrors(peaksPath.parent / "${peaksPath.fileName.stem}_errors.csv")
-                        results.saveOptimalResults(
-                            peaksPath.parent
-                                    / "${peaksPath.fileName.stem}_parameters.csv"
-                        )
-                        val peaks = ModelToPeaks.computeChromosomePeaks(
-                            spanResults, genomeQuery, optimalFDR, optimalGap, clip
-                        )
-                        Peak.savePeaks(
-                            peaks, peaksPath,
-                            "peak${if (fragment is FixedFragment) "_$fragment" else ""}_" +
-                                    "${bin}_${optimalFDR}_$optimalGap"
-                        )
-                        SpanCLA.LOG.info("Saved result to $peaksPath")
+                        saveTunedResults(spanResults, genomeQuery, bin, fragment, clip, labelsPath, peaksPath)
                     }
                 }
             }
         }
+    }
+
+    /**
+     * Generates an experiment ID based on the provided parameters.
+     * No peaks, no model, generate ID from command-line options.
+     * Option parser guarantees that treatment paths are not empty here.
+     *
+     * @param spanDataPaths A list of SpanDataPaths representing treatment and control pairs.
+     * @param bin The bin size.
+     * @param fragment The fragment type.
+     * @param unique Indicates whether the experiment is unique.
+     * @param labelsPath The path to the labels BED file.
+     * @return The generated experiment ID.
+     */
+    private fun generateExperimentId(
+        spanDataPaths: List<SpanDataPaths>,
+        bin: Int,
+        fragment: Fragment,
+        unique: Boolean,
+        labelsPath: Path?
+    ): String {
+        val ids = listOf(spanDataPaths.map { it.treatment }, spanDataPaths.mapNotNull { it.control })
+            .flatMap { paths ->
+                paths.map { it.stemGz }
+            }.toMutableList()
+        ids.add(bin.toString())
+        if (fragment is FixedFragment) {
+            ids.add(fragment.size.toString())
+        }
+        if (unique) {
+            ids.add("unique")
+        }
+        if (labelsPath != null) {
+            ids.add(labelsPath.stemGz)
+        }
+        return reduceIds(ids)
+    }
+
+    private fun savePeaks(
+        spanResults: SpanFitResults,
+        fitInfo: AbstractSpanAnalyzeFitInformation,
+        genomeQuery: GenomeQuery,
+        bin: Int,
+        fragment: Fragment,
+        fdr: Double,
+        gap: Int,
+        clip: Boolean,
+        peaksPath: Path
+    ) {
+        val peaks = ModelToPeaks.computeChromosomePeaks(spanResults, genomeQuery, fdr, gap, clip)
+        Peak.savePeaks(
+            peaks, peaksPath,
+            "peak${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
+        )
+        SpanCLA.LOG.info("Saved result to $peaksPath")
+        val aboutPeaks = PeaksInfo.compute(
+            genomeQuery,
+            peaks.map { it.location }.stream(),
+            peaksPath.toUri(),
+            fitInfo.data.map { it.treatment }
+        )
+        val aboutModel = spanResults.modelInformation()
+        SpanCLA.LOG.info("\n" + (aboutPeaks + aboutModel).joinToString("\n") { (k, v) ->
+            "${k.name}: ${k.render(v)}"
+        })
+    }
+
+    private fun saveTunedResults(
+        spanResults: SpanFitResults,
+        genomeQuery: GenomeQuery,
+        bin: Int,
+        fragment: Fragment,
+        clip: Boolean,
+        labelsPath: Path,
+        peaksPath: Path
+    ) {
+        val results = TuningResults()
+        SpanCLA.LOG.info("Loading labels $labelsPath...")
+        val labels = LocationLabel.loadLabels(labelsPath, genomeQuery.genome)
+        SpanCLA.LOG.info("Tuning model on the loaded labels...")
+        val (labelErrorsGrid, optimalIndex) = SpanSemiSupervised.tune(
+            spanResults,
+            genomeQuery,
+            labels,
+            "",
+            SpanSemiSupervised.PARAMETERS,
+            CancellableState.current()
+        )
+        SpanCLA.LOG.info("Tuning model on the loaded labels complete.")
+        val (optimalFDR, optimalGap) = SpanSemiSupervised.PARAMETERS[optimalIndex]
+        SpanCLA.LOG.info("Optimal settings: FDR=$optimalFDR, GAP=$optimalGap")
+        labelErrorsGrid.forEachIndexed { i, error ->
+            val (fdrTuning, gapTuning) = SpanSemiSupervised.PARAMETERS[i]
+            results.addRecord(
+                "result",
+                "${fdrTuning}_${gapTuning}",
+                error,
+                i == optimalIndex
+            )
+        }
+        results.saveTuningErrors(peaksPath.parent / "${peaksPath.fileName.stem}_errors.csv")
+        results.saveOptimalResults(
+            peaksPath.parent
+                    / "${peaksPath.fileName.stem}_parameters.csv"
+        )
+        val peaks = ModelToPeaks.computeChromosomePeaks(
+            spanResults, genomeQuery, optimalFDR, optimalGap, clip
+        )
+        Peak.savePeaks(
+            peaks, peaksPath,
+            "peak${if (fragment is FixedFragment) "_$fragment" else ""}_" +
+                    "${bin}_${optimalFDR}_$optimalGap"
+        )
+        SpanCLA.LOG.info("Saved result to $peaksPath")
     }
 
     /**
@@ -310,7 +359,7 @@ object SpanCLAAnalyze {
             return lazy {
                 val saveExtendedInfo = options.has("ext")
                 SpanCLA.LOG.info("EXTENDED MODEL INFO: $saveExtendedInfo")
-                val experiment = getExperiment(
+                val experiment = getExperimentByModelType(
                     modelType, genomeQuery, data, unique, fragment, bin, modelPath,
                     threshold, maxIterations, saveExtendedInfo, mapabilityPath
                 )
@@ -319,7 +368,7 @@ object SpanCLAAnalyze {
         }
     }
 
-    private fun getExperiment(
+    private fun getExperimentByModelType(
         modelType: SpanModelType,
         genomeQuery: GenomeQuery,
         data: List<SpanDataPaths>,

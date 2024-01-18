@@ -28,13 +28,29 @@ import kotlin.math.min
 
 object ModelToPeaks {
 
+    /**
+     * Peak calling is done in two runs - with relaxed settings and strict user-provided strict FDR.
+     * This value is used to compute relaxed settings, see [relaxedLogFdr] for details.
+     */
+    private const val RELAX_POWER_DEFAULT = 0.5
+
+    /**
+     * Clipping allows to fine-tune boundaries of point-wise peaks according to the local signal.
+     * Array of steps used for reducing the range by [CLIP_STEPS] from both sides while increasing score.
+     * Used together with [MAX_CLIPPED_FRACTION].
+     */
     private val CLIP_STEPS = intArrayOf(1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000)
 
-    private const val MAX_CLIPPED_LENGTH = 0.25
+    /**
+     * The maximum fraction of length for clipped peaks, from left and from right.
+     */
+    private const val MAX_CLIPPED_FRACTION = 0.25
 
+    /**
+     * Maximum threshold value used for clipping peaks by coverage.
+     * Defines max score of clipped region as average_noise + MAX_CLIPPED_THRESHOLD * (average_signal - average_noise)
+     */
     private const val MAX_CLIPPED_THRESHOLD = 0.75
-
-    private const val RELAX_POWER_DEFAULT = 0.5
 
     /**
      * Relaxed FDR should be useful for strict FDR only,
@@ -49,7 +65,7 @@ object ModelToPeaks {
      *
      * 1) Estimate posterior probabilities
      * 2) Merge candidate bins with relaxed posterior error probability into blocks
-     * This mitigates the problem of wide marks peaks split on strong fdrs.
+     *    This mitigates the problem of wide marks peaks split on strong fdrs.
      * 3) Pick those blocks with at least one confident enriched bin inside
      * 4) Using gap merge blocks into candidate peaks.
      * 5) Assign p-value to each peak based on combined p-values for cores(consequent strict enriched bins).
@@ -57,6 +73,9 @@ object ModelToPeaks {
      *    otherwise an average log PEP (posterior error probability) for bins in blocks is used.
      *    50% top significant blocks scores are aggregated using length-weighted average as P for peak.
      * 6) Compute qvalues by peaks p-values, filter by alpha.
+     * 7) Optional clipping to fine-tune boundaries of point-wise peaks according to the local signal.
+     *
+     * Actual code for a single chromosome is in [getChromosomePeaks].
      */
     fun computeChromosomePeaks(
         spanFitResults: SpanFitResults,
@@ -131,7 +150,7 @@ object ModelToPeaks {
         cancellableState: CancellableState? = null
     ): List<Peak> {
         // Compute candidate bins and peaks with relaxed settings
-        // Relaxed probability allows for:
+        // Relaxed threshold run allows:
         // 1) Return broad peaks in case of broad modifications even for strict FDR settings
         // 2) Mitigate the problem when number of peaks for strict FDR is much bigger than for relaxed FDR
         val logFdr = ln(fdr)
@@ -181,7 +200,7 @@ object ModelToPeaks {
             lengthWeightedScores(coreBlocks, blocksLogPs)
         }
 
-        // Additionally clip peaks by coverage
+        // Additionally clip peaks by local coverage signal
         val clipEnabled = clip &&
                 fitInfo is SpanAnalyzeFitInformation &&
                 fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
@@ -212,7 +231,7 @@ object ModelToPeaks {
             val (clippedStart, clippedEnd) = if (clipEnabled)
                 clipPeakByScore(
                     chromosome, start, end, fitInfo,
-                    (MAX_CLIPPED_LENGTH * (end - start)).toInt(), maxClippedScore
+                    (MAX_CLIPPED_FRACTION * (end - start)).toInt(), maxClippedScore
                 )
             else start to end
             clipStart += clippedStart - start
@@ -237,6 +256,14 @@ object ModelToPeaks {
         return resultPeaks
     }
 
+    /**
+     * Computes peaks, cores, and gaps from the given relaxedBins and strictBins.
+     *
+     * @param relaxedBins The relaxed bins representing the data.
+     * @param strictBins The strict bins representing the data.
+     * @param gap The minimum gap between peaks.
+     * @return A Triple containing the list of peaks, list of cores for each peak, and list of gaps for each peak.
+     */
     fun computePeaksCoresGaps(
         relaxedBins: BitList,
         strictBins: BitList,
@@ -346,7 +373,16 @@ object ModelToPeaks {
     }
 
     /**
-     * Tries to reduce range by [CLIP_STEPS] from both sides while increasing score.
+     * Clips the peak by score within the given boundaries.
+     * Clipping is done iteratively using [CLIP_STEPS].
+     *
+     * @param chromosome The chromosome to clip.
+     * @param start The start position of the peak.
+     * @param end The end position of the peak.
+     * @param fitInfo The fit information of the peak.
+     * @param maxClippedLength The maximum length the peak can be clipped from the start and end.
+     * @param maxClippedScore The maximum score allowed for the clipped part.
+     * @return The clipped start and end positions as a Pair<Int, Int>.
      */
     private fun clipPeakByScore(
         chromosome: Chromosome,
@@ -399,7 +435,8 @@ object ModelToPeaks {
 
 
     /**
-     * We want summary score to be robust wrt appending blocks of low significance,
+     * Summary length-weighted score for a peak.
+     * It should be robust wrt appending blocks of low significance,
      * so take into account top N% blocks p-values, otherwise we'll get fdr-blinking peaks, i.e.
      * peaks which are present for stronger fdr, but missing for more relaxed settings
      * Use length weighted mean to take into account difference in blocks lengths
