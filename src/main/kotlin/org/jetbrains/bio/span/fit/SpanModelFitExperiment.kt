@@ -7,8 +7,8 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.genome.query.ReadsQuery
-import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_FIT_MAX_ITERATIONS
-import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_FIT_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_MAX_ITERATIONS
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_THRESHOLD
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.f64Array
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
@@ -154,11 +154,11 @@ abstract class SpanModelFitExperiment<
                 LOG.info("Done computing data model")
                 LOG.info("Saving model information")
                 model.save(modelPath)
-                LOG.debug("Model saved to $modelPath")
+                LOG.debug("Model saved to {}", modelPath)
 
                 val informationPath = dir / INFORMATION_JSON
                 fitInformation.save(informationPath)
-                LOG.debug("Fit information saved to $informationPath")
+                LOG.debug("Fit information saved to {}", informationPath)
 
                 LOG.info("Analyzing model bins enrichment")
                 val statesDataFrame = calculateStatesDataFrame(model)
@@ -178,13 +178,13 @@ abstract class SpanModelFitExperiment<
 
                 val logNullMembershipsPath = dir / NULL_NPZ
                 logNullMembershipsDF.save(logNullMembershipsPath)
-                LOG.debug("LogNullMemberships saved to $logNullMembershipsPath")
+                LOG.debug("LogNullMemberships saved to {}", logNullMembershipsPath)
                 var statesDataFrameMap: Map<String, DataFrame>? = null
                 if (saveExtendedInfo) {
                     LOG.debug("Saving full states dataframe")
                     val statesDataFramePath = dir / "states.npz"
                     statesDataFrame.save(statesDataFramePath)
-                    LOG.debug("States saved to $statesDataFramePath")
+                    LOG.debug("States saved to {}", statesDataFramePath)
                     Tar.compress(
                         p,
                         *listOf(

@@ -68,8 +68,11 @@ class SpanDifferentialPeakCallingExperiment private constructor(
 
 
     companion object {
-        private const val TRACK1_PREFIX = "track1"
-        private const val TRACK2_PREFIX = "track2"
+        /**
+         * Technical prefix used for generating track labels.
+         */
+        private const val SPAN_TRACK1_PREFIX = "track1"
+        private const val SPAN_TRACK2_PREFIX = "track2"
 
         /**
          * Creates experiment for model-based comparison of binned coverage tracks for given queries.
@@ -90,8 +93,8 @@ class SpanDifferentialPeakCallingExperiment private constructor(
             val fitInformation = SpanCompareFitInformation.effective(
                 genomeQuery,
                 paths1, paths2,
-                MultiLabels.generate(TRACK1_PREFIX, paths1.size).toList(),
-                MultiLabels.generate(TRACK2_PREFIX, paths2.size).toList(),
+                MultiLabels.generate(SPAN_TRACK1_PREFIX, paths1.size).toList(),
+                MultiLabels.generate(SPAN_TRACK2_PREFIX, paths2.size).toList(),
                 fragment, unique, bin
             )
             return SpanDifferentialPeakCallingExperiment(fitInformation, threshold, maxIterations)

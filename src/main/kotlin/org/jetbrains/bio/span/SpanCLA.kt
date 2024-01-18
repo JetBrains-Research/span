@@ -7,13 +7,13 @@ import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.fit.AbstractSpanAnalyzeFitInformation
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_MAX_ITERATIONS
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanDataPaths
 import org.jetbrains.bio.span.fit.SpanFitInformation
-import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_BIN
-import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_FDR
-import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_GAP
-import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_FIT_MAX_ITERATIONS
-import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_FIT_THRESHOLD
 import org.jetbrains.bio.util.*
 import org.jetbrains.bio.util.FileSize.Companion.GB
 import org.slf4j.LoggerFactory
@@ -56,8 +56,8 @@ Option                          Description
 ---------------------           -----------
 -?, -h, --help                  Show help
 -v, --version                   Show version
-analyze                         Peak calling mode
-compare                         Differential peak calling mode 
+analyze                         Peak calling
+compare                         Differential peak calling
 """
     private const val ANALYZE = "analyze"
     private const val COMPARE = "compare"
@@ -158,21 +158,22 @@ compare                         Differential peak calling mode
             acceptsAll(listOf("threads"), "Parallelism level")
                 .withRequiredArg()
                 .ofType(Int::class.java)
-            acceptsAll(listOf("k", "keep-dup"), "Keep duplicates")
-                .withOptionalArg()
-                .ofType(Boolean::class.java)
-                .defaultsTo(true)
             acceptsAll(listOf("i", "iterations"), "Maximum number of iterations for EM algorithm")
                 .withRequiredArg()
                 .ofType(Int::class.java)
                 .defaultsTo(SPAN_FIT_MAX_ITERATIONS)
             acceptsAll(
-                listOf("tr", "threshold"), "Convergence threshold for EM algorithm, " +
-                        "use --debug option to see detailed info"
+                listOf("tr", "threshold"),
+                "Convergence threshold for EM algorithm, use --debug option to see detailed info"
             )
                 .withRequiredArg()
                 .ofType(Double::class.java)
                 .defaultsTo(SPAN_FIT_THRESHOLD)
+            acceptsAll(listOf("kd", "keep-dup"), "Keep duplicates")
+                .withOptionalArg()
+                .ofType(Boolean::class.java)
+                .defaultsTo(true)
+            acceptsAll(listOf("kc", "keep-cache"), "Keep cache files")
         }
     }
 

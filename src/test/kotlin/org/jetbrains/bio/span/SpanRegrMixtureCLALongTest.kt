@@ -5,8 +5,8 @@ import org.jetbrains.bio.experiment.Configuration
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.format.BedFormat
 import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
 import org.jetbrains.bio.span.fit.SpanModelType
-import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_BIN
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.util.*
 import org.junit.After

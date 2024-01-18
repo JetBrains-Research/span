@@ -3,6 +3,8 @@ package org.jetbrains.bio.span.fit
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_MAX_ITERATIONS
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_THRESHOLD
 import org.jetbrains.bio.span.statistics.hmm.ConstrainedNBZHMM
 import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
@@ -43,15 +45,10 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
 
     companion object {
 
-        const val SPAN_DEFAULT_BIN = 100
-        const val SPAN_DEFAULT_FDR = 0.05
-        const val SPAN_DEFAULT_GAP = 3
-        const val SPAN_DEFAULT_CLIP = true
-
-        const val SPAN_FIT_THRESHOLD = 1.0
-        const val SPAN_FIT_MAX_ITERATIONS = 20
-
-        const val TRACK_PREFIX = "track"
+        /**
+         * Technical prefix used for generating track labels.
+         */
+        const val SPAN_TRACK_PREFIX = "track"
 
         /**
          * Creates experiment for model-based enrichment of binned coverage tracks (e.g. ChIP-seq tracks)
@@ -73,7 +70,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
         ): SpanPeakCallingExperiment<out ClassificationModel> {
             require(paths.isNotEmpty()) { "No data" }
             val fitInformation = SpanAnalyzeFitInformation.createFitInformation(
-                genomeQuery, paths, MultiLabels.generate(TRACK_PREFIX, paths.size).toList(),
+                genomeQuery, paths, MultiLabels.generate(SPAN_TRACK_PREFIX, paths.size).toList(),
                 fragment, unique, bin
             )
             return if (paths.size == 1) {

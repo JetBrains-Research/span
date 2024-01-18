@@ -2,30 +2,29 @@ package org.jetbrains.bio.span.semisupervised
 
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.LocationsMergingList
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanFitResults
-import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.span.peaks.ModelToPeaks
 import org.jetbrains.bio.span.semisupervised.LocationLabel.Companion.computeErrors
 import org.jetbrains.bio.util.*
 import java.util.concurrent.Callable
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 object SpanSemiSupervised {
 
     val FDRS = listOf(
         0.1,
-        SpanPeakCallingExperiment.SPAN_DEFAULT_FDR, 0.01, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10
+        SPAN_DEFAULT_FDR, 0.01, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10
     )
 
-    val GAPS = listOf(0, 1, 2, SpanPeakCallingExperiment.SPAN_DEFAULT_GAP, 5, 10)
+    val GAPS = listOf(0, 1, 2, SPAN_DEFAULT_GAP, 5, 10)
 
     val PARAMETERS =
         FDRS.sorted().flatMap { fdr ->
             GAPS.sorted().map { gap -> fdr to gap }
         }
 
-    fun tune(
+    fun tuneParameters(
         results: SpanFitResults,
         genomeQuery: GenomeQuery,
         labels: List<LocationLabel>,

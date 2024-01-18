@@ -2,6 +2,13 @@ package org.jetbrains.bio.span.fit
 
 import org.jetbrains.bio.span.SpanCLA.LOG
 
+/**
+ * Enum class representing different types of Span models.
+ *
+ * @property id The ID of the Span model type.
+ * @property extension The extension associated with the Span model type.
+ * @property description A description of the Span model type.
+ */
 enum class SpanModelType(val id: String, val extension: String, val description: String) {
     // Default SPAN model
     NB2Z_HMM("nb2zhmm", "span", "Negative binomial HMM 2 states with zero inflation"),

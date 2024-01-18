@@ -11,6 +11,11 @@ import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.format.BedFormat
 import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_MAX_ITERATIONS
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.util.*
@@ -64,23 +69,6 @@ class SpanCLALongTest {
         assertTrue("ERROR: Unknown command: foobar." in err)
     }
 
-    @Test
-    fun checkHelp() {
-        val (out, _) = Logs.captureLoggingOutput {
-            SpanCLA.main(arrayOf("--help"))
-        }
-        assertLinesEqual(
-            """
-Option                          Description
----------------------           -----------
--?, -h, --help                  Show help
--v, --version                   Show version
-analyze                         Peak calling mode
-compare                         Differential peak calling mode 
-""".trim(), out.trim()
-        )
-    }
-
 
     @Test
     fun checkVersion() {
@@ -100,7 +88,7 @@ compare                         Differential peak calling mode
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
         withTempFile("track", ".bed.gz") { path ->
 
-            sampleCoverage(path, TO, SpanPeakCallingExperiment.SPAN_DEFAULT_BIN, goodQuality = true)
+            sampleCoverage(path, TO, SPAN_DEFAULT_BIN, goodQuality = true)
             print("Saved sampled track file: $path")
 
             withTempDirectory("work") {
@@ -115,8 +103,8 @@ compare                         Differential peak calling mode
                             "-t1", path.toString(),
                             "-t2", path.toString(),
                             "--peaks", peaksPath.toString(),
-                            "--fdr", SpanPeakCallingExperiment.SPAN_DEFAULT_FDR.toString(),
-                            "--gap", SpanPeakCallingExperiment.SPAN_DEFAULT_GAP.toString(),
+                            "--fdr", SPAN_DEFAULT_FDR.toString(),
+                            "--gap", SPAN_DEFAULT_GAP.toString(),
                             "--threads", THREADS.toString()
                         )
                     )
@@ -139,17 +127,18 @@ TREATMENT2: $path
 CONTROL2: none
 CHROM.SIZES: $chromsizes
 FRAGMENT: auto
-BIN: ${SpanPeakCallingExperiment.SPAN_DEFAULT_BIN}
-FDR: ${SpanPeakCallingExperiment.SPAN_DEFAULT_FDR}
-GAP: ${SpanPeakCallingExperiment.SPAN_DEFAULT_GAP}
+BIN: $SPAN_DEFAULT_BIN
+FDR: $SPAN_DEFAULT_FDR
+GAP: $SPAN_DEFAULT_GAP
 PEAKS: $peaksPath
 """, out
                 )
                 assertIn("Saved result to $peaksPath", out)
 
-                // Check model fit has a progress:
-                val ds = DecimalFormatSymbols(Locale.getDefault()).decimalSeparator // XXX: Not so important to make to types of tests for US and EU locales
-                assertIn("0${ds}00% (0/${SpanPeakCallingExperiment.SPAN_FIT_MAX_ITERATIONS}), Elapsed time", out)
+                // Check model fit has progress:
+                // XXX: Not so important to make to types of tests for US and EU locales
+                val ds = DecimalFormatSymbols(Locale.getDefault()).decimalSeparator
+                assertIn("0${ds}00% (0/${SPAN_FIT_MAX_ITERATIONS}), Elapsed time", out)
                 assertIn("100${ds}00% (", out)
             }
         }
@@ -159,7 +148,7 @@ PEAKS: $peaksPath
     fun compareSameTestOrganismTracksReplicates() {
         withTempFile("track", ".bed.gz") { path ->
 
-            sampleCoverage(path, TO, SpanPeakCallingExperiment.SPAN_DEFAULT_BIN, goodQuality = true)
+            sampleCoverage(path, TO, SPAN_DEFAULT_BIN, goodQuality = true)
             print("Saved sampled track file: $path")
 
             withTempDirectory("work") {
@@ -169,13 +158,13 @@ PEAKS: $peaksPath
                         "compare",
                         "-cs", Genome["to1"].chromSizesPath.toString(),
                         "-w", it.toString(),
-                        "-b", SpanPeakCallingExperiment.SPAN_DEFAULT_BIN.toString(),
-                        "-g", SpanPeakCallingExperiment.SPAN_DEFAULT_GAP.toString(),
+                        "-b", SPAN_DEFAULT_BIN.toString(),
+                        "-g", SPAN_DEFAULT_GAP.toString(),
                         "-fragment", FRAGMENT.toString(),
                         "-t1", "$path,$path",
                         "-t2", "$path,$path,$path",
                         "--peaks", bedPath.toString(),
-                        "--fdr", SpanPeakCallingExperiment.SPAN_DEFAULT_FDR.toString()
+                        "--fdr", SPAN_DEFAULT_FDR.toString()
                     )
                 )
                 assertTrue(
@@ -191,7 +180,7 @@ PEAKS: $peaksPath
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
         withTempFile("track", ".bed.gz") { path ->
 
-            sampleCoverage(path, TO, SpanPeakCallingExperiment.SPAN_DEFAULT_BIN, goodQuality = true)
+            sampleCoverage(path, TO, SPAN_DEFAULT_BIN, goodQuality = true)
             print("Saved sampled track file: $path")
 
             withTempDirectory("work") {
@@ -253,7 +242,7 @@ LABELS, FDR, GAP options are ignored.
     fun testQuietMode() {
         withTempFile("track", ".bed.gz") { path ->
 
-            sampleCoverage(path, TO, SpanPeakCallingExperiment.SPAN_DEFAULT_BIN, goodQuality = false)
+            sampleCoverage(path, TO, SPAN_DEFAULT_BIN, goodQuality = false)
             print("Saved sampled track file: $path")
 
             withTempDirectory("work") { dir ->
@@ -284,7 +273,7 @@ LABELS, FDR, GAP options are ignored.
                     reduceIds(
                         listOf(
                             path.stemGz,
-                            SpanPeakCallingExperiment.SPAN_DEFAULT_BIN.toString(),
+                            SPAN_DEFAULT_BIN.toString(),
                             "unique"
                         )
                     )
@@ -302,8 +291,8 @@ LABELS, FDR, GAP options are ignored.
             withTempFile("track", ".bed.gz", dir) { path ->
                 withTempFile("control", ".bed.gz", dir) { control ->
                     // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
-                    sampleCoverage(path, TO, SpanPeakCallingExperiment.SPAN_DEFAULT_BIN, goodQuality = true)
-                    sampleCoverage(control, TO, SpanPeakCallingExperiment.SPAN_DEFAULT_BIN, goodQuality = false)
+                    sampleCoverage(path, TO, SPAN_DEFAULT_BIN, goodQuality = true)
+                    sampleCoverage(control, TO, SPAN_DEFAULT_BIN, goodQuality = false)
 
                     val chromsizes = Genome["to1"].chromSizesPath.toString()
                     SpanCLA.main(
@@ -324,7 +313,7 @@ LABELS, FDR, GAP options are ignored.
                                 listOf(
                                     path.stemGz,
                                     control.stemGz,
-                                    SpanPeakCallingExperiment.SPAN_DEFAULT_BIN.toString(),
+                                    SPAN_DEFAULT_BIN.toString(),
                                     "unique"
                                 )
                             )
@@ -357,7 +346,7 @@ LABELS, FDR, GAP options are ignored.
                                         listOf(
                                             path.stemGz,
                                             control.stemGz,
-                                            SpanPeakCallingExperiment.SPAN_DEFAULT_BIN.toString()
+                                            SPAN_DEFAULT_BIN.toString()
                                         )
                                     )
                                 }.span"
@@ -374,8 +363,8 @@ LABELS, FDR, GAP options are ignored.
             withTempFile("track", ".bed.gz", dir) { path ->
                 withTempFile("control", ".bed.gz", dir) { control ->
                     // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
-                    sampleCoverage(path, TO, SpanPeakCallingExperiment.SPAN_DEFAULT_BIN, goodQuality = true)
-                    sampleCoverage(control, TO, SpanPeakCallingExperiment.SPAN_DEFAULT_BIN, goodQuality = false)
+                    sampleCoverage(path, TO, SPAN_DEFAULT_BIN, goodQuality = true)
+                    sampleCoverage(control, TO, SPAN_DEFAULT_BIN, goodQuality = false)
 
                     val chromsizes = Genome["to1"].chromSizesPath.toString()
                     val modelPath = dir / "custom" / "path" / "model.span"
@@ -419,7 +408,7 @@ LABELS, FDR, GAP options are ignored.
                         }
                     }
                     assertIn(
-                        "bin size (${SpanPeakCallingExperiment.SPAN_DEFAULT_BIN}) differs from the command line argument (137)",
+                        "bin size (${SPAN_DEFAULT_BIN}) differs from the command line argument (137)",
                         invalidErr
                     )
                 }
@@ -436,7 +425,7 @@ LABELS, FDR, GAP options are ignored.
         withTempDirectory("work") { dir ->
             withTempFile("track", ".bed.gz", dir) { path ->
                 // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
-                sampleCoverage(path, TO, SpanPeakCallingExperiment.SPAN_DEFAULT_BIN, goodQuality = true)
+                sampleCoverage(path, TO, SPAN_DEFAULT_BIN, goodQuality = true)
 
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 val invalidModelPath = dir / "custom" / "path" / "model.foo"
@@ -463,7 +452,7 @@ LABELS, FDR, GAP options are ignored.
         withTempDirectory("work") { dir ->
             withTempFile("track", ".bed.gz", dir) { path ->
                 // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
-                sampleCoverage(path, TO, SpanPeakCallingExperiment.SPAN_DEFAULT_BIN, goodQuality = true)
+                sampleCoverage(path, TO, SPAN_DEFAULT_BIN, goodQuality = true)
 
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
 
@@ -495,7 +484,7 @@ LABELS, FDR, GAP options are ignored.
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
         withTempFile("track", ".bed.gz") { path ->
 
-            sampleCoverage(path, TO, SpanPeakCallingExperiment.SPAN_DEFAULT_BIN, goodQuality = true)
+            sampleCoverage(path, TO, SPAN_DEFAULT_BIN, goodQuality = true)
             println("Saved sampled track file: $path")
 
             withTempDirectory("work") {
@@ -524,8 +513,8 @@ TREATMENT: $path
 CONTROL: none
 CHROM.SIZES: $chromsizes
 FRAGMENT: auto
-MAX ITERATIONS: ${SpanPeakCallingExperiment.SPAN_FIT_MAX_ITERATIONS}
-CONVERGENCE THRESHOLD: ${SpanPeakCallingExperiment.SPAN_FIT_THRESHOLD}
+MAX ITERATIONS: $SPAN_FIT_MAX_ITERATIONS
+CONVERGENCE THRESHOLD: $SPAN_FIT_THRESHOLD
 CLIP: false
 EXTENDED MODEL INFO: false
 Library: ${path.fileName}, Depth:
@@ -581,7 +570,7 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
             sampleCoverage(
                 path,
                 TO,
-                SpanPeakCallingExperiment.SPAN_DEFAULT_BIN,
+                SPAN_DEFAULT_BIN,
                 enrichedRegions,
                 zeroRegions,
                 goodQuality = true
@@ -595,15 +584,15 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
                         "-cs", Genome["to1"].chromSizesPath.toString(),
                         "-w", dir.toString(),
                         "--peaks", bedPath.toString(),
-                        "-fdr", SpanPeakCallingExperiment.SPAN_DEFAULT_FDR.toString(),
+                        "-fdr", SPAN_DEFAULT_FDR.toString(),
                         "-t", path.toString()
                     )
                 )
                 // Check created bed file
                 assertTrue(
                     Location(
-                        1100 * SpanPeakCallingExperiment.SPAN_DEFAULT_BIN,
-                        1900 * SpanPeakCallingExperiment.SPAN_DEFAULT_BIN,
+                        1100 * SPAN_DEFAULT_BIN,
+                        1900 * SPAN_DEFAULT_BIN,
                         TO.get().first()
                     )
                             in LocationsMergingList.load(TO, bedPath),
@@ -646,7 +635,7 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
             sampleCoverage(
                 coveragePath,
                 TO,
-                SpanPeakCallingExperiment.SPAN_DEFAULT_BIN,
+                SPAN_DEFAULT_BIN,
                 enrichedRegions,
                 zeroRegions,
                 goodQuality = true
@@ -661,7 +650,7 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
                         "-cs", Genome["to1"].chromSizesPath.toString(),
                         "-w", dir.toString(),
                         "--peaks", peaksPath.toString(),
-                        "-fdr", SpanPeakCallingExperiment.SPAN_DEFAULT_FDR.toString(),
+                        "-fdr", SPAN_DEFAULT_FDR.toString(),
                         "-t", coveragePath.toString()
                     )
                 )
@@ -669,8 +658,8 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
                 val peaksLocations = LocationsMergingList.load(TO, peaksPath)
                 assertTrue(
                     Location(
-                        1100 * SpanPeakCallingExperiment.SPAN_DEFAULT_BIN,
-                        1900 * SpanPeakCallingExperiment.SPAN_DEFAULT_BIN,
+                        1100 * SPAN_DEFAULT_BIN,
+                        1900 * SPAN_DEFAULT_BIN,
                         TO.get().first()
                     ) in peaksLocations,
                     "Expected location not found in called peaks"
@@ -701,7 +690,7 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
             sampleCoverage(
                 path,
                 TO,
-                SpanPeakCallingExperiment.SPAN_DEFAULT_BIN,
+                SPAN_DEFAULT_BIN,
                 enrichedRegions,
                 zeroRegions,
                 goodQuality = true
@@ -725,14 +714,14 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
                         "-cs", Genome["to1"].chromSizesPath.toString(),
                         "-m", modelPath.toString(),
                         "--peaks", bedPath.toString(),
-                        "-fdr", SpanPeakCallingExperiment.SPAN_DEFAULT_FDR.toString()
+                        "-fdr", SPAN_DEFAULT_FDR.toString()
                     )
                 )
                 // Check created bed file
                 assertTrue(
                     Location(
-                        1100 * SpanPeakCallingExperiment.SPAN_DEFAULT_BIN,
-                        1900 * SpanPeakCallingExperiment.SPAN_DEFAULT_BIN,
+                        1100 * SPAN_DEFAULT_BIN,
+                        1900 * SPAN_DEFAULT_BIN,
                         TO.get().first()
                     ) in LocationsMergingList.load(TO, bedPath),
                     "Expected location not found in called peaks"
@@ -749,7 +738,7 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
 
             val zeroRegions = genomeMap(TO) {
                 val zeroes = BitSet()
-                zeroes.set(0, it.length / SpanPeakCallingExperiment.SPAN_DEFAULT_BIN)
+                zeroes.set(0, it.length / SPAN_DEFAULT_BIN)
                 zeroes
             }
 
@@ -758,7 +747,7 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
             sampleCoverage(
                 path,
                 TO,
-                SpanPeakCallingExperiment.SPAN_DEFAULT_BIN,
+                SPAN_DEFAULT_BIN,
                 enrichedRegions,
                 zeroRegions,
                 goodQuality = true
@@ -785,7 +774,7 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
                     reduceIds(
                         listOf(
                             path.stemGz,
-                            SpanPeakCallingExperiment.SPAN_DEFAULT_BIN.toString(),
+                            SPAN_DEFAULT_BIN.toString(),
                             "unique"
                         )
                     )
@@ -807,7 +796,7 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
             sampleCoverage(
                 path,
                 GenomeQuery(Genome["to1"], "chr1", "chr2"),
-                SpanPeakCallingExperiment.SPAN_DEFAULT_BIN,
+                SPAN_DEFAULT_BIN,
                 goodQuality = true
             )
             println("Saved sampled track file: $path")

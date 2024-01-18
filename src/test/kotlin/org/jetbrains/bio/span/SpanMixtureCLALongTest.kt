@@ -10,8 +10,8 @@ import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.span.SpanCLALongTest.Companion.THREADS
 import org.jetbrains.bio.span.SpanCLALongTest.Companion.TO
 import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
 import org.jetbrains.bio.span.fit.SpanModelType
-import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.util.*
 import org.junit.After
@@ -43,8 +43,8 @@ class SpanMixtureCLALongTest {
             withTempFile("track", ".bed.gz", dir) { path ->
                 withTempFile("control", ".bed.gz", dir) { control ->
                     // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
-                    sampleCoverage(path, TO, SpanPeakCallingExperiment.SPAN_DEFAULT_BIN, goodQuality = true)
-                    sampleCoverage(control, TO, SpanPeakCallingExperiment.SPAN_DEFAULT_BIN, goodQuality = false)
+                    sampleCoverage(path, TO, SPAN_DEFAULT_BIN, goodQuality = true)
+                    sampleCoverage(control, TO, SPAN_DEFAULT_BIN, goodQuality = false)
 
                     val chromsizes = Genome["to1"].chromSizesPath.toString()
                     SpanCLA.main(
@@ -70,7 +70,7 @@ class SpanMixtureCLALongTest {
                                         listOf(
                                             path.stemGz,
                                             control.stemGz,
-                                            SpanPeakCallingExperiment.SPAN_DEFAULT_BIN.toString()
+                                            SPAN_DEFAULT_BIN.toString()
                                         )
                                     )
                                 }.${SpanModelType.NB2Z_MIXTURE.extension}"
@@ -103,7 +103,7 @@ class SpanMixtureCLALongTest {
             sampleCoverage(
                 path,
                 TO,
-                SpanPeakCallingExperiment.SPAN_DEFAULT_BIN,
+                SPAN_DEFAULT_BIN,
                 enrichedRegions,
                 zeroRegions,
                 goodQuality = true
@@ -126,8 +126,8 @@ class SpanMixtureCLALongTest {
                 // Check created bed file
                 assertTrue(
                     Location(
-                        1100 * SpanPeakCallingExperiment.SPAN_DEFAULT_BIN,
-                        1900 * SpanPeakCallingExperiment.SPAN_DEFAULT_BIN,
+                        1100 * SPAN_DEFAULT_BIN,
+                        1900 * SPAN_DEFAULT_BIN,
                         TO.get().first()
                     )
                             in LocationsMergingList.load(TO, bedPath),

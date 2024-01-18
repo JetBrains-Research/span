@@ -230,7 +230,7 @@ object SpanCLAAnalyze {
         SpanCLA.LOG.info("Loading labels $labelsPath...")
         val labels = LocationLabel.loadLabels(labelsPath, genomeQuery.genome)
         SpanCLA.LOG.info("Tuning model on the loaded labels...")
-        val (labelErrorsGrid, optimalIndex) = SpanSemiSupervised.tune(
+        val (labelErrorsGrid, optimalIndex) = SpanSemiSupervised.tuneParameters(
             spanResults,
             genomeQuery,
             labels,

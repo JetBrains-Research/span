@@ -9,7 +9,8 @@ import org.jetbrains.bio.genome.coverage.Coverage
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.genome.query.Query
 import org.jetbrains.bio.genome.query.ReadsQuery
-import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_DEFAULT_BIN
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BETA_STEP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
 import org.jetbrains.bio.util.isAccessible
 import org.jetbrains.bio.util.reduceIds
 import org.jetbrains.bio.util.stemGz
@@ -155,7 +156,7 @@ class NormalizedCoverageQuery(
             controlCoverage: Coverage,
             controlScale: Double,
             bin: Int = SPAN_DEFAULT_BIN,
-            betaStep: Double = 0.01
+            betaStep: Double = SPAN_DEFAULT_BETA_STEP,
         ): Double {
             // Estimate beta corrected signal only on not empty chromosomes
             val chromosomeWithMaxSignal = genomeQuery.get()

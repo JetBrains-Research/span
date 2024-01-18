@@ -6,11 +6,12 @@ import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.Range
 import org.jetbrains.bio.genome.containers.genomeMap
-import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
-import org.jetbrains.bio.span.fit.SpanFitInformation
-import org.jetbrains.bio.span.fit.SpanFitResults
+import org.jetbrains.bio.span.fit.*
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_CLIP_STEPS
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_MAX_CLIPPED_FRACTION
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_MAX_CLIPPED_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_RELAX_POWER_DEFAULT
 import org.jetbrains.bio.span.fit.SpanFitResults.Companion.LOG
-import org.jetbrains.bio.span.fit.SpanModelFitExperiment
 import org.jetbrains.bio.span.statistics.util.PoissonUtil
 import org.jetbrains.bio.statistics.f64Array
 import org.jetbrains.bio.statistics.hypothesis.Fdr
@@ -29,34 +30,10 @@ import kotlin.math.min
 object ModelToPeaks {
 
     /**
-     * Peak calling is done in two runs - with relaxed settings and strict user-provided strict FDR.
-     * This value is used to compute relaxed settings, see [relaxedLogFdr] for details.
-     */
-    private const val RELAX_POWER_DEFAULT = 0.5
-
-    /**
-     * Clipping allows to fine-tune boundaries of point-wise peaks according to the local signal.
-     * Array of steps used for reducing the range by [CLIP_STEPS] from both sides while increasing score.
-     * Used together with [MAX_CLIPPED_FRACTION].
-     */
-    private val CLIP_STEPS = intArrayOf(1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000)
-
-    /**
-     * The maximum fraction of length for clipped peaks, from left and from right.
-     */
-    private const val MAX_CLIPPED_FRACTION = 0.25
-
-    /**
-     * Maximum threshold value used for clipping peaks by coverage.
-     * Defines max score of clipped region as average_noise + MAX_CLIPPED_THRESHOLD * (average_signal - average_noise)
-     */
-    private const val MAX_CLIPPED_THRESHOLD = 0.75
-
-    /**
      * Relaxed FDR should be useful for strict FDR only,
      * so limiting its application on relaxed FDR
      */
-    fun relaxedLogFdr(logFdr: Double, relaxPower: Double = RELAX_POWER_DEFAULT) =
+    fun relaxedLogFdr(logFdr: Double, relaxPower: Double = SPAN_RELAX_POWER_DEFAULT) =
         max(logFdr, min(ln(0.1), logFdr * relaxPower))
 
 
@@ -211,7 +188,7 @@ object ModelToPeaks {
             0.0 to 0.0
         var clipStart = 0L
         var clipEnd = 0L
-        val maxClippedScore = avgNoise + MAX_CLIPPED_THRESHOLD * (avgSignal - avgNoise)
+        val maxClippedScore = avgNoise + SPAN_MAX_CLIPPED_THRESHOLD * (avgSignal - avgNoise)
         if (clip) {
             LOG.debug("Signal density $avgSignal, noise density $avgNoise")
         }
@@ -231,7 +208,7 @@ object ModelToPeaks {
             val (clippedStart, clippedEnd) = if (clipEnabled)
                 clipPeakByScore(
                     chromosome, start, end, fitInfo,
-                    (MAX_CLIPPED_FRACTION * (end - start)).toInt(), maxClippedScore
+                    (SPAN_MAX_CLIPPED_FRACTION * (end - start)).toInt(), maxClippedScore
                 )
             else start to end
             clipStart += clippedStart - start
@@ -374,7 +351,7 @@ object ModelToPeaks {
 
     /**
      * Clips the peak by score within the given boundaries.
-     * Clipping is done iteratively using [CLIP_STEPS].
+     * Clipping is done iteratively using [SPAN_CLIP_STEPS].
      *
      * @param chromosome The chromosome to clip.
      * @param start The start position of the peak.
@@ -395,9 +372,9 @@ object ModelToPeaks {
         // Try to change left boundary
         val maxStart = start + maxClippedLength
         var clippedStart = start
-        var step = CLIP_STEPS.size - 1
+        var step = SPAN_CLIP_STEPS.size - 1
         while (step >= 0 && clippedStart <= maxStart) {
-            val newStart = clippedStart + CLIP_STEPS[step]
+            val newStart = clippedStart + SPAN_CLIP_STEPS[step]
             if (newStart > maxStart) {
                 step -= 1
                 continue
@@ -406,7 +383,7 @@ object ModelToPeaks {
             val clipScore = fitInfo.score(ChromosomeRange(start, newStart, chromosome))
             if (clipScore < maxClippedScore) {
                 clippedStart = newStart
-                step = min(step + 1, CLIP_STEPS.size - 1)
+                step = min(step + 1, SPAN_CLIP_STEPS.size - 1)
             } else {
                 step -= 1
             }
@@ -414,9 +391,9 @@ object ModelToPeaks {
         // Try to change right boundary
         val minEnd = end - maxClippedLength
         var clippedEnd = end
-        step = CLIP_STEPS.size - 1
+        step = SPAN_CLIP_STEPS.size - 1
         while (step >= 0 && clippedEnd >= minEnd) {
-            val newEnd = clippedEnd - CLIP_STEPS[step]
+            val newEnd = clippedEnd - SPAN_CLIP_STEPS[step]
             if (newEnd < minEnd) {
                 step -= 1
                 continue
@@ -425,7 +402,7 @@ object ModelToPeaks {
             val clipScore = fitInfo.score(ChromosomeRange(newEnd, end, chromosome))
             if (clipScore < maxClippedScore) {
                 clippedEnd = newEnd
-                step = min(step + 1, CLIP_STEPS.size - 1)
+                step = min(step + 1, SPAN_CLIP_STEPS.size - 1)
             } else {
                 step -= 1
             }

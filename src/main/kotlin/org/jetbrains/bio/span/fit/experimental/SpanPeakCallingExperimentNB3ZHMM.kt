@@ -5,8 +5,9 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.fit.*
-import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_FIT_MAX_ITERATIONS
-import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_FIT_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_MAX_ITERATIONS
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment.Companion.SPAN_TRACK_PREFIX
 import org.jetbrains.bio.span.statistics.hmm.FreeNBZHMM
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
@@ -55,7 +56,7 @@ class SpanPeakCallingExperimentNB3ZHMM<Model : ClassificationModel> private cons
         ): SpanPeakCallingExperimentNB3ZHMM<out ClassificationModel> {
             require(paths.isNotEmpty()) { "No data" }
             val fitInformation = SpanAnalyzeFitInformation.createFitInformation(
-                genomeQuery, paths, MultiLabels.generate(SpanPeakCallingExperiment.TRACK_PREFIX, paths.size).toList(),
+                genomeQuery, paths, MultiLabels.generate(SPAN_TRACK_PREFIX, paths.size).toList(),
                 fragment, unique, bin
             )
             require(paths.size == 1) { "Multiple replicates are not supported" }
