@@ -1,6 +1,6 @@
 package org.jetbrains.bio.span
 
-import org.jetbrains.bio.Tests
+import org.jetbrains.bio.Tests.assertIn
 import org.jetbrains.bio.experiment.Configuration
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.format.BedFormat
@@ -68,8 +68,8 @@ class SpanRegrMixtureCLALongTest {
                             )
                         }
                     }
-                    Tests.assertIn("ERROR", err)
-                    Tests.assertIn("Poisson regression mixture currently accepts a single data track", err)
+                    assertIn("ERROR", err)
+                    assertIn("Poisson regression mixture currently accepts a single data track", err)
                 }
             }
         }
@@ -105,10 +105,10 @@ class SpanRegrMixtureCLALongTest {
     """ in out
                 )
                 val ds = DecimalFormatSymbols(Locale.getDefault()).decimalSeparator // XXX: Not so important to make to types of tests for US and EU locales
-                Tests.assertIn("100${ds}00% (", out)
-                Tests.assertIn("MODEL TYPE: ${SpanModelType.POISSON_REGRESSION_MIXTURE}", out)
-                Tests.assertIn("Source: $peaksPath", out)
-                Tests.assertIn("FRIP: ", out)
+                assertIn("100${ds}00% (", out)
+                assertIn("MODEL TYPE: ${SpanModelType.POISSON_REGRESSION_MIXTURE}", out)
+                assertIn("Source: $peaksPath", out)
+                assertIn("FRIP: ", out)
 
                 /* Check that coverage is being generated */
                 val format = BedFormat.from("bed6+3")
@@ -121,7 +121,7 @@ class SpanRegrMixtureCLALongTest {
                     },
                     "Peak value is reported as 0.0, although the coverage cache is present"
                 )
-                Tests.assertIn("Signal to noise: ", out)
+                assertIn("Signal to noise: ", out)
             }
         }
     }
@@ -231,7 +231,7 @@ class SpanRegrMixtureCLALongTest {
                         )
                     }
                 }
-                Tests.assertIn(
+                assertIn(
                     "model type (${SpanModelType.NB2Z_HMM}) " +
                             "differs from the command line argument (${SpanModelType.POISSON_REGRESSION_MIXTURE})",
                     wrongErr

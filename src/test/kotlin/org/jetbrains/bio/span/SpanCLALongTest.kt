@@ -1,8 +1,8 @@
 package org.jetbrains.bio.span
 
 import kotlinx.support.jdk7.use
-import org.jetbrains.bio.Tests
 import org.jetbrains.bio.Tests.assertIn
+import org.jetbrains.bio.Tests.assertMatches
 import org.jetbrains.bio.experiment.Configuration
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
@@ -16,7 +16,6 @@ import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_MAX_ITERATIONS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_THRESHOLD
-import org.jetbrains.bio.span.fit.SpanPeakCallingExperiment
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.util.*
 import org.junit.After
@@ -76,7 +75,7 @@ class SpanCLALongTest {
             SpanCLA.main(arrayOf("--version"))
         }
         // the test is sometimes launched in the assembled JAR, where the @@ tokens have already been substituted
-        Tests.assertMatches(
+        assertMatches(
             out.trim(),
             Regex("^[0-9]+\\.[0-9]+(\\.dev)?\\.[0-9]+ built on [A-Z][a-z]* [0-9]{2}, [0-9]{4}|@VERSION@\\.@BUILD@ built on @DATE@$")
         )
@@ -502,7 +501,8 @@ LABELS, FDR, GAP options are ignored.
                     )
                 }
 
-                val ds = DecimalFormatSymbols(Locale.getDefault()).decimalSeparator // XXX: Not so important to make to types of tests for US and EU locales
+                val ds =
+                    DecimalFormatSymbols(Locale.getDefault()).decimalSeparator // XXX: Not so important to make to types of tests for US and EU locales
                 assertIn(
                     """SPAN
 COMMAND:

@@ -1,6 +1,6 @@
 package org.jetbrains.bio.span.statistics.mixture
 
-import org.jetbrains.bio.Tests
+import org.jetbrains.bio.Tests.assertEquals
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.span.statistics.regression.PoissonRegressionEmissionScheme
 import org.jetbrains.bio.statistics.Preprocessed
@@ -31,16 +31,16 @@ class PoissonRegressionMixtureLongTest {
             threshold = 0.1,
             maxIterations = 20
         )
-        Tests.assertEquals(
+        assertEquals(
             (original[1] as PoissonRegressionEmissionScheme).regressionCoefficients,
             (fitted[1] as PoissonRegressionEmissionScheme).regressionCoefficients,
             5E-2
         )
-        Tests.assertEquals(
+        assertEquals(
             (original[2] as PoissonRegressionEmissionScheme).regressionCoefficients,
             (fitted[2] as PoissonRegressionEmissionScheme).regressionCoefficients,
             5E-2
         )
-        Tests.assertEquals(original.weights.toDoubleArray(), fitted.weights.toDoubleArray(), 5E-2)
+        assertEquals(original.weights.toDoubleArray(), fitted.weights.toDoubleArray(), 5E-2)
     }
 }
