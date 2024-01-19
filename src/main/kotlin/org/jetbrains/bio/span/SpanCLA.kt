@@ -91,9 +91,9 @@ compare                         Differential peak calling
         // https://stackoverflow.com/questions/23701207/why-do-xmx-and-runtime-maxmemory-not-agree
         if (maxMemory < 7 * GB) {
             LOG.warn(
-                "Recommended memory settings ${FileSize(8 * GB)} are not set. " +
-                        "Current settings: ${FileSize(maxMemory)}.\n" +
-                        "Please use java memory option '-Xmx8G' to configure memory available for SPAN."
+                """
+                    Recommended memory settings ${FileSize(8 * GB)} are not set. Current settings: ${FileSize(maxMemory)}.
+                    Please use java memory option '-Xmx8G' to configure memory available for SPAN.""".trimIndent()
             )
         }
     }
@@ -126,8 +126,10 @@ compare                         Differential peak calling
                 .withRequiredArg().withValuesConvertedBy(PathConverter.noCheck())
             acceptsAll(
                 listOf("cs", "chrom.sizes"),
-                "Chromosome sizes path, can be downloaded at\n" +
-                        "https://hgdownload.cse.ucsc.edu/goldenPath/<build>/bigZips/<build>.chrom.sizes"
+                """
+                    Chromosome sizes path, can be downloaded at
+                    https://hgdownload.cse.ucsc.edu/goldenPath/<build>/bigZips/<build>.chrom.sizes
+                    """.trimIndent()
             ).requiredUnless("model").withRequiredArg().withValuesConvertedBy(PathConverter.exists())
             acceptsAll(listOf("ext"), "Save extended states information to model file")
             acceptsAll(
@@ -135,8 +137,10 @@ compare                         Differential peak calling
             ).withRequiredArg().withValuesConvertedBy(PathConverter.noCheck())
             acceptsAll(
                 listOf("fragment"),
-                "Fragment size. If it's an integer, reads are shifted appropriately.\n" +
-                        "If it's the string 'auto', the shift is estimated from the data. (default: auto)"
+                """
+                    Fragment size. If it's an integer, reads are shifted appropriately.
+                    If it's the string 'auto', the shift is estimated from the data. (default: auto)
+                    """.trimIndent()
             ).withRequiredArg().withValuesConvertedBy(FragmentConverter())
             acceptsAll(listOf("b", "bin"), "Bin size. (default: ${SPAN_DEFAULT_BIN})")
                 .withRequiredArg()
@@ -173,7 +177,6 @@ compare                         Differential peak calling
                 .withOptionalArg()
                 .ofType(Boolean::class.java)
                 .defaultsTo(true)
-            acceptsAll(listOf("kc", "keep-cache"), "Keep cache files")
         }
     }
 

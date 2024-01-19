@@ -19,17 +19,21 @@ object SpanCLACompare {
         with(SpanCLA.getOptionParser()) {
             acceptsAll(
                 listOf("t1", "treatment1"),
-                "ChIP-seq treatment file 1. bam, bed or .bed.gz file;\n" +
-                        "If multiple files are given, treated as replicates."
+                """
+                    ChIP-seq treatment file 1. bam, bed or .bed.gz file;
+                    If multiple files are given, treated as replicates.
+                    """.trimIndent()
             )
                 .withRequiredArg().required()
                 .withValuesSeparatedBy(",")
                 .withValuesConvertedBy(PathConverter.exists())
             acceptsAll(
                 listOf("c1", "control1"),
-                "Control file 1. bam, bed or .bed.gz file;\n" +
-                        "Single control file or separate file per each\n" +
-                        "treatment file required."
+                """
+                    Control file 1. bam, bed or .bed.gz file;
+                    Single control file or separate file per each
+                    treatment file required.
+                    """.trimIndent()
             )
                 .withRequiredArg()
                 .withValuesSeparatedBy(",")
@@ -37,17 +41,21 @@ object SpanCLACompare {
 
             acceptsAll(
                 listOf("t2", "treatment2"),
-                "ChIP-seq treatment file 2. bam, bed or .bed.gz file;\n" +
-                        "If multiple files are given, treated as replicates."
+                """
+                    ChIP-seq treatment file 2. bam, bed or .bed.gz file;
+                    If multiple files are given, treated as replicates.
+                    """.trimIndent()
             )
                 .withRequiredArg().required()
                 .withValuesSeparatedBy(",")
                 .withValuesConvertedBy(PathConverter.exists())
             acceptsAll(
                 listOf("c2", "control2"),
-                "Control file 2. bam, bed or .bed.gz file;\n" +
-                        "Single control file or separate file per each\n" +
-                        "treatment file required."
+                """
+                    Control file 2. bam, bed or .bed.gz file;
+                    Single control file or separate file per each
+                    treatment file required.
+                    """.trimIndent()
             )
                 .withRequiredArg()
                 .withValuesSeparatedBy(",")
@@ -73,29 +81,19 @@ object SpanCLACompare {
                 // Configure logging
                 val fragment = SpanCLA.getFragment(options)
                 val binSize = SpanCLA.getBin(options)
-                val id = if (peaksPath != null) {
+                val experimentId = if (peaksPath != null) {
                     peaksPath.stemGz
                 } else {
-                    // No peaks, generate ID from command-line options.
-                    // Option parser guarantees that treatment paths are not empty here.
-                    val datas = getComparePaths(options)
-                    val ids = datas.toList().flatMap { data ->
-                        listOf(data.map { it.treatment }, data.mapNotNull { it.control }).flatMap { paths ->
-                            paths.map { it.stemGz }
-                        }
-                    }.toMutableList()
-                    ids.add(binSize.toString())
-                    if (fragment is FixedFragment) {
-                        ids.add(fragment.size.toString())
-                    }
-                    val unique = SpanCLA.getUnique(options)
-                    if (unique) {
-                        ids.add("unique")
-                    }
-                    reduceIds(ids)
+                    SpanCLAAnalyze.generateExperimentId(
+                        SpanCLAAnalyze.getAnalyzePaths(options),
+                        SpanCLA.getBin(options),
+                        SpanCLA.getFragment(options),
+                        SpanCLA.getUnique(options),
+                        options.valueOf("labels") as Path?
+                    )
                 }
 
-                val logPath = SpanCLA.configureLogFile(workingDir, id)
+                val logPath = SpanCLA.configureLogFile(workingDir, experimentId)
                 SpanCLA.LOG.info("LOG: $logPath")
 
                 // Call now to preserve correct params logging

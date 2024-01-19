@@ -25,8 +25,10 @@ object SpanCLAAnalyze {
         with(SpanCLA.getOptionParser()) {
             acceptsAll(
                 listOf("t", "treatment"),
-                "ChIP-seq treatment file. bam, bed or .bed.gz file;\n" +
-                        "If multiple files are given, treated as replicates."
+                """
+                    ChIP-seq treatment file. bam, bed or .bed.gz file;
+                    If multiple files are given, treated as replicates.
+                    """.trimIndent()
             )
                 .requiredUnless("model")
                 .withRequiredArg()
@@ -34,9 +36,11 @@ object SpanCLAAnalyze {
                 .withValuesConvertedBy(PathConverter.noCheck())
             acceptsAll(
                 listOf("c", "control"),
-                "Control file. bam, bed or bed.gz file;\n" +
-                        "Single control file or separate file per each\n" +
-                        "treatment file required."
+                """
+                    Control file. bam, bed or bed.gz file;
+                    Single control file or separate file per each
+                    treatment file required.
+                    """.trimIndent()
             )
                 .availableIf("treatment")
                 .withRequiredArg()
@@ -49,8 +53,8 @@ object SpanCLAAnalyze {
             accepts(
                 "model-type",
                 """
-                        Model type. Experimental.
-                        ${SpanModelType.values().joinToString("\n") { "'${it.id}' - ${it.description}" }}
+                    Model type. Experimental.
+                    ${SpanModelType.values().joinToString("\n") { "'${it.id}' - ${it.description}" }}
                     """.trimIndent()
             )
                 .withRequiredArg()
@@ -82,7 +86,7 @@ object SpanCLAAnalyze {
                 val modelPath = options.valueOf("model") as Path?
                 val workingDir = options.valueOf("workdir") as Path
                 // Configure logging
-                val id = peaksPath?.stemGz ?: if (modelPath != null) {
+                val experimentId = peaksPath?.stemGz ?: if (modelPath != null) {
                     modelPath.stem
                 } else {
                     generateExperimentId(
@@ -94,7 +98,7 @@ object SpanCLAAnalyze {
                     )
                 }
 
-                val logPath = SpanCLA.configureLogFile(workingDir, id)
+                val logPath = SpanCLA.configureLogFile(workingDir, experimentId)
                 SpanCLA.LOG.info("LOG: $logPath")
 
                 // Call now to preserve params logging order
@@ -164,7 +168,7 @@ object SpanCLAAnalyze {
      * @param labelsPath The path to the labels BED file.
      * @return The generated experiment ID.
      */
-    private fun generateExperimentId(
+    internal fun generateExperimentId(
         spanDataPaths: List<SpanDataPaths>,
         bin: Int,
         fragment: Fragment,
@@ -272,7 +276,7 @@ object SpanCLAAnalyze {
      *
      * If both are available, checks that they are consistent.
      */
-    private fun getAnalyzePaths(
+    internal fun getAnalyzePaths(
         options: OptionSet, fitInformation: AbstractSpanAnalyzeFitInformation? = null, log: Boolean = false
     ): List<SpanDataPaths> {
         val commandLineTreatmentPaths = options.valuesOf("treatment") as List<Path>
