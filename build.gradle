@@ -43,8 +43,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-support-jdk8:0.1")
 
     // Logging dependencies
-    implementation("ch.qos.logback:logback-classic:1.3.11")
-    implementation("ch.qos.logback:logback-core:1.3.11")
+    implementation("ch.qos.logback:logback-classic:1.4.12")
+    implementation("ch.qos.logback:logback-core:1.4.12")
 
     compile project(":bioinf-commons")
     testCompile project(path: ":bioinf-commons", configuration: "testOutput")
