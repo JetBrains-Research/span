@@ -173,7 +173,7 @@ compare                         Differential peak calling
                 .withRequiredArg()
                 .ofType(Double::class.java)
                 .defaultsTo(SPAN_FIT_THRESHOLD)
-            acceptsAll(listOf("kd", "keep-dup"), "Keep duplicates")
+            acceptsAll(listOf("kd", "keep-duplicates"), "Keep duplicates")
                 .withOptionalArg()
                 .ofType(Boolean::class.java)
                 .defaultsTo(true)
@@ -209,7 +209,7 @@ compare                         Differential peak calling
     internal fun getUnique(
         options: OptionSet, fitInformation: AbstractSpanAnalyzeFitInformation? = null, log: Boolean = false
     ) = !getProperty(
-        if ("keep-dup" in options) options.valueOf("keep-dup") as Boolean else null,
+        if ("keep-duplicates" in options) options.valueOf("keep-duplicates") as Boolean else null,
         fitInformation?.unique?.not(), false,
         "'keep duplicates' flag", "KEEP DUPLICATES", log
     )

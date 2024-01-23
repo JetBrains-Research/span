@@ -55,7 +55,7 @@ class NormalizedCoverageQuery(
 
     override val description: String
         get() = "Treatment: $treatmentPath, Control: $controlPath, " +
-                "Fragment: $fragment, Keep-dup: ${!unique}"
+                "Fragment: $fragment, Keep-duplicates: ${!unique}"
 
     private val treatmentReads by lazy {
         ReadsQuery(genomeQuery, treatmentPath, unique, fragment, showLibraryInfo = showLibraryInfo)
