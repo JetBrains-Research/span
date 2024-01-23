@@ -10,6 +10,7 @@ import org.jetbrains.bio.genome.query.CachingQuery
 import org.jetbrains.bio.genome.query.Query
 import org.jetbrains.bio.span.coverage.NormalizedCoverageQuery
 import org.jetbrains.bio.span.coverage.binnedCoverageDataFrame
+import org.jetbrains.bio.util.deleteIfExists
 import org.jetbrains.bio.util.reduceIds
 import org.jetbrains.bio.util.stemGz
 
@@ -124,6 +125,17 @@ data class SpanCompareFitInformation(
         }
         return normalizedCoverageQueries2!!.sumOf { it.scaledTreatment(chromosomeRange) } /
                 normalizedCoverageQueries2!!.size
+    }
+
+    override fun cleanCaches() {
+        normalizedCoverageQueries1?.forEach {
+            it.treatmentReads.npzPath().deleteIfExists()
+            it.controlReads?.npzPath()?.deleteIfExists()
+        }
+        normalizedCoverageQueries2?.forEach {
+            it.treatmentReads.npzPath().deleteIfExists()
+            it.controlReads?.npzPath()?.deleteIfExists()
+        }
     }
 
     companion object {

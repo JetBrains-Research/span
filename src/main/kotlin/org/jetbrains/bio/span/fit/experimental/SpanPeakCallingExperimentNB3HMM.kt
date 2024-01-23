@@ -30,10 +30,13 @@ class SpanPeakCallingExperimentNB3HMM<Model : ClassificationModel> private const
     fixedModelPath: Path?,
     threshold: Double,
     maxIterations: Int,
-    saveExtendedInfo: Boolean
+    saveExtendedInfo: Boolean,
+    keepModelFile: Boolean
 ) : SpanModelFitExperiment<Model, SpanAnalyzeFitInformation, LMH>(
-    fitInformation, modelFitter, modelClass, LMH.values(), NullHypothesis.of(LMH.L, LMH.M), fixedModelPath,
-    threshold, maxIterations, saveExtendedInfo
+    fitInformation, modelFitter, modelClass,
+    LMH.values(), NullHypothesis.of(LMH.L, LMH.M),
+    threshold, maxIterations,
+    fixedModelPath, saveExtendedInfo, keepModelFile
 ) {
 
     override val defaultModelPath: Path =
@@ -50,7 +53,8 @@ class SpanPeakCallingExperimentNB3HMM<Model : ClassificationModel> private const
             fixedModelPath: Path? = null,
             threshold: Double = SPAN_FIT_THRESHOLD,
             maxIterations: Int = SPAN_FIT_MAX_ITERATIONS,
-            saveExtendedInfo: Boolean = false
+            saveExtendedInfo: Boolean = false,
+            keepModelFile: Boolean = false
         ): SpanPeakCallingExperimentNB3HMM<out ClassificationModel> {
             require(paths.isNotEmpty()) { "No data" }
             val fitInformation = SpanAnalyzeFitInformation.createFitInformation(
@@ -65,7 +69,8 @@ class SpanPeakCallingExperimentNB3HMM<Model : ClassificationModel> private const
                 fixedModelPath,
                 threshold,
                 maxIterations,
-                saveExtendedInfo
+                saveExtendedInfo,
+                keepModelFile
             )
         }
     }

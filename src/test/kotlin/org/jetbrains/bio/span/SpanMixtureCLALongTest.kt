@@ -64,7 +64,7 @@ class SpanMixtureCLALongTest {
                     // Model test
                     assertTrue((Configuration.experimentsPath / "fit").exists)
                     assertEquals(
-                        1,
+                        0,
                         (Configuration.experimentsPath / "fit")
                             .glob(
                                 "${

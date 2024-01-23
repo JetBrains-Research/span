@@ -155,7 +155,8 @@ class SpanRegrMixtureCLALongTest {
                             "-t", path.toString(),
                             "-c", control.toString(),
                             "--model-type", SpanModelType.POISSON_REGRESSION_MIXTURE.id,
-                            "--threads", SpanCLALongTest.THREADS.toString()
+                            "--threads", SpanCLALongTest.THREADS.toString(),
+                            "--kc"
                         )
                     )
 
@@ -168,8 +169,7 @@ class SpanRegrMixtureCLALongTest {
                                     SPAN_DEFAULT_BIN.toString(), "unique"
                                 )
                             )
-                        }.log")
-                            .exists,
+                        }.log").exists,
                         "Log file not found"
                     )
 

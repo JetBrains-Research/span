@@ -35,10 +35,11 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
     fixedModelPath: Path?,
     threshold: Double,
     maxIterations: Int,
-    saveExtendedInfo: Boolean = false
+    saveExtendedInfo: Boolean,
+    keepCacheFiles: Boolean
 ) : SpanModelFitExperiment<Model, SpanAnalyzeFitInformation, ZLH>(
-    fitInformation, modelFitter, modelClass, ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L), fixedModelPath,
-    threshold, maxIterations, saveExtendedInfo
+    fitInformation, modelFitter, modelClass, ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L), threshold,
+    maxIterations, fixedModelPath, saveExtendedInfo, keepCacheFiles
 ) {
 
     override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span"
@@ -66,7 +67,8 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
             fixedModelPath: Path? = null,
             threshold: Double = SPAN_FIT_THRESHOLD,
             maxIterations: Int = SPAN_FIT_MAX_ITERATIONS,
-            saveExtendedInfo: Boolean = false
+            saveExtendedInfo: Boolean = false,
+            keepCacheFiles: Boolean = false
         ): SpanPeakCallingExperiment<out ClassificationModel> {
             require(paths.isNotEmpty()) { "No data" }
             val fitInformation = SpanAnalyzeFitInformation.createFitInformation(
@@ -81,7 +83,8 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
                     fixedModelPath,
                     threshold,
                     maxIterations,
-                    saveExtendedInfo
+                    saveExtendedInfo,
+                    keepCacheFiles
                 )
             } else {
                 SpanPeakCallingExperiment(
@@ -91,7 +94,8 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
                     fixedModelPath,
                     threshold,
                     maxIterations,
-                    saveExtendedInfo
+                    saveExtendedInfo,
+                    keepCacheFiles
                 )
             }
         }

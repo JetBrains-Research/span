@@ -177,6 +177,7 @@ compare                         Differential peak calling
                 .withOptionalArg()
                 .ofType(Boolean::class.java)
                 .defaultsTo(true)
+            acceptsAll(listOf("kc", "keep-cache"), "Keep cache files")
         }
     }
 

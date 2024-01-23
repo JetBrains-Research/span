@@ -129,6 +129,12 @@ object SpanCLACompare {
                     )
                     LOG.info("Saved result to $peaksPath")
                 }
+                val keepCacheFiles = "keep-cache" in options
+                if (!keepCacheFiles) {
+                    LOG.debug("Clean coverage caches")
+                    differentialPeakCallingResults.fitInfo.cleanCaches()
+                }
+
             }
         }
     }

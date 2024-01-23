@@ -155,8 +155,11 @@ object SpanCLAAnalyze {
                         saveTunedResults(spanResults, genomeQuery, bin, fragment, clip, labelsPath, peaksPath)
                     }
                 }
-
-
+                val keepCacheFiles = "keep-cache" in options
+                if (modelPath == null && !keepCacheFiles) {
+                    LOG.debug("Clean coverage caches")
+                    fitInfo.cleanCaches()
+                }
             }
         }
     }
@@ -333,7 +336,7 @@ object SpanCLAAnalyze {
                 "Model file $modelPath exists and is not empty, SPAN will use it to substitute " +
                         "the missing command line arguments and verify the provided ones."
             )
-            val results = SpanModelFitExperiment.loadResults(tarPath = modelPath)
+            val results = SpanModelFitExperiment.loadResults(modelPath = modelPath)
             check(results.fitInfo is AbstractSpanAnalyzeFitInformation) {
                 "Expected ${SpanAnalyzeFitInformation::class.java.simpleName}, got ${results.fitInfo::class.java.name}"
             }
@@ -351,6 +354,11 @@ object SpanCLAAnalyze {
             SpanCLA.getUnique(options, results.fitInfo, log = true)
             if (results.fitInfo is SpanRegrMixtureAnalyzeFitInformation) {
                 getMapabilityPath(options, results.fitInfo, log = true)
+            }
+            val keepCacheFiles = "keep-cache" in options
+            LOG.info("KEEP-CACHE: $keepCacheFiles")
+            if (!keepCacheFiles) {
+                LOG.warn("Keep cache files setting (false) is discarded, since fitted model already exists.")
             }
             // Create fake lazy of already computed results
             return lazyOf(results)
@@ -378,11 +386,15 @@ object SpanCLAAnalyze {
             }
             val saveExtendedInfo = options.has("ext")
             LOG.info("EXTENDED MODEL INFO: $saveExtendedInfo")
+            val keepCacheFiles = "keep-cache" in options
+            LOG.info("KEEP-CACHE: $keepCacheFiles")
             return lazy {
                 val genomeQuery = GenomeQuery(Genome[chromSizesPath!!])
                 val experiment = getExperimentByModelType(
-                    modelType, genomeQuery, paths, unique, fragment, bin, modelPath,
-                    threshold, maxIterations, saveExtendedInfo, mapabilityPath
+                    modelType, genomeQuery, paths, unique, fragment, bin,
+                    threshold, maxIterations,
+                    modelPath, saveExtendedInfo, keepCacheFiles,
+                    mapabilityPath
                 )
                 experiment.results
             }
@@ -396,60 +408,61 @@ object SpanCLAAnalyze {
         unique: Boolean,
         fragment: Fragment,
         bin: Int,
-        modelPath: Path?,
         threshold: Double,
         maxIterations: Int,
+        modelPath: Path?,
         saveExtendedInfo: Boolean,
+        keepCacheFiles: Boolean,
         mapabilityPath: Path?
     ): SpanModelFitExperiment<ClassificationModel, AbstractSpanAnalyzeFitInformation, out Enum<*>> {
         val experiment = when (modelType) {
             SpanModelType.NB2Z_HMM ->
                 SpanPeakCallingExperiment.getExperiment(
                     genomeQuery, paths, bin, fragment, unique, modelPath,
-                    threshold, maxIterations, saveExtendedInfo
+                    threshold, maxIterations, saveExtendedInfo, keepCacheFiles
                 )
 
             SpanModelType.NB2Z_MIXTURE ->
                 SpanPeakCallingExperimentNB2ZMixture.getExperiment(
                     genomeQuery, paths, fragment, bin, unique, modelPath,
-                    threshold, maxIterations, saveExtendedInfo
+                    threshold, maxIterations, saveExtendedInfo, keepCacheFiles
                 )
 
             SpanModelType.NB2_HMM ->
                 SpanPeakCallingExperimentNB2HMM.getExperiment(
                     genomeQuery, paths, bin, fragment, unique, modelPath,
-                    threshold, maxIterations, saveExtendedInfo
+                    threshold, maxIterations, saveExtendedInfo, keepCacheFiles
                 )
 
             SpanModelType.NB3Z_HMM ->
                 SpanPeakCallingExperimentNB3ZHMM.getExperiment(
                     genomeQuery, paths, bin, fragment, unique, modelPath,
-                    threshold, maxIterations, saveExtendedInfo
+                    threshold, maxIterations, saveExtendedInfo, keepCacheFiles
                 )
 
             SpanModelType.NB5Z_HMM ->
                 SpanPeakCallingExperimentNB5ZHMM.getExperiment(
                     genomeQuery, paths, bin, fragment, unique, modelPath,
-                    threshold, maxIterations, saveExtendedInfo
+                    threshold, maxIterations, saveExtendedInfo, keepCacheFiles
                 )
 
             SpanModelType.NB3_HMM ->
                 SpanPeakCallingExperimentNB3HMM.getExperiment(
                     genomeQuery, paths, bin, fragment, unique, modelPath,
-                    threshold, maxIterations, saveExtendedInfo
+                    threshold, maxIterations, saveExtendedInfo, keepCacheFiles
                 )
 
             SpanModelType.POISSON_REGRESSION_MIXTURE -> {
                 SpanPeakCallingExperimentP2ZRegrMixture.getExperiment(
                     genomeQuery, paths, mapabilityPath, fragment, bin, unique, modelPath,
-                    threshold, maxIterations, saveExtendedInfo
+                    threshold, maxIterations, saveExtendedInfo, keepCacheFiles
                 )
             }
 
             SpanModelType.NEGBIN_REGRESSION_MIXTURE -> {
                 SpanPeakCallingExperimentNB2ZRegrMixture.getExperiment(
                     genomeQuery, paths, mapabilityPath, fragment, bin, unique, modelPath,
-                    threshold, maxIterations, saveExtendedInfo
+                    threshold, maxIterations, saveExtendedInfo, keepCacheFiles
                 )
             }
         }

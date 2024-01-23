@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory
  * @property logNullMemberships The chromosome-wise dataframes of log null probabilities, i.e.
  * the log probability of each observation under the null hypothesis. Each dataframe should at least contain
  * a column of floats or doubles labelled [SpanModelFitExperiment.NULL].
+ * @property statesDataFrameMap extended information which contains additional states per position mapping
  */
 open class SpanFitResults(
     val fitInfo: SpanFitInformation,

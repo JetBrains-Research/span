@@ -29,12 +29,13 @@ class SpanPeakCallingExperimentNB5ZHMM<Model : ClassificationModel> private cons
     fixedModelPath: Path?,
     threshold: Double,
     maxIterations: Int,
-    saveExtendedInfo: Boolean
+    saveExtendedInfo: Boolean,
+    keepModelFile: Boolean
 ) : SpanModelFitExperiment<Model, SpanAnalyzeFitInformation, Z5>(
-    fitInformation, modelFitter, modelClass, Z5.values(),
-    NullHypothesis.of(Z5.Z, Z5.S1, Z5.S2, Z5.S3, Z5.S4),
-    fixedModelPath,
-    threshold, maxIterations, saveExtendedInfo
+    fitInformation, modelFitter, modelClass,
+    Z5.values(), NullHypothesis.of(Z5.Z, Z5.S1, Z5.S2, Z5.S3, Z5.S4),
+    threshold, maxIterations,
+    fixedModelPath, saveExtendedInfo, keepModelFile
 ) {
 
     override val defaultModelPath: Path =
@@ -51,7 +52,8 @@ class SpanPeakCallingExperimentNB5ZHMM<Model : ClassificationModel> private cons
             fixedModelPath: Path? = null,
             threshold: Double = SPAN_FIT_THRESHOLD,
             maxIterations: Int = SPAN_FIT_MAX_ITERATIONS,
-            saveExtendedInfo: Boolean = false
+            saveExtendedInfo: Boolean = false,
+            keepModelFile: Boolean = false
         ): SpanPeakCallingExperimentNB5ZHMM<out ClassificationModel> {
             require(paths.isNotEmpty()) { "No data" }
             val fitInformation = SpanAnalyzeFitInformation.createFitInformation(
@@ -66,7 +68,8 @@ class SpanPeakCallingExperimentNB5ZHMM<Model : ClassificationModel> private cons
                 fixedModelPath,
                 threshold,
                 maxIterations,
-                saveExtendedInfo
+                saveExtendedInfo,
+                keepModelFile
             )
         }
     }

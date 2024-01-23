@@ -76,6 +76,8 @@ interface SpanFitInformation {
      */
     fun scaledControlCoverage(chromosomeRange: ChromosomeRange): Double?
 
+    fun cleanCaches()
+
     fun genomeQuery(): GenomeQuery =
         GenomeQuery(Genome[build, chromosomesSizes], *chromosomesSizes.keys.toTypedArray())
 

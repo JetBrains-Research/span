@@ -7,8 +7,6 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.genome.query.ReadsQuery
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_MAX_ITERATIONS
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_THRESHOLD
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.f64Array
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
@@ -45,10 +43,11 @@ abstract class SpanModelFitExperiment<
     private val modelClass: Class<out Model>,
     private val availableStates: Array<State>,
     private val nullHypothesis: NullHypothesis<State>,
-    private val fixedModelPath: Path? = null,
-    private val threshold: Double = SPAN_FIT_THRESHOLD,
-    private val maxIterations: Int = SPAN_FIT_MAX_ITERATIONS,
-    private val saveExtendedInfo: Boolean = false
+    private val threshold: Double,
+    private val maxIterations: Int,
+    private val fixedModelPath: Path?,
+    private val saveExtendedInfo: Boolean,
+    private val keepModelFile: Boolean
 ) : Experiment("fit") {
 
     val genomeQuery = fitInformation.genomeQuery()
@@ -61,9 +60,7 @@ abstract class SpanModelFitExperiment<
         genomeQuery.get().sortedBy { it.name }.map { Preprocessed.of(dataQuery.apply(it)) }
     }
 
-    val results: SpanFitResults by lazy {
-        getOrLoadResults()
-    }
+    val results: SpanFitResults by lazy { getOrLoadResults() }
 
     fun getStatesDataFrame(chromosome: Chromosome): DataFrame = sliceStatesDataFrame(statesDataFrame, chromosome)
 
@@ -82,6 +79,8 @@ abstract class SpanModelFitExperiment<
      * We use "get" because we need the actual value of [defaultModelPath] implemented in the descendant class.
      */
     private val modelPath get() = fixedModelPath ?: defaultModelPath
+
+    private val saveModel get() = fixedModelPath != null || keepModelFile
 
     private fun calculateModel(): Model {
         return modelFitter.fit(
@@ -146,19 +145,26 @@ abstract class SpanModelFitExperiment<
      */
     private fun getOrLoadResults(): SpanFitResults {
         var computedResults: SpanFitResults? = null
-        modelPath.checkOrRecalculate("Model fit") { (p) ->
+        modelPath.checkOrRecalculate("Model fit", ignoreEmptyFile = !saveModel) { (p) ->
             withTempDirectory(modelPath.stem) { dir ->
                 val modelPath = dir / MODEL_JSON
                 LOG.info("Computing data model...")
                 val model = calculateModel()
                 LOG.info("Done computing data model")
-                LOG.info("Saving model information")
-                model.save(modelPath)
-                LOG.debug("Model saved to {}", modelPath)
-
+                if (saveModel) {
+                    LOG.info("Saving model information")
+                    model.save(modelPath)
+                    LOG.debug("Model saved to {}", modelPath)
+                } else {
+                    LOG.debug("Model is not saved")
+                }
                 val informationPath = dir / INFORMATION_JSON
-                fitInformation.save(informationPath)
-                LOG.debug("Fit information saved to {}", informationPath)
+                if (saveModel) {
+                    fitInformation.save(informationPath)
+                    LOG.debug("Fit information saved to {}", informationPath)
+                } else {
+                    LOG.debug("Fit information is not saved")
+                }
 
                 LOG.info("Analyzing model bins enrichment")
                 val statesDataFrame = calculateStatesDataFrame(model)
@@ -180,38 +186,45 @@ abstract class SpanModelFitExperiment<
                 logNullMembershipsDF.save(logNullMembershipsPath)
                 LOG.debug("LogNullMemberships saved to {}", logNullMembershipsPath)
                 var statesDataFrameMap: Map<String, DataFrame>? = null
-                if (saveExtendedInfo) {
-                    LOG.debug("Saving full states dataframe")
-                    val statesDataFramePath = dir / "states.npz"
-                    statesDataFrame.save(statesDataFramePath)
-                    LOG.debug("States saved to {}", statesDataFramePath)
-                    Tar.compress(
-                        p,
-                        *listOf(
-                            modelPath,
-                            informationPath,
-                            logNullMembershipsPath,
-                            statesDataFramePath
-                        ).map(Path::toFile)
-                            .toTypedArray()
-                    )
-                    statesDataFrameMap = fitInformation.split(statesDataFrame, genomeQuery)
-                } else {
-                    Tar.compress(
-                        p,
-                        *listOf(modelPath, informationPath, logNullMembershipsPath).map(Path::toFile)
-                            .toTypedArray()
-                    )
+
+                if (saveModel) {
+                    if (saveExtendedInfo) {
+                        LOG.debug("Saving full states dataframe")
+                        val statesDataFramePath = dir / "states.npz"
+                        statesDataFrame.save(statesDataFramePath)
+                        LOG.debug("States saved to {}", statesDataFramePath)
+                        Tar.compress(
+                            p,
+                            *listOf(
+                                modelPath,
+                                informationPath,
+                                logNullMembershipsPath,
+                                statesDataFramePath
+                            ).map(Path::toFile)
+                                .toTypedArray()
+                        )
+                        statesDataFrameMap = fitInformation.split(statesDataFrame, genomeQuery)
+                    } else {
+                        Tar.compress(
+                            p,
+                            *listOf(modelPath, informationPath, logNullMembershipsPath).map(Path::toFile)
+                                .toTypedArray()
+                        )
+                    }
                 }
 
                 val logNullMembershipsMap = fitInformation.split(logNullMembershipsDF, genomeQuery)
                 computedResults = SpanFitResults(fitInformation, model, logNullMembershipsMap, statesDataFrameMap)
-                LOG.info("Done saving model.")
-
             }
         }
         return if (computedResults != null) {
-            LOG.info("Model saved: $modelPath")
+            if (saveModel) {
+                LOG.info("Model saved: $modelPath")
+            } else {
+                // Clean empty file
+                modelPath.deleteIfExists()
+                LOG.info("Model is not saved")
+            }
             computedResults!!
         } else {
             val loadedResults = loadResults(genomeQuery, modelPath)
@@ -270,14 +283,14 @@ abstract class SpanModelFitExperiment<
 
         fun loadResults(
             genomeQuery: GenomeQuery? = null,
-            tarPath: Path
+            modelPath: Path
         ): SpanFitResults {
-            LOG.info("Loading model: $tarPath")
-            return withTempDirectory(tarPath.stem) { dir ->
-                LOG.debug("Started model file decompress: ${tarPath.stem}")
-                Tar.decompress(tarPath, dir.toFile())
+            LOG.info("Loading model: $modelPath")
+            return withTempDirectory(modelPath.stem) { dir ->
+                LOG.debug("Started model file decompress: ${modelPath.stem}")
+                Tar.decompress(modelPath, dir.toFile())
 
-                LOG.debug("Completed model file decompress and started loading: ${tarPath.stem}")
+                LOG.debug("Completed model file decompress and started loading: ${modelPath.stem}")
                 val info = SpanFitInformation.load<SpanFitInformation>(dir / INFORMATION_JSON)
                 // Check genome build
                 genomeQuery?.let { info.checkGenome(it.genome) }
@@ -287,11 +300,11 @@ abstract class SpanModelFitExperiment<
                 val logNullMembershipsMap = info.split(logNullMembershipsDF, genomeQuery)
                 var statesDfMap: Map<String, DataFrame>? = null
                 val statesPath = dir / "states.npz"
-                LOG.info("Loading states data frame ${tarPath.stem}")
+                LOG.info("Loading states data frame ${modelPath.stem}")
                 if (statesPath.exists) {
                     statesDfMap = info.split(DataFrame.load(statesPath), genomeQuery)
                 }
-                LOG.info("Completed loading model: ${tarPath.stem}")
+                LOG.info("Completed loading model: ${modelPath.stem}")
                 return@withTempDirectory SpanFitResults(info, model, logNullMembershipsMap, statesDfMap)
             }
         }

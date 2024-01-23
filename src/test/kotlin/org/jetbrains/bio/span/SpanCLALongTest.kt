@@ -193,7 +193,8 @@ PEAKS: $peaksPath
                             "-cs", chromsizes,
                             "--workdir", it.toString(),
                             "-t", path.toString(),
-                            "--threads", THREADS.toString()
+                            "--threads", THREADS.toString(),
+                            "--keep-cache",
                         )
                     )
                 }
@@ -303,7 +304,7 @@ LABELS, FDR, GAP options are ignored.
                             "--workdir", dir.toString(),
                             "-t", path.toString(),
                             "-c", control.toString(),
-                            "--threads", THREADS.toString()
+                            "--threads", THREADS.toString(),
                         )
                     )
 
@@ -318,8 +319,80 @@ LABELS, FDR, GAP options are ignored.
                                     "unique"
                                 )
                             )
-                        }.log")
-                            .exists,
+                        }.log").exists,
+                        "Log file not found"
+                    )
+
+                    assertTrue((Configuration.experimentsPath / "cache").exists)
+
+                    // Genome Coverage test
+                    assertEquals(
+                        0,
+                        (Configuration.experimentsPath / "cache")
+                            .glob("coverage_${path.stemGz}_unique#*.npz").size
+                    )
+                    assertEquals(
+                        0,
+                        (Configuration.experimentsPath / "cache")
+                            .glob("coverage_${control.stemGz}_unique#*.npz").size
+                    )
+                    // Model test
+                    assertTrue((Configuration.experimentsPath / "fit").exists)
+                    assertEquals(
+                        0,
+                        (Configuration.experimentsPath / "fit")
+                            .glob(
+                                "${
+                                    reduceIds(
+                                        listOf(
+                                            path.stemGz,
+                                            control.stemGz,
+                                            SPAN_DEFAULT_BIN.toString()
+                                        )
+                                    )
+                                }.span"
+                            ).size
+                    )
+                }
+            }
+        }
+    }
+
+
+    @Test
+    fun testFilesCreatedByAnalyzeKeepCache() {
+        withTempDirectory("work") { dir ->
+            withTempFile("track", ".bed.gz", dir) { path ->
+                withTempFile("control", ".bed.gz", dir) { control ->
+                    // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
+                    sampleCoverage(path, TO, SPAN_DEFAULT_BIN, goodQuality = true)
+                    sampleCoverage(control, TO, SPAN_DEFAULT_BIN, goodQuality = false)
+
+                    val chromsizes = Genome["to1"].chromSizesPath.toString()
+                    SpanCLA.main(
+                        arrayOf(
+                            "analyze",
+                            "-cs", chromsizes,
+                            "--workdir", dir.toString(),
+                            "-t", path.toString(),
+                            "-c", control.toString(),
+                            "--threads", THREADS.toString(),
+                            "--keep-cache"
+                        )
+                    )
+
+                    // Check that log file was created correctly
+                    assertTrue(
+                        (dir / "logs" / "${
+                            reduceIds(
+                                listOf(
+                                    path.stemGz,
+                                    control.stemGz,
+                                    SPAN_DEFAULT_BIN.toString(),
+                                    "unique"
+                                )
+                            )
+                        }.log").exists,
                         "Log file not found"
                     )
 
@@ -357,6 +430,7 @@ LABELS, FDR, GAP options are ignored.
             }
         }
     }
+
 
     @Test
     fun testCustomModelPath() {
@@ -701,7 +775,8 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
                         "-cs", Genome["to1"].chromSizesPath.toString(),
                         "-w", dir.toString(),
                         "-m", modelPath.toString(),
-                        "-t", path.toString()
+                        "-t", path.toString(),
+                        "-kc"
                     )
                 )
                 SpanCLA.main(
@@ -722,6 +797,61 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
                     ) in LocationsMergingList.load(TO, bedPath),
                     "Expected location not found in called peaks"
                 )
+            }
+        }
+    }
+
+    @Test
+    fun analyzeSampledEnrichmentReusingModelNoKeepCache() {
+        withTempFile("track", ".bed.gz") { path ->
+            val enrichedRegions = genomeMap(TO) {
+                val enriched = BitSet()
+                if (it.name == "chr1") {
+                    enriched.set(1000, 2000)
+                }
+                enriched
+            }
+
+            val zeroRegions = genomeMap(TO) {
+                val zeroes = BitSet()
+                if (it.name == "chr1") {
+                    zeroes[3000] = 4000
+                }
+                zeroes
+            }
+            sampleCoverage(
+                path,
+                TO,
+                SPAN_DEFAULT_BIN,
+                enrichedRegions,
+                zeroRegions,
+                goodQuality = true
+            )
+            println("Saved sampled track file: $path")
+            withTempDirectory("work") { dir ->
+                val (out1, _) = Logs.captureLoggingOutput {
+                    SpanCLA.main(
+                        arrayOf(
+                            "analyze",
+                            "-cs", Genome["to1"].chromSizesPath.toString(),
+                            "-w", dir.toString(),
+                            "-t", path.toString(),
+                            "-d"
+                        )
+                    )
+                }
+                assertIn("Model is not saved", out1)
+                val (out2, _) = Logs.captureLoggingOutput {
+                    SpanCLA.main(
+                        arrayOf(
+                            "analyze",
+                            "-cs", Genome["to1"].chromSizesPath.toString(),
+                            "-w", dir.toString(),
+                            "-t", path.toString(),
+                        )
+                    )
+                }
+                assertIn("Model is not saved", out2)
             }
         }
     }
@@ -751,7 +881,6 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
             println("Saved sampled track file: $path")
 
             withTempDirectory("work") { dir ->
-                /* Turn suppressExit on, otherwise Span would call System.exit */
                 val (out, err) = Logs.captureLoggingOutput {
                     SpanCLA.main(
                         arrayOf(

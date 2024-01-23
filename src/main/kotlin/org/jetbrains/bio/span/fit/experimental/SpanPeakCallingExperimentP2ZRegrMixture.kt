@@ -14,7 +14,7 @@ import java.nio.file.Path
 /**
  * Corresponds to Span `analyze --type prm` invocation.
  *
- * Currently supports only a single treatment track.
+ * Currently, supports only a single treatment track.
  *
  * We compute binned coverage for the treatment track and use it as the response vector.
  *
@@ -33,13 +33,13 @@ class SpanPeakCallingExperimentP2ZRegrMixture private constructor(
     fixedModelPath: Path?,
     threshold: Double,
     maxIterations: Int,
-    saveExtendedInfo: Boolean
+    saveExtendedInfo: Boolean,
+    keepModelFile: Boolean
 ) : SpanModelFitExperiment<PoissonRegression2Mixture, SpanRegrMixtureAnalyzeFitInformation, ZLH>(
-    fitInformation,
-    PoissonRegression2Mixture.fitter(), PoissonRegression2Mixture::class.java,
+    fitInformation, PoissonRegression2Mixture.fitter(), PoissonRegression2Mixture::class.java,
     ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
-    fixedModelPath,
-    threshold, maxIterations, saveExtendedInfo
+    threshold, maxIterations,
+    fixedModelPath, saveExtendedInfo, keepModelFile
 ) {
 
     override val defaultModelPath: Path =
@@ -60,7 +60,8 @@ class SpanPeakCallingExperimentP2ZRegrMixture private constructor(
             fixedModelPath: Path?,
             threshold: Double,
             maxIterations: Int,
-            saveExtendedInfo: Boolean
+            saveExtendedInfo: Boolean,
+            keepModelFile: Boolean = false
         ): SpanPeakCallingExperimentP2ZRegrMixture {
             require(paths.size == 1) { "Poisson regression mixture currently accepts a single data track." }
             val fitInformation = SpanRegrMixtureAnalyzeFitInformation(
@@ -71,7 +72,8 @@ class SpanPeakCallingExperimentP2ZRegrMixture private constructor(
                 fixedModelPath,
                 threshold,
                 maxIterations,
-                saveExtendedInfo
+                saveExtendedInfo,
+                keepModelFile
             )
         }
     }

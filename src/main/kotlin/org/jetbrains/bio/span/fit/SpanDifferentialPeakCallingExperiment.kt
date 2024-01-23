@@ -33,11 +33,10 @@ class SpanDifferentialPeakCallingExperiment private constructor(
     maxIterations: Int
 ) : SpanModelFitExperiment<ConstrainedNBZHMM, SpanCompareFitInformation, ZLHID>(
     fitInformation,
-    ConstrainedNBZHMM.fitter(fitInformation.data1.size, fitInformation.data2.size),
-    ConstrainedNBZHMM::class.java,
+    ConstrainedNBZHMM.fitter(fitInformation.data1.size, fitInformation.data2.size), ConstrainedNBZHMM::class.java,
     ZLHID.values(), NullHypothesis.of(ZLHID.same()),
-    threshold = threshold,
-    maxIterations = maxIterations
+    threshold, maxIterations,
+    null, false, false
 ) {
 
     override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span"
