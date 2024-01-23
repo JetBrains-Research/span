@@ -108,7 +108,7 @@ class SpanRegrMixtureCLALongTest {
                     DecimalFormatSymbols(Locale.getDefault()).decimalSeparator // XXX: Not so important to make to types of tests for US and EU locales
                 assertIn("100${ds}00% (", out)
                 assertIn("MODEL TYPE: ${SpanModelType.POISSON_REGRESSION_MIXTURE}", out)
-                assertIn("Source: $peaksPath", out)
+                assertIn("File: $peaksPath", out)
                 assertIn("FRIP: ", out)
 
                 /* Check that coverage is being generated */

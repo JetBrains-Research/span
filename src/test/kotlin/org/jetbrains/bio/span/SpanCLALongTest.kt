@@ -515,7 +515,7 @@ CLIP: false
 EXTENDED MODEL INFO: false
 Library: ${path.fileName}, Depth:
 100${ds}00% (
-Source: $peaksPath
+File: $peaksPath
 FRIP: 
 Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
 """, out
