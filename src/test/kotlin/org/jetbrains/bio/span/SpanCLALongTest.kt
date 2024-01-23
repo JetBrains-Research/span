@@ -35,6 +35,7 @@ class SpanCLALongTest {
     fun setUp() {
         SpanCLA.ignoreConfigurePaths = true
         Sampling.RANDOM_DATA_GENERATOR.randomGenerator.setSeed(1234L)
+        System.setProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true")
     }
 
     @After
@@ -42,6 +43,7 @@ class SpanCLALongTest {
         SpanCLA.ignoreConfigurePaths = false
         // we might have unfinished tracked tasks which will never be complete, let's drop them
         MultitaskProgress.clear()
+        System.setProperty(JOPTSIMPLE_SUPPRESS_EXIT, "false")
     }
 
     @Test
@@ -394,17 +396,15 @@ LABELS, FDR, GAP options are ignored.
                     assertEquals("", reloadErr)
 
                     val (_, invalidErr) = Logs.captureLoggingOutput {
-                        withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
-                            SpanCLA.main(
-                                arrayOf(
-                                    "analyze",
-                                    "--workdir", dir.toString(),
-                                    "--threads", THREADS.toString(),
-                                    "--model", modelPath.toString(),
-                                    "--bin", "137"
-                                )
+                        SpanCLA.main(
+                            arrayOf(
+                                "analyze",
+                                "--workdir", dir.toString(),
+                                "--threads", THREADS.toString(),
+                                "--model", modelPath.toString(),
+                                "--bin", "137"
                             )
-                        }
+                        )
                     }
                     assertIn(
                         "bin size (${SPAN_DEFAULT_BIN}) differs from the command line argument (137)",
@@ -429,18 +429,16 @@ LABELS, FDR, GAP options are ignored.
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 val invalidModelPath = dir / "custom" / "path" / "model.foo"
                 val (_, invalidErr) = Logs.captureLoggingOutput {
-                    withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
-                        SpanCLA.main(
-                            arrayOf(
-                                "analyze",
-                                "-cs", chromsizes,
-                                "--workdir", dir.toString(),
-                                "-t", path.toString(),
-                                "--threads", THREADS.toString(),
-                                "--model", invalidModelPath.toString()
-                            )
+                    SpanCLA.main(
+                        arrayOf(
+                            "analyze",
+                            "-cs", chromsizes,
+                            "--workdir", dir.toString(),
+                            "-t", path.toString(),
+                            "--threads", THREADS.toString(),
+                            "--model", invalidModelPath.toString()
                         )
-                    }
+                    )
                 }
             }
         }
@@ -456,18 +454,16 @@ LABELS, FDR, GAP options are ignored.
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
 
                 val (_, wrongErr) = Logs.captureLoggingOutput {
-                    withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
-                        SpanCLA.main(
-                            arrayOf(
-                                "analyze",
-                                "-cs", chromsizes,
-                                "--workdir", dir.toString(),
-                                "-t", path.toString(),
-                                "--threads", THREADS.toString(),
-                                "--type", "nbhmm"
-                            )
+                    SpanCLA.main(
+                        arrayOf(
+                            "analyze",
+                            "-cs", chromsizes,
+                            "--workdir", dir.toString(),
+                            "-t", path.toString(),
+                            "--threads", THREADS.toString(),
+                            "--type", "nbhmm"
                         )
-                    }
+                    )
                 }
                 assertIn(
                     "ERROR: type is not a recognized option",
@@ -757,16 +753,14 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
             withTempDirectory("work") { dir ->
                 /* Turn suppressExit on, otherwise Span would call System.exit */
                 val (out, err) = Logs.captureLoggingOutput {
-                    withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
-                        SpanCLA.main(
-                            arrayOf(
-                                "analyze",
-                                "-cs", Genome["to1"].chromSizesPath.toString(),
-                                "-w", dir.toString(),
-                                "-t", path.toString()
-                            )
+                    SpanCLA.main(
+                        arrayOf(
+                            "analyze",
+                            "-cs", Genome["to1"].chromSizesPath.toString(),
+                            "-w", dir.toString(),
+                            "-t", path.toString()
                         )
-                    }
+                    )
                 }
 
                 // Check correct log file name
@@ -818,18 +812,5 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
         internal val TO = GenomeQuery(Genome["to1"])
         internal const val THREADS = 1
         private const val FRAGMENT = 200
-
-        fun assertLinesEqual(expected: String, actual: String) =
-            assertEquals(expected.lines(), actual.lines())
-
-
-        inline fun withSystemProperty(property: String, value: String, block: () -> Any) {
-            val oldValue = System.setProperty(property, value)
-            try {
-                block.invoke()
-            } finally {
-                if (oldValue != null) System.setProperty(property, oldValue) else System.clearProperty(property)
-            }
-        }
     }
 }

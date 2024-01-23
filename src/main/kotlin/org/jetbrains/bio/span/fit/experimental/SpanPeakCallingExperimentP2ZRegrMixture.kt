@@ -52,7 +52,7 @@ class SpanPeakCallingExperimentP2ZRegrMixture private constructor(
          */
         fun getExperiment(
             genomeQuery: GenomeQuery,
-            data: List<SpanDataPaths>,
+            paths: List<SpanDataPaths>,
             mapabilityPath: Path?,
             fragment: Fragment,
             binSize: Int,
@@ -62,9 +62,9 @@ class SpanPeakCallingExperimentP2ZRegrMixture private constructor(
             maxIterations: Int,
             saveExtendedInfo: Boolean
         ): SpanPeakCallingExperimentP2ZRegrMixture {
-            require(data.size == 1) { "Poisson regression mixture currently accepts a single data track." }
+            require(paths.size == 1) { "Poisson regression mixture currently accepts a single data track." }
             val fitInformation = SpanRegrMixtureAnalyzeFitInformation(
-                genomeQuery, data.single(), mapabilityPath, fragment, unique, binSize
+                genomeQuery, paths.single(), mapabilityPath, fragment, unique, binSize
             )
             return SpanPeakCallingExperimentP2ZRegrMixture(
                 fitInformation,

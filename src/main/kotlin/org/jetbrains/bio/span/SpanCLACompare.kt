@@ -4,6 +4,8 @@ import joptsimple.OptionSet
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.FixedFragment
+import org.jetbrains.bio.span.SpanCLA.LOG
+import org.jetbrains.bio.span.SpanCLA.configurePaths
 import org.jetbrains.bio.span.fit.SpanDataPaths
 import org.jetbrains.bio.span.fit.SpanDifferentialPeakCallingExperiment
 import org.jetbrains.bio.span.fit.SpanFitResults
@@ -68,8 +70,10 @@ object SpanCLACompare {
                 } else {
                     Logs.addConsoleAppender(if ("debug" in options) Level.DEBUG else Level.INFO)
                 }
-                SpanCLA.LOG.info("SPAN ${SpanCLA.version()}")
-                SpanCLA.LOG.info("COMMAND: compare ${params.joinToString(" ")}")
+                LOG.info("SPAN ${SpanCLA.version()}")
+                LOG.info("COMMAND: compare ${params.joinToString(" ")}")
+
+                SpanCLA.checkMemory()
 
                 val workingDir = options.valueOf("workdir") as Path
 
@@ -85,7 +89,7 @@ object SpanCLACompare {
                     peaksPath.stemGz
                 } else {
                     SpanCLAAnalyze.generateExperimentId(
-                        SpanCLAAnalyze.getAnalyzePaths(options),
+                        SpanCLAAnalyze.prepareAndCheckTreatmentControlPaths(options),
                         SpanCLA.getBin(options),
                         SpanCLA.getFragment(options),
                         SpanCLA.getUnique(options),
@@ -94,26 +98,24 @@ object SpanCLACompare {
                 }
 
                 val logPath = SpanCLA.configureLogFile(workingDir, experimentId)
-                SpanCLA.LOG.info("LOG: $logPath")
+                LOG.info("LOG: $logPath")
 
                 // Call now to preserve correct params logging
                 val lazyDifferentialPeakCallingResults = differentialPeakCallingResults(options)
 
-                SpanCLA.LOG.info("FDR: $fdr")
-                SpanCLA.LOG.info("GAP: $gap")
+                LOG.info("FDR: $fdr")
+                LOG.info("GAP: $gap")
                 if (peaksPath != null) {
-                    SpanCLA.LOG.info("PEAKS: $peaksPath")
+                    LOG.info("PEAKS: $peaksPath")
                 } else {
-                    SpanCLA.LOG.info("NO peaks path given, process model fitting only.")
-                    SpanCLA.LOG.info("LABELS, FDR, GAP options are ignored.")
+                    LOG.info("NO peaks path given, process model fitting only.")
+                    LOG.info("LABELS, FDR, GAP options are ignored.")
                 }
                 configureParallelism(threads)
-                SpanCLA.LOG.info("THREADS: ${parallelismLevel()}")
-
-                SpanCLA.checkMemory()
+                LOG.info("THREADS: ${parallelismLevel()}")
 
                 val clip = "clip" in options
-                SpanCLA.LOG.info("CLIP: $clip")
+                LOG.info("CLIP: $clip")
 
                 val differentialPeakCallingResults = lazyDifferentialPeakCallingResults.value
                 val genomeQuery = differentialPeakCallingResults.fitInfo.genomeQuery()
@@ -125,7 +127,7 @@ object SpanCLACompare {
                         peaks, peaksPath,
                         "diff${if (fragment is FixedFragment) "_$fragment" else ""}_${binSize}_${fdr}_${gap}"
                     )
-                    SpanCLA.LOG.info("Saved result to $peaksPath")
+                    LOG.info("Saved result to $peaksPath")
                 }
             }
         }
@@ -145,23 +147,23 @@ object SpanCLACompare {
         val controlPaths1 = options.valuesOf("control1") as List<Path>
         val controlPaths2 = options.valuesOf("control2") as List<Path>
 
-        val paths1 = SpanCLA.getCommandLinePaths(treatmentPaths1, controlPaths1)
+        val paths1 = SpanCLA.matchTreatmentsAndControls(treatmentPaths1, controlPaths1)
         check(paths1 != null) { "No treatment files provided for set 1, use -t1 option." }
-        val paths2 = SpanCLA.getCommandLinePaths(treatmentPaths2, controlPaths2)
+        val paths2 = SpanCLA.matchTreatmentsAndControls(treatmentPaths2, controlPaths2)
         check(paths2 != null) { "No treatment files provided for set 2, use -t2 option." }
 
         if (log) {
-            SpanCLA.LOG.info("TREATMENT1: ${treatmentPaths1.joinToString(", ", transform = Path::toString)}")
+            LOG.info("TREATMENT1: ${treatmentPaths1.joinToString(", ", transform = Path::toString)}")
             if (controlPaths1.isNotEmpty()) {
-                SpanCLA.LOG.info("CONTROL1: ${controlPaths1.joinToString(", ", transform = Path::toString)}")
+                LOG.info("CONTROL1: ${controlPaths1.joinToString(", ", transform = Path::toString)}")
             } else {
-                SpanCLA.LOG.info("CONTROL1: none")
+                LOG.info("CONTROL1: none")
             }
-            SpanCLA.LOG.info("TREATMENT2: ${treatmentPaths2.joinToString(", ", transform = Path::toString)}")
+            LOG.info("TREATMENT2: ${treatmentPaths2.joinToString(", ", transform = Path::toString)}")
             if (controlPaths2.isNotEmpty()) {
-                SpanCLA.LOG.info("CONTROL2: ${controlPaths2.joinToString(", ", transform = Path::toString)}")
+                LOG.info("CONTROL2: ${controlPaths2.joinToString(", ", transform = Path::toString)}")
             } else {
-                SpanCLA.LOG.info("CONTROL2: none")
+                LOG.info("CONTROL2: none")
             }
         }
         return paths1 to paths2
@@ -172,10 +174,13 @@ object SpanCLACompare {
      * Parses and logs most of the command line arguments.
      */
     private fun differentialPeakCallingResults(options: OptionSet): Lazy<SpanFitResults> {
-        val chromSizesPath = SpanCLA.getAndLogWorkDirAndChromSizes(options)
+        val workingDir = options.valueOf("workdir") as Path
+        LOG.info("WORKING DIR: $workingDir")
+        val chromSizesPath = options.valueOf("chrom.sizes") as Path?
         val genomeQuery = GenomeQuery(Genome[chromSizesPath!!])
         val (data1, data2) = getComparePaths(options, log = true)
-        SpanCLA.LOG.info("CHROM.SIZES: $chromSizesPath")
+        LOG.info("CHROM.SIZES: $chromSizesPath")
+        configurePaths(workingDir, chromSizesPath)
         val bin = SpanCLA.getBin(options, log = true)
         val fragment = SpanCLA.getFragment(options, log = true)
         val unique = SpanCLA.getUnique(options, log = true)

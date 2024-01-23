@@ -28,6 +28,7 @@ class SpanMixtureCLALongTest {
     fun setUp() {
         SpanCLA.ignoreConfigurePaths = true
         Sampling.RANDOM_DATA_GENERATOR.randomGenerator.setSeed(1234L)
+        System.setProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true")
     }
 
     @After
@@ -35,6 +36,7 @@ class SpanMixtureCLALongTest {
         SpanCLA.ignoreConfigurePaths = false
         // we might have unfinished tracked tasks which will never be complete, let's drop them
         MultitaskProgress.clear()
+        System.setProperty(JOPTSIMPLE_SUPPRESS_EXIT, "false")
     }
 
     @Test

@@ -6,6 +6,9 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.PeaksInfo
 import org.jetbrains.bio.genome.coverage.FixedFragment
 import org.jetbrains.bio.genome.coverage.Fragment
+import org.jetbrains.bio.span.SpanCLA.LOG
+import org.jetbrains.bio.span.SpanCLA.checkGenomeInFitInformation
+import org.jetbrains.bio.span.SpanCLA.configurePaths
 import org.jetbrains.bio.span.fit.*
 import org.jetbrains.bio.span.fit.experimental.*
 import org.jetbrains.bio.span.peaks.ModelToPeaks
@@ -77,10 +80,12 @@ object SpanCLAAnalyze {
                 } else {
                     Logs.addConsoleAppender(if ("debug" in options) Level.DEBUG else Level.INFO)
                 }
-                SpanCLA.LOG.info("SPAN ${SpanCLA.version()}")
-                SpanCLA.LOG.info(
+                LOG.info("SPAN ${SpanCLA.version()}")
+                LOG.info(
                     "COMMAND: analyze ${params.joinToString(" ")}"
                 )
+
+                SpanCLA.checkMemory()
 
                 val peaksPath = options.valueOf("peaks") as Path?
                 val modelPath = options.valueOf("model") as Path?
@@ -90,7 +95,7 @@ object SpanCLAAnalyze {
                     modelPath.stem
                 } else {
                     generateExperimentId(
-                        getAnalyzePaths(options),
+                        prepareAndCheckTreatmentControlPaths(options),
                         SpanCLA.getBin(options),
                         SpanCLA.getFragment(options),
                         SpanCLA.getUnique(options),
@@ -99,47 +104,45 @@ object SpanCLAAnalyze {
                 }
 
                 val logPath = SpanCLA.configureLogFile(workingDir, experimentId)
-                SpanCLA.LOG.info("LOG: $logPath")
+                LOG.info("LOG: $logPath")
 
                 // Call now to preserve params logging order
-                val lazySpanResults = peakCallingResults(options)
+                val lazySpanResults = logParametersAndPrepareLazySpanResults(options)
 
                 val labelsPath = options.valueOf("labels") as Path?
                 val gap = options.valueOf("gap") as Int
                 require(gap >= 0) { "Negative gap: $gap" }
                 val fdr = options.valueOf("fdr") as Double
                 require(0 < fdr && fdr <= 1) { "Illegal fdr: $fdr, expected range: (0, 1)" }
+
+                if (peaksPath != null) {
+                    if (labelsPath != null) {
+                        LOG.info("LABELS: $labelsPath")
+                        LOG.info("FDR, GAP options are ignored.")
+                    } else {
+                        LOG.info("FDR: $fdr")
+                        LOG.info("GAP: $gap")
+                    }
+                    LOG.info("PEAKS: $peaksPath")
+                } else {
+                    LOG.info("NO peaks path given, process model fitting only.")
+                    LOG.info("LABELS, FDR, GAP options are ignored.")
+                }
+
                 val threads = options.valueOf("threads") as Int?
                 require(threads == null || threads > 0) {
                     "Not positive threads option: $threads"
                 }
-
-                if (peaksPath != null) {
-                    if (labelsPath != null) {
-                        SpanCLA.LOG.info("LABELS: $labelsPath")
-                        SpanCLA.LOG.info("FDR, GAP options are ignored.")
-                    } else {
-                        SpanCLA.LOG.info("FDR: $fdr")
-                        SpanCLA.LOG.info("GAP: $gap")
-                    }
-                    SpanCLA.LOG.info("PEAKS: $peaksPath")
-                } else {
-                    SpanCLA.LOG.info("NO peaks path given, process model fitting only.")
-                    SpanCLA.LOG.info("LABELS, FDR, GAP options are ignored.")
-                }
-
                 configureParallelism(threads)
-                SpanCLA.LOG.info("THREADS: ${parallelismLevel()}")
+                LOG.info("THREADS: ${parallelismLevel()}")
 
                 val clip = "clip" in options
-                SpanCLA.LOG.info("CLIP: $clip")
-
-                SpanCLA.checkMemory()
+                LOG.info("CLIP: $clip")
 
                 val spanResults = lazySpanResults.value
                 val fitInfo = spanResults.fitInfo
                 check(fitInfo is AbstractSpanAnalyzeFitInformation) {
-                    "Expected SpanAnalyzeFitInformation, got ${fitInfo::class.java.name}"
+                    "Expected ${SpanAnalyzeFitInformation::class.java.simpleName}, got ${fitInfo::class.java.name}"
                 }
                 val genomeQuery = fitInfo.genomeQuery()
                 val fragment = fitInfo.fragment
@@ -152,6 +155,8 @@ object SpanCLAAnalyze {
                         saveTunedResults(spanResults, genomeQuery, bin, fragment, clip, labelsPath, peaksPath)
                     }
                 }
+
+
             }
         }
     }
@@ -161,7 +166,7 @@ object SpanCLAAnalyze {
      * No peaks, no model, generate ID from command-line options.
      * Option parser guarantees that treatment paths are not empty here.
      *
-     * @param spanDataPaths A list of SpanDataPaths representing treatment and control pairs.
+     * @param paths A list of [SpanDataPaths] representing treatment and control pairs.
      * @param bin The bin size.
      * @param fragment The fragment type.
      * @param unique Indicates whether the experiment is unique.
@@ -169,16 +174,15 @@ object SpanCLAAnalyze {
      * @return The generated experiment ID.
      */
     internal fun generateExperimentId(
-        spanDataPaths: List<SpanDataPaths>,
+        paths: List<SpanDataPaths>,
         bin: Int,
         fragment: Fragment,
         unique: Boolean,
         labelsPath: Path?
     ): String {
-        val ids = listOf(spanDataPaths.map { it.treatment }, spanDataPaths.mapNotNull { it.control })
-            .flatMap { paths ->
-                paths.map { it.stemGz }
-            }.toMutableList()
+        val ids = listOf(paths.map { it.treatment }, paths.mapNotNull { it.control })
+            .flatMap { ps -> ps.map { it.stemGz } }
+            .toMutableList()
         ids.add(bin.toString())
         if (fragment is FixedFragment) {
             ids.add(fragment.size.toString())
@@ -208,7 +212,7 @@ object SpanCLAAnalyze {
             peaks, peaksPath,
             "peak${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
         )
-        SpanCLA.LOG.info("Saved result to $peaksPath")
+        LOG.info("Saved result to $peaksPath")
         val aboutPeaks = PeaksInfo.compute(
             genomeQuery,
             peaks.map { it.location }.stream(),
@@ -216,7 +220,7 @@ object SpanCLAAnalyze {
             fitInfo.data.map { it.treatment }
         )
         val aboutModel = spanResults.modelInformation()
-        SpanCLA.LOG.info("\n" + (aboutPeaks + aboutModel).joinToString("\n") { (k, v) ->
+        LOG.info("\n" + (aboutPeaks + aboutModel).joinToString("\n") { (k, v) ->
             "${k.name}: ${k.render(v)}"
         })
     }
@@ -231,9 +235,9 @@ object SpanCLAAnalyze {
         peaksPath: Path
     ) {
         val results = TuningResults()
-        SpanCLA.LOG.info("Loading labels $labelsPath...")
+        LOG.info("Loading labels $labelsPath...")
         val labels = LocationLabel.loadLabels(labelsPath, genomeQuery.genome)
-        SpanCLA.LOG.info("Tuning model on the loaded labels...")
+        LOG.info("Tuning model on the loaded labels...")
         val (labelErrorsGrid, optimalIndex) = SpanSemiSupervised.tuneParameters(
             spanResults,
             genomeQuery,
@@ -242,9 +246,9 @@ object SpanCLAAnalyze {
             SpanSemiSupervised.PARAMETERS,
             CancellableState.current()
         )
-        SpanCLA.LOG.info("Tuning model on the loaded labels complete.")
+        LOG.info("Tuning model on the loaded labels complete.")
         val (optimalFDR, optimalGap) = SpanSemiSupervised.PARAMETERS[optimalIndex]
-        SpanCLA.LOG.info("Optimal settings: FDR=$optimalFDR, GAP=$optimalGap")
+        LOG.info("Optimal settings: FDR=$optimalFDR, GAP=$optimalGap")
         labelErrorsGrid.forEachIndexed { i, error ->
             val (fdrTuning, gapTuning) = SpanSemiSupervised.PARAMETERS[i]
             results.addRecord(
@@ -267,44 +271,48 @@ object SpanCLAAnalyze {
             "peak${if (fragment is FixedFragment) "_$fragment" else ""}_" +
                     "${bin}_${optimalFDR}_$optimalGap"
         )
-        SpanCLA.LOG.info("Saved result to $peaksPath")
+        LOG.info("Saved result to $peaksPath")
     }
 
     /**
-     * Retrieves the paths (treatment, optional control, and optional mapability)
+     * Retrieves the paths (treatment, optional control)
      * either from command-line options or from the stored fit information.
      *
      * If both are available, checks that they are consistent.
      */
-    internal fun getAnalyzePaths(
+    internal fun prepareAndCheckTreatmentControlPaths(
         options: OptionSet, fitInformation: AbstractSpanAnalyzeFitInformation? = null, log: Boolean = false
     ): List<SpanDataPaths> {
         val commandLineTreatmentPaths = options.valuesOf("treatment") as List<Path>
         val commandLineControlPaths = options.valuesOf("control") as List<Path>
 
-        val commandLinePaths = SpanCLA.getCommandLinePaths(
+        var paths = SpanCLA.matchTreatmentsAndControls(
             commandLineTreatmentPaths, commandLineControlPaths
         )
 
         val fitInfoPaths = fitInformation?.data
-        if (commandLinePaths != null && fitInfoPaths != null && commandLinePaths != fitInfoPaths) {
-            throw IllegalStateException(
-                "Stored treatment-control pairs ${fitInfoPaths.joinToString()} differ from the ones inferred " +
-                        "from the command line arguments: ${commandLinePaths.joinToString()}"
-            )
+        if (fitInfoPaths != null) {
+            if (paths != null) {
+                check(paths == fitInfoPaths) {
+                    "Stored treatment-control pairs ${fitInfoPaths.joinToString()} differ from the ones inferred " +
+                            "from the command line arguments: ${paths!!.joinToString()}"
+                }
+            } else {
+                paths = fitInfoPaths
+            }
         }
 
-        val paths = commandLinePaths
-            ?: fitInfoPaths
-            ?: throw IllegalStateException("No treatment files and no existing model file provided, exiting.")
+        checkNotNull(paths) {
+            "No treatment files and no existing model file provided, exiting."
+        }
 
         if (log) {
-            SpanCLA.LOG.info("TREATMENT: ${paths.map { it.treatment }.joinToString(", ", transform = Path::toString)}")
+            LOG.info("TREATMENT: ${paths.map { it.treatment }.joinToString(", ", transform = Path::toString)}")
             paths.mapNotNull { it.control }.let {
                 if (it.isNotEmpty()) {
-                    SpanCLA.LOG.info("CONTROL: ${it.joinToString(", ", transform = Path::toString)}")
+                    LOG.info("CONTROL: ${it.joinToString(", ", transform = Path::toString)}")
                 } else {
-                    SpanCLA.LOG.info("CONTROL: none")
+                    LOG.info("CONTROL: none")
                 }
             }
         }
@@ -312,39 +320,47 @@ object SpanCLAAnalyze {
     }
 
     /**
-     * Configure logging and get [SpanFitResults] in a most concise and effective way.
-     * Parses and logs most of the command line arguments.
+     * Log parameters and optionally computation of SPAN model, represented by [SpanFitResults].
      * Doesn't fit the model; this happens only if .value is invoked
      */
-    private fun peakCallingResults(options: OptionSet): Lazy<SpanFitResults> {
+    private fun logParametersAndPrepareLazySpanResults(options: OptionSet): Lazy<SpanFitResults> {
         val modelPath = options.valueOf("model") as Path?
         if (modelPath != null) {
-            SpanCLA.LOG.info("MODEL: $modelPath")
+            LOG.info("MODEL: $modelPath")
         }
         if (modelPath != null && modelPath.exists && modelPath.size.isNotEmpty()) {
-            SpanCLA.LOG.debug(
+            LOG.debug(
                 "Model file $modelPath exists and is not empty, SPAN will use it to substitute " +
                         "the missing command line arguments and verify the provided ones."
             )
             val results = SpanModelFitExperiment.loadResults(tarPath = modelPath)
             check(results.fitInfo is AbstractSpanAnalyzeFitInformation) {
-                "Invalid fit information; expected SpanAnalyzeFitInformation, got ${results.fitInfo::class.java.name}"
+                "Expected ${SpanAnalyzeFitInformation::class.java.simpleName}, got ${results.fitInfo::class.java.name}"
             }
-            val chromSizesPath = SpanCLA.getAndLogWorkDirAndChromSizes(options, results.fitInfo)
-            getAnalyzePaths(options, results.fitInfo, log = true)
-            SpanCLA.LOG.info("CHROM.SIZES: $chromSizesPath")
+            prepareAndCheckTreatmentControlPaths(options, results.fitInfo, log = true)
+            val workingDir = options.valueOf("workdir") as Path
+            LOG.info("WORKING DIR: $workingDir")
+            val chromSizesPath = options.valueOf("chrom.sizes") as Path?
+            if (chromSizesPath != null) {
+                checkGenomeInFitInformation(chromSizesPath, results.fitInfo)
+            }
+            LOG.info("CHROM.SIZES: $chromSizesPath")
+            configurePaths(workingDir, chromSizesPath)
             SpanCLA.getBin(options, results.fitInfo, log = true)
             SpanCLA.getFragment(options, results.fitInfo, log = true)
             SpanCLA.getUnique(options, results.fitInfo, log = true)
             if (results.fitInfo is SpanRegrMixtureAnalyzeFitInformation) {
                 getMapabilityPath(options, results.fitInfo, log = true)
             }
+            // Create fake lazy of already computed results
             return lazyOf(results)
         } else {
-            val chromSizesPath = SpanCLA.getAndLogWorkDirAndChromSizes(options)
-            val genomeQuery = GenomeQuery(Genome[chromSizesPath!!])
-            val data = getAnalyzePaths(options, log = true)
-            SpanCLA.LOG.info("CHROM.SIZES: $chromSizesPath")
+            val paths = prepareAndCheckTreatmentControlPaths(options, log = true)
+            val workingDir = options.valueOf("workdir") as Path
+            LOG.info("WORKING DIR: $workingDir")
+            val chromSizesPath = options.valueOf("chrom.sizes") as Path?
+            LOG.info("CHROM.SIZES: $chromSizesPath")
+            configurePaths(workingDir, chromSizesPath)
             val bin = SpanCLA.getBin(options, log = true)
             val fragment = SpanCLA.getFragment(options, log = true)
             val unique = SpanCLA.getUnique(options, log = true)
@@ -360,11 +376,12 @@ object SpanCLAAnalyze {
             } else {
                 null
             }
+            val saveExtendedInfo = options.has("ext")
+            LOG.info("EXTENDED MODEL INFO: $saveExtendedInfo")
             return lazy {
-                val saveExtendedInfo = options.has("ext")
-                SpanCLA.LOG.info("EXTENDED MODEL INFO: $saveExtendedInfo")
+                val genomeQuery = GenomeQuery(Genome[chromSizesPath!!])
                 val experiment = getExperimentByModelType(
-                    modelType, genomeQuery, data, unique, fragment, bin, modelPath,
+                    modelType, genomeQuery, paths, unique, fragment, bin, modelPath,
                     threshold, maxIterations, saveExtendedInfo, mapabilityPath
                 )
                 experiment.results
@@ -375,7 +392,7 @@ object SpanCLAAnalyze {
     private fun getExperimentByModelType(
         modelType: SpanModelType,
         genomeQuery: GenomeQuery,
-        data: List<SpanDataPaths>,
+        paths: List<SpanDataPaths>,
         unique: Boolean,
         fragment: Fragment,
         bin: Int,
@@ -388,50 +405,50 @@ object SpanCLAAnalyze {
         val experiment = when (modelType) {
             SpanModelType.NB2Z_HMM ->
                 SpanPeakCallingExperiment.getExperiment(
-                    genomeQuery, data, bin, fragment, unique, modelPath,
+                    genomeQuery, paths, bin, fragment, unique, modelPath,
                     threshold, maxIterations, saveExtendedInfo
                 )
 
             SpanModelType.NB2Z_MIXTURE ->
                 SpanPeakCallingExperimentNB2ZMixture.getExperiment(
-                    genomeQuery, data, fragment, bin, unique, modelPath,
+                    genomeQuery, paths, fragment, bin, unique, modelPath,
                     threshold, maxIterations, saveExtendedInfo
                 )
 
             SpanModelType.NB2_HMM ->
                 SpanPeakCallingExperimentNB2HMM.getExperiment(
-                    genomeQuery, data, bin, fragment, unique, modelPath,
+                    genomeQuery, paths, bin, fragment, unique, modelPath,
                     threshold, maxIterations, saveExtendedInfo
                 )
 
             SpanModelType.NB3Z_HMM ->
                 SpanPeakCallingExperimentNB3ZHMM.getExperiment(
-                    genomeQuery, data, bin, fragment, unique, modelPath,
+                    genomeQuery, paths, bin, fragment, unique, modelPath,
                     threshold, maxIterations, saveExtendedInfo
                 )
 
             SpanModelType.NB5Z_HMM ->
                 SpanPeakCallingExperimentNB5ZHMM.getExperiment(
-                    genomeQuery, data, bin, fragment, unique, modelPath,
+                    genomeQuery, paths, bin, fragment, unique, modelPath,
                     threshold, maxIterations, saveExtendedInfo
                 )
 
             SpanModelType.NB3_HMM ->
                 SpanPeakCallingExperimentNB3HMM.getExperiment(
-                    genomeQuery, data, bin, fragment, unique, modelPath,
+                    genomeQuery, paths, bin, fragment, unique, modelPath,
                     threshold, maxIterations, saveExtendedInfo
                 )
 
             SpanModelType.POISSON_REGRESSION_MIXTURE -> {
                 SpanPeakCallingExperimentP2ZRegrMixture.getExperiment(
-                    genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath,
+                    genomeQuery, paths, mapabilityPath, fragment, bin, unique, modelPath,
                     threshold, maxIterations, saveExtendedInfo
                 )
             }
 
             SpanModelType.NEGBIN_REGRESSION_MIXTURE -> {
                 SpanPeakCallingExperimentNB2ZRegrMixture.getExperiment(
-                    genomeQuery, data, mapabilityPath, fragment, bin, unique, modelPath,
+                    genomeQuery, paths, mapabilityPath, fragment, bin, unique, modelPath,
                     threshold, maxIterations, saveExtendedInfo
                 )
             }

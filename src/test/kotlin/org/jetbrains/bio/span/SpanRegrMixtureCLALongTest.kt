@@ -27,6 +27,7 @@ class SpanRegrMixtureCLALongTest {
     fun setUp() {
         SpanCLA.ignoreConfigurePaths = true
         Sampling.RANDOM_DATA_GENERATOR.randomGenerator.setSeed(1234L)
+        System.setProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true")
     }
 
     @After
@@ -34,6 +35,7 @@ class SpanRegrMixtureCLALongTest {
         SpanCLA.ignoreConfigurePaths = false
         // we might have unfinished tracked tasks which will never be complete, let's drop them
         MultitaskProgress.clear()
+        System.setProperty(JOPTSIMPLE_SUPPRESS_EXIT, "false")
     }
 
     @Test
@@ -55,18 +57,16 @@ class SpanRegrMixtureCLALongTest {
                     val chromsizes = Genome["to1"].chromSizesPath.toString()
 
                     val (_, err) = Logs.captureLoggingOutput {
-                        SpanCLALongTest.withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
-                            SpanCLA.main(
-                                arrayOf(
-                                    "analyze",
-                                    "-cs", chromsizes,
-                                    "--workdir", dir.toString(),
-                                    "-t", listOf(pathA, pathB).joinToString(","),
-                                    "--threads", SpanCLALongTest.THREADS.toString(),
-                                    "--model-type", SpanModelType.POISSON_REGRESSION_MIXTURE.id
-                                )
+                        SpanCLA.main(
+                            arrayOf(
+                                "analyze",
+                                "-cs", chromsizes,
+                                "--workdir", dir.toString(),
+                                "-t", listOf(pathA, pathB).joinToString(","),
+                                "--threads", SpanCLALongTest.THREADS.toString(),
+                                "--model-type", SpanModelType.POISSON_REGRESSION_MIXTURE.id
                             )
-                        }
+                        )
                     }
                     assertIn("ERROR", err)
                     assertIn("Poisson regression mixture currently accepts a single data track", err)
@@ -104,7 +104,8 @@ class SpanRegrMixtureCLALongTest {
     LABELS, FDR, GAP options are ignored.
     """ in out
                 )
-                val ds = DecimalFormatSymbols(Locale.getDefault()).decimalSeparator // XXX: Not so important to make to types of tests for US and EU locales
+                val ds =
+                    DecimalFormatSymbols(Locale.getDefault()).decimalSeparator // XXX: Not so important to make to types of tests for US and EU locales
                 assertIn("100${ds}00% (", out)
                 assertIn("MODEL TYPE: ${SpanModelType.POISSON_REGRESSION_MIXTURE}", out)
                 assertIn("Source: $peaksPath", out)
@@ -217,19 +218,17 @@ class SpanRegrMixtureCLALongTest {
 
                 val defaultModelPath = dir / "custom" / "path" / "model.span"
                 val (_, wrongErr) = Logs.captureLoggingOutput {
-                    SpanCLALongTest.withSystemProperty(JOPTSIMPLE_SUPPRESS_EXIT, "true") {
-                        SpanCLA.main(
-                            arrayOf(
-                                "analyze",
-                                "-cs", chromsizes,
-                                "--workdir", dir.toString(),
-                                "-t", path.toString(),
-                                "--threads", SpanCLALongTest.THREADS.toString(),
-                                "--model-type", SpanModelType.POISSON_REGRESSION_MIXTURE.id,
-                                "--model", defaultModelPath.toString()
-                            )
+                    SpanCLA.main(
+                        arrayOf(
+                            "analyze",
+                            "-cs", chromsizes,
+                            "--workdir", dir.toString(),
+                            "-t", path.toString(),
+                            "--threads", SpanCLALongTest.THREADS.toString(),
+                            "--model-type", SpanModelType.POISSON_REGRESSION_MIXTURE.id,
+                            "--model", defaultModelPath.toString()
                         )
-                    }
+                    )
                 }
                 assertIn(
                     "model type (${SpanModelType.NB2Z_HMM}) " +

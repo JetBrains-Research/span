@@ -102,7 +102,7 @@ compare                         Differential peak calling
     /**
      * Initialize [Configuration] with given paths
      */
-    private fun configurePaths(outputPath: Path, chromSizesPath: Path?) {
+    internal fun configurePaths(outputPath: Path, chromSizesPath: Path?) {
         if (ignoreConfigurePaths) {
             LOG.debug("IGNORE configurePaths")
             return
@@ -242,38 +242,34 @@ compare                         Differential peak calling
         "max iterations", "MAX ITERATIONS", log
     )
 
-    internal fun getAndLogWorkDirAndChromSizes(
-        options: OptionSet, fitInformation: AbstractSpanAnalyzeFitInformation? = null
-    ): Path? {
-        val workingDir = options.valueOf("workdir") as Path
-        LOG.info("WORKING DIR: $workingDir")
-
-        val chromSizesPath = options.valueOf("chrom.sizes") as Path?
-        configurePaths(workingDir, chromSizesPath)
-
-        if (fitInformation != null && chromSizesPath != null) {
-            val genome = Genome[chromSizesPath]
-            check(genome.build == fitInformation.build) {
-                "Stored genome build ${genome.build} differs from " +
-                        "the one inferred from the chrom.sizes file $chromSizesPath"
+    /**
+     * Checks if the genome build stored in the fitInformation matches the build inferred from the chrom.sizes file.
+     * Also checks if all the chromosomes are present in the chrom.sizes file and have the same length.
+     */
+    internal fun checkGenomeInFitInformation(
+        chromSizesPath: Path,
+        fitInformation: AbstractSpanAnalyzeFitInformation
+    ) {
+        val genome = Genome[chromSizesPath]
+        check(genome.build == fitInformation.build) {
+            "Stored genome build ${genome.build} differs from " +
+                    "the one inferred from the chrom.sizes file $chromSizesPath"
+        }
+        val chromosomeMap = genome.chromosomeNamesMap
+        // we don't check the map equality, since the stored map contains only non-empty chromosomes
+        fitInformation.chromosomesSizes.forEach { (name, length) ->
+            check(name in chromosomeMap) {
+                "Stored chromosome $name couldn't be found in the chrom.sizes file $chromSizesPath"
             }
-            val chromosomeMap = genome.chromosomeNamesMap
-            // we don't check the map equality, since the stored map contains only non-empty chromosomes
-            fitInformation.chromosomesSizes.forEach { (name, length) ->
-                check(name in chromosomeMap) {
-                    "Stored chromosome $name couldn't be found in the chrom.sizes file $chromSizesPath"
-                }
-                val chromSizesLength = chromosomeMap.getValue(name).length
-                check(chromSizesLength == length) {
-                    "Stored chromosome $name length $length differs from $chromSizesLength " +
-                            "provided by the chrom.sizes file $chromSizesPath"
-                }
+            val chromSizesLength = chromosomeMap.getValue(name).length
+            check(chromSizesLength == length) {
+                "Stored chromosome $name length $length differs from $chromSizesLength " +
+                        "provided by the chrom.sizes file $chromSizesPath"
             }
         }
-        return chromSizesPath
     }
 
-    internal fun getCommandLinePaths(
+    internal fun matchTreatmentsAndControls(
         commandLineTreatmentPaths: List<Path>,
         commandLineControlPaths: List<Path>
     ): List<SpanDataPaths>? {
@@ -282,9 +278,7 @@ compare                         Differential peak calling
         }
         val spreadControlPaths = if (commandLineControlPaths.isNotEmpty()) {
             when (commandLineControlPaths.size) {
-                1 ->
-                    Array(commandLineTreatmentPaths.size) { commandLineControlPaths.single() }.toList()
-
+                1 -> Array(commandLineTreatmentPaths.size) { commandLineControlPaths.single() }.toList()
                 commandLineTreatmentPaths.size -> commandLineControlPaths
                 else -> throw IllegalArgumentException(
                     "Expected either: no control files, a single control file, " +
