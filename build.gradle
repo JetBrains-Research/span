@@ -75,6 +75,10 @@ test {
 
     systemProperty "genomes.path", settingsFolder("genomes.path", "genomes")
     systemProperty "experiments.path", settingsFolder("experiments.path", "experiments")
+    systemProperty "raw.data.path", settingsFolder("experiments.path", "rawdata")
+    systemProperty "caches.path", settingsFolder("genomes.path", "caches")
+    systemProperty "logs.path", settingsFolder("experiments.path", "logs")
+
     systemProperty "teamcity.build.checkoutDir", System.getProperty("teamcity.build.checkoutDir")
 }
 
