@@ -197,7 +197,6 @@ object SpanCLACompare {
         val genomeQuery = GenomeQuery(Genome[chromSizesPath!!])
         val (data1, data2) = getComparePaths(options, log = true)
         LOG.info("CHROM.SIZES: $chromSizesPath")
-        configurePaths(workingDir,  chromSizesPath = chromSizesPath)
         val bin = SpanCLA.getBin(options, log = true)
         val fragment = SpanCLA.getFragment(options, log = true)
         val unique = SpanCLA.getUnique(options, log = true)

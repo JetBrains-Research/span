@@ -9,7 +9,6 @@ import org.jetbrains.bio.genome.coverage.FixedFragment
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.SpanCLA.LOG
 import org.jetbrains.bio.span.SpanCLA.checkGenomeInFitInformation
-import org.jetbrains.bio.span.SpanCLA.ignoreConfigurePaths
 import org.jetbrains.bio.span.fit.*
 import org.jetbrains.bio.span.fit.experimental.*
 import org.jetbrains.bio.span.peaks.ModelToPeaks
@@ -109,7 +108,7 @@ object SpanCLAAnalyze {
 
                 // Configure working directories
                 LOG.info("WORKING DIR: $workingDir")
-                if (!ignoreConfigurePaths) {
+                if (!SpanCLA.ignoreConfigurePaths) {
                     configurePaths(workingDir, chromSizesPath = chromSizesPath, logPath = logPath)
                 }
                 // Configure logging to file
@@ -358,7 +357,6 @@ object SpanCLAAnalyze {
                 checkGenomeInFitInformation(chromSizesPath, results.fitInfo)
             }
             LOG.info("CHROM.SIZES: $chromSizesPath")
-            configurePaths(workingDir, chromSizesPath = chromSizesPath)
             SpanCLA.getBin(options, results.fitInfo, log = true)
             SpanCLA.getFragment(options, results.fitInfo, log = true)
             SpanCLA.getUnique(options, results.fitInfo, log = true)
@@ -378,7 +376,6 @@ object SpanCLAAnalyze {
             LOG.info("WORKING DIR: $workingDir")
             val chromSizesPath = options.valueOf("chrom.sizes") as Path?
             LOG.info("CHROM.SIZES: $chromSizesPath")
-            configurePaths(workingDir, chromSizesPath = chromSizesPath)
             val bin = SpanCLA.getBin(options, log = true)
             val fragment = SpanCLA.getFragment(options, log = true)
             val unique = SpanCLA.getUnique(options, log = true)
