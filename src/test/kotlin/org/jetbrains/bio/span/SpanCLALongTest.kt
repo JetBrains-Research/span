@@ -24,6 +24,7 @@ import org.junit.Test
 import java.io.FileReader
 import java.text.DecimalFormatSymbols
 import java.util.*
+import kotlin.math.log
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
@@ -90,7 +91,7 @@ class SpanCLALongTest {
         withTempFile("track", ".bed.gz") { path ->
 
             sampleCoverage(path, TO, SPAN_DEFAULT_BIN, goodQuality = true)
-            print("Saved sampled track file: $path")
+            println("Saved sampled track file: $path")
 
             withTempDirectory("work") {
                 val peaksPath = it / "peaks.bed"
@@ -150,7 +151,7 @@ PEAKS: $peaksPath
         withTempFile("track", ".bed.gz") { path ->
 
             sampleCoverage(path, TO, SPAN_DEFAULT_BIN, goodQuality = true)
-            print("Saved sampled track file: $path")
+            println("Saved sampled track file: $path")
 
             withTempDirectory("work") {
                 val bedPath = it / "peaks.bed"
@@ -182,7 +183,7 @@ PEAKS: $peaksPath
         withTempFile("track", ".bed.gz") { path ->
 
             sampleCoverage(path, TO, SPAN_DEFAULT_BIN, goodQuality = true)
-            print("Saved sampled track file: $path")
+            println("Saved sampled track file: $path")
 
             withTempDirectory("work") {
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
@@ -217,7 +218,7 @@ LABELS, FDR, GAP options are ignored.
         withTempFile("track", ".bed.gz") { path ->
 
             sampleCoverage(path, TO, 200, goodQuality = false)
-            print("Saved sampled track file: $path")
+            println("Saved sampled track file: $path")
 
             withTempDirectory("work") {
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
@@ -245,7 +246,7 @@ LABELS, FDR, GAP options are ignored.
         withTempFile("track", ".bed.gz") { path ->
 
             sampleCoverage(path, TO, SPAN_DEFAULT_BIN, goodQuality = false)
-            print("Saved sampled track file: $path")
+            println("Saved sampled track file: $path")
 
             withTempDirectory("work") { dir ->
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
@@ -271,7 +272,7 @@ LABELS, FDR, GAP options are ignored.
                     )
                 }
                 /* we also check that logging was performed normally */
-                val logPath = dir / "logs" / "${
+                val logPath = Configuration.logsPath  / "${
                     reduceIds(
                         listOf(
                             path.stemGz,
@@ -310,47 +311,18 @@ LABELS, FDR, GAP options are ignored.
 
                     // Check that log file was created correctly
                     assertTrue(
-                        (dir / "logs" / "${
-                            reduceIds(
-                                listOf(
-                                    path.stemGz,
-                                    control.stemGz,
-                                    SPAN_DEFAULT_BIN.toString(),
-                                    "unique"
-                                )
-                            )
+                        (Configuration.logsPath  / "${
+                            reduceIds(listOf(path.stemGz, control.stemGz, SPAN_DEFAULT_BIN.toString(), "unique"))
                         }.log").exists,
                         "Log file not found"
                     )
 
-                    assertTrue((Configuration.experimentsPath / "cache").exists)
-
                     // Genome Coverage test
-                    assertEquals(
-                        0,
-                        (Configuration.experimentsPath / "cache")
-                            .glob("coverage_${path.stemGz}_unique#*.npz").size
-                    )
-                    assertEquals(
-                        0,
-                        (Configuration.experimentsPath / "cache")
-                            .glob("coverage_${control.stemGz}_unique#*.npz").size
-                    )
+                    assertEquals(0, Configuration.experimentsPath.glob("coverage_${path.stemGz}_unique#*.npz").size)
+                    assertEquals(0, Configuration.experimentsPath.glob("coverage_${control.stemGz}_unique#*.npz").size)
                     // Model test
-                    assertTrue((Configuration.experimentsPath / "fit").exists)
-                    assertEquals(
-                        0,
-                        (Configuration.experimentsPath / "fit")
-                            .glob(
-                                "${
-                                    reduceIds(
-                                        listOf(
-                                            path.stemGz,
-                                            control.stemGz,
-                                            SPAN_DEFAULT_BIN.toString()
-                                        )
-                                    )
-                                }.span"
+                    assertEquals(0, Configuration.experimentsPath.glob(
+                                "${reduceIds(listOf(path.stemGz, control.stemGz, SPAN_DEFAULT_BIN.toString()))}.span"
                             ).size
                     )
                 }
@@ -383,7 +355,7 @@ LABELS, FDR, GAP options are ignored.
 
                     // Check that log file was created correctly
                     assertTrue(
-                        (dir / "logs" / "${
+                        (Configuration.logsPath / "${
                             reduceIds(
                                 listOf(
                                     path.stemGz,
@@ -396,36 +368,13 @@ LABELS, FDR, GAP options are ignored.
                         "Log file not found"
                     )
 
-                    assertTrue((Configuration.experimentsPath / "cache").exists)
-
                     // Genome Coverage test
-                    assertEquals(
-                        1,
-                        (Configuration.experimentsPath / "cache")
-                            .glob("coverage_${path.stemGz}_unique#*.npz").size
-                    )
-                    assertEquals(
-                        1,
-                        (Configuration.experimentsPath / "cache")
-                            .glob("coverage_${control.stemGz}_unique#*.npz").size
-                    )
+                    assertEquals(1, Configuration.experimentsPath.glob("coverage_${path.stemGz}_unique#*.npz").size)
+                    assertEquals(1, Configuration.experimentsPath.glob("coverage_${control.stemGz}_unique#*.npz").size)
                     // Model test
-                    assertTrue((Configuration.experimentsPath / "fit").exists)
-                    assertEquals(
-                        1,
-                        (Configuration.experimentsPath / "fit")
-                            .glob(
-                                "${
-                                    reduceIds(
-                                        listOf(
-                                            path.stemGz,
-                                            control.stemGz,
-                                            SPAN_DEFAULT_BIN.toString()
-                                        )
-                                    )
-                                }.span"
-                            ).size
-                    )
+                    assertEquals(1, Configuration.experimentsPath.glob(
+                        "${reduceIds(listOf(path.stemGz, control.stemGz, SPAN_DEFAULT_BIN.toString()))}.span"
+                    ).size)
                 }
             }
         }
@@ -488,6 +437,36 @@ LABELS, FDR, GAP options are ignored.
             }
         }
     }
+
+    @Test
+    fun testCustomLogPath() {
+        withTempDirectory("work") { dir ->
+            withTempFile("track", ".bed.gz", dir) { path ->
+                withTempFile("control", ".bed.gz", dir) { control ->
+                    // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
+                    sampleCoverage(path, TO, SPAN_DEFAULT_BIN, goodQuality = true)
+                    sampleCoverage(control, TO, SPAN_DEFAULT_BIN, goodQuality = false)
+
+                    val chromsizes = Genome["to1"].chromSizesPath.toString()
+                    val logPath = dir / "custom" / "logs" / "log.txt"
+                    SpanCLA.main(
+                        arrayOf(
+                            "analyze",
+                            "-cs", chromsizes,
+                            "--workdir", dir.toString(),
+                            "-t", path.toString(),
+                            "-c", control.toString(),
+                            "--threads", THREADS.toString(),
+                            "--log", logPath.toString()
+                        )
+                    )
+                    assertTrue(logPath.exists, "Log was not created at $logPath")
+                    assertTrue(logPath.size.isNotEmpty(), "Log file $logPath is empty")
+                }
+            }
+        }
+    }
+
 
     /**
      * Classical Span only recognizes '.span' model file extension.
@@ -669,13 +648,13 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
                     "Expected location not found in called peaks"
                 )
                 // Check correct log file name
-                val logPath = dir / "logs" / "${bedPath.stem}.log"
+                val logPath = Configuration.logsPath / "${bedPath.stem}.log"
                 assertTrue(logPath.exists, "Log file not found")
                 val log = FileReader(logPath.toFile()).use { it.readText() }
                 assertIn("Signal mean:", log)
                 assertIn("Noise mean:", log)
                 assertIn("Signal to noise:", log)
-                /** In sampling producer model - signal to noise ratio ~ 30
+                /** In sampling producer model - signal-to-noise ratio ~ 30
                  * "mean": 0.36580807929296383, // noise
                  * "mean": 9.113896687733767,   // signal
                  */
@@ -893,7 +872,7 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
                 }
 
                 // Check correct log file name
-                val logPath = dir / "logs" / "${
+                val logPath = Configuration.logsPath  / "${
                     reduceIds(
                         listOf(
                             path.stemGz,

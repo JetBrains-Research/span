@@ -162,36 +162,18 @@ class SpanRegrMixtureCLALongTest {
 
                     // Check that log file was created correctly
                     assertTrue(
-                        (dir / "logs" / "${
-                            reduceIds(
-                                listOf(
-                                    path.stemGz, control.stemGz,
-                                    SPAN_DEFAULT_BIN.toString(), "unique"
-                                )
-                            )
+                        (Configuration.logsPath / "${
+                            reduceIds(listOf(path.stemGz, control.stemGz, SPAN_DEFAULT_BIN.toString(), "unique"))
                         }.log").exists,
                         "Log file not found"
                     )
 
-                    assertTrue((Configuration.experimentsPath / "cache").exists)
 
                     // Genome Coverage test
-                    assertEquals(
-                        1,
-                        (Configuration.experimentsPath / "cache")
-                            .glob("coverage_${path.stemGz}_unique#*.npz").size
-                    )
-                    assertEquals(
-                        1,
-                        (Configuration.experimentsPath / "cache")
-                            .glob("coverage_${control.stemGz}_unique#*.npz").size
-                    )
+                    assertEquals(1, Configuration.experimentsPath.glob("coverage_${path.stemGz}_unique#*.npz").size)
+                    assertEquals(1, Configuration.experimentsPath.glob("coverage_${control.stemGz}_unique#*.npz").size)
                     // Model test
-                    assertTrue((Configuration.experimentsPath / "fit").exists)
-                    assertEquals(
-                        1,
-                        (Configuration.experimentsPath / "fit")
-                            .glob(
+                    assertEquals(1, Configuration.experimentsPath.glob(
                                 "${reduceIds(listOf(path.stemGz, control.stemGz, SPAN_DEFAULT_BIN.toString()))}." +
                                         SpanModelType.POISSON_REGRESSION_MIXTURE.extension
                             ).size

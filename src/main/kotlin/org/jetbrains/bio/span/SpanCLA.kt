@@ -33,10 +33,9 @@ object SpanCLA {
     internal val LOG = LoggerFactory.getLogger(SpanCLA::class.java)
 
     /**
-     * Shpynov:
+     * This is a HACK.
      * Since [Configuration] allows configuring experimentsPath only once,
      * SpanCLA fails to set up correct working directory, if launched within the same process.
-     * This is a HACK.
      */
     var ignoreConfigurePaths: Boolean = false
 
@@ -102,15 +101,24 @@ compare                         Differential peak calling
     /**
      * Initialize [Configuration] with given paths
      */
-    internal fun configurePaths(outputPath: Path, chromSizesPath: Path?) {
+    fun configurePaths(workDir: Path, chromSizesPath: Path? = null, logPath: Path? = null) {
         if (ignoreConfigurePaths) {
             LOG.debug("IGNORE configurePaths")
             return
         }
-        outputPath.createDirectories()
-        Configuration.experimentsPath = outputPath
+        workDir.createDirectories()
+        Configuration.experimentsPath = workDir
         if (chromSizesPath != null) {
             Configuration.genomesPath = chromSizesPath.parent
+        } else {
+            Configuration.genomesPath = workDir
+        }
+        Configuration.rawDataPath = workDir
+        Configuration.cachesPath = workDir
+        if (logPath != null) {
+            Configuration.logsPath = logPath.parent
+        } else {
+            Configuration.logsPath = workDir
         }
     }
 
@@ -122,7 +130,11 @@ compare                         Differential peak calling
         init {
             acceptsAll(listOf("d", "debug"), "Print all the debug information, used for troubleshooting.")
             acceptsAll(listOf("q", "quiet"), "Turn off output")
-            acceptsAll(listOf("m", "model"), "Path to model file")
+            acceptsAll(listOf("m", "model"),
+                "Path to model file. If not provided, will be created in working directory.")
+                .withRequiredArg().withValuesConvertedBy(PathConverter.noCheck())
+            acceptsAll(listOf("l", "log"),
+                "Path to log file. If not provided, will be created in working directory.")
                 .withRequiredArg().withValuesConvertedBy(PathConverter.noCheck())
             acceptsAll(
                 listOf("cs", "chrom.sizes"),
@@ -180,14 +192,6 @@ compare                         Differential peak calling
             acceptsAll(listOf("kc", "keep-cache"), "Keep cache files")
         }
     }
-
-    /**
-     * Configure logging to file. Returns path to log file.
-     */
-    internal fun configureLogFile(workingDir: Path, id: String): Path =
-        (workingDir / "logs" / "$id.log").apply {
-            Logs.addLoggingToFile(this)
-        }
 
     /**
      * Compare the command-line option (null if not given) and stored value (null if not present).

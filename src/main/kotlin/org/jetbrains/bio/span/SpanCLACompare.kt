@@ -3,7 +3,6 @@ package org.jetbrains.bio.span
 import joptsimple.OptionSet
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
-import org.jetbrains.bio.genome.coverage.FixedFragment
 import org.jetbrains.bio.span.SpanCLA.LOG
 import org.jetbrains.bio.span.SpanCLA.configurePaths
 import org.jetbrains.bio.span.fit.SpanDataPaths
@@ -75,16 +74,8 @@ object SpanCLACompare {
 
                 SpanCLA.checkMemory()
 
-                val workingDir = options.valueOf("workdir") as Path
-
-                val gap = options.valueOf("gap") as Int
-                val fdr = options.valueOf("fdr") as Double
                 val peaksPath = options.valueOf("peaks") as Path?
-                val threads = options.valueOf("threads") as Int?
-
-                // Configure logging
-                val fragment = SpanCLA.getFragment(options)
-                val binSize = SpanCLA.getBin(options)
+                val labelsPath = options.valueOf("labels") as Path?
                 val experimentId = if (peaksPath != null) {
                     peaksPath.stemGz
                 } else {
@@ -93,24 +84,41 @@ object SpanCLACompare {
                         SpanCLA.getBin(options),
                         SpanCLA.getFragment(options),
                         SpanCLA.getUnique(options),
-                        options.valueOf("labels") as Path?
+                        labelsPath
                     )
                 }
 
-                val logPath = SpanCLA.configureLogFile(workingDir, experimentId)
-                LOG.info("LOG: $logPath")
+                val workingDir = options.valueOf("workdir") as Path
+                val logPath = options.valueOf("log") as Path?
+                val chromSizesPath = options.valueOf("chrom.sizes") as Path?
+
+                // Configure working directories
+                LOG.info("WORKING DIR: $workingDir")
+                configurePaths(workingDir, chromSizesPath, logPath)
+                // Configure logging to file
+                val actualLogPath = logPath ?: (org.jetbrains.bio.experiment.Configuration.logsPath / "${experimentId}.log")
+                Logs.addLoggingToFile(actualLogPath)
+                LOG.info("LOG: $actualLogPath")
+
 
                 // Call now to preserve correct params logging
                 val lazyDifferentialPeakCallingResults = differentialPeakCallingResults(options)
 
+                val fdr = options.valueOf("fdr") as Double
+                val gap = options.valueOf("gap") as Int
+                require(gap >= 0) { "Negative gap: $gap" }
+                require(0 < fdr && fdr <= 1) { "Illegal fdr: $fdr, expected range: (0, 1)" }
                 LOG.info("FDR: $fdr")
                 LOG.info("GAP: $gap")
+
                 if (peaksPath != null) {
                     LOG.info("PEAKS: $peaksPath")
                 } else {
                     LOG.info("NO peaks path given, process model fitting only.")
                     LOG.info("LABELS, FDR, GAP options are ignored.")
                 }
+
+                val threads = options.valueOf("threads") as Int?
                 configureParallelism(threads)
                 LOG.info("THREADS: ${parallelismLevel()}")
 
@@ -121,12 +129,13 @@ object SpanCLACompare {
                 val genomeQuery = differentialPeakCallingResults.fitInfo.genomeQuery()
                 if (peaksPath != null) {
                     val peaks = ModelToPeaks.computeChromosomePeaks(
-                        differentialPeakCallingResults, genomeQuery, fdr, gap, clip
+                        differentialPeakCallingResults,
+                        genomeQuery,
+                        fdr,
+                        gap,
+                        clip
                     )
-                    Peak.savePeaks(
-                        peaks, peaksPath,
-                        "diff${if (fragment is FixedFragment) "_$fragment" else ""}_${binSize}_${fdr}_${gap}"
-                    )
+                    Peak.savePeaks(peaks, peaksPath, "diff_${experimentId}_${fdr}_$gap")
                     LOG.info("Saved result to $peaksPath")
                 }
                 val keepCacheFiles = "keep-cache" in options

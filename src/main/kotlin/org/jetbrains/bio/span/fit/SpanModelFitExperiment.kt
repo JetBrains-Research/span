@@ -48,7 +48,7 @@ abstract class SpanModelFitExperiment<
     private val fixedModelPath: Path?,
     private val saveExtendedInfo: Boolean,
     private val keepModelFile: Boolean
-) : Experiment("fit") {
+) : Experiment(null) {
 
     val genomeQuery = fitInformation.genomeQuery()
     private val dataQuery = fitInformation.dataQuery

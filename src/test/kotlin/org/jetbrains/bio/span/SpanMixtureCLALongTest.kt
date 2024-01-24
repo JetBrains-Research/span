@@ -1,5 +1,6 @@
 package org.jetbrains.bio.span
 
+import jdk.management.jfr.ConfigurationInfo
 import kotlinx.support.jdk7.use
 import org.jetbrains.bio.Tests.assertIn
 import org.jetbrains.bio.experiment.Configuration
@@ -62,19 +63,8 @@ class SpanMixtureCLALongTest {
                     )
 
                     // Model test
-                    assertTrue((Configuration.experimentsPath / "fit").exists)
-                    assertEquals(
-                        0,
-                        (Configuration.experimentsPath / "fit")
-                            .glob(
-                                "${
-                                    reduceIds(
-                                        listOf(
-                                            path.stemGz,
-                                            control.stemGz,
-                                            SPAN_DEFAULT_BIN.toString()
-                                        )
-                                    )
+                    assertEquals(0, Configuration.experimentsPath.glob(
+                                "${reduceIds(listOf(path.stemGz, control.stemGz, SPAN_DEFAULT_BIN.toString()))
                                 }.${SpanModelType.NB2Z_MIXTURE.extension}"
                             ).size
                     )
@@ -136,7 +126,7 @@ class SpanMixtureCLALongTest {
                     "Expected location not found in called peaks"
                 )
                 // Check correct log file name
-                val logPath = dir / "logs" / "${bedPath.stem}.log"
+                val logPath = Configuration.logsPath / "${bedPath.stem}.log"
                 assertTrue(logPath.exists, "Log file not found")
                 val log = FileReader(logPath.toFile()).use { it.readText() }
                 assertIn("Signal mean:", log)

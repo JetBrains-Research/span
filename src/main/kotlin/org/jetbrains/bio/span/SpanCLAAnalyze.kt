@@ -89,8 +89,7 @@ object SpanCLAAnalyze {
 
                 val peaksPath = options.valueOf("peaks") as Path?
                 val modelPath = options.valueOf("model") as Path?
-                val workingDir = options.valueOf("workdir") as Path
-                // Configure logging
+                val labelsPath = options.valueOf("labels") as Path?
                 val experimentId = peaksPath?.stemGz ?: if (modelPath != null) {
                     modelPath.stem
                 } else {
@@ -99,20 +98,28 @@ object SpanCLAAnalyze {
                         SpanCLA.getBin(options),
                         SpanCLA.getFragment(options),
                         SpanCLA.getUnique(options),
-                        options.valueOf("labels") as Path?
+                        labelsPath
                     )
                 }
 
-                val logPath = SpanCLA.configureLogFile(workingDir, experimentId)
-                LOG.info("LOG: $logPath")
+                val workingDir = options.valueOf("workdir") as Path
+                val logPath = options.valueOf("log") as Path?
+                val chromSizesPath = options.valueOf("chrom.sizes") as Path?
+
+                // Configure working directories
+                LOG.info("WORKING DIR: $workingDir")
+                configurePaths(workingDir, chromSizesPath, logPath)
+                // Configure logging to file
+                val actualLogPath = logPath ?: (org.jetbrains.bio.experiment.Configuration.logsPath / "${experimentId}.log")
+                Logs.addLoggingToFile(actualLogPath)
+                LOG.info("LOG: $actualLogPath")
 
                 // Call now to preserve params logging order
                 val lazySpanResults = logParametersAndPrepareLazySpanResults(options)
 
-                val labelsPath = options.valueOf("labels") as Path?
                 val gap = options.valueOf("gap") as Int
-                require(gap >= 0) { "Negative gap: $gap" }
                 val fdr = options.valueOf("fdr") as Double
+                require(gap >= 0) { "Negative gap: $gap" }
                 require(0 < fdr && fdr <= 1) { "Illegal fdr: $fdr, expected range: (0, 1)" }
 
                 if (peaksPath != null) {
