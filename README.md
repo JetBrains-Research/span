@@ -25,7 +25,7 @@ replicates and noise by leveraging limited manual annotation information.
 **Citation:** Shpynov O, Dievskii A, Chernyatchik R, Tsurinov P, Artyomov MN. Semi-supervised peak calling with SPAN and
 JBR Genome Browser. Bioinformatics. 2021 May 21.
 
-The Latest release
+Latest release
 ------------------
 See [releases](https://github.com/JetBrains-Research/span/releases) section for actual information.
 
