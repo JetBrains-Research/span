@@ -99,31 +99,6 @@ compare                         Differential peak calling
 
 
     /**
-     * Initialize [Configuration] with given paths
-     */
-    fun configurePaths(workDir: Path, chromSizesPath: Path? = null, logPath: Path? = null) {
-        if (ignoreConfigurePaths) {
-            LOG.debug("IGNORE configurePaths")
-            return
-        }
-        workDir.createDirectories()
-        Configuration.experimentsPath = workDir
-        if (chromSizesPath != null) {
-            Configuration.genomesPath = chromSizesPath.parent
-        } else {
-            Configuration.genomesPath = workDir
-        }
-        Configuration.rawDataPath = workDir
-        Configuration.cachesPath = workDir
-        if (logPath != null) {
-            Configuration.logsPath = logPath.parent
-        } else {
-            Configuration.logsPath = workDir
-        }
-    }
-
-
-    /**
      * Create [OptionParser] common for both [analyze] and [compare] procedures.
      */
     internal fun getOptionParser(): OptionParser = object : OptionParser() {

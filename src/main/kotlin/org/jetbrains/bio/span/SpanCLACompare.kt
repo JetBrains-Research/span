@@ -1,10 +1,10 @@
 package org.jetbrains.bio.span
 
 import joptsimple.OptionSet
+import org.jetbrains.bio.experiment.configurePaths
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.span.SpanCLA.LOG
-import org.jetbrains.bio.span.SpanCLA.configurePaths
 import org.jetbrains.bio.span.fit.SpanDataPaths
 import org.jetbrains.bio.span.fit.SpanDifferentialPeakCallingExperiment
 import org.jetbrains.bio.span.fit.SpanFitResults
@@ -94,7 +94,9 @@ object SpanCLACompare {
 
                 // Configure working directories
                 LOG.info("WORKING DIR: $workingDir")
-                configurePaths(workingDir, chromSizesPath, logPath)
+                if (!SpanCLA.ignoreConfigurePaths) {
+                    configurePaths(workingDir, chromSizesPath = chromSizesPath, logPath = logPath)
+                }
                 // Configure logging to file
                 val actualLogPath = logPath ?: (org.jetbrains.bio.experiment.Configuration.logsPath / "${experimentId}.log")
                 Logs.addLoggingToFile(actualLogPath)
@@ -195,7 +197,7 @@ object SpanCLACompare {
         val genomeQuery = GenomeQuery(Genome[chromSizesPath!!])
         val (data1, data2) = getComparePaths(options, log = true)
         LOG.info("CHROM.SIZES: $chromSizesPath")
-        configurePaths(workingDir, chromSizesPath)
+        configurePaths(workingDir,  chromSizesPath = chromSizesPath)
         val bin = SpanCLA.getBin(options, log = true)
         val fragment = SpanCLA.getFragment(options, log = true)
         val unique = SpanCLA.getUnique(options, log = true)
