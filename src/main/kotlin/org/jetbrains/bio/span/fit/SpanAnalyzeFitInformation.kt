@@ -141,7 +141,7 @@ data class SpanAnalyzeFitInformation(
         @Suppress("MayBeConstant", "unused")
         @Transient
         @JvmField
-        val VERSION: Int = 4
+        val VERSION: Int = 5
 
         /**
          * Generates a model ID based on the provided parameters.

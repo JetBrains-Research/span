@@ -115,7 +115,7 @@ data class SpanRegrMixtureAnalyzeFitInformation(
         @Suppress("MayBeConstant", "unused")
         @Transient
         @JvmField
-        val VERSION = 4
+        val VERSION = 5
 
         fun binnedCoverage(chr: Chromosome, coverage: Coverage, binSize: Int): IntArray {
             return chr.range.slice(binSize).mapToInt { range ->
