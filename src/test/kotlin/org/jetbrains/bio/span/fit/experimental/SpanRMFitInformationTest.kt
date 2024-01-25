@@ -54,7 +54,7 @@ class SpanRMFitInformationTest {
     "chrX": 1000000
   },
   "fit.information.fqn": "org.jetbrains.bio.span.fit.experimental.SpanRegrMixtureAnalyzeFitInformation",  
-  "version": 4
+  "version": 5
 }"""
                 )
             }

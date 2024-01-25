@@ -84,7 +84,7 @@ class SpanFitInformationTest {
     "chrX": 1000000
   },
   "fit.information.fqn": "org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation",
-  "version": 4
+  "version": 5
 }""".trim().lines(), path.bufferedReader().lines().collect(Collectors.toList())
                     )
                 }
@@ -206,7 +206,7 @@ class SpanFitInformationTest {
     "chrM": 1000000,
     "chrX": 1000000
   },
-  "version": 3
+  "version": 5
 }"""
                 )
             }
