@@ -64,7 +64,7 @@ class SpanFitInformationTest {
                     assertEquals(
                         """{
   "build": "to1",
-  "data": [
+  "paths": [
     {
       "treatment": "${t.toString().replace("\\", "\\\\")}",
       "control": "${c.toString().replace("\\", "\\\\")}"
@@ -103,7 +103,7 @@ class SpanFitInformationTest {
                 it.write(
                     """{
   "build": "to1",
-  "data": [],
+  "paths": [],
   "labels": [],
   "fragment": "auto",
   "bin_size": 200,
@@ -130,7 +130,7 @@ class SpanFitInformationTest {
                 it.write(
                     """{
   "build": "to1",
-  "data": [
+  "paths": [
     {
       "treatment": "path_to_file",
       "control": "path_to_control"
@@ -186,7 +186,7 @@ class SpanFitInformationTest {
                 it.write(
                     """{
     "build": "to1",
-  "data": [
+  "paths": [
     {
       "treatment": "path_to_file",
       "control": "path_to_control"

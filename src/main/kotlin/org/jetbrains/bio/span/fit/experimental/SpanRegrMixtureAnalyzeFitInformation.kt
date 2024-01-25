@@ -13,16 +13,16 @@ import org.jetbrains.bio.genome.query.ReadsQuery
 import org.jetbrains.bio.genome.sequence.CpGContent
 import org.jetbrains.bio.span.coverage.NormalizedCoverageQuery
 import org.jetbrains.bio.span.fit.AbstractSpanAnalyzeFitInformation
+import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation.Companion.generateId
 import org.jetbrains.bio.span.fit.SpanDataPaths
 import org.jetbrains.bio.span.fit.SpanFitInformation
 import org.jetbrains.bio.util.reduceIds
-import org.jetbrains.bio.util.stemGz
 import org.jetbrains.bio.viktor.asF64Array
 import java.nio.file.Path
 
-data class SpanRegrMixtureAnalyzeFitInformation constructor(
+data class SpanRegrMixtureAnalyzeFitInformation(
     override val build: String,
-    override val data: List<SpanDataPaths>,
+    override val paths: List<SpanDataPaths>,
     val mapabilityPath: Path?,
     override val fragment: Fragment,
     override val unique: Boolean,
@@ -47,15 +47,12 @@ data class SpanRegrMixtureAnalyzeFitInformation constructor(
     )
 
     override val id
-        get() = reduceIds(
-            listOfNotNull(data.single().treatment, data.single().control, mapabilityPath).map { it.stemGz } +
-                    listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
-        )
+        get() = generateId(paths, fragment, binSize, unique)
 
     override val dataQuery: Query<Chromosome, DataFrame>
         get() {
             val genomeQuery = genomeQuery()
-            val datum = data.single()
+            val datum = paths.single()
 
             return object : CachingQuery<Chromosome, DataFrame>() {
 
@@ -94,7 +91,7 @@ data class SpanRegrMixtureAnalyzeFitInformation constructor(
         if (normalizedCoverageQuery == null) {
             normalizedCoverageQuery =
                 NormalizedCoverageQuery(
-                    genomeQuery(), data.single().treatment, data.single().control,
+                    genomeQuery(), paths.single().treatment, paths.single().control,
                     fragment, unique, binSize, showLibraryInfo = true
                 )
         }

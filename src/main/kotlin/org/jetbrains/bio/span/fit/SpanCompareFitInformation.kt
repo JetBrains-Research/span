@@ -12,7 +12,6 @@ import org.jetbrains.bio.span.coverage.NormalizedCoverageQuery
 import org.jetbrains.bio.span.coverage.binnedCoverageDataFrame
 import org.jetbrains.bio.util.deleteIfExists
 import org.jetbrains.bio.util.reduceIds
-import org.jetbrains.bio.util.stemGz
 
 data class SpanCompareFitInformation(
     override val build: String,
@@ -27,12 +26,7 @@ data class SpanCompareFitInformation(
 ) : SpanFitInformation {
 
     override val id
-        get() = reduceIds(
-            data1.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
-                    listOf("vs") +
-                    data2.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
-                    listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
-        )
+        get() = SpanAnalyzeFitInformation.generateId(data1 + data2, fragment, binSize, unique)
 
     override val dataQuery: Query<Chromosome, DataFrame>
         get() {

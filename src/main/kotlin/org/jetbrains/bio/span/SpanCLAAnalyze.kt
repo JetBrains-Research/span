@@ -89,21 +89,29 @@ object SpanCLAAnalyze {
 
                 val peaksPath = options.valueOf("peaks") as Path?
                 val modelPath = options.valueOf("model") as Path?
-                val labelsPath = options.valueOf("labels") as Path?
-                val experimentId = peaksPath?.stemGz ?: if (modelPath != null) {
-                    modelPath.stem
-                } else {
-                    generateExperimentId(
-                        prepareAndCheckTreatmentControlPaths(options),
-                        SpanCLA.getBin(options),
-                        SpanCLA.getFragment(options),
-                        SpanCLA.getUnique(options),
-                        labelsPath
-                    )
+                val keepCacheFiles = "keep-cache" in options
+                checkOrFail(peaksPath != null || modelPath != null || keepCacheFiles) {
+                    "At least one of the parameters is required: --peaks, --model or --keep-cache."
                 }
 
+                val labelsPath = options.valueOf("labels") as Path?
+                val modelId = peaksPath?.stemGz ?: modelPath?.stem ?:
+                SpanAnalyzeFitInformation.generateId(
+                    prepareAndCheckTreatmentControlPaths(options),
+                    SpanCLA.getFragment(options),
+                    SpanCLA.getBin(options),
+                    SpanCLA.getUnique(options),
+                )
+                val gap = options.valueOf("gap") as Int
+                val fdr = options.valueOf("fdr") as Double
+                require(gap >= 0) { "Negative gap: $gap" }
+                require(0 < fdr && fdr <= 1) { "Illegal fdr: $fdr, expected range: (0, 1)" }
+
                 val workingDir = options.valueOf("workdir") as Path
-                val logPath = options.valueOf("log") as Path?
+                val logId =
+                    peaksPath?.stemGz ?: modelPath?.stem ?: reduceIds(listOf(modelId, fdr.toString(), gap.toString()))
+                val logPath = options.valueOf("log") as Path? ?:
+                (org.jetbrains.bio.experiment.Configuration.logsPath / "$logId.log")
                 val chromSizesPath = options.valueOf("chrom.sizes") as Path?
 
                 // Configure working directories
@@ -112,17 +120,11 @@ object SpanCLAAnalyze {
                     configurePaths(workingDir, chromSizesPath = chromSizesPath, logPath = logPath)
                 }
                 // Configure logging to file
-                val actualLogPath = logPath ?: (org.jetbrains.bio.experiment.Configuration.logsPath / "${experimentId}.log")
-                Logs.addLoggingToFile(actualLogPath)
-                LOG.info("LOG: $actualLogPath")
+                Logs.addLoggingToFile(logPath)
+                LOG.info("LOG: $logPath")
 
                 // Call now to preserve params logging order
                 val lazySpanResults = logParametersAndPrepareLazySpanResults(options)
-
-                val gap = options.valueOf("gap") as Int
-                val fdr = options.valueOf("fdr") as Double
-                require(gap >= 0) { "Negative gap: $gap" }
-                require(0 < fdr && fdr <= 1) { "Illegal fdr: $fdr, expected range: (0, 1)" }
 
                 if (peaksPath != null) {
                     if (labelsPath != null) {
@@ -164,7 +166,6 @@ object SpanCLAAnalyze {
                         saveTunedResults(spanResults, genomeQuery, bin, fragment, clip, labelsPath, peaksPath)
                     }
                 }
-                val keepCacheFiles = "keep-cache" in options
                 if (modelPath == null && !keepCacheFiles) {
                     LOG.debug("Clean coverage caches")
                     fitInfo.cleanCaches()
@@ -173,40 +174,6 @@ object SpanCLAAnalyze {
         }
     }
 
-    /**
-     * Generates an experiment ID based on the provided parameters.
-     * No peaks, no model, generate ID from command-line options.
-     * Option parser guarantees that treatment paths are not empty here.
-     *
-     * @param paths A list of [SpanDataPaths] representing treatment and control pairs.
-     * @param bin The bin size.
-     * @param fragment The fragment type.
-     * @param unique Indicates whether the experiment is unique.
-     * @param labelsPath The path to the labels BED file.
-     * @return The generated experiment ID.
-     */
-    internal fun generateExperimentId(
-        paths: List<SpanDataPaths>,
-        bin: Int,
-        fragment: Fragment,
-        unique: Boolean,
-        labelsPath: Path?
-    ): String {
-        val ids = listOf(paths.map { it.treatment }, paths.mapNotNull { it.control })
-            .flatMap { ps -> ps.map { it.stemGz } }
-            .toMutableList()
-        ids.add(bin.toString())
-        if (fragment is FixedFragment) {
-            ids.add(fragment.size.toString())
-        }
-        if (unique) {
-            ids.add("unique")
-        }
-        if (labelsPath != null) {
-            ids.add(labelsPath.stemGz)
-        }
-        return reduceIds(ids)
-    }
 
     private fun savePeaks(
         spanResults: SpanFitResults,
@@ -229,7 +196,7 @@ object SpanCLAAnalyze {
             genomeQuery,
             peaks.map { it.location }.stream(),
             peaksPath.toUri(),
-            fitInfo.data.map { it.treatment }
+            fitInfo.paths.map { it.treatment }
         )
         val aboutModel = spanResults.modelInformation()
         LOG.info("\n" + (aboutPeaks + aboutModel).joinToString("\n") { (k, v) ->
@@ -302,7 +269,7 @@ object SpanCLAAnalyze {
             commandLineTreatmentPaths, commandLineControlPaths
         )
 
-        val fitInfoPaths = fitInformation?.data
+        val fitInfoPaths = fitInformation?.paths
         if (fitInfoPaths != null) {
             if (paths != null) {
                 check(paths == fitInfoPaths) {

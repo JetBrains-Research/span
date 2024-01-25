@@ -33,7 +33,7 @@ class SpanRMFitInformationTest {
                 it.write(
                     """{
   "build": "to1",
-  "data": [
+  "paths": [
     {
       "treatment": "path_to_file",
       "control": "path_to_control"

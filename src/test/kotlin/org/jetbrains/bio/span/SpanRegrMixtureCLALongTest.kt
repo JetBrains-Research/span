@@ -1,11 +1,17 @@
 package org.jetbrains.bio.span
 
+import junit.framework.TestCase.assertFalse
 import org.jetbrains.bio.Tests.assertIn
 import org.jetbrains.bio.experiment.Configuration
 import org.jetbrains.bio.genome.Genome
+import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.format.BedFormat
 import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
+import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
+import org.jetbrains.bio.span.fit.SpanDataPaths
 import org.jetbrains.bio.span.fit.SpanModelType
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.util.*
@@ -15,7 +21,6 @@ import org.junit.Test
 import java.text.DecimalFormatSymbols
 import java.util.*
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -161,22 +166,24 @@ class SpanRegrMixtureCLALongTest {
                     )
 
                     // Check that log file was created correctly
-                    assertTrue(
-                        (Configuration.logsPath / "${
-                            reduceIds(listOf(path.stemGz, control.stemGz, SPAN_DEFAULT_BIN.toString(), "unique"))
-                        }.log").exists,
-                        "Log file not found"
+                    val modelId = SpanAnalyzeFitInformation.generateId(
+                        listOf(SpanDataPaths(path, control)),
+                        AutoFragment,
+                        SPAN_DEFAULT_BIN,
+                        true
                     )
 
+                    // Log file test
+                    val logId = reduceIds(listOf(modelId, SPAN_DEFAULT_FDR.toString(), SPAN_DEFAULT_GAP.toString()))
+                    assertTrue((Configuration.logsPath / "${logId}.log").exists, "Log file not found")
 
                     // Genome Coverage test
-                    assertEquals(1, Configuration.experimentsPath.glob("coverage_${path.stemGz}_unique#*.npz").size)
-                    assertEquals(1, Configuration.experimentsPath.glob("coverage_${control.stemGz}_unique#*.npz").size)
+                    assertEquals(1, Configuration.cachesPath.glob("coverage_${path.stemGz}_unique#*.npz").size)
+                    assertEquals(1, Configuration.cachesPath.glob("coverage_${control.stemGz}_unique#*.npz").size)
                     // Model test
-                    assertEquals(1, Configuration.experimentsPath.glob(
-                                "${reduceIds(listOf(path.stemGz, control.stemGz, SPAN_DEFAULT_BIN.toString()))}." +
-                                        SpanModelType.POISSON_REGRESSION_MIXTURE.extension
-                            ).size
+                    assertEquals(
+                        1, Configuration.experimentsPath.glob(
+                            "${modelId}*.${SpanModelType.POISSON_REGRESSION_MIXTURE.extension}").size
                     )
                 }
             }

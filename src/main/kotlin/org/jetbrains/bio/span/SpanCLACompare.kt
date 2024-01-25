@@ -5,6 +5,7 @@ import org.jetbrains.bio.experiment.configurePaths
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.span.SpanCLA.LOG
+import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanDataPaths
 import org.jetbrains.bio.span.fit.SpanDifferentialPeakCallingExperiment
 import org.jetbrains.bio.span.fit.SpanFitResults
@@ -75,21 +76,28 @@ object SpanCLACompare {
                 SpanCLA.checkMemory()
 
                 val peaksPath = options.valueOf("peaks") as Path?
-                val labelsPath = options.valueOf("labels") as Path?
-                val experimentId = if (peaksPath != null) {
-                    peaksPath.stemGz
-                } else {
-                    SpanCLAAnalyze.generateExperimentId(
-                        SpanCLAAnalyze.prepareAndCheckTreatmentControlPaths(options),
-                        SpanCLA.getBin(options),
-                        SpanCLA.getFragment(options),
-                        SpanCLA.getUnique(options),
-                        labelsPath
-                    )
+                val keepCacheFiles = "keep-cache" in options
+                checkOrFail(peaksPath != null || keepCacheFiles) {
+                    "At least one of the parameters is required: --peaks or --keep-cache."
                 }
 
+                val modelId = peaksPath?.stemGz ?:
+                SpanAnalyzeFitInformation.generateId(
+                    SpanCLAAnalyze.prepareAndCheckTreatmentControlPaths(options),
+                    SpanCLA.getFragment(options),
+                    SpanCLA.getBin(options),
+                    SpanCLA.getUnique(options),
+                )
+
+                val gap = options.valueOf("gap") as Int
+                val fdr = options.valueOf("fdr") as Double
+                require(gap >= 0) { "Negative gap: $gap" }
+                require(0 < fdr && fdr <= 1) { "Illegal fdr: $fdr, expected range: (0, 1)" }
+
                 val workingDir = options.valueOf("workdir") as Path
-                val logPath = options.valueOf("log") as Path?
+                val logId = peaksPath?.stemGz ?: reduceIds(listOf(modelId, fdr.toString(), gap.toString()))
+                val logPath = options.valueOf("log") as Path? ?:
+                (org.jetbrains.bio.experiment.Configuration.logsPath / "$logId.log")
                 val chromSizesPath = options.valueOf("chrom.sizes") as Path?
 
                 // Configure working directories
@@ -98,18 +106,13 @@ object SpanCLACompare {
                     configurePaths(workingDir, chromSizesPath = chromSizesPath, logPath = logPath)
                 }
                 // Configure logging to file
-                val actualLogPath = logPath ?: (org.jetbrains.bio.experiment.Configuration.logsPath / "${experimentId}.log")
-                Logs.addLoggingToFile(actualLogPath)
-                LOG.info("LOG: $actualLogPath")
+                Logs.addLoggingToFile(logPath)
+                LOG.info("LOG: $logPath")
 
 
                 // Call now to preserve correct params logging
                 val lazyDifferentialPeakCallingResults = differentialPeakCallingResults(options)
 
-                val fdr = options.valueOf("fdr") as Double
-                val gap = options.valueOf("gap") as Int
-                require(gap >= 0) { "Negative gap: $gap" }
-                require(0 < fdr && fdr <= 1) { "Illegal fdr: $fdr, expected range: (0, 1)" }
                 LOG.info("FDR: $fdr")
                 LOG.info("GAP: $gap")
 
@@ -137,10 +140,9 @@ object SpanCLACompare {
                         gap,
                         clip
                     )
-                    Peak.savePeaks(peaks, peaksPath, "diff_${experimentId}_${fdr}_$gap")
+                    Peak.savePeaks(peaks, peaksPath, "diff_${logPath.stem.substringBeforeLast(".log")}")
                     LOG.info("Saved result to $peaksPath")
                 }
-                val keepCacheFiles = "keep-cache" in options
                 if (!keepCacheFiles) {
                     LOG.debug("Clean coverage caches")
                     differentialPeakCallingResults.fitInfo.cleanCaches()

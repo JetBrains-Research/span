@@ -23,7 +23,7 @@ import org.jetbrains.bio.util.stemGz
  */
 data class SpanAnalyzeFitInformation(
     override val build: String,
-    override val data: List<SpanDataPaths>,
+    override val paths: List<SpanDataPaths>,
     val labels: List<String>,
     override val fragment: Fragment,
     override val unique: Boolean,
@@ -45,10 +45,8 @@ data class SpanAnalyzeFitInformation(
     )
 
     override val id: String
-        get() = reduceIds(
-            data.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
-                    listOfNotNull(fragment.nullableInt, binSize).map { it.toString() }
-        )
+        get() = generateId(paths, fragment, binSize, unique)
+
 
     fun hasControlData(): Boolean {
         check(normalizedCoverageQueries != null) {
@@ -81,7 +79,7 @@ data class SpanAnalyzeFitInformation(
     @Synchronized
     override fun prepareData() {
         if (normalizedCoverageQueries == null) {
-            normalizedCoverageQueries = data.map {
+            normalizedCoverageQueries = paths.map {
                 NormalizedCoverageQuery(
                     genomeQuery(),
                     it.treatment,
@@ -144,6 +142,26 @@ data class SpanAnalyzeFitInformation(
         @Transient
         @JvmField
         val VERSION: Int = 4
+
+        /**
+         * Generates a model ID based on the provided parameters.
+         *
+         * @param paths A list of [SpanDataPaths] representing treatment and control pairs.
+         * @param binSize The bin size.
+         * @param fragment The fragment type.
+         * @param unique Indicates whether the experiment is unique.
+         * @return The generated ID
+         */
+        fun generateId(
+            paths: List<SpanDataPaths>,
+            fragment: Fragment,
+            binSize: Int,
+            unique: Boolean
+        ) = reduceIds(
+            paths.flatMap { listOfNotNull(it.treatment, it.control) }.map { it.stemGz } +
+                    listOfNotNull(fragment.nullableInt, binSize).map { it.toString() } +
+                    listOfNotNull(if (unique) "unique" else null)
+        )
 
         fun createFitInformation(
             genomeQuery: GenomeQuery,

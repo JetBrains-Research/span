@@ -9,13 +9,16 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.Location
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.genome.containers.genomeMap
+import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.format.BedFormat
 import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
+import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_MAX_ITERATIONS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanDataPaths
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.util.*
 import org.junit.After
@@ -24,7 +27,6 @@ import org.junit.Test
 import java.io.FileReader
 import java.text.DecimalFormatSymbols
 import java.util.*
-import kotlin.math.log
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
@@ -271,16 +273,16 @@ LABELS, FDR, GAP options are ignored.
                         "Span quiet mode didn't redirect System.out"
                     )
                 }
+                val modelId = SpanAnalyzeFitInformation.generateId(
+                    listOf(SpanDataPaths(path, null)),
+                    AutoFragment,
+                    SPAN_DEFAULT_BIN,
+                    true
+                )
+
                 /* we also check that logging was performed normally */
-                val logPath = Configuration.logsPath  / "${
-                    reduceIds(
-                        listOf(
-                            path.stemGz,
-                            SPAN_DEFAULT_BIN.toString(),
-                            "unique"
-                        )
-                    )
-                }.log"
+                val logId = reduceIds(listOf(modelId, SPAN_DEFAULT_FDR.toString(), SPAN_DEFAULT_GAP.toString()))
+                val logPath = Configuration.logsPath  / "$logId.log"
                 assertTrue(logPath.exists, "Log file not found")
                 assertTrue(logPath.size.isNotEmpty(), "Log file is empty")
             }
@@ -309,21 +311,22 @@ LABELS, FDR, GAP options are ignored.
                         )
                     )
 
-                    // Check that log file was created correctly
-                    assertTrue(
-                        (Configuration.logsPath  / "${
-                            reduceIds(listOf(path.stemGz, control.stemGz, SPAN_DEFAULT_BIN.toString(), "unique"))
-                        }.log").exists,
-                        "Log file not found"
+                    val modelId = SpanAnalyzeFitInformation.generateId(
+                        listOf(SpanDataPaths(path, control)),
+                        AutoFragment,
+                        SPAN_DEFAULT_BIN,
+                        true
                     )
 
+                    // Check that log file was created correctly
+                    val logId = reduceIds(listOf(modelId, SPAN_DEFAULT_FDR.toString(), SPAN_DEFAULT_GAP.toString()))
+                    assertTrue((Configuration.logsPath  / "$logId.log").exists, "Log file not found")
+
                     // Genome Coverage test
-                    assertEquals(0, Configuration.experimentsPath.glob("coverage_${path.stemGz}_unique#*.npz").size)
-                    assertEquals(0, Configuration.experimentsPath.glob("coverage_${control.stemGz}_unique#*.npz").size)
+                    assertEquals(0, Configuration.cachesPath.glob("coverage_${path.stemGz}_unique#*.npz").size)
+                    assertEquals(0, Configuration.cachesPath.glob("coverage_${control.stemGz}_unique#*.npz").size)
                     // Model test
-                    assertEquals(0, Configuration.experimentsPath.glob(
-                                "${reduceIds(listOf(path.stemGz, control.stemGz, SPAN_DEFAULT_BIN.toString()))}.span"
-                            ).size
+                    assertEquals(0, Configuration.experimentsPath.glob("$modelId*.span").size
                     )
                 }
             }
@@ -353,28 +356,22 @@ LABELS, FDR, GAP options are ignored.
                         )
                     )
 
-                    // Check that log file was created correctly
-                    assertTrue(
-                        (Configuration.logsPath / "${
-                            reduceIds(
-                                listOf(
-                                    path.stemGz,
-                                    control.stemGz,
-                                    SPAN_DEFAULT_BIN.toString(),
-                                    "unique"
-                                )
-                            )
-                        }.log").exists,
-                        "Log file not found"
+                    val modelId = SpanAnalyzeFitInformation.generateId(
+                        listOf(SpanDataPaths(path, control)),
+                        AutoFragment,
+                        SPAN_DEFAULT_BIN,
+                        true
                     )
 
+                    // Check that log file was created correctly
+                    val logId = reduceIds(listOf(modelId, SPAN_DEFAULT_FDR.toString(), SPAN_DEFAULT_GAP.toString()))
+                    assertTrue((Configuration.logsPath / "$logId.log").exists, "Log file not found")
+
                     // Genome Coverage test
-                    assertEquals(1, Configuration.experimentsPath.glob("coverage_${path.stemGz}_unique#*.npz").size)
-                    assertEquals(1, Configuration.experimentsPath.glob("coverage_${control.stemGz}_unique#*.npz").size)
+                    assertEquals(1, Configuration.cachesPath.glob("coverage_${path.stemGz}_unique#*.npz").size)
+                    assertEquals(1, Configuration.cachesPath.glob("coverage_${control.stemGz}_unique#*.npz").size)
                     // Model test
-                    assertEquals(1, Configuration.experimentsPath.glob(
-                        "${reduceIds(listOf(path.stemGz, control.stemGz, SPAN_DEFAULT_BIN.toString()))}.span"
-                    ).size)
+                    assertEquals(1, Configuration.experimentsPath.glob("${modelId}*.span").size)
                 }
             }
         }
@@ -871,16 +868,16 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
                     )
                 }
 
-                // Check correct log file name
-                val logPath = Configuration.logsPath  / "${
-                    reduceIds(
-                        listOf(
-                            path.stemGz,
-                            SPAN_DEFAULT_BIN.toString(),
-                            "unique"
-                        )
-                    )
-                }.log"
+                val modelId = SpanAnalyzeFitInformation.generateId(
+                    listOf(SpanDataPaths(path, null)),
+                    AutoFragment,
+                    SPAN_DEFAULT_BIN,
+                    true
+                )
+
+                // Check that log file was created correctly
+                val logId = reduceIds(listOf(modelId, SPAN_DEFAULT_FDR.toString(), SPAN_DEFAULT_GAP.toString()))
+                val logPath = Configuration.logsPath / "$logId.log"
                 assertTrue(logPath.exists, "Log file not found")
                 val log = FileReader(logPath.toFile()).use { it.readText() }
                 val errorMessage = "Model can't be trained on empty coverage, exiting."
