@@ -282,7 +282,7 @@ LABELS, FDR, GAP options are ignored.
 
                 /* we also check that logging was performed normally */
                 val logId = reduceIds(listOf(modelId, SPAN_DEFAULT_FDR.toString(), SPAN_DEFAULT_GAP.toString()))
-                val logPath = Configuration.logsPath  / "$logId.log"
+                val logPath = Configuration.logsPath / "$logId.log"
                 assertTrue(logPath.exists, "Log file not found")
                 assertTrue(logPath.size.isNotEmpty(), "Log file is empty")
             }
@@ -320,13 +320,14 @@ LABELS, FDR, GAP options are ignored.
 
                     // Check that log file was created correctly
                     val logId = reduceIds(listOf(modelId, SPAN_DEFAULT_FDR.toString(), SPAN_DEFAULT_GAP.toString()))
-                    assertTrue((Configuration.logsPath  / "$logId.log").exists, "Log file not found")
+                    assertTrue((Configuration.logsPath / "$logId.log").exists, "Log file not found")
 
                     // Genome Coverage test
                     assertEquals(0, Configuration.cachesPath.glob("coverage_${path.stemGz}_unique#*.npz").size)
                     assertEquals(0, Configuration.cachesPath.glob("coverage_${control.stemGz}_unique#*.npz").size)
                     // Model test
-                    assertEquals(0, Configuration.experimentsPath.glob("$modelId*.span").size
+                    assertEquals(
+                        0, Configuration.experimentsPath.glob("$modelId*.span").size
                     )
                 }
             }
@@ -465,19 +466,13 @@ LABELS, FDR, GAP options are ignored.
     }
 
 
-    /**
-     * Classical Span only recognizes '.span' model file extension.
-     * Other extensions are reserved for future use.
-     */
     @Test
-    fun testCustomModelPathWrongExtension() {
+    fun testAnalyzePeaksOrModelOrKeepCacheRequired() {
         withTempDirectory("work") { dir ->
             withTempFile("track", ".bed.gz", dir) { path ->
                 // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
                 sampleCoverage(path, TO, SPAN_DEFAULT_BIN, goodQuality = true)
-
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
-                val invalidModelPath = dir / "custom" / "path" / "model.foo"
                 val (_, invalidErr) = Logs.captureLoggingOutput {
                     SpanCLA.main(
                         arrayOf(
@@ -485,14 +480,43 @@ LABELS, FDR, GAP options are ignored.
                             "-cs", chromsizes,
                             "--workdir", dir.toString(),
                             "-t", path.toString(),
-                            "--threads", THREADS.toString(),
-                            "--model", invalidModelPath.toString()
                         )
                     )
                 }
+                assertIn(
+                    "ERROR: At least one of the parameters is required: --peaks, --model or --keep-cache.",
+                    invalidErr
+                )
             }
         }
     }
+
+    @Test
+    fun testComparePeaksOrKeepCacheRequired() {
+        withTempDirectory("work") { dir ->
+            withTempFile("track", ".bed.gz", dir) { path ->
+                // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
+                sampleCoverage(path, TO, SPAN_DEFAULT_BIN, goodQuality = true)
+                val chromsizes = Genome["to1"].chromSizesPath.toString()
+                val (_, invalidErr) = Logs.captureLoggingOutput {
+                    SpanCLA.main(
+                        arrayOf(
+                            "compare",
+                            "-cs", chromsizes,
+                            "--workdir", dir.toString(),
+                            "--t1", path.toString(),
+                            "--t2", path.toString(),
+                        )
+                    )
+                }
+                assertIn(
+                    "ERROR: At least one of the parameters is required: --peaks or --keep-cache.",
+                    invalidErr
+                )
+            }
+        }
+    }
+
 
     @Test
     fun testTypeOnlyValidInExperimentalMode() {
