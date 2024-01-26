@@ -22,8 +22,8 @@ object SpanCLACompare {
             acceptsAll(
                 listOf("t1", "treatment1"),
                 """
-                    ChIP-seq treatment file 1. bam, bed or .bed.gz file;
-                    If multiple files are given, treated as replicates.
+                    ChIP-seq treatment file 1. bam, bed or .bed.gz file.
+                    If multiple files are given, treated as replicates
                     """.trimIndent()
             )
                 .withRequiredArg().required()
@@ -32,9 +32,8 @@ object SpanCLACompare {
             acceptsAll(
                 listOf("c1", "control1"),
                 """
-                    Control file 1. bam, bed or .bed.gz file;
-                    Single control file or separate file per each
-                    treatment file required.
+                    Control file 1. bam, bed or .bed.gz file.
+                    Single control file or separate file per each treatment file required
                     """.trimIndent()
             )
                 .withRequiredArg()
@@ -44,8 +43,8 @@ object SpanCLACompare {
             acceptsAll(
                 listOf("t2", "treatment2"),
                 """
-                    ChIP-seq treatment file 2. bam, bed or .bed.gz file;
-                    If multiple files are given, treated as replicates.
+                    ChIP-seq treatment file 2. bam, bed or .bed.gz file.
+                    If multiple files are given, treated as replicates
                     """.trimIndent()
             )
                 .withRequiredArg().required()
@@ -54,15 +53,15 @@ object SpanCLACompare {
             acceptsAll(
                 listOf("c2", "control2"),
                 """
-                    Control file 2. bam, bed or .bed.gz file;
-                    Single control file or separate file per each
-                    treatment file required.
+                    Control file 2. bam, bed or .bed.gz file.
+                    Single control file or separate file per each treatment file required
                     """.trimIndent()
             )
                 .withRequiredArg()
                 .withValuesSeparatedBy(",")
                 .withValuesConvertedBy(PathConverter.exists())
-            accepts("clip", "Clip peaks to improve density")
+            accepts("clip", "Clip peaks to improve peaks density using local signal coverage.\n" +
+                    "Recommended for TFs, narrow histone marks and ATAC-seq")
 
             parse(params) { options ->
                 if ("quiet" in options) {
@@ -123,7 +122,13 @@ object SpanCLACompare {
                     LOG.info("LABELS, FDR, GAP options are ignored.")
                 }
 
-                val threads = options.valueOf("threads") as Int?
+                val threads = options.valueOf("threads") as Int? ?: Runtime.getRuntime().availableProcessors()
+                check(threads > 0) {
+                    "Negative threads value: $threads"
+                }
+                check(threads <= Runtime.getRuntime().availableProcessors()) {
+                    "Too big threads value $threads > ${Runtime.getRuntime().availableProcessors()}"
+                }
                 configureParallelism(threads)
                 LOG.info("THREADS: ${parallelismLevel()}")
 

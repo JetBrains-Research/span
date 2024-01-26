@@ -29,8 +29,8 @@ object SpanCLAAnalyze {
             acceptsAll(
                 listOf("t", "treatment"),
                 """
-                    ChIP-seq treatment file. bam, bed or .bed.gz file;
-                    If multiple files are given, treated as replicates.
+                    ChIP-seq treatment file. bam, bed or .bed.gz file.
+                    If multiple files are given, treated as replicates
                     """.trimIndent()
             )
                 .requiredUnless("model")
@@ -40,35 +40,35 @@ object SpanCLAAnalyze {
             acceptsAll(
                 listOf("c", "control"),
                 """
-                    Control file. bam, bed or bed.gz file;
-                    Single control file or separate file per each
-                    treatment file required.
+                    Control file. bam, bed or bed.gz file.
+                    Single control file or separate file per each treatment file required
                     """.trimIndent()
             )
                 .availableIf("treatment")
                 .withRequiredArg()
                 .withValuesSeparatedBy(",")
                 .withValuesConvertedBy(PathConverter.noCheck())
-            accepts("labels", "Labels BED file")
+            accepts("labels", "Labels BED file. Used in semi-supervised peak calling")
                 .availableIf("peaks")
                 .withRequiredArg()
                 .withValuesConvertedBy(PathConverter.exists())
             accepts(
                 "model-type",
-                """
-                    Model type. Experimental.
-                    ${SpanModelType.values().joinToString("\n") { "'${it.id}' - ${it.description}" }}
-                    """.trimIndent()
+                "Model type. Experimental.\n" +
+                        SpanModelType.values().joinToString("\n") { "${it.id}\t${it.description}" }
             )
                 .withRequiredArg()
                 .defaultsTo(SpanModelType.NB2Z_HMM.id)
-            accepts("clip", "Clip peaks to improve density")
+            accepts("clip", " Clip peaks to improve peaks density using local signal coverage.\n" +
+                    "Recommended for TFs, narrow histone marks and ATAC-seq")
 
             // Additional parameter for *_REGRESSION_MIXTURE models
             accepts(
                 "mapability",
                 "Mapability bigWig file. Requires --model-type " +
-                        "${SpanModelType.POISSON_REGRESSION_MIXTURE} or ${SpanModelType.NEGBIN_REGRESSION_MIXTURE}"
+                        "${SpanModelType.POISSON_REGRESSION_MIXTURE.id} or " +
+                        "--model-type ${SpanModelType.NEGBIN_REGRESSION_MIXTURE.id}"
+
             )
                 .availableIf("treatment")
                 .withRequiredArg()
@@ -91,12 +91,11 @@ object SpanCLAAnalyze {
                 val modelPath = options.valueOf("model") as Path?
                 val keepCacheFiles = "keep-cache" in options
                 checkOrFail(peaksPath != null || modelPath != null || keepCacheFiles) {
-                    "At least one of the parameters is required: --peaks, --model or --keep-cache."
+                    "At least one of the parameters is required: --peaks, --model or --keep-cache"
                 }
 
                 val labelsPath = options.valueOf("labels") as Path?
-                val modelId = peaksPath?.stemGz ?: modelPath?.stem ?:
-                SpanAnalyzeFitInformation.generateId(
+                val modelId = peaksPath?.stemGz ?: modelPath?.stem ?: SpanAnalyzeFitInformation.generateId(
                     prepareAndCheckTreatmentControlPaths(options),
                     SpanCLA.getFragment(options),
                     SpanCLA.getBin(options),
@@ -110,8 +109,8 @@ object SpanCLAAnalyze {
                 val workingDir = options.valueOf("workdir") as Path
                 val logId =
                     peaksPath?.stemGz ?: modelPath?.stem ?: reduceIds(listOf(modelId, fdr.toString(), gap.toString()))
-                val logPath = options.valueOf("log") as Path? ?:
-                (org.jetbrains.bio.experiment.Configuration.logsPath / "$logId.log")
+                val logPath = options.valueOf("log") as Path?
+                    ?: (org.jetbrains.bio.experiment.Configuration.logsPath / "$logId.log")
                 val chromSizesPath = options.valueOf("chrom.sizes") as Path?
 
                 // Configure working directories
@@ -140,9 +139,12 @@ object SpanCLAAnalyze {
                     LOG.info("LABELS, FDR, GAP options are ignored.")
                 }
 
-                val threads = options.valueOf("threads") as Int?
-                require(threads == null || threads > 0) {
-                    "Not positive threads option: $threads"
+                val threads = options.valueOf("threads") as Int? ?: Runtime.getRuntime().availableProcessors()
+                check(threads > 0) {
+                    "Negative threads value: $threads"
+                }
+                check(threads <= Runtime.getRuntime().availableProcessors()) {
+                    "Too big threads value $threads > ${Runtime.getRuntime().availableProcessors()}"
                 }
                 configureParallelism(threads)
                 LOG.info("THREADS: ${parallelismLevel()}")

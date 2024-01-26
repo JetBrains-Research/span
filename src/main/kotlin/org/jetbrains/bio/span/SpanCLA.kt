@@ -103,13 +103,19 @@ compare                         Differential peak calling
      */
     internal fun getOptionParser(): OptionParser = object : OptionParser() {
         init {
-            acceptsAll(listOf("d", "debug"), "Print all the debug information, used for troubleshooting.")
+            acceptsAll(listOf("d", "debug"), "Print all the debug information, used for troubleshooting")
             acceptsAll(listOf("q", "quiet"), "Turn off output")
-            acceptsAll(listOf("m", "model"),
-                "Path to model file. If not provided, will be created in working directory.")
+            acceptsAll(
+                listOf("m", "model"),
+                "This option is used to specify SPAN model path.\n" +
+                        "Required for further semi-supervised peak calling.\n" +
+                        "If not provided, will be created in working directory"
+            )
                 .withRequiredArg().withValuesConvertedBy(PathConverter.noCheck())
-            acceptsAll(listOf("l", "log"),
-                "Path to log file. If not provided, will be created in working directory.")
+            acceptsAll(
+                listOf("l", "log"),
+                "Path to log file. If not provided, will be created in working directory"
+            )
                 .withRequiredArg().withValuesConvertedBy(PathConverter.noCheck())
             acceptsAll(
                 listOf("cs", "chrom.sizes"),
@@ -118,38 +124,53 @@ compare                         Differential peak calling
                     https://hgdownload.cse.ucsc.edu/goldenPath/<build>/bigZips/<build>.chrom.sizes
                     """.trimIndent()
             ).requiredUnless("model").withRequiredArg().withValuesConvertedBy(PathConverter.exists())
-            acceptsAll(listOf("ext"), "Save extended states information to model file")
             acceptsAll(
-                listOf("p", "peaks"), "Path to result peaks file in ENCODE broadPeak (BED 6+3) format"
+                listOf("ext"), "Save extended states information to model file.\n" +
+                        "Required for model visualization in JBR Genome Browser"
+            )
+            acceptsAll(
+                listOf("p", "peaks"),
+                "Resulting peaks file in ENCODE broadPeak (BED 6+3) format.\n" +
+                        "If omitted, only the model fitting step is performed"
             ).withRequiredArg().withValuesConvertedBy(PathConverter.noCheck())
             acceptsAll(
                 listOf("fragment"),
                 """
-                    Fragment size. If it's an integer, reads are shifted appropriately.
-                    If it's the string 'auto', the shift is estimated from the data. (default: auto)
+                    Fragment size. If provided, reads are shifted appropriately.
+                    --fragment 0 recommended for ATAC-Seq data processing.
+                    If not provided or auto, the shift is estimated from the data (default: auto)
                     """.trimIndent()
             ).withRequiredArg().withValuesConvertedBy(FragmentConverter())
-            acceptsAll(listOf("b", "bin"), "Bin size. (default: ${SPAN_DEFAULT_BIN})")
+            acceptsAll(listOf("b", "bin"), "Bin size (default: ${SPAN_DEFAULT_BIN})")
                 .withRequiredArg()
                 .ofType(Int::class.java)
 
-            acceptsAll(listOf("f", "fdr"), "FDR value.")
+            acceptsAll(listOf("f", "fdr"), "False Discovery Rate cutoff to call significant regions")
                 .availableIf("peaks")
                 .withRequiredArg()
                 .ofType(Double::class.java)
                 .defaultsTo(SPAN_DEFAULT_FDR)
-            acceptsAll(listOf("g", "gap"), "Gap size to merge consequent peaks.")
+            acceptsAll(
+                listOf("g", "gap"),
+                "Gap size to merge spatially close peaks. Useful for wide histone modifications"
+            )
                 .availableIf("peaks")
                 .withRequiredArg()
                 .ofType(Int::class.java)
                 .defaultsTo(SPAN_DEFAULT_GAP)
-            acceptsAll(listOf("w", "workdir"), "Path to the working dir")
+            acceptsAll(listOf("w", "workdir"), " Path to the working directory. Used to save coverage and model cache")
                 .withRequiredArg().withValuesConvertedBy(PathConverter.exists())
                 .defaultsTo(System.getProperty("user.dir").toPath())
-            acceptsAll(listOf("threads"), "Parallelism level")
+            acceptsAll(
+                listOf("threads"),
+                "Parallelism level (default: ${Runtime.getRuntime().availableProcessors()})"
+            )
                 .withRequiredArg()
                 .ofType(Int::class.java)
-            acceptsAll(listOf("i", "iterations"), "Maximum number of iterations for EM algorithm")
+            acceptsAll(
+                listOf("i", "iterations"),
+                "Maximum number of iterations for Expectation Maximisation (EM) algorithm"
+            )
                 .withRequiredArg()
                 .ofType(Int::class.java)
                 .defaultsTo(SPAN_FIT_MAX_ITERATIONS)
@@ -160,11 +181,17 @@ compare                         Differential peak calling
                 .withRequiredArg()
                 .ofType(Double::class.java)
                 .defaultsTo(SPAN_FIT_THRESHOLD)
-            acceptsAll(listOf("kd", "keep-duplicates"), "Keep duplicates")
-                .withOptionalArg()
-                .ofType(Boolean::class.java)
-                .defaultsTo(true)
-            acceptsAll(listOf("kc", "keep-cache"), "Keep cache files")
+            acceptsAll(
+                listOf("kd", "keep-duplicates"),
+                "Keep duplicates.\n" +
+                        "By default, SPAN filters out redundant reads aligned at the same genomic position.\n" +
+                        "Recommended for bulk single cell ATAC-Seq data processing"
+            )
+            acceptsAll(
+                listOf("kc", "keep-cache"),
+                "Keep cache files.\n" +
+                        "By default SPAN creates cache files in working directory and removes them after computation is done"
+            )
         }
     }
 
@@ -189,8 +216,7 @@ compare                         Differential peak calling
     internal fun getUnique(
         options: OptionSet, fitInformation: AbstractSpanAnalyzeFitInformation? = null, log: Boolean = false
     ) = !getProperty(
-        if ("keep-duplicates" in options) options.valueOf("keep-duplicates") as Boolean else null,
-        fitInformation?.unique?.not(), false,
+        "keep-duplicates" in options, fitInformation?.unique?.not(), false,
         "'keep duplicates' flag", "KEEP DUPLICATES", log
     )
 
