@@ -91,7 +91,7 @@ object SpanCLAAnalyze {
                 val modelPath = options.valueOf("model") as Path?
                 val keepCacheFiles = "keep-cache" in options
                 checkOrFail(peaksPath != null || modelPath != null || keepCacheFiles) {
-                    "At least one of the parameters is required: --peaks, --model or --keep-cache"
+                    "At least one of the parameters is required: --peaks, --model or --keep-cache."
                 }
 
                 val labelsPath = options.valueOf("labels") as Path?
