@@ -6,7 +6,7 @@ object SpanConstants {
     /**
      * Default bin size used for binned centered reads coverage aggregation.
      */
-    const val SPAN_DEFAULT_BIN = 100
+    const val SPAN_DEFAULT_BIN = 200
 
     /**
      * The SPAN_DEFAULT_FDR variable represents the default value for the FDR parameter.
