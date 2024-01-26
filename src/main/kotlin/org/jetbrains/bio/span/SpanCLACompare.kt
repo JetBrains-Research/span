@@ -95,9 +95,9 @@ object SpanCLACompare {
                 require(0 < fdr && fdr <= 1) { "Illegal fdr: $fdr, expected range: (0, 1)" }
 
                 val workingDir = options.valueOf("workdir") as Path
-                val logId = peaksPath?.stemGz ?: reduceIds(listOf(modelId, fdr.toString(), gap.toString()))
+                val id = peaksPath?.stemGz ?: reduceIds(listOf(modelId, fdr.toString(), gap.toString()))
                 val logPath = options.valueOf("log") as Path? ?:
-                (org.jetbrains.bio.experiment.Configuration.logsPath / "$logId.log")
+                (org.jetbrains.bio.experiment.Configuration.logsPath / "$id.log")
                 val chromSizesPath = options.valueOf("chrom.sizes") as Path?
 
                 // Configure working directories
@@ -140,7 +140,7 @@ object SpanCLACompare {
                         gap,
                         clip
                     )
-                    Peak.savePeaks(peaks, peaksPath, "diff_${logPath.stem.substringBeforeLast(".log")}")
+                    Peak.savePeaks(peaks, peaksPath, "diff_${id}.peak")
                     LOG.info("Saved result to $peaksPath")
                 }
                 if (!keepCacheFiles) {
