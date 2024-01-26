@@ -117,7 +117,7 @@ object SpanCLAAnalyze {
                 // Configure working directories
                 LOG.info("WORKING DIR: $workingDir")
                 if (!SpanCLA.ignoreConfigurePaths) {
-                    configurePaths(workingDir, chromSizesPath = chromSizesPath, logPath = logPath)
+                    configurePaths(workingDir, genomesPath = chromSizesPath?.parent, logsPath = logPath.parent)
                 }
                 // Configure logging to file
                 Logs.addLoggingToFile(logPath)
