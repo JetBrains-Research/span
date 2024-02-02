@@ -1,6 +1,7 @@
 package org.jetbrains.bio.span
 
 import joptsimple.OptionSet
+import org.jetbrains.bio.experiment.Configuration
 import org.jetbrains.bio.experiment.configurePaths
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
@@ -14,6 +15,7 @@ import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.util.*
 import org.slf4j.event.Level
 import java.nio.file.Path
+import kotlin.math.log
 
 object SpanCLACompare {
 
@@ -95,19 +97,20 @@ object SpanCLACompare {
 
                 val workingDir = options.valueOf("workdir") as Path
                 val id = peaksPath?.stemGz ?: reduceIds(listOf(modelId, fdr.toString(), gap.toString()))
-                val logPath = options.valueOf("log") as Path? ?:
-                (org.jetbrains.bio.experiment.Configuration.logsPath / "$id.log")
+                var logPath = options.valueOf("log") as Path?
                 val chromSizesPath = options.valueOf("chrom.sizes") as Path?
 
                 // Configure working directories
                 LOG.info("WORKING DIR: $workingDir")
                 if (!SpanCLA.ignoreConfigurePaths) {
-                    configurePaths(workingDir, genomesPath = chromSizesPath?.parent, logsPath = logPath.parent)
+                    configurePaths(workingDir, genomesPath = chromSizesPath?.parent, logsPath = logPath?.parent)
                 }
                 // Configure logging to file
+                if (logPath == null) {
+                    logPath = Configuration.logsPath / "$id.log"
+                }
                 Logs.addLoggingToFile(logPath)
                 LOG.info("LOG: $logPath")
-
 
                 // Call now to preserve correct params logging
                 val lazyDifferentialPeakCallingResults = differentialPeakCallingResults(options)

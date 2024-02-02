@@ -1,6 +1,7 @@
 package org.jetbrains.bio.span
 
 import joptsimple.OptionSet
+import org.jetbrains.bio.experiment.Configuration
 import org.jetbrains.bio.experiment.configurePaths
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
@@ -107,18 +108,20 @@ object SpanCLAAnalyze {
                 require(0 < fdr && fdr <= 1) { "Illegal fdr: $fdr, expected range: (0, 1)" }
 
                 val workingDir = options.valueOf("workdir") as Path
-                val logId =
-                    peaksPath?.stemGz ?: modelPath?.stem ?: reduceIds(listOf(modelId, fdr.toString(), gap.toString()))
-                val logPath = options.valueOf("log") as Path?
-                    ?: (org.jetbrains.bio.experiment.Configuration.logsPath / "$logId.log")
+                val id = peaksPath?.stemGz ?: modelPath?.stem ?:
+                    reduceIds(listOf(modelId, fdr.toString(), gap.toString()))
+                var logPath = options.valueOf("log") as Path?
                 val chromSizesPath = options.valueOf("chrom.sizes") as Path?
 
                 // Configure working directories
                 LOG.info("WORKING DIR: $workingDir")
                 if (!SpanCLA.ignoreConfigurePaths) {
-                    configurePaths(workingDir, genomesPath = chromSizesPath?.parent, logsPath = logPath.parent)
+                    configurePaths(workingDir, genomesPath = chromSizesPath?.parent, logsPath = logPath?.parent)
                 }
                 // Configure logging to file
+                if (logPath == null) {
+                    logPath = Configuration.logsPath / "$id.log"
+                }
                 Logs.addLoggingToFile(logPath)
                 LOG.info("LOG: $logPath")
 
