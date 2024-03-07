@@ -8,13 +8,17 @@ import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.emission.ConstantIntegerEmissionScheme
 import org.jetbrains.bio.statistics.emission.IntegerEmissionScheme
 import org.jetbrains.bio.statistics.hmm.MLFreeHMM
+import org.jetbrains.bio.statistics.stochastic
 import org.jetbrains.bio.viktor.F64Array
 
 /**
  * Abstract hidden Markov model with multidimensional integer-valued emissions.
  * Consists of ZERO state and abstract number of Negative binomial states.
  */
-open class FreeNBZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) : MLFreeHMM(nbMeans.size + 1, 1) {
+open class FreeNBZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray,
+                      priorProbabilities: F64Array = F64Array.stochastic(nbMeans.size + 1),
+                      transitionProbabilities: F64Array = F64Array.stochastic(nbMeans.size + 1, nbMeans.size + 1))
+    : MLFreeHMM(nbMeans.size + 1, 1,  priorProbabilities, transitionProbabilities) {
 
     private val zeroEmission: ConstantIntegerEmissionScheme = ConstantIntegerEmissionScheme(0)
     private val negBinEmissionSchemes: Array<NegBinEmissionScheme> =
