@@ -6,16 +6,14 @@ import org.jetbrains.bio.experiment.configurePaths
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.span.SpanCLA.LOG
-import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
-import org.jetbrains.bio.span.fit.SpanDataPaths
-import org.jetbrains.bio.span.fit.SpanDifferentialPeakCallingExperiment
-import org.jetbrains.bio.span.fit.SpanFitResults
+import org.jetbrains.bio.span.fit.*
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BACKGROUND_SENSITIVITY
 import org.jetbrains.bio.span.peaks.ModelToPeaks
 import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.util.*
 import org.slf4j.event.Level
 import java.nio.file.Path
-import kotlin.math.log
 
 object SpanCLACompare {
 
@@ -90,13 +88,20 @@ object SpanCLACompare {
                     SpanCLA.getUnique(options),
                 )
 
-                val gap = options.valueOf("gap") as Int
                 val fdr = options.valueOf("fdr") as Double
-                require(gap >= 0) { "Negative gap: $gap" }
-                require(0 < fdr && fdr <= 1) { "Illegal fdr: $fdr, expected range: (0, 1)" }
+                require(0 < fdr && fdr < 1) { "Illegal fdr: $fdr, expected range: (0, 1)" }
+                val bgSensitivity = if (options.has("bg-sensitivity"))
+                    options.valueOf("bg-sensitivity") as Double
+                else
+                    SPAN_DEFAULT_BACKGROUND_SENSITIVITY
+                require(bgSensitivity.isNaN() || 0 < bgSensitivity && bgSensitivity <= 1) {
+                    "Illegal background sensitivity: $bgSensitivity, expected range: (0, 1]"
+                }
+                val clip = if (options.has("clip")) options.valueOf("clip") as Double else SPAN_DEFAULT_CLIP
+                require(0 <= clip && clip < 1) { "Illegal clip: $fdr, expected range: [0, 1)" }
 
                 val workingDir = options.valueOf("workdir") as Path
-                val id = peaksPath?.stemGz ?: reduceIds(listOf(modelId, fdr.toString(), gap.toString()))
+                val id = peaksPath?.stemGz ?: reduceIds(listOf(modelId, fdr.toString(), bgSensitivity.toString(), clip.toString()))
                 var logPath = options.valueOf("log") as Path?
                 val chromSizesPath = options.valueOf("chrom.sizes") as Path?
 
@@ -116,13 +121,14 @@ object SpanCLACompare {
                 val lazyDifferentialPeakCallingResults = differentialPeakCallingResults(options)
 
                 LOG.info("FDR: $fdr")
-                LOG.info("GAP: $gap")
+                LOG.info("BACKGROUND SENSITIVITY: $bgSensitivity")
+                LOG.info("CLIP: $clip")
 
                 if (peaksPath != null) {
                     LOG.info("PEAKS: $peaksPath")
                 } else {
                     LOG.info("NO peaks path given, process model fitting only.")
-                    LOG.info("LABELS, FDR, GAP options are ignored.")
+                    LOG.info("Labels, fdr, background sensitivity, clip options are ignored.")
                 }
 
                 val threads = options.valueOf("threads") as Int? ?: Runtime.getRuntime().availableProcessors()
@@ -135,8 +141,6 @@ object SpanCLACompare {
                 configureParallelism(threads)
                 LOG.info("THREADS: ${parallelismLevel()}")
 
-                val clip = "clip" in options
-                LOG.info("CLIP: $clip")
 
                 val differentialPeakCallingResults = lazyDifferentialPeakCallingResults.value
                 val genomeQuery = differentialPeakCallingResults.fitInfo.genomeQuery()
@@ -145,7 +149,7 @@ object SpanCLACompare {
                         differentialPeakCallingResults,
                         genomeQuery,
                         fdr,
-                        gap,
+                        bgSensitivity,
                         clip
                     )
                     Peak.savePeaks(peaks, peaksPath, "diff_${id}.peak")

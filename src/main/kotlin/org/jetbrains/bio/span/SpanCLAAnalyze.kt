@@ -11,6 +11,7 @@ import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.SpanCLA.LOG
 import org.jetbrains.bio.span.SpanCLA.checkGenomeInFitInformation
 import org.jetbrains.bio.span.fit.*
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP
 import org.jetbrains.bio.span.fit.experimental.*
 import org.jetbrains.bio.span.peaks.ModelToPeaks
 import org.jetbrains.bio.span.peaks.Peak
@@ -60,8 +61,6 @@ object SpanCLAAnalyze {
             )
                 .withRequiredArg()
                 .defaultsTo(SpanModelType.NB2Z_HMM.id)
-            accepts("clip", " Clip peaks to improve peaks density using local signal coverage.\n" +
-                    "Recommended for TFs, narrow histone marks and ATAC-seq")
 
             // Additional parameter for *_REGRESSION_MIXTURE models
             accepts(
@@ -102,14 +101,21 @@ object SpanCLAAnalyze {
                     SpanCLA.getBin(options),
                     SpanCLA.getUnique(options),
                 )
-                val gap = options.valueOf("gap") as Int
                 val fdr = options.valueOf("fdr") as Double
-                require(gap >= 0) { "Negative gap: $gap" }
-                require(0 < fdr && fdr <= 1) { "Illegal fdr: $fdr, expected range: (0, 1)" }
+                require(0 < fdr && fdr < 1) { "Illegal fdr: $fdr, expected range: (0, 1)" }
+                val bgSensitivity = if (options.has("bg-sensitivity"))
+                    options.valueOf("bg-sensitivity") as Double
+                else
+                    SpanConstants.SPAN_DEFAULT_BACKGROUND_SENSITIVITY
+                require(bgSensitivity.isNaN() || 0 < bgSensitivity && bgSensitivity <= 1) {
+                    "Illegal background sensitivity: $bgSensitivity, expected range: (0, 1]"
+                }
+                val clip = if (options.has("clip")) options.valueOf("clip") as Double else SPAN_DEFAULT_CLIP
+                require(0 <= clip && clip < 1) { "Illegal clip: $fdr, expected range: [0, 1)" }
 
                 val workingDir = options.valueOf("workdir") as Path
                 val id = peaksPath?.stemGz ?: modelPath?.stem ?:
-                    reduceIds(listOf(modelId, fdr.toString(), gap.toString()))
+                    reduceIds(listOf(modelId, fdr.toString(), bgSensitivity.toString(), clip.toString()))
                 var logPath = options.valueOf("log") as Path?
                 val chromSizesPath = options.valueOf("chrom.sizes") as Path?
 
@@ -131,15 +137,16 @@ object SpanCLAAnalyze {
                 if (peaksPath != null) {
                     if (labelsPath != null) {
                         LOG.info("LABELS: $labelsPath")
-                        LOG.info("FDR, GAP options are ignored.")
+                        LOG.info("Fdr, background sensitivity, clip options are ignored.")
                     } else {
                         LOG.info("FDR: $fdr")
-                        LOG.info("GAP: $gap")
+                        LOG.info("BACKGROUND SENSITIVITY: $bgSensitivity")
+                        LOG.info("CLIP: $clip")
                     }
                     LOG.info("PEAKS: $peaksPath")
                 } else {
                     LOG.info("NO peaks path given, process model fitting only.")
-                    LOG.info("LABELS, FDR, GAP options are ignored.")
+                    LOG.info("Labels, fdr, background sensitivity, clip options are ignored.")
                 }
 
                 val threads = options.valueOf("threads") as Int? ?: Runtime.getRuntime().availableProcessors()
@@ -152,8 +159,6 @@ object SpanCLAAnalyze {
                 configureParallelism(threads)
                 LOG.info("THREADS: ${parallelismLevel()}")
 
-                val clip = "clip" in options
-                LOG.info("CLIP: $clip")
 
                 val spanResults = lazySpanResults.value
                 val fitInfo = spanResults.fitInfo
@@ -166,9 +171,9 @@ object SpanCLAAnalyze {
 
                 if (peaksPath != null) {
                     if (labelsPath == null) {
-                        savePeaks(spanResults, fitInfo, genomeQuery, bin, fragment, fdr, gap, clip, peaksPath)
+                        savePeaks(spanResults, fitInfo, genomeQuery, bin, fragment, fdr, bgSensitivity, clip, peaksPath)
                     } else {
-                        saveTunedResults(spanResults, genomeQuery, bin, fragment, clip, labelsPath, peaksPath)
+                        saveTunedResults(spanResults, genomeQuery, bin, fragment, labelsPath, peaksPath)
                     }
                 }
                 if (modelPath == null && !keepCacheFiles) {
@@ -187,14 +192,14 @@ object SpanCLAAnalyze {
         bin: Int,
         fragment: Fragment,
         fdr: Double,
-        gap: Int,
-        clip: Boolean,
+        sensitivity: Double,
+        clip: Double,
         peaksPath: Path
     ) {
-        val peaks = ModelToPeaks.computeChromosomePeaks(spanResults, genomeQuery, fdr, gap, clip)
+        val peaks = ModelToPeaks.computeChromosomePeaks(spanResults, genomeQuery, fdr, sensitivity, clip)
         Peak.savePeaks(
             peaks, peaksPath,
-            "peak${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${gap}"
+            "peak${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${sensitivity}_${clip}"
         )
         LOG.info("Saved result to $peaksPath")
         val aboutPeaks = PeaksInfo.compute(
@@ -214,7 +219,6 @@ object SpanCLAAnalyze {
         genomeQuery: GenomeQuery,
         bin: Int,
         fragment: Fragment,
-        clip: Boolean,
         labelsPath: Path,
         peaksPath: Path
     ) {
@@ -231,13 +235,13 @@ object SpanCLAAnalyze {
             CancellableState.current()
         )
         LOG.info("Tuning model on the loaded labels complete.")
-        val (optimalFDR, optimalGap) = SpanSemiSupervised.PARAMETERS[optimalIndex]
-        LOG.info("Optimal settings: FDR=$optimalFDR, GAP=$optimalGap")
+        val (optimalFDR, optimalSensitivity, optimalClip) = SpanSemiSupervised.PARAMETERS[optimalIndex]
+        LOG.info("Optimal settings: FDR=$optimalFDR, SENSITIVITY=$optimalSensitivity, CLIP=$optimalClip")
         labelErrorsGrid.forEachIndexed { i, error ->
-            val (fdrTuning, gapTuning) = SpanSemiSupervised.PARAMETERS[i]
+            val (fdrTuning, sensitivityTuning, clipTuning) = SpanSemiSupervised.PARAMETERS[i]
             results.addRecord(
                 "result",
-                "${fdrTuning}_${gapTuning}",
+                "${fdrTuning}_${sensitivityTuning}_${clipTuning}",
                 error,
                 i == optimalIndex
             )
@@ -248,12 +252,12 @@ object SpanCLAAnalyze {
                     / "${peaksPath.fileName.stem}_parameters.csv"
         )
         val peaks = ModelToPeaks.computeChromosomePeaks(
-            spanResults, genomeQuery, optimalFDR, optimalGap, clip
+            spanResults, genomeQuery, optimalFDR, optimalSensitivity, optimalClip
         )
         Peak.savePeaks(
             peaks, peaksPath,
             "peak${if (fragment is FixedFragment) "_$fragment" else ""}_" +
-                    "${bin}_${optimalFDR}_$optimalGap"
+                    "${bin}_${optimalFDR}_${optimalSensitivity}"
         )
         LOG.info("Saved result to $peaksPath")
     }

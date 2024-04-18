@@ -3,6 +3,18 @@ SPAN Changelog
 
 Here you can see the full list of changes between each release.
 
+Version 1.6
+----------------
+
+Released on Apr XX, 2024
+
+- Faster SPAN model convergence by relative likelihood estimation
+- Improved initialization to make SPAN more robust in low signal-to-noise ratio case
+- Don't process contigs when coverage distribution is different from genome-wise
+- Introduced `--bg-sensitivity` to configure sensitivity of peak backgrounds
+- Dropped `gap` as obsolete
+- Peaks from model procedure significantly improved tuning flexibility
+
 Version 1.5
 ----------------
 

@@ -63,7 +63,7 @@ class NegBinRegressionEmissionScheme(
         val X = generateDesignMatrix(df)
         val yInt = df.sliceAsInt(df.labels[d])
         val y = DoubleArray(yInt.size) { yInt[it].toDouble() }.asF64Array()
-        val iterMax = 100
+        val iterMax = 10
         val tol = 1e-8
         var beta0 = regressionCoefficients
         var beta1 = regressionCoefficients

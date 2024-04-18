@@ -6,6 +6,8 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BACKGROUND_SENSITIVITY
 import org.jetbrains.bio.span.peaks.ModelToPeaks
 import org.jetbrains.bio.util.Logs
 import org.jetbrains.bio.util.stemGz
@@ -76,8 +78,8 @@ class SpanModelFitExperimentTest {
                 ModelToPeaks.computeChromosomePeaks(
                     peakCallingExperiment.results, fullGenomeQuery,
                     fdr = 0.05,
-                    gap = 0,
-                    clip = false,
+                    bgSensitivity = SPAN_DEFAULT_BACKGROUND_SENSITIVITY,
+                    clip = SPAN_DEFAULT_CLIP,
                     cancellableState = null
                 )
                     .isNotEmpty(),

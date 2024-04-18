@@ -17,9 +17,9 @@ class NegBitUtilTest {
         val (means0, failures0) = NegBinUtil.guessByData(
             emissions, 2
         )
-        assertEquals(5.94, means0[0], 1.0)
-        assertEquals(18.79, means0[1], 1.0)
-        assertEquals(6.53, failures0[0], 1.0)
-        assertEquals(20.52, failures0[1], 1.0)
+        assertEquals(1.8, means0[0], .1)
+        assertEquals(8.4, means0[1], .1)
+        assertEquals(0.14, failures0[0], .1)
+        assertEquals(0.14, failures0[1], .1)
     }
 }

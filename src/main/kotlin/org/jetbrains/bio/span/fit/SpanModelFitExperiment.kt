@@ -262,7 +262,9 @@ abstract class SpanModelFitExperiment<
                     // otherwise we can get some very hard-to-catch bugs later
                     ReadsQuery(genomeQuery, c, unique, fragment, showLibraryInfo = false).get()
                 }
-                nonEmptyChromosomes.addAll(chromosomes.filter { coverage.getBothStrandsCoverage(it.range.on(it)) > 0 })
+                nonEmptyChromosomes.addAll(
+                    chromosomes.filter { coverage.getBothStrandsCoverage(it.chromosomeRange) > 0 }
+                )
             }
 
             if (nonEmptyChromosomes.isEmpty()) {

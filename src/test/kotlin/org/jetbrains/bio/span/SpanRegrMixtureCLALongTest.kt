@@ -9,8 +9,9 @@ import org.jetbrains.bio.genome.format.BedFormat
 import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BACKGROUND_SENSITIVITY
 import org.jetbrains.bio.span.fit.SpanDataPaths
 import org.jetbrains.bio.span.fit.SpanModelType
 import org.jetbrains.bio.statistics.distribution.Sampling
@@ -105,9 +106,8 @@ class SpanRegrMixtureCLALongTest {
                     )
                 }
                 assertFalse(
-                    """NO output path given, process model fitting only.
-    LABELS, FDR, GAP options are ignored.
-    """ in out
+                    "NO output path given, process model fitting only.\n" +
+                            "Labels, fdr, background sensitivity, clip options are ignored." in out
                 )
                 val ds =
                     DecimalFormatSymbols(Locale.getDefault()).decimalSeparator // XXX: Not so important to make to types of tests for US and EU locales
@@ -174,7 +174,14 @@ class SpanRegrMixtureCLALongTest {
                     )
 
                     // Log file test
-                    val logId = reduceIds(listOf(modelId, SPAN_DEFAULT_FDR.toString(), SPAN_DEFAULT_GAP.toString()))
+                    val logId = reduceIds(
+                        listOf(
+                            modelId,
+                            SPAN_DEFAULT_FDR.toString(),
+                            SPAN_DEFAULT_BACKGROUND_SENSITIVITY.toString(),
+                            SPAN_DEFAULT_CLIP.toString()
+                        )
+                    )
                     assertTrue((Configuration.logsPath / "${logId}.log").exists, "Log file not found")
 
                     // Genome Coverage test
@@ -183,7 +190,8 @@ class SpanRegrMixtureCLALongTest {
                     // Model test
                     assertEquals(
                         1, Configuration.experimentsPath.glob(
-                            "${modelId}*.${SpanModelType.POISSON_REGRESSION_MIXTURE.extension}").size
+                            "${modelId}*.${SpanModelType.POISSON_REGRESSION_MIXTURE.extension}"
+                        ).size
                     )
                 }
             }

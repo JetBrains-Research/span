@@ -7,9 +7,10 @@ import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.fit.AbstractSpanAnalyzeFitInformation
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BACKGROUND_SENSITIVITY
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_MAX_ITERATIONS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanDataPaths
@@ -151,14 +152,24 @@ compare                         Differential peak calling
                 .ofType(Double::class.java)
                 .defaultsTo(SPAN_DEFAULT_FDR)
             acceptsAll(
-                listOf("g", "gap"),
-                "Gap size to merge spatially close peaks. Useful for wide histone modifications"
-            )
+                listOf("bgs", "bg-sensitivity"),
+                "Configures background sensitivity for peaks.\n" +
+                        "Recommended value for generic ChIP-seq: $SPAN_DEFAULT_BACKGROUND_SENSITIVITY,\n" +
+                        "Recommended value for TFs and ATAC-seq: 0.8")
                 .availableIf("peaks")
                 .withRequiredArg()
-                .ofType(Int::class.java)
-                .defaultsTo(SPAN_DEFAULT_GAP)
-            acceptsAll(listOf("w", "workdir"), " Path to the working directory. Used to save coverage and model cache")
+                .ofType(Double::class.java)
+                .defaultsTo(SPAN_DEFAULT_BACKGROUND_SENSITIVITY)
+            accepts("clip",
+                "Clip peaks to improve peaks density using local signal coverage." +
+                        "Recommended value for generic ChIP-seq: $SPAN_DEFAULT_CLIP,\n" +
+                        "Recommended value for TFs and ATAC-seq: 0.8")
+                .availableIf("peaks")
+                .withRequiredArg()
+                .ofType(Double::class.java)
+                .defaultsTo(SPAN_DEFAULT_CLIP)
+
+            acceptsAll(listOf("w", "workdir"), "Path to the working directory. Used to save coverage and model cache")
                 .withRequiredArg().withValuesConvertedBy(PathConverter.exists())
                 .defaultsTo(System.getProperty("user.dir").toPath())
             acceptsAll(

@@ -1,6 +1,8 @@
 package org.jetbrains.bio.span.statistics.hmm
 
 import org.jetbrains.bio.dataframe.DataFrame
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_NB2ZHMM_PRIORS
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_NB2ZHMM_TRANSITIONS_
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.viktor.F64Array
@@ -15,8 +17,8 @@ import org.jetbrains.bio.viktor.F64Array
  */
 class NB2ZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) :
     FreeNBZHMM(nbMeans, nbFailures,
-        priorProbabilities= NB2ZHMM_PRIORS,
-        transitionProbabilities = NB2ZHMM_TRANSITIONS
+        priorProbabilities = SPAN_DEFAULT_NB2ZHMM_PRIORS,
+        transitionProbabilities = F64Array.invoke(3, 3) { i, j -> SPAN_DEFAULT_NB2ZHMM_TRANSITIONS_[i][j] }
     ) {
 
     companion object {
@@ -24,16 +26,6 @@ class NB2ZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) :
         @Transient
         @JvmField
         val VERSION: Int = 2
-
-        // Proper initialisation makes convergence faster, more accurate
-        val NB2ZHMM_PRIORS = F64Array.of(0.5, 0.45, 0.05)
-
-        private val NB2ZHMM_TRANSITIONS_ = listOf(
-            doubleArrayOf(0.99, 0.009, 0.001),
-            doubleArrayOf(0.8, 0.19, 0.01),
-            doubleArrayOf(0.01, 0.04, 0.95))
-
-        val NB2ZHMM_TRANSITIONS = F64Array.invoke(3, 3) {i, j -> NB2ZHMM_TRANSITIONS_[i][j]}
 
 
         fun fitter() = object : Fitter<NB2ZHMM> {

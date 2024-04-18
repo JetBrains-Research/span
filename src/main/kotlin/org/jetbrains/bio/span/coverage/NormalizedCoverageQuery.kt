@@ -128,10 +128,10 @@ class NormalizedCoverageQuery(
                 return NormalizedCoverageInfo(1.0, 1.0, 0.0)
             }
             val treatmentTotal = genomeQuery.get().sumOf {
-                treatmentCoverage.getBothStrandsCoverage(it.range.on(it)).toLong()
+                treatmentCoverage.getBothStrandsCoverage(it.chromosomeRange).toLong()
             }
             val controlTotal = genomeQuery.get().sumOf {
-                controlCoverage.getBothStrandsCoverage(it.range.on(it)).toLong()
+                controlCoverage.getBothStrandsCoverage(it.chromosomeRange).toLong()
             }
             // Upscale coverage to bigger one
             val targetCoverage = max(treatmentTotal, controlTotal)
@@ -155,12 +155,12 @@ class NormalizedCoverageQuery(
             treatmentScale: Double,
             controlCoverage: Coverage,
             controlScale: Double,
-            bin: Int = SPAN_DEFAULT_BIN,
+            bin: Int,
             betaStep: Double = SPAN_DEFAULT_BETA_STEP,
         ): Double {
             // Estimate beta corrected signal only on not empty chromosomes
             val chromosomeWithMaxSignal = genomeQuery.get()
-                .maxByOrNull { treatmentCoverage.getBothStrandsCoverage(it.range.on(it)) } ?: return 0.0
+                .maxByOrNull { treatmentCoverage.getBothStrandsCoverage(it.chromosomeRange) } ?: return 0.0
             val binnedTreatment = chromosomeWithMaxSignal.range.slice(bin).mapToDouble { range ->
                 treatmentCoverage.getBothStrandsCoverage(range.on(chromosomeWithMaxSignal)) * treatmentScale
             }.toArray()
@@ -178,7 +178,7 @@ class NormalizedCoverageQuery(
                     binnedNorm[i] = binnedTreatment[i] - b * binnedControl[i]
                 }
                 val c = abs(pearsonCorrelation.correlation(binnedNorm, binnedControl))
-                if (c < minCorrelation) {
+                if (c <= minCorrelation) {
                     minCorrelation = c
                     minB = b
                 }

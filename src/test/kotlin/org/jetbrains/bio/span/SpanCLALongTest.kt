@@ -14,8 +14,9 @@ import org.jetbrains.bio.genome.format.BedFormat
 import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BACKGROUND_SENSITIVITY
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_MAX_ITERATIONS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanDataPaths
@@ -108,7 +109,6 @@ class SpanCLALongTest {
                             "-t2", path.toString(),
                             "--peaks", peaksPath.toString(),
                             "--fdr", SPAN_DEFAULT_FDR.toString(),
-                            "--gap", SPAN_DEFAULT_GAP.toString(),
                             "--threads", THREADS.toString()
                         )
                     )
@@ -133,7 +133,6 @@ CHROM.SIZES: $chromsizes
 FRAGMENT: auto
 BIN: $SPAN_DEFAULT_BIN
 FDR: $SPAN_DEFAULT_FDR
-GAP: $SPAN_DEFAULT_GAP
 PEAKS: $peaksPath
 """, out
                 )
@@ -163,7 +162,6 @@ PEAKS: $peaksPath
                         "-cs", Genome["to1"].chromSizesPath.toString(),
                         "-w", it.toString(),
                         "-b", SPAN_DEFAULT_BIN.toString(),
-                        "-g", SPAN_DEFAULT_GAP.toString(),
                         "-fragment", FRAGMENT.toString(),
                         "-t1", "$path,$path",
                         "-t2", "$path,$path,$path",
@@ -202,9 +200,8 @@ PEAKS: $peaksPath
                     )
                 }
                 assertIn(
-                    """NO peaks path given, process model fitting only.
-LABELS, FDR, GAP options are ignored.
-""", out
+                    "NO peaks path given, process model fitting only.\n" +
+                            "Labels, fdr, background sensitivity, clip options are ignored.", out
                 )
                 assertIn(".span: done in ", out)
                 assertIn("Model saved: ", out)
@@ -281,7 +278,14 @@ LABELS, FDR, GAP options are ignored.
                 )
 
                 /* we also check that logging was performed normally */
-                val logId = reduceIds(listOf(modelId, SPAN_DEFAULT_FDR.toString(), SPAN_DEFAULT_GAP.toString()))
+                val logId = reduceIds(
+                    listOf(
+                        modelId,
+                        SPAN_DEFAULT_FDR.toString(),
+                        SPAN_DEFAULT_BACKGROUND_SENSITIVITY.toString(),
+                        SPAN_DEFAULT_CLIP.toString()
+                    )
+                )
                 val logPath = Configuration.logsPath / "$logId.log"
                 assertTrue(logPath.exists, "Log file not found")
                 assertTrue(logPath.size.isNotEmpty(), "Log file is empty")
@@ -319,7 +323,14 @@ LABELS, FDR, GAP options are ignored.
                     )
 
                     // Check that log file was created correctly
-                    val logId = reduceIds(listOf(modelId, SPAN_DEFAULT_FDR.toString(), SPAN_DEFAULT_GAP.toString()))
+                    val logId = reduceIds(
+                        listOf(
+                            modelId,
+                            SPAN_DEFAULT_FDR.toString(),
+                            SPAN_DEFAULT_BACKGROUND_SENSITIVITY.toString(),
+                            SPAN_DEFAULT_CLIP.toString()
+                        )
+                    )
                     assertTrue((Configuration.logsPath / "$logId.log").exists, "Log file not found")
 
                     // Genome Coverage test
@@ -365,7 +376,14 @@ LABELS, FDR, GAP options are ignored.
                     )
 
                     // Check that log file was created correctly
-                    val logId = reduceIds(listOf(modelId, SPAN_DEFAULT_FDR.toString(), SPAN_DEFAULT_GAP.toString()))
+                    val logId = reduceIds(
+                        listOf(
+                            modelId,
+                            SPAN_DEFAULT_FDR.toString(),
+                            SPAN_DEFAULT_BACKGROUND_SENSITIVITY.toString(),
+                            SPAN_DEFAULT_CLIP.toString()
+                        )
+                    )
                     assertTrue((Configuration.logsPath / "$logId.log").exists, "Log file not found")
 
                     // Genome Coverage test
@@ -585,7 +603,8 @@ CHROM.SIZES: $chromsizes
 FRAGMENT: auto
 MAX ITERATIONS: $SPAN_FIT_MAX_ITERATIONS
 CONVERGENCE THRESHOLD: $SPAN_FIT_THRESHOLD
-CLIP: false
+BACKGROUND SENSITIVITY: 0.2
+CLIP: 0.4
 EXTENDED MODEL INFO: false
 Library: ${path.fileName}, Depth:
 100${ds}00% (
@@ -595,9 +614,8 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
 """, out
                 )
                 assertFalse(
-                    """NO peaks path given, process model fitting only.
-    LABELS, FDR, GAP options are ignored.
-    """ in out
+                    "NO peaks path given, process model fitting only.\n" +
+                            "Labels, fdr, background sensitivity, clip options are ignored." in out
                 )
 
                 /* Check that coverage is being generated */
@@ -900,7 +918,14 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
                 )
 
                 // Check that log file was created correctly
-                val logId = reduceIds(listOf(modelId, SPAN_DEFAULT_FDR.toString(), SPAN_DEFAULT_GAP.toString()))
+                val logId = reduceIds(
+                    listOf(
+                        modelId,
+                        SPAN_DEFAULT_FDR.toString(),
+                        SPAN_DEFAULT_BACKGROUND_SENSITIVITY.toString(),
+                        SPAN_DEFAULT_CLIP.toString()
+                    )
+                )
                 val logPath = Configuration.logsPath / "$logId.log"
                 assertTrue(logPath.exists, "Log file not found")
                 val log = FileReader(logPath.toFile()).use { it.readText() }

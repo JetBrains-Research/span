@@ -3,25 +3,32 @@ package org.jetbrains.bio.span.semisupervised
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanFitResults
 import org.jetbrains.bio.span.peaks.ModelToPeaks
 import org.jetbrains.bio.span.semisupervised.LocationLabel.Companion.computeErrors
-import org.jetbrains.bio.util.*
+import org.jetbrains.bio.util.CancellableState
+import org.jetbrains.bio.util.MultitaskProgress
+import org.jetbrains.bio.util.await
 import java.util.concurrent.Callable
 
 object SpanSemiSupervised {
 
     val FDRS = listOf(
-        0.1,
-        SPAN_DEFAULT_FDR, 0.01, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10
+        0.1, SPAN_DEFAULT_FDR, 0.01, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10
     )
 
-    val GAPS = listOf(0, 1, 2, SPAN_DEFAULT_GAP, 5, 10)
+    val SPAN_BACKGROUND_SENSITIVITY_VARIANTS =
+        doubleArrayOf(1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01).sorted()
+
+    val SPAN_CLIPS = doubleArrayOf(0.0, 0.2, 0.4, 0.6, 0.8)
 
     val PARAMETERS =
         FDRS.sorted().flatMap { fdr ->
-            GAPS.sorted().map { gap -> fdr to gap }
+            SPAN_BACKGROUND_SENSITIVITY_VARIANTS.sorted().flatMap { sensitivity ->
+                SPAN_CLIPS.map { clip ->
+                    Triple(fdr, sensitivity, clip)
+                }
+            }
         }
 
     fun tuneParameters(
@@ -29,7 +36,7 @@ object SpanSemiSupervised {
         genomeQuery: GenomeQuery,
         labels: List<LocationLabel>,
         id: String,
-        parameters: List<Pair<Double, Int>>,
+        parameters: List<Triple<Double, Double, Double>>,
         cancellableState: CancellableState
     ): Pair<List<LabelErrors>, Int> {
         val labeledGenomeQuery = GenomeQuery(
@@ -43,12 +50,12 @@ object SpanSemiSupervised {
         // Order is important!
         val labelErrorsGrid = Array<LabelErrors?>(parameters.size) { null }
 
-        val tasks = parameters.mapIndexed { index, (fdr, gap) ->
+        val tasks = parameters.mapIndexed { index, (fdr, sensitivity, clip) ->
             Callable {
                 cancellableState.checkCanceled()
                 val peaksOnLabeledGenomeQuery =
                     ModelToPeaks.computeChromosomePeaks(
-                        results, labeledGenomeQuery, fdr, gap, false,
+                        results, labeledGenomeQuery, fdr, sensitivity, clip,
                         CancellableState.current()
                     )
                 labelErrorsGrid[index] = computeErrors(
