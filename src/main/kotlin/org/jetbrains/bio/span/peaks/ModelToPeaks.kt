@@ -75,25 +75,15 @@ object ModelToPeaks {
             return emptyList()
         }
 
-        fitInfo.prepareData()
-
-        // Check genome contigs either by coverage info or by name
-        // When contig's coverage is much bigger that genome-wide, SPAN calls too long peaks
-        if (fitInfo is SpanAnalyzeFitInformation &&
-            fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
-        ) {
-            // We assume that the order of chromosomes is the same as in chromosome.sizes file
-            val regularChromosome = chromosome.genome.toQuery().get().first()
-            val mean = fitInfo.score(chromosome.chromosomeRange) / chromosome.length
-            val meanRegular = fitInfo.score(regularChromosome.chromosomeRange) / regularChromosome.length
-            if (abs(mean - meanRegular) > SPAN_MAXIMUM_COVERAGE_DELTA) {
-                LOG.warn("Ignore ${chromosome.name}: coverage is different $mean vs $regularChromosome :$meanRegular")
-                return emptyList()
-            }
-        } else if ('_' in chromosome.name || "random" in chromosome.name) {
+        if ('_' in chromosome.name ||
+            "random" in chromosome.name.lowercase() ||
+            "un" in chromosome.name.lowercase()) {
             LOG.warn("Ignore ${chromosome.name}: chromosome name looks like contig")
             return emptyList()
         }
+
+        // Prepare fit information for scores computations
+        fitInfo.prepareData()
 
         val logNullMemberships =
             spanFitResults.logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL)
