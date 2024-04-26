@@ -142,11 +142,14 @@ compare                         Differential peak calling
                     If not provided or auto, the shift is estimated from the data (default: auto)
                     """.trimIndent()
             ).withRequiredArg().withValuesConvertedBy(FragmentConverter())
-            acceptsAll(listOf("b", "bin"), "Bin size (default: ${SPAN_DEFAULT_BIN})")
+            acceptsAll(listOf("b", "bin"), "Bin size (default: $SPAN_DEFAULT_BIN)")
                 .withRequiredArg()
                 .ofType(Int::class.java)
 
-            acceptsAll(listOf("f", "fdr"), "False Discovery Rate cutoff to call significant regions")
+            acceptsAll(
+                listOf("f", "fdr"),
+                "False Discovery Rate cutoff to call significant regions (default: $SPAN_DEFAULT_FDR)"
+            )
                 .availableIf("peaks")
                 .withRequiredArg()
                 .ofType(Double::class.java)
@@ -155,15 +158,16 @@ compare                         Differential peak calling
                 listOf("bgs", "bg-sensitivity"),
                 "Configures background sensitivity for peaks.\n" +
                         "Recommended value for generic ChIP-seq: $SPAN_DEFAULT_BACKGROUND_SENSITIVITY,\n" +
-                        "Recommended value for TFs and ATAC-seq: 0.8")
+                        "Recommended value for TFs and ATAC-seq: 1.0"
+            )
                 .availableIf("peaks")
                 .withRequiredArg()
                 .ofType(Double::class.java)
                 .defaultsTo(SPAN_DEFAULT_BACKGROUND_SENSITIVITY)
-            accepts("clip",
-                "Clip peaks to improve peaks density using local signal coverage." +
-                        "Recommended value for generic ChIP-seq: $SPAN_DEFAULT_CLIP,\n" +
-                        "Recommended value for TFs and ATAC-seq: 0.8")
+            accepts(
+                "clip",
+                "Clip peaks to improve peaks density using local signal coverage (default: $SPAN_DEFAULT_CLIP)"
+            )
                 .availableIf("peaks")
                 .withRequiredArg()
                 .ofType(Double::class.java)

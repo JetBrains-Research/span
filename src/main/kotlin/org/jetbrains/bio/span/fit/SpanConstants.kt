@@ -6,7 +6,7 @@ object SpanConstants {
     /**
      * Default bin size used for binned centered reads coverage aggregation.
      */
-    const val SPAN_DEFAULT_BIN = 200
+    const val SPAN_DEFAULT_BIN = 100
 
     /**
      * The SPAN_DEFAULT_FDR variable represents the default value for the FDR parameter.
@@ -37,7 +37,7 @@ object SpanConstants {
      * SPAN_FIT_THRESHOLD is a constant variable that represents the threshold value used
      * in the SPAN peak-fitting algorithm, relative delta between the model log likelihood
      */
-    const val SPAN_FIT_THRESHOLD = 1e-3
+    const val SPAN_FIT_THRESHOLD = 1e-4
 
     /**
      * The maximum number of iterations to perform during the fitting process in the SPAN algorithm.
@@ -74,9 +74,4 @@ object SpanConstants {
      */
     val SPAN_CLIP_STEPS = intArrayOf(10, 20, 50, 100, 200, 500, 1000)
 
-    /**
-     * Threshold to ignore chromosome with different coverage than genome-wide.
-     * Useful for contigs, where coverage may be much higher than generally across the genome.
-     */
-    const val SPAN_MAXIMUM_COVERAGE_DELTA = 0.01
 }
