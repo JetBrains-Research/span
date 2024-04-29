@@ -2,11 +2,13 @@ package org.jetbrains.bio.span.peaks
 
 import org.apache.commons.math3.stat.StatUtils
 import org.jetbrains.bio.dataframe.BitList
-import org.jetbrains.bio.genome.*
+import org.jetbrains.bio.genome.Chromosome
+import org.jetbrains.bio.genome.ChromosomeRange
+import org.jetbrains.bio.genome.GenomeQuery
+import org.jetbrains.bio.genome.Range
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_CLIP_STEPS
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_MAXIMUM_COVERAGE_DELTA
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SCORE_BLOCKS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SCORE_BLOCKS_DISTANCE
 import org.jetbrains.bio.span.fit.SpanFitInformation
@@ -19,7 +21,6 @@ import org.jetbrains.bio.statistics.hypothesis.Fdr
 import org.jetbrains.bio.util.CancellableState
 import org.jetbrains.bio.viktor.F64Array
 import org.jetbrains.bio.viktor.KahanSum
-import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.ln
 import kotlin.math.min
