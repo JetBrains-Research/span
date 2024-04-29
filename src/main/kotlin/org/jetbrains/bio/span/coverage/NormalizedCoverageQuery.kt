@@ -169,7 +169,7 @@ class NormalizedCoverageQuery(
             }.toArray()
             var b = 0.0
             var minCorrelation = 1.0
-            var minB = -1.0
+            var minB = 0.0
             // Reuse array to reduce GC
             val binnedNorm = DoubleArray(binnedTreatment.size)
             val pearsonCorrelation = PearsonsCorrelation()
@@ -184,7 +184,9 @@ class NormalizedCoverageQuery(
                 }
                 b += betaStep
             }
-            check(minB != -1.0) { "Failed to estimate beta-value for control correction" }
+            if (minB == 0.0) {
+                LOG.warn("Failed to estimate beta-value for control correction")
+            }
             return minB
         }
     }
