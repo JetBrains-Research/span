@@ -6,7 +6,7 @@ Here you can see the full list of changes between each release.
 Version 1.6
 ----------------
 
-Released on Apr XX, 2024
+Released on Apr 30, 2024
 
 - Faster SPAN model convergence by relative likelihood estimation
 - Improved initialization to make SPAN more robust in low signal-to-noise ratio case
