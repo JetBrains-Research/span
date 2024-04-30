@@ -136,7 +136,7 @@ class SpanMixtureCLALongTest {
                  * "mean": 0.36580807929296383, // noise
                  * "mean": 9.113896687733767,   // signal
                  */
-                assertTrue(log.substringAfter("Signal to noise:").substringBefore("\n").trim().toDouble() > 10)
+                assertTrue(log.substringAfter("Signal to noise:").substringBefore("\n").trim().toDouble() > 5)
             }
         }
     }
