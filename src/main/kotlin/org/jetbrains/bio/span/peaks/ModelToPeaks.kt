@@ -78,7 +78,8 @@ object ModelToPeaks {
 
         if ('_' in chromosome.name ||
             "random" in chromosome.name.lowercase() ||
-            "un" in chromosome.name.lowercase()) {
+            "un" in chromosome.name.lowercase()
+        ) {
             LOG.warn("Ignore ${chromosome.name}: chromosome name looks like contig")
             return emptyList()
         }
@@ -280,40 +281,48 @@ object ModelToPeaks {
             val (from, to) = candidatePeaks[idx]
             val start = offsets[from]
             val end = if (to < offsets.size) offsets[to] else chromosome.length
-            val fullRange = ChromosomeRange(start, end, chromosome)
-            // This can be beneficial in case of low-coverage depth,
+            // Estimate full peaks log ps can be beneficial in case of low-coverage depth,
             // when single short blocks may produce insignificant enrichment
-            val fullLogPs = if (isTreatmentAndControlAvailable) {
+            val fullRange = ChromosomeRange(start, end, chromosome)
+            // Average posterior log error probability for full range
+            val fullModelLogPs = (from until to).sumOf { logNullMemberships[it] } / (to - from)
+            val fullFinalLogPs = if (!isTreatmentAndControlAvailable) {
+                fullModelLogPs
+            } else {
                 // Estimate enrichment vs local coverage in control track
                 val peakTreatment = fitInfo.scaledTreatmentCoverage(fullRange)
                 val peakControl = fitInfo.scaledControlCoverage(fullRange)!!
                 // Use +1 as a pseudo count to compute Poisson CDF
-                PoissonUtil.logPoissonCdf(
+                val fullSignalLogPs = PoissonUtil.logPoissonCdf(
                     ceil(peakTreatment).toInt() + 1, ceil(peakControl) + 1
                 )
-            } else {
+                min(fullModelLogPs, fullSignalLogPs)
+            }
+            val blocksModelLogPs = blocks.map { (from, to) ->
                 // Average posterior log error probability for block
                 (from until to).sumOf { logNullMemberships[it] } / (to - from)
             }
-            val blocksLogPs = blocks.map { (from, to) ->
-                if (!isTreatmentAndControlAvailable) {
-                    // Average posterior log error probability for block
-                    return@map (from until to).sumOf<Int> { logNullMemberships[it] } / (to - from)
-                }
+            val blocksModelAverageLogPs = lengthWeightedScores(blocks, blocksModelLogPs)
+            val blocksFinalAverageLogPs = if (!isTreatmentAndControlAvailable) {
+                blocksModelAverageLogPs
+            } else {
                 // Estimate enrichment vs local coverage in control track
-                val blockStart = offsets[from]
-                val blockEnd = if (to < offsets.size) offsets[to] else chromosome.length
-                val blockRange = ChromosomeRange(blockStart, blockEnd, chromosome)
-                val peakTreatment = fitInfo.scaledTreatmentCoverage(blockRange)
-                val peakControl = fitInfo.scaledControlCoverage(blockRange)!!
-                // Use +1 as a pseudo count to compute Poisson CDF
-                return@map PoissonUtil.logPoissonCdf(
-                    ceil(peakTreatment).toInt() + 1, ceil(peakControl) + 1
-                )
+                val blocksSignalLogPs = blocks.map { (from, to) ->
+                    val blockStart = offsets[from]
+                    val blockEnd = if (to < offsets.size) offsets[to] else chromosome.length
+                    val blockRange = ChromosomeRange(blockStart, blockEnd, chromosome)
+                    val peakTreatment = fitInfo.scaledTreatmentCoverage(blockRange)
+                    val peakControl = fitInfo.scaledControlCoverage(blockRange)!!
+                    // Use +1 as a pseudo count to compute Poisson CDF
+                    PoissonUtil.logPoissonCdf(
+                        ceil(peakTreatment).toInt() + 1, ceil(peakControl) + 1
+                    )
+                }
+                val blocksSignalAverageLogPs = lengthWeightedScores(blocks, blocksSignalLogPs)
+                min(blocksModelAverageLogPs, blocksSignalAverageLogPs)
             }
-            val blocksAverageLogPs = lengthWeightedScores(blocks, blocksLogPs)
             // Take most significant between full peak and blocks estimation
-            min(fullLogPs, blocksAverageLogPs)
+            min(fullFinalLogPs, blocksFinalAverageLogPs)
         }
         return peaksLogPvalues
     }
