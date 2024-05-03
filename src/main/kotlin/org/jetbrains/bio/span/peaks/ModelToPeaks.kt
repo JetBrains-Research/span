@@ -6,6 +6,7 @@ import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.Range
+import org.jetbrains.bio.genome.containers.GenomeMap
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_CLIP_STEPS
@@ -42,7 +43,7 @@ object ModelToPeaks {
      * - Compute qvalues by peaks p-values, filter by alpha.
      * - Optional clipping to fine-tune boundaries of point-wise peaks according to the local signal.
      */
-    fun computeChromosomePeaks(
+    fun getPeaks(
         spanFitResults: SpanFitResults,
         genomeQuery: GenomeQuery,
         fdr: Double,
@@ -50,73 +51,99 @@ object ModelToPeaks {
         clip: Double,
         cancellableState: CancellableState? = null
     ): List<Peak> {
+        val peaks = collectPeaks(spanFitResults, genomeQuery, fdr, bgSensitivity, clip, cancellableState)
+        return genomeQuery.get().flatMap { peaks[it] }
+    }
+
+    fun collectPeaks(
+        spanFitResults: SpanFitResults,
+        genomeQuery: GenomeQuery,
+        fdr: Double,
+        bgSensitivity: Double,
+        clip: Double,
+        cancellableState: CancellableState?
+    ): GenomeMap<List<Peak>> {
         val fitInfo = spanFitResults.fitInfo
         fitInfo.prepareData()
-        // Collect peaks from candidates
-        val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
+        // Collect candidates from model
+        val candidates = genomeMap(genomeQuery, parallel = true) { chromosome ->
             cancellableState?.checkCanceled()
-            computeChromosomePeaks(spanFitResults, chromosome, fdr, bgSensitivity, clip)
+            if (!fitInfo.containsChromosomeInfo(chromosome)) {
+                return@genomeMap emptyList<Range>() to emptyList()
+            }
+            getChromosomeCandidates(spanFitResults, chromosome, fdr, bgSensitivity)
         }
-        return genomeQuery.get().flatMap { map[it] }
+
+        // Estimate signal and noise average signal by candidates
+        val (avgSignalDensity, avgNoiseDensity) = estimateGenomeSignalNoiseAverage(
+            genomeQuery, fitInfo, candidates, clip
+        )
+
+        // Collect peaks
+        val peaks = genomeMap(genomeQuery, parallel = true) { chromosome ->
+            cancellableState?.checkCanceled()
+            if (!fitInfo.containsChromosomeInfo(chromosome) || chromosome !in candidates) {
+                return@genomeMap emptyList<Peak>()
+            }
+            val chrCandidates = candidates[chromosome]
+            val logNullMemberships = getLogNulls(spanFitResults, chromosome)
+            getChromosomePeaksFromCandidates(
+                chromosome, chrCandidates, fitInfo,
+                logNullMemberships, fitInfo.offsets(chromosome), fdr, clip,
+                avgSignalDensity, avgNoiseDensity,
+                cancellableState
+            )
+        }
+        return peaks
     }
 
 
-    fun computeChromosomePeaks(
+    fun getChromosomeCandidates(
         spanFitResults: SpanFitResults,
         chromosome: Chromosome,
         fdr: Double,
         bgSensitivity: Double,
-        clip: Double,
-        cancellableState: CancellableState? = null
-    ): List<Peak> {
+    ): Pair<List<Range>, List<List<Range>>> {
         // Check that we have information for requested chromosome
         val fitInfo = spanFitResults.fitInfo
-        if (chromosome.name !in fitInfo.chromosomesSizes) {
+        if (!fitInfo.containsChromosomeInfo(chromosome)) {
             LOG.warn("Ignore ${chromosome.name}: model doesn't contain information")
-            return emptyList()
+            return emptyList<Range>() to emptyList()
         }
 
         if ('_' in chromosome.name ||
             "random" in chromosome.name.lowercase() ||
-            "un" in chromosome.name.lowercase()
-        ) {
+            "un" in chromosome.name.lowercase()) {
             LOG.warn("Ignore ${chromosome.name}: chromosome name looks like contig")
-            return emptyList()
+            return emptyList<Range>() to emptyList()
         }
 
         // Prepare fit information for scores computations
         fitInfo.prepareData()
 
-        val logNullMemberships =
-            spanFitResults.logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL)
-        val offsets = fitInfo.offsets(chromosome)
-
-        val candidates = computeCandidatePeaks(
-            logNullMemberships, ln(fdr),
+        val candidates = getChromosomeCandidates(
+            getLogNulls(spanFitResults, chromosome), ln(fdr),
             bgSensitivity = bgSensitivity,
             scoreBlocks = SPAN_SCORE_BLOCKS
         )
-
-        return peaksFromCandidates(
-            candidates,
-            chromosome,
-            fitInfo,
-            logNullMemberships,
-            offsets,
-            fdr,
-            clip,
-            cancellableState
-        )
+        return candidates
     }
 
-    private fun peaksFromCandidates(
-        candidates: Pair<List<Range>, List<List<Range>>>?,
+    fun getLogNulls(
+        spanFitResults: SpanFitResults,
+        chromosome: Chromosome
+    ) = spanFitResults.logNullMemberships[chromosome.name]!!.f64Array(SpanModelFitExperiment.NULL)
+
+    fun getChromosomePeaksFromCandidates(
         chromosome: Chromosome,
+        candidates: Pair<List<Range>, List<List<Range>>>?,
         fitInfo: SpanFitInformation,
         logNullMemberships: F64Array,
         offsets: IntArray,
         fdr: Double,
         clip: Double,
+        avgSignalDensity: Double,
+        avgNoiseDensity: Double,
         cancellableState: CancellableState?
     ): List<Peak> {
         // Compute candidate bins and peaks with relaxed background settings
@@ -142,21 +169,11 @@ object ModelToPeaks {
         )
 
         // Additionally, clip peaks by local coverage signal
-        val doClip = clip > 0 &&
-                fitInfo is SpanAnalyzeFitInformation &&
-                fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
-        val (avgSignal, avgNoise) = if (doClip)
-            estimateSignalAndNoiseDensity(
-                chromosome, fitInfo, candidatePeaks, offsets
-            ) else
-            0.0 to 0.0
-        var clipStart = 0L
-        var clipEnd = 0L
         val maxClippedThreshold = clip
         val maxClippedFraction = clip / 2
-        val maxClippedScore = avgNoise + maxClippedThreshold * (avgSignal - avgNoise)
+        val maxClippedScore = avgNoiseDensity + maxClippedThreshold * (avgSignalDensity - avgNoiseDensity)
         if (clip > 0) {
-            LOG.debug("Signal density $avgSignal, noise density $avgNoise")
+            LOG.debug("Signal density $avgSignalDensity, noise density $avgNoiseDensity")
         }
 
         // Filter result peaks by Q values
@@ -171,12 +188,10 @@ object ModelToPeaks {
             }
             val start = offsets[from]
             val end = if (to < offsets.size) offsets[to] else chromosome.length
-            val (clippedStart, clippedEnd) = if (doClip)
+            val (clippedStart, clippedEnd) = if (clip > 0 && avgSignalDensity > 0 && avgNoiseDensity > 0)
                 clipPeakByScore(chromosome, start, end, fitInfo, maxClippedScore, maxClippedFraction)
             else
                 start to end
-            clipStart += clippedStart - start
-            clipEnd += end - clippedEnd
             Peak(
                 chromosome = chromosome,
                 startOffset = clippedStart,
@@ -192,7 +207,7 @@ object ModelToPeaks {
         return resultPeaks
     }
 
-    fun computeCandidatePeaks(
+    fun getChromosomeCandidates(
         logNullMemberships: F64Array,
         logFdr: Double,
         bgSensitivity: Double,
@@ -302,39 +317,53 @@ object ModelToPeaks {
         return peaksLogPvalues
     }
 
-
-    private fun estimateSignalAndNoiseDensity(
-        chromosome: Chromosome,
+    fun estimateGenomeSignalNoiseAverage(
+        genomeQuery: GenomeQuery,
         fitInfo: SpanFitInformation,
-        peaks: List<Range>,
-        offsets: IntArray
+        candidates: GenomeMap<Pair<List<Range>, List<List<Range>>>>,
+        clip: Double
     ): Pair<Double, Double> {
+        val doClip = clip > 0 &&
+                fitInfo is SpanAnalyzeFitInformation &&
+                fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
+
+        if (!doClip) {
+            return 0.0 to 0.0
+        }
+
         var sumSignalScore = 0.0
         var sumSignalLength = 0L
         var sumNoiseScore = 0.0
         var sumNoiseLength = 0L
-        var prevNoiseStart = 0
-        peaks.forEach { (from, to) ->
-            val start = offsets[from]
-            val end = if (to < offsets.size) offsets[to] else chromosome.length
-            sumSignalScore += fitInfo.score(ChromosomeRange(start, end, chromosome))
-            sumSignalLength += end - start
-            sumNoiseScore += fitInfo.score(ChromosomeRange(prevNoiseStart, start, chromosome))
-            sumNoiseLength += start - prevNoiseStart
-            prevNoiseStart = end
-        }
-        if (prevNoiseStart < chromosome.length) {
-            sumNoiseScore += fitInfo.score(ChromosomeRange(prevNoiseStart, chromosome.length, chromosome))
-            sumNoiseLength += chromosome.length - prevNoiseStart
+        genomeQuery.get().forEach { chromosome ->
+            if (!fitInfo.containsChromosomeInfo(chromosome) || chromosome !in candidates) {
+                return@forEach
+            }
+            val chrCandidates = candidates[chromosome]
+            val offsets = fitInfo.offsets(chromosome)
+            var prevNoiseStart = 0
+            chrCandidates.first.forEach { (from, to) ->
+                val start = offsets[from]
+                val end = if (to < offsets.size) offsets[to] else chromosome.length
+                sumSignalScore += fitInfo.score(ChromosomeRange(start, end, chromosome))
+                sumSignalLength += end - start
+                sumNoiseScore += fitInfo.score(ChromosomeRange(prevNoiseStart, start, chromosome))
+                sumNoiseLength += start - prevNoiseStart
+                prevNoiseStart = end
+            }
+            if (prevNoiseStart < chromosome.length) {
+                sumNoiseScore += fitInfo.score(ChromosomeRange(prevNoiseStart, chromosome.length, chromosome))
+                sumNoiseLength += chromosome.length - prevNoiseStart
+            }
         }
         val avgSignalDensity = if (sumSignalLength > 0) sumSignalScore / sumSignalLength else 0.0
         val avgNoiseDensity = if (sumNoiseLength > 0) sumNoiseScore / sumNoiseLength else 0.0
         if (sumSignalLength != 0L && sumNoiseLength != 0L && avgSignalDensity <= avgNoiseDensity) {
             LOG.warn("Average signal density $avgSignalDensity <= average noise density $avgNoiseDensity")
-            return avgNoiseDensity to avgSignalDensity
         }
         return avgSignalDensity to avgNoiseDensity
     }
+
 
     private fun clipPeakByScore(
         chromosome: Chromosome,

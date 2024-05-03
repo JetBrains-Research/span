@@ -54,7 +54,7 @@ object SpanSemiSupervised {
             Callable {
                 cancellableState.checkCanceled()
                 val peaksOnLabeledGenomeQuery =
-                    ModelToPeaks.computeChromosomePeaks(
+                    ModelToPeaks.getPeaks(
                         results, labeledGenomeQuery, fdr, sensitivity, clip,
                         CancellableState.current()
                     )

@@ -75,7 +75,7 @@ class SpanModelFitExperimentTest {
                 fullGenomeQuery, listOf(SpanDataPaths(path, null)), 200, AutoFragment
             )
             assertTrue(
-                ModelToPeaks.computeChromosomePeaks(
+                ModelToPeaks.getPeaks(
                     peakCallingExperiment.results, fullGenomeQuery,
                     fdr = 0.05,
                     bgSensitivity = SPAN_DEFAULT_BACKGROUND_SENSITIVITY,

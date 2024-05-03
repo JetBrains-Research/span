@@ -145,7 +145,7 @@ object SpanCLACompare {
                 val differentialPeakCallingResults = lazyDifferentialPeakCallingResults.value
                 val genomeQuery = differentialPeakCallingResults.fitInfo.genomeQuery()
                 if (peaksPath != null) {
-                    val peaks = ModelToPeaks.computeChromosomePeaks(
+                    val peaks = ModelToPeaks.getPeaks(
                         differentialPeakCallingResults,
                         genomeQuery,
                         fdr,

@@ -88,7 +88,7 @@ interface SpanFitInformation {
     }
 
     private fun checkChromosome(chromosome: Chromosome) {
-        check(chromosome.name in chromosomesSizes) {
+        check(containsChromosomeInfo(chromosome)) {
             "Missing chromosome in ${chromosomesSizes.keys.toList()}: ${chromosome.name}"
         }
         check(chromosome.length == chromosomesSizes[chromosome.name]) {
@@ -167,7 +167,7 @@ interface SpanFitInformation {
         return if (genomeQuery != null) {
             checkGenome(genomeQuery.genome)
             genomeQuery.get()
-                .filter { it.name in chromosomesSizes }.associate { chromosome ->
+                .filter { containsChromosomeInfo(it) }.associate { chromosome ->
                     val (start, end) = getChromosomesIndices(chromosome)
                     chromosome.name to dataFrame.iloc[start until end]
                 }
@@ -178,6 +178,8 @@ interface SpanFitInformation {
             }
         }
     }
+
+    fun containsChromosomeInfo(chromosome: Chromosome) = chromosome.name in chromosomesSizes
 
     /**
      * Save the [SpanFitInformation] object at the given path as JSON.

@@ -1,10 +1,9 @@
 package org.jetbrains.bio.span.fit
 
 import org.jetbrains.bio.genome.GenomeQuery
-import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.Fragment
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BACKGROUND_SENSITIVITY
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP
 import org.jetbrains.bio.span.peaks.ModelToPeaks
 import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.span.statistics.hmm.ConstrainedNBZHMM
@@ -46,10 +45,14 @@ class SpanDifferentialPeakCallingExperiment private constructor(
     fun computeDirectedDifferencePeaks(
         fdr: Double
     ): Pair<List<Peak>, List<Peak>> {
-        val map = genomeMap(genomeQuery, parallel = true) { chromosome ->
-            ModelToPeaks.computeChromosomePeaks(results, chromosome, fdr,
-                SPAN_DEFAULT_BACKGROUND_SENSITIVITY, SPAN_DEFAULT_CLIP)
-        }
+        val map = ModelToPeaks.collectPeaks(
+            results,
+            genomeQuery,
+            fdr,
+            SPAN_DEFAULT_BACKGROUND_SENSITIVITY,
+            SPAN_DEFAULT_CLIP,
+            null
+        )
         val highLow = arrayListOf<Peak>()
         val lowHigh = arrayListOf<Peak>()
         genomeQuery.get().forEach { chromosome ->

@@ -196,7 +196,7 @@ object SpanCLAAnalyze {
         clip: Double,
         peaksPath: Path
     ) {
-        val peaks = ModelToPeaks.computeChromosomePeaks(spanResults, genomeQuery, fdr, sensitivity, clip)
+        val peaks = ModelToPeaks.getPeaks(spanResults, genomeQuery, fdr, sensitivity, clip)
         Peak.savePeaks(
             peaks, peaksPath,
             "peak${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${sensitivity}_${clip}"
@@ -251,7 +251,7 @@ object SpanCLAAnalyze {
             peaksPath.parent
                     / "${peaksPath.fileName.stem}_parameters.csv"
         )
-        val peaks = ModelToPeaks.computeChromosomePeaks(
+        val peaks = ModelToPeaks.getPeaks(
             spanResults, genomeQuery, optimalFDR, optimalSensitivity, optimalClip
         )
         Peak.savePeaks(
