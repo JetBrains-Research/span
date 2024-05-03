@@ -51,11 +51,11 @@ object ModelToPeaks {
         clip: Double,
         cancellableState: CancellableState? = null
     ): List<Peak> {
-        val peaks = collectPeaks(spanFitResults, genomeQuery, fdr, bgSensitivity, clip, cancellableState)
+        val peaks = getPeaksMap(spanFitResults, genomeQuery, fdr, bgSensitivity, clip, cancellableState)
         return genomeQuery.get().flatMap { peaks[it] }
     }
 
-    fun collectPeaks(
+    fun getPeaksMap(
         spanFitResults: SpanFitResults,
         genomeQuery: GenomeQuery,
         fdr: Double,
@@ -103,7 +103,12 @@ object ModelToPeaks {
         chromosome: Chromosome,
         fdr: Double,
         bgSensitivity: Double,
+        scoreBlocks: Double = SPAN_SCORE_BLOCKS,
+        scoreBlocksDistance: Double = SPAN_SCORE_BLOCKS_DISTANCE
     ): Pair<List<Range>, List<List<Range>>> {
+        require(bgSensitivity >= 0) { "Sensitivity should be >=0, got $bgSensitivity" }
+        require(scoreBlocks in 0.0..1.0) { "Blocks for score computation should be in range 0-1, got $scoreBlocks" }
+
         // Check that we have information for requested chromosome
         val fitInfo = spanFitResults.fitInfo
         if (!fitInfo.containsChromosomeInfo(chromosome)) {
@@ -121,12 +126,63 @@ object ModelToPeaks {
         // Prepare fit information for scores computations
         fitInfo.prepareData()
 
-        val candidates = getChromosomeCandidates(
-            getLogNulls(spanFitResults, chromosome), ln(fdr),
-            bgSensitivity = bgSensitivity,
-            scoreBlocks = SPAN_SCORE_BLOCKS
+        val logNullMemberships = getLogNulls(spanFitResults, chromosome)
+        val logFdr = ln(fdr)
+        val candidateBins = BitList(logNullMemberships.size) { logNullMemberships[it] <= logFdr * bgSensitivity }
+
+        // Background candidates with foreground inside
+        val candidates = candidateBins.aggregate()
+        if (candidates.isEmpty()) {
+            return emptyList<Range>() to emptyList()
+        }
+
+        val candidatePeaks = arrayListOf<Range>()
+        val candidatePeaksBlocks = arrayListOf<List<Range>>()
+
+        var currentPeakStart = -1
+        var currentPeakEnd = -1
+        for ((start, end) in candidates) {
+            when {
+                currentPeakStart == -1 -> {
+                    currentPeakStart = start
+                    currentPeakEnd = end
+                }
+
+                start < currentPeakEnd -> {
+                    currentPeakEnd = end
+                }
+
+                else -> {
+                    val currentPeak = Range(currentPeakStart, currentPeakEnd)
+                    val minD = ceil(currentPeak.length() * scoreBlocksDistance).toInt()
+                    val p = StatUtils.percentile(
+                        logNullMemberships.slice(currentPeakStart, currentPeakEnd).toDoubleArray(), scoreBlocks * 100
+                    )
+                    val currentPeakBlocks = BitList(currentPeakEnd - currentPeakStart) {
+                        logNullMemberships[it + currentPeakStart] <= p
+                    }.aggregate(minD)
+                        .map { Range(currentPeakStart + it.startOffset, currentPeakStart + it.endOffset) }
+                    candidatePeaks.add(currentPeak)
+                    candidatePeaksBlocks.add(currentPeakBlocks)
+                    currentPeakStart = start
+                    currentPeakEnd = end
+                }
+            }
+        }
+        // Process last candidate peak
+        val currentPeak = Range(currentPeakStart, currentPeakEnd)
+        val p = StatUtils.percentile(
+            logNullMemberships.slice(currentPeakStart, currentPeakEnd).toDoubleArray(), scoreBlocks * 100
         )
-        return candidates
+        val minD = ceil(currentPeak.length() * scoreBlocksDistance).toInt()
+        val currentPeakBlocks = BitList(currentPeakEnd - currentPeakStart) {
+            logNullMemberships[it + currentPeakStart] <= p
+        }.aggregate(minD)
+            .map { Range(currentPeakStart + it.startOffset, currentPeakStart + it.endOffset) }
+        candidatePeaks.add(currentPeak)
+        candidatePeaksBlocks.add(currentPeakBlocks)
+
+        return candidatePeaks to candidatePeaksBlocks
     }
 
     fun getLogNulls(
@@ -205,72 +261,6 @@ object ModelToPeaks {
             )
         }
         return resultPeaks
-    }
-
-    fun getChromosomeCandidates(
-        logNullMemberships: F64Array,
-        logFdr: Double,
-        bgSensitivity: Double,
-        scoreBlocks: Double,
-        minDistanceBetweenBlocks: Double = SPAN_SCORE_BLOCKS_DISTANCE
-    ): Pair<List<Range>, List<List<Range>>> {
-        require(bgSensitivity >= 0) { "Sensitivity should be >=0, got $bgSensitivity" }
-        require(scoreBlocks in 0.0..1.0) { "Blocks for score computation should be in range 0-1, got $scoreBlocks" }
-        val candidateBins = BitList(logNullMemberships.size) { logNullMemberships[it] <= logFdr * bgSensitivity }
-
-        // Background candidates with foreground inside
-        val candidates = candidateBins.aggregate()
-        if (candidates.isEmpty()) {
-            return emptyList<Range>() to emptyList()
-        }
-
-        val candidatePeaks = arrayListOf<Range>()
-        val candidatePeaksBlocks = arrayListOf<List<Range>>()
-
-        var currentPeakStart = -1
-        var currentPeakEnd = -1
-        for ((start, end) in candidates) {
-            when {
-                currentPeakStart == -1 -> {
-                    currentPeakStart = start
-                    currentPeakEnd = end
-                }
-
-                start < currentPeakEnd -> {
-                    currentPeakEnd = end
-                }
-
-                else -> {
-                    val currentPeak = Range(currentPeakStart, currentPeakEnd)
-                    val minD = ceil(currentPeak.length() * minDistanceBetweenBlocks).toInt()
-                    val p = StatUtils.percentile(
-                        logNullMemberships.slice(currentPeakStart, currentPeakEnd).toDoubleArray(), scoreBlocks * 100
-                    )
-                    val currentPeakBlocks = BitList(currentPeakEnd - currentPeakStart) {
-                        logNullMemberships[it + currentPeakStart] <= p
-                    }.aggregate(minD)
-                        .map { Range(currentPeakStart + it.startOffset, currentPeakStart + it.endOffset) }
-                    candidatePeaks.add(currentPeak)
-                    candidatePeaksBlocks.add(currentPeakBlocks)
-                    currentPeakStart = start
-                    currentPeakEnd = end
-                }
-            }
-        }
-        // Process last candidate peak
-        val currentPeak = Range(currentPeakStart, currentPeakEnd)
-        val p = StatUtils.percentile(
-            logNullMemberships.slice(currentPeakStart, currentPeakEnd).toDoubleArray(), scoreBlocks * 100
-        )
-        val minD = ceil(currentPeak.length() * minDistanceBetweenBlocks).toInt()
-        val currentPeakBlocks = BitList(currentPeakEnd - currentPeakStart) {
-            logNullMemberships[it + currentPeakStart] <= p
-        }.aggregate(minD)
-            .map { Range(currentPeakStart + it.startOffset, currentPeakStart + it.endOffset) }
-        candidatePeaks.add(currentPeak)
-        candidatePeaksBlocks.add(currentPeakBlocks)
-
-        return candidatePeaks to candidatePeaksBlocks
     }
 
     private fun estimateCandidatesLogPs(
