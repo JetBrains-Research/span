@@ -292,8 +292,8 @@ object ModelToPeaks {
                 val blockStart = offsets[from]
                 val blockEnd = if (to < offsets.size) offsets[to] else chromosome.length
                 val blockRange = ChromosomeRange(blockStart, blockEnd, chromosome)
-                val peakTreatment = fitInfo.scaledTreatmentCoverage(blockRange)
-                val peakControl = fitInfo.scaledControlCoverage(blockRange)!!
+                val peakTreatment = fitInfo.score(blockRange)
+                val peakControl = fitInfo.controlScore(blockRange)!!
                 // Use +1 as a pseudo count to compute Poisson CDF
                 val signalLogPs = PoissonUtil.logPoissonCdf(
                     ceil(peakTreatment).toInt() + 1,

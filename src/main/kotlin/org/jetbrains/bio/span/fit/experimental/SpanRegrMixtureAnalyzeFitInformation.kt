@@ -104,8 +104,7 @@ data class SpanRegrMixtureAnalyzeFitInformation(
         return normalizedCoverageQuery!!.apply(chromosomeRange).toDouble()
     }
 
-    override fun scaledTreatmentCoverage(chromosomeRange: ChromosomeRange): Double = 0.0
-    override fun scaledControlCoverage(chromosomeRange: ChromosomeRange): Double? = null
+    override fun controlScore(chromosomeRange: ChromosomeRange): Double? = null
 
     override fun cleanCaches() {
         // Not implemented yet

@@ -110,23 +110,14 @@ data class SpanAnalyzeFitInformation(
     }
 
     @Synchronized
-    override fun scaledTreatmentCoverage(chromosomeRange: ChromosomeRange): Double {
-        check(normalizedCoverageQueries != null) {
-            "Please use prepareData before!"
-        }
-        return normalizedCoverageQueries!!.sumOf { it.scaledTreatment(chromosomeRange) } /
-                normalizedCoverageQueries!!.size
-    }
-
-    @Synchronized
-    override fun scaledControlCoverage(chromosomeRange: ChromosomeRange): Double? {
+    override fun controlScore(chromosomeRange: ChromosomeRange): Double? {
         check(normalizedCoverageQueries != null) {
             "Please use prepareData before!"
         }
         if (normalizedCoverageQueries!!.any { it.controlReads == null }) {
             return null
         }
-        return normalizedCoverageQueries!!.sumOf { it.scaledControl(chromosomeRange)!! } /
+        return normalizedCoverageQueries!!.sumOf { it.controlScore(chromosomeRange)!! } /
                 normalizedCoverageQueries!!.size
     }
 

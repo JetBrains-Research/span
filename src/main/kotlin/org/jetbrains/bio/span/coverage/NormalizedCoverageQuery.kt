@@ -80,11 +80,11 @@ class NormalizedCoverageQuery(
         analyzeCoverage(genomeQuery, treatmentReads.get(), controlReads?.get(), binSize)
     }
 
-    fun scaledTreatment(chromosomeRange: ChromosomeRange): Double {
-        return treatmentReads.get().getBothStrandsCoverage(chromosomeRange) * coveragesNormalizedInfo.treatmentScale
+    fun score(chromosomeRange: ChromosomeRange): Double {
+        return apply(chromosomeRange).toDouble()
     }
 
-    fun scaledControl(chromosomeRange: ChromosomeRange): Double? {
+    fun controlScore(chromosomeRange: ChromosomeRange): Double? {
         if (controlReads == null) {
             return null
         }
@@ -98,10 +98,8 @@ class NormalizedCoverageQuery(
         val (treatmentScale, controlScale, beta) = coveragesNormalizedInfo
         val treatmentCoverage = treatmentReads.get().getBothStrandsCoverage(t)
         val controlCoverage = controlReads!!.get().getBothStrandsCoverage(t)
-        return max(
-            0,
-            ceil(treatmentCoverage * treatmentScale - controlCoverage * controlScale * beta).toInt()
-        )
+
+        return max(0, ceil(treatmentCoverage * treatmentScale - controlCoverage * controlScale * beta).toInt())
     }
 
     companion object {
@@ -135,17 +133,18 @@ class NormalizedCoverageQuery(
             }
             // Upscale coverage to bigger one
             val targetCoverage = max(treatmentTotal, controlTotal)
-            val treatmentScale = 1.0 * targetCoverage / treatmentTotal
+            var treatmentScale = 1.0 * targetCoverage / treatmentTotal
             val controlScale = 1.0 * targetCoverage / controlTotal
-            LOG.info(
-                "Scale treatment ${"%,d".format(treatmentTotal)} x ${"%.3f".format(treatmentScale)}, " +
-                        "control ${"%,d".format(controlTotal)} x ${"%.3f".format(controlScale)}"
-            )
-            LOG.debug("Estimating beta")
             val beta = estimateBeta(
                 genomeQuery, treatmentCoverage, treatmentScale, controlCoverage, controlScale, binSize
             )
-            LOG.info("Beta for signal control correction: ${"%.3f".format(beta)}")
+            // Compensate treatment scale for beta
+            treatmentScale /= (1.0 - beta)
+            LOG.info(
+                "Scale treatment ${"%,d".format(treatmentTotal)} x ${"%.3f".format(treatmentScale)}, " +
+                        "control ${"%,d".format(controlTotal)} x ${"%.3f".format(controlScale)}, " +
+                        "beta ${"%.3f".format(beta)}"
+            )
             return NormalizedCoverageInfo(treatmentScale, controlScale, beta)
         }
 
