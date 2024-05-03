@@ -278,51 +278,26 @@ object ModelToPeaks {
             if (blocks.isEmpty()) {
                 blocks = listOf(candidatePeaks[idx])
             }
-            val (from, to) = candidatePeaks[idx]
-            val start = offsets[from]
-            val end = if (to < offsets.size) offsets[to] else chromosome.length
-            // Estimate full peaks log ps can be beneficial in case of low-coverage depth,
-            // when single short blocks may produce insignificant enrichment
-            val fullRange = ChromosomeRange(start, end, chromosome)
-            // Average posterior log error probability for full range
-            val fullModelLogPs = (from until to).sumOf { logNullMemberships[it] } / (to - from)
-            val fullFinalLogPs = if (!isTreatmentAndControlAvailable) {
-                fullModelLogPs
-            } else {
-                // Estimate enrichment vs local coverage in control track
-                val peakTreatment = fitInfo.scaledTreatmentCoverage(fullRange)
-                val peakControl = fitInfo.scaledControlCoverage(fullRange)!!
-                // Use +1 as a pseudo count to compute Poisson CDF
-                val fullSignalLogPs = PoissonUtil.logPoissonCdf(
-                    ceil(peakTreatment).toInt() + 1, ceil(peakControl) + 1
-                )
-                min(fullModelLogPs, fullSignalLogPs)
-            }
-            val blocksModelLogPs = blocks.map { (from, to) ->
-                // Average posterior log error probability for block
-                (from until to).sumOf { logNullMemberships[it] } / (to - from)
-            }
-            val blocksModelAverageLogPs = lengthWeightedScores(blocks, blocksModelLogPs)
-            val blocksFinalAverageLogPs = if (!isTreatmentAndControlAvailable) {
-                blocksModelAverageLogPs
-            } else {
-                // Estimate enrichment vs local coverage in control track
-                val blocksSignalLogPs = blocks.map { (from, to) ->
-                    val blockStart = offsets[from]
-                    val blockEnd = if (to < offsets.size) offsets[to] else chromosome.length
-                    val blockRange = ChromosomeRange(blockStart, blockEnd, chromosome)
-                    val peakTreatment = fitInfo.scaledTreatmentCoverage(blockRange)
-                    val peakControl = fitInfo.scaledControlCoverage(blockRange)!!
-                    // Use +1 as a pseudo count to compute Poisson CDF
-                    PoissonUtil.logPoissonCdf(
-                        ceil(peakTreatment).toInt() + 1, ceil(peakControl) + 1
-                    )
+            val blocksLogPs = blocks.map { (from, to) ->
+                // Average model posterior log error probability for block
+                val modelLogPs = (from until to).sumOf { logNullMemberships[it] }
+                if (!isTreatmentAndControlAvailable) {
+                    return@map modelLogPs
                 }
-                val blocksSignalAverageLogPs = lengthWeightedScores(blocks, blocksSignalLogPs)
-                min(blocksModelAverageLogPs, blocksSignalAverageLogPs)
+                val blockStart = offsets[from]
+                val blockEnd = if (to < offsets.size) offsets[to] else chromosome.length
+                val blockRange = ChromosomeRange(blockStart, blockEnd, chromosome)
+                val peakTreatment = fitInfo.scaledTreatmentCoverage(blockRange)
+                val peakControl = fitInfo.scaledControlCoverage(blockRange)!!
+                // Use +1 as a pseudo count to compute Poisson CDF
+                val signalLogPs = PoissonUtil.logPoissonCdf(
+                    ceil(peakTreatment).toInt() + 1,
+                    ceil(peakControl) + 1
+                )
+                // Combine both model and signal estimations
+                return@map (modelLogPs + signalLogPs) / 2
             }
-            // Take most significant between full peak and blocks estimation
-            min(fullFinalLogPs, blocksFinalAverageLogPs)
+            return@F64Array lengthWeightedScores(blocks, blocksLogPs)
         }
         return peaksLogPvalues
     }
