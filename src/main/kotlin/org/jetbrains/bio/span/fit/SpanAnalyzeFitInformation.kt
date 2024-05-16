@@ -102,22 +102,23 @@ data class SpanAnalyzeFitInformation(
             "Please use prepareData before!"
         }
         return if (normalizedCoverageQueries!!.all { it.areCachesPresent() }) {
-            normalizedCoverageQueries!!.sumOf { it.apply(chromosomeRange) }
-                .toDouble() / normalizedCoverageQueries!!.size
+            normalizedCoverageQueries!!.sumOf { it.score(chromosomeRange) } /
+                    normalizedCoverageQueries!!.size
         } else {
             0.0
         }
     }
 
     @Synchronized
-    override fun controlScore(chromosomeRange: ChromosomeRange): Double? {
+    override fun controlScore(chromosomeRange: ChromosomeRange): Double {
         check(normalizedCoverageQueries != null) {
             "Please use prepareData before!"
         }
-        if (normalizedCoverageQueries!!.any { it.controlReads == null }) {
-            return null
+
+        check (normalizedCoverageQueries!!.all { it.controlReads != null }) {
+            "Control is not available"
         }
-        return normalizedCoverageQueries!!.sumOf { it.controlScore(chromosomeRange)!! } /
+        return normalizedCoverageQueries!!.sumOf { it.controlScore(chromosomeRange) } /
                 normalizedCoverageQueries!!.size
     }
 

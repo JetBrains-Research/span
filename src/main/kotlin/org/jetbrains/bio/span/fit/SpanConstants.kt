@@ -15,6 +15,11 @@ object SpanConstants {
     const val SPAN_DEFAULT_FDR = 0.05
 
     /**
+     * The maximum scale used for treatment in the span treatment analysis
+     */
+    const val SPAN_TREATMENT_SCALE_MAX = 2.0
+
+    /**
      * The default step size used for beta values in the SPAN calculation.
      * Beta value is used to minimize correlation between treatment and control track.
      * Step is used to iterate in the [0, 1] interval.
@@ -24,14 +29,22 @@ object SpanConstants {
     /**
      * Default signal-to-noise ratio used for HMM model states initialization
      */
-    const val SPAN_DEFAULT_SIGNAL_TO_NOISE = 20.0
+    const val SPAN_DEFAULT_SIGNAL_TO_NOISE = 10.0
 
-    val SPAN_DEFAULT_NB2ZHMM_PRIORS = F64Array.of(0.6, 0.399, 0.001)
+    /**
+     * Keep SPAN state means values separated
+     */
+    const val SPAN_MIN_SIGNAL_TO_NOISE = 1.5
+
+    const val SPAN_MAX_SIGNAL_TO_NOISE = 15.0
+
+    // k27me3 tweaked initialization priors from low signal-to-noise ratio ChIP-seq
+    val SPAN_DEFAULT_NB2ZHMM_PRIORS = F64Array.of(0.75, 0.24, 0.01)
 
     val SPAN_DEFAULT_NB2ZHMM_TRANSITIONS_ = listOf(
-        doubleArrayOf(0.5, 0.499, 0.001),
-        doubleArrayOf(0.399, 0.6, 0.001),
-        doubleArrayOf(0.05, 0.15, 0.8))
+        doubleArrayOf(0.75, 0.249, 0.001),
+        doubleArrayOf(0.2, 0.78, 0.02),
+        doubleArrayOf(0.005, 0.015, 0.98))
 
     /**
      * SPAN_FIT_THRESHOLD is a constant variable that represents the threshold value used
@@ -60,9 +73,9 @@ object SpanConstants {
     const val SPAN_SCORE_BLOCKS = 0.5
 
     /**
-     * Minimal distance between score blocks
+     * Minimal relative distance between candidates
      */
-    const val SPAN_SCORE_BLOCKS_DISTANCE = 0.05
+    const val SPAN_CANDIDATES_DISTANCE = 0.25
 
     /**
      * Clipping allows to fine-tune boundaries of point-wise peaks according to the local signal.

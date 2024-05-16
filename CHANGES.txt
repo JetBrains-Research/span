@@ -3,6 +3,19 @@ SPAN Changelog
 
 Here you can see the full list of changes between each release.
 
+Version 1.7
+----------------
+
+Released on May XX, 2024
+
+- Updated scaling of treatment and control to limit treatment scaling
+- Use global genome signal and noise coverage estimation for boundaries cut
+- Combine both model and data estimates to assign p-value for peak blocks
+- Improved performance in extreme cases (low or high coverage, small signal-to-noise) by keeping model signal-to-noise ratio in predefined range
+- Updated initial settings for better model sensitivity
+- Updated control correction during preparation step
+
+
 Version 1.6
 ----------------
 
@@ -10,7 +23,7 @@ Released on Apr 30, 2024
 
 - Faster SPAN model convergence by relative likelihood estimation
 - Improved initialization to make SPAN more robust in low signal-to-noise ratio case
-- Don't process contigs when coverage distribution is different from genome-wise
+- Don't process contigs when coverage distribution is different from genome-wide
 - Introduced `--bg-sensitivity` to configure sensitivity of peak backgrounds
 - Dropped `gap` as obsolete
 - Peaks from model procedure significantly improved tuning flexibility

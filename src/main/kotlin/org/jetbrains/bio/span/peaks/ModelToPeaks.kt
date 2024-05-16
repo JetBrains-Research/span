@@ -11,7 +11,7 @@ import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_CLIP_STEPS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SCORE_BLOCKS
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SCORE_BLOCKS_DISTANCE
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_CANDIDATES_DISTANCE
 import org.jetbrains.bio.span.fit.SpanFitInformation
 import org.jetbrains.bio.span.fit.SpanFitResults
 import org.jetbrains.bio.span.fit.SpanFitResults.Companion.LOG
@@ -104,7 +104,7 @@ object ModelToPeaks {
         fdr: Double,
         bgSensitivity: Double,
         scoreBlocks: Double = SPAN_SCORE_BLOCKS,
-        scoreBlocksDistance: Double = SPAN_SCORE_BLOCKS_DISTANCE
+        mergeCandidates: Double = SPAN_CANDIDATES_DISTANCE
     ): Pair<List<Range>, List<List<Range>>> {
         require(bgSensitivity >= 0) { "Sensitivity should be >=0, got $bgSensitivity" }
         require(scoreBlocks in 0.0..1.0) { "Blocks for score computation should be in range 0-1, got $scoreBlocks" }
@@ -131,58 +131,36 @@ object ModelToPeaks {
         val candidateBins = BitList(logNullMemberships.size) { logNullMemberships[it] <= logFdr * bgSensitivity }
 
         // Background candidates with foreground inside
-        val candidates = candidateBins.aggregate()
+        var candidates = candidateBins.aggregate()
         if (candidates.isEmpty()) {
             return emptyList<Range>() to emptyList()
         }
 
-        val candidatePeaks = arrayListOf<Range>()
-        val candidatePeaksBlocks = arrayListOf<List<Range>>()
-
-        var currentPeakStart = -1
-        var currentPeakEnd = -1
+        // merge candidates by relative distance
+        var lastEnd = -1
+        var lastD = Int.MAX_VALUE
         for ((start, end) in candidates) {
-            when {
-                currentPeakStart == -1 -> {
-                    currentPeakStart = start
-                    currentPeakEnd = end
-                }
-
-                start < currentPeakEnd -> {
-                    currentPeakEnd = end
-                }
-
-                else -> {
-                    val currentPeak = Range(currentPeakStart, currentPeakEnd)
-                    val minD = ceil(currentPeak.length() * scoreBlocksDistance).toInt()
-                    val p = StatUtils.percentile(
-                        logNullMemberships.slice(currentPeakStart, currentPeakEnd).toDoubleArray(), scoreBlocks * 100
-                    )
-                    val currentPeakBlocks = BitList(currentPeakEnd - currentPeakStart) {
-                        logNullMemberships[it + currentPeakStart] <= p
-                    }.aggregate(minD)
-                        .map { Range(currentPeakStart + it.startOffset, currentPeakStart + it.endOffset) }
-                    candidatePeaks.add(currentPeak)
-                    candidatePeaksBlocks.add(currentPeakBlocks)
-                    currentPeakStart = start
-                    currentPeakEnd = end
+            val d = ((end - start) * mergeCandidates).toInt()
+            if (lastEnd != -1) {
+                if (start - lastEnd < (lastD + d) / 2) {
+                    candidateBins.set(lastEnd, start)
                 }
             }
+            lastEnd = end
+            lastD = d
         }
-        // Process last candidate peak
-        val currentPeak = Range(currentPeakStart, currentPeakEnd)
-        val p = StatUtils.percentile(
-            logNullMemberships.slice(currentPeakStart, currentPeakEnd).toDoubleArray(), scoreBlocks * 100
-        )
-        val minD = ceil(currentPeak.length() * scoreBlocksDistance).toInt()
-        val currentPeakBlocks = BitList(currentPeakEnd - currentPeakStart) {
-            logNullMemberships[it + currentPeakStart] <= p
-        }.aggregate(minD)
-            .map { Range(currentPeakStart + it.startOffset, currentPeakStart + it.endOffset) }
-        candidatePeaks.add(currentPeak)
-        candidatePeaksBlocks.add(currentPeakBlocks)
+        candidates = candidateBins.aggregate()
 
-        return candidatePeaks to candidatePeaksBlocks
+        val candidateBlocks = candidates.map { (start, end) ->
+            val p = StatUtils.percentile(
+                logNullMemberships.slice(start, end).toDoubleArray(), scoreBlocks * 100
+            )
+            val currentPeakBlocks = BitList(end - start) {
+                logNullMemberships[it + start] <= p
+            }.aggregate(0).map { Range(start + it.startOffset, start + it.endOffset) }
+            return@map currentPeakBlocks
+        }
+        return candidates to candidateBlocks
     }
 
     fun getLogNulls(
@@ -278,14 +256,15 @@ object ModelToPeaks {
 
         val peaksLogPvalues = F64Array(candidatePeaks.size) { idx ->
             cancellableState?.checkCanceled()
-            var blocks = candidatePeaksBlocks[idx]
-            // No significant bin within a candidate
-            if (blocks.isEmpty()) {
-                blocks = listOf(candidatePeaks[idx])
-            }
+            val blocks = candidatePeaksBlocks[idx]
+            // Use the whole peaks for estimation may produce more significant results
+            // beneficial for short peaks, TFs, ATAC-seq etc.
+//            if (blocks.size <= 1) {
+//                blocks = listOf(candidatePeaks[idx])
+//            }
             val blocksLogPs = blocks.map { (from, to) ->
-                // Average model posterior log error probability for block
-                val modelLogPs = (from until to).sumOf { logNullMemberships[it] }
+                // Model posterior log error probability for block
+                val modelLogPs = (from until to).sumOf { logNullMemberships[it] } / (to - from)
                 if (!isTreatmentAndControlAvailable) {
                     return@map modelLogPs
                 }
@@ -293,11 +272,11 @@ object ModelToPeaks {
                 val blockEnd = if (to < offsets.size) offsets[to] else chromosome.length
                 val blockRange = ChromosomeRange(blockStart, blockEnd, chromosome)
                 val peakTreatment = fitInfo.score(blockRange)
-                val peakControl = fitInfo.controlScore(blockRange)!!
+                val peakControl = fitInfo.controlScore(blockRange)
                 // Use +1 as a pseudo count to compute Poisson CDF
                 val signalLogPs = PoissonUtil.logPoissonCdf(
-                    ceil(peakTreatment).toInt() + 1,
-                    ceil(peakControl) + 1
+                    ceil(peakTreatment / (to - from)).toInt() + 1,
+                    peakControl / (to - from) + 1
                 )
                 // Combine both model and signal estimations
                 return@map (modelLogPs + signalLogPs) / 2

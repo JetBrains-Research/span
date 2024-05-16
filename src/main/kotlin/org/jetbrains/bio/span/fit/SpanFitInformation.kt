@@ -68,7 +68,7 @@ interface SpanFitInformation {
      * Returns scaled control score or null if not available.
      * Call [prepareData] beforehand!
      */
-    fun controlScore(chromosomeRange: ChromosomeRange): Double?
+    fun controlScore(chromosomeRange: ChromosomeRange): Double
 
     fun cleanCaches()
 

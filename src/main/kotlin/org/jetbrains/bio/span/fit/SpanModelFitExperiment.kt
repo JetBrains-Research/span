@@ -166,17 +166,15 @@ abstract class SpanModelFitExperiment<
                     LOG.debug("Fit information is not saved")
                 }
 
-                LOG.info("Analyzing model bins enrichment")
+                LOG.info("Analyzing model states")
                 val statesDataFrame = calculateStatesDataFrame(model)
-                LOG.debug("States dataframe computed")
-                LOG.debug("Computing model states")
+                LOG.debug("Computing probabilities")
                 val chromosomeToDataFrameMap = genomeMap(genomeQuery, parallel = true) {
                     val logMemberships = getLogMemberships(sliceStatesDataFrame(statesDataFrame, it))
                     val logNullMemberships = nullHypothesis.apply(logMemberships)
                     // Convert [Double] to [Float] to save space, see #1163
                     DataFrame().with(NULL, logNullMemberships.toFloatArray())
                 }
-                LOG.debug("Model states computed")
                 val logNullMembershipsDF = fitInformation.merge(
                     genomeQuery.get().associate { it.name to chromosomeToDataFrameMap[it] }
                 )

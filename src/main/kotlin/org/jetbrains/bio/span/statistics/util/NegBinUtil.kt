@@ -29,9 +29,11 @@ object NegBinUtil {
         LOG.debug("Failures {}", fs)
         // Make means proportional to snr.
         // Minimal should be equal to the genome-wide average, since we don't expect too much signal
-        val means = DoubleArray(n) { mean * signalToNoiseRatio.pow(it.toDouble() / n) }
-        val failures = DoubleArray(n) { fs }
-        LOG.debug("Guess NegBinEmissionScheme means ${means.joinToString(",")}, failures ${failures.joinToString(",")}")
+        val means = DoubleArray(n) { mean * signalToNoiseRatio.pow(it.toDouble() / (n - 1)) }
+        // Make initial failures inverse proportional to snr - better shape of distributions.
+        val failures = DoubleArray(n) { max(fs, means.last()).pow((n - 1 - it.toDouble()) / (n - 1)) }
+        LOG.debug("Guess NegBinEmissionScheme means ${means.joinToString(",")}, " +
+                "failures ${failures.joinToString(",")}")
         return means to failures
     }
 }

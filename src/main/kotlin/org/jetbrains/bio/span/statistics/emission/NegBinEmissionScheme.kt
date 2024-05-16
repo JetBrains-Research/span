@@ -18,9 +18,9 @@ class NegBinEmissionScheme(mean: Double, failures: Double) :
     override val degreesOfFreedom: Int = 2
 
     var mean: Double = mean
-        private set
+        internal set
     var failures: Double = failures
-        private set
+        internal set
 
     @Transient
     private var logMean: Double = 0.0

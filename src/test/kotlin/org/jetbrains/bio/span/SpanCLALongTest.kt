@@ -234,8 +234,9 @@ PEAKS: $peaksPath
                         )
                     )
                 }
-                assertTrue("After fitting the model, emission's parameter p in LOW state" in out)
-                assertTrue("Low quality of data detected after fitting the model." in out)
+                // This shouldn't be happening anymore after additional signal-to-noise ratio guard during fit
+                assertFalse("After fitting the model, emission's parameter p in LOW state" in out)
+                assertFalse("Low quality of data detected after fitting the model." in out)
             }
         }
     }

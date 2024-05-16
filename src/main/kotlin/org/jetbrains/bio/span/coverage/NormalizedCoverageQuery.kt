@@ -11,6 +11,7 @@ import org.jetbrains.bio.genome.query.Query
 import org.jetbrains.bio.genome.query.ReadsQuery
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BETA_STEP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_TREATMENT_SCALE_MAX
 import org.jetbrains.bio.util.isAccessible
 import org.jetbrains.bio.util.reduceIds
 import org.jetbrains.bio.util.stemGz
@@ -18,23 +19,30 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
 import kotlin.math.abs
-import kotlin.math.ceil
 import kotlin.math.max
+import kotlin.math.min
 
 /**
- * Normalized coverage query.
+ * A class representing a normalized coverage query.
  *
- * normCov = treatmentCov * treatmentScale - beta * controlCov * controlScale
- * treatmentScale and controlScale are computed to upscale smaller library.
+ * normCov = (treatmentCov * treatmentScale - controlCov * controlScale * beta)
+ *
+ * treatmentScale and controlScale are computed to upscale a smaller library,
+ *      limiting treatmentScale from [SPAN_TREATMENT_SCALE_MIN] to [SPAN_TREATMENT_SCALE_MAX]
  * beta is estimated as value between 0 and 1 minimizing absolute correlation between
- * normalized coverage and control coverage.
- * |correlation(treatmentCov * treatmentScale - beta * controlCov * controlScale, controlCov)|
+ *      normalized coverage and control coverage:
+ *      | correlation(treatmentCov * treatmentScale - controlCov * controlScale * beta, controlCov) |
  *
  * Scaling is inspired by https://genomebiology.biomedcentral.com/articles/10.1186/gb-2008-9-9-r137
  * Beta is inspired by https://www.cell.com/biophysj/fulltext/S0006-3495(17)30032-2#sec2
-
- * Reads are computed using [unique] option
- * Preprocessed reads are converted into tags using [Fragment] option
+ *
+ * @property genomeQuery The genome query.
+ * @property treatmentPath The path to the treatment file.
+ * @property controlPath The path to the control file.
+ * @property fragment The fragment.
+ * @property unique Flag indicating whether to use unique reads.
+ * @property binSize The bin size.
+ * @property showLibraryInfo Flag indicating whether to show library information.
  */
 class NormalizedCoverageQuery(
     val genomeQuery: GenomeQuery,
@@ -80,26 +88,27 @@ class NormalizedCoverageQuery(
         analyzeCoverage(genomeQuery, treatmentReads.get(), controlReads?.get(), binSize)
     }
 
-    fun score(chromosomeRange: ChromosomeRange): Double {
-        return apply(chromosomeRange).toDouble()
+    fun score(t: ChromosomeRange): Double {
+        return treatmentReads.get().getBothStrandsCoverage(t) * coveragesNormalizedInfo.treatmentScale
     }
 
-    fun controlScore(chromosomeRange: ChromosomeRange): Double? {
-        if (controlReads == null) {
-            return null
-        }
+    fun controlScore(chromosomeRange: ChromosomeRange): Double {
+        require (controlReads != null) { "Control is not available" }
         return controlReads!!.get().getBothStrandsCoverage(chromosomeRange) * coveragesNormalizedInfo.controlScale
     }
 
     override fun apply(t: ChromosomeRange): Int {
+        val treatmentCoverage = treatmentReads.get().getBothStrandsCoverage(t)
         if (controlPath == null) {
-            return treatmentReads.get().getBothStrandsCoverage(t)
+            return treatmentCoverage
         }
         val (treatmentScale, controlScale, beta) = coveragesNormalizedInfo
-        val treatmentCoverage = treatmentReads.get().getBothStrandsCoverage(t)
         val controlCoverage = controlReads!!.get().getBothStrandsCoverage(t)
-
-        return max(0, ceil(treatmentCoverage * treatmentScale - controlCoverage * controlScale * beta).toInt())
+        // Additional 1-b correction to keep summary coverage constant as control after scaling
+        return max(
+            0.0,
+            (treatmentCoverage * treatmentScale - controlCoverage * controlScale * beta) / (1 - beta)
+        ).toInt()
     }
 
     companion object {
@@ -123,7 +132,7 @@ class NormalizedCoverageQuery(
             binSize: Int
         ): NormalizedCoverageInfo {
             if (controlCoverage == null) {
-                return NormalizedCoverageInfo(1.0, 1.0, 0.0)
+                return NormalizedCoverageInfo(1.0, 0.0, 0.0)
             }
             val treatmentTotal = genomeQuery.get().sumOf {
                 treatmentCoverage.getBothStrandsCoverage(it.chromosomeRange).toLong()
@@ -133,13 +142,12 @@ class NormalizedCoverageQuery(
             }
             // Upscale coverage to bigger one
             val targetCoverage = max(treatmentTotal, controlTotal)
-            var treatmentScale = 1.0 * targetCoverage / treatmentTotal
-            val controlScale = 1.0 * targetCoverage / controlTotal
+            // But keep the treatment scale within limited range
+            val treatmentScale = min(1.0 * targetCoverage / treatmentTotal, SPAN_TREATMENT_SCALE_MAX)
+            val controlScale = 1.0 * treatmentTotal * treatmentScale / controlTotal
             val beta = estimateBeta(
                 genomeQuery, treatmentCoverage, treatmentScale, controlCoverage, controlScale, binSize
             )
-            // Compensate treatment scale for beta
-            treatmentScale /= (1.0 - beta)
             LOG.info(
                 "Scale treatment ${"%,d".format(treatmentTotal)} x ${"%.3f".format(treatmentScale)}, " +
                         "control ${"%,d".format(controlTotal)} x ${"%.3f".format(controlScale)}, " +
@@ -160,23 +168,23 @@ class NormalizedCoverageQuery(
             // Estimate beta corrected signal only on not empty chromosomes
             val chromosomeWithMaxSignal = genomeQuery.get()
                 .maxByOrNull { treatmentCoverage.getBothStrandsCoverage(it.chromosomeRange) } ?: return 0.0
-            val binnedTreatment = chromosomeWithMaxSignal.range.slice(bin).mapToDouble { range ->
-                treatmentCoverage.getBothStrandsCoverage(range.on(chromosomeWithMaxSignal)) * treatmentScale
+            val binnedScaledTreatment = chromosomeWithMaxSignal.range.slice(bin).mapToDouble {
+                treatmentCoverage.getBothStrandsCoverage(it.on(chromosomeWithMaxSignal)) * treatmentScale
             }.toArray()
-            val binnedControl = chromosomeWithMaxSignal.range.slice(bin).mapToDouble { range ->
-                controlCoverage.getBothStrandsCoverage(range.on(chromosomeWithMaxSignal)) * controlScale
+            val binnedScaledControl = chromosomeWithMaxSignal.range.slice(bin).mapToDouble {
+                controlCoverage.getBothStrandsCoverage(it.on(chromosomeWithMaxSignal)) * controlScale
             }.toArray()
             var b = 0.0
             var minCorrelation = 1.0
             var minB = 0.0
             // Reuse array to reduce GC
-            val binnedNorm = DoubleArray(binnedTreatment.size)
+            val binnedNorm = DoubleArray(binnedScaledTreatment.size)
             val pearsonCorrelation = PearsonsCorrelation()
             while (b < 1) {
                 for (i in binnedNorm.indices) {
-                    binnedNorm[i] = binnedTreatment[i] - b * binnedControl[i]
+                    binnedNorm[i] = binnedScaledTreatment[i] - binnedScaledControl[i] * b
                 }
-                val c = abs(pearsonCorrelation.correlation(binnedNorm, binnedControl))
+                val c = abs(pearsonCorrelation.correlation(binnedNorm, binnedScaledControl))
                 if (c <= minCorrelation) {
                     minCorrelation = c
                     minB = b

@@ -18,8 +18,8 @@ class NegBitUtilTest {
             emissions, 2
         )
         assertEquals(1.8, means0[0], .1)
-        assertEquals(8.4, means0[1], .1)
-        assertEquals(0.14, failures0[0], .1)
-        assertEquals(0.14, failures0[1], .1)
+        assertEquals(18.8, means0[1], .1)
+        assertEquals(18.8, failures0[0], .1)
+        assertEquals(1.0, failures0[1], .1)
     }
 }

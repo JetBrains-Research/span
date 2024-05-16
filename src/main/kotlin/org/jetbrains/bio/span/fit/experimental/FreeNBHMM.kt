@@ -88,7 +88,7 @@ open class FreeNBHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) : MLFreeHMM(
                         LOG.debug("Updated flipped states.")
                         negBinEmissionSchemes[i] = highScheme
                         negBinEmissionSchemes[j] = lowScheme
-                        probabilityFlip(
+                        transitionProbabilityFlip(
                             i, j,
                             negBinEmissionSchemes, logPriorProbabilities, logTransitionProbabilities
                         )
@@ -99,7 +99,7 @@ open class FreeNBHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) : MLFreeHMM(
             }
         }
 
-        fun probabilityFlip(
+        private fun transitionProbabilityFlip(
             state1: Int, state2: Int,
             negBinEmissionSchemes: Array<NegBinEmissionScheme>,
             logPriorProbabilities: F64Array,
