@@ -32,7 +32,7 @@ See [releases](https://github.com/JetBrains-Research/span/releases) section for 
 Requirements
 ------------
 
-Download and install [Java 8](http://www.java.com/en/download/).
+Download and install [Java 8+](https://openjdk.org/install/).
 
 Peak calling
 ------------
