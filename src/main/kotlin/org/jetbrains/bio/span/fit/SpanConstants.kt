@@ -62,7 +62,7 @@ object SpanConstants {
      * to be checked by enrichment vs. control track. The less value the more candidates are presented for check.
      * Potential drawback - mixing two adjacent peaks into a single one, or too much noise.
      */
-    const val SPAN_DEFAULT_BACKGROUND_SENSITIVITY = 0.2
+    const val SPAN_DEFAULT_BACKGROUND_SENSITIVITY = 0.1
 
     /**
      * Fraction of top significant bins to be used for peak score estimation.
@@ -73,9 +73,9 @@ object SpanConstants {
     const val SPAN_SCORE_BLOCKS = 0.5
 
     /**
-     * Minimal relative distance between candidates
+     * Minimal relative distance between candidates, x min size of neighbors
      */
-    const val SPAN_CANDIDATES_DISTANCE = 0.25
+    const val SPAN_CANDIDATES_DISTANCE = 1.0
 
     /**
      * Clipping allows to fine-tune boundaries of point-wise peaks according to the local signal.

@@ -24,6 +24,7 @@ import org.jetbrains.bio.viktor.F64Array
 import org.jetbrains.bio.viktor.KahanSum
 import kotlin.math.ceil
 import kotlin.math.ln
+import kotlin.math.ln1p
 import kotlin.math.min
 
 
@@ -64,6 +65,7 @@ object ModelToPeaks {
         cancellableState: CancellableState?
     ): GenomeMap<List<Peak>> {
         val fitInfo = spanFitResults.fitInfo
+        // Prepare fit information for scores computations
         fitInfo.prepareData()
         // Collect candidates from model
         val candidates = genomeMap(genomeQuery, parallel = true) { chromosome ->
@@ -78,6 +80,9 @@ object ModelToPeaks {
         val (avgSignalDensity, avgNoiseDensity) = estimateGenomeSignalNoiseAverage(
             genomeQuery, fitInfo, candidates, clip
         )
+        if (clip > 0) {
+            LOG.debug("Signal density $avgSignalDensity, noise density $avgNoiseDensity")
+        }
 
         // Collect peaks
         val peaks = genomeMap(genomeQuery, parallel = true) { chromosome ->
@@ -123,9 +128,6 @@ object ModelToPeaks {
             return emptyList<Range>() to emptyList()
         }
 
-        // Prepare fit information for scores computations
-        fitInfo.prepareData()
-
         val logNullMemberships = getLogNulls(spanFitResults, chromosome)
         val logFdr = ln(fdr)
         val candidateBins = BitList(logNullMemberships.size) { logNullMemberships[it] <= logFdr * bgSensitivity }
@@ -136,13 +138,13 @@ object ModelToPeaks {
             return emptyList<Range>() to emptyList()
         }
 
-        // merge candidates by relative distance
+        // merge candidates by min relative distance
         var lastEnd = -1
         var lastD = Int.MAX_VALUE
         for ((start, end) in candidates) {
-            val d = ((end - start) * mergeCandidates).toInt()
+            val d = ceil((end - start) * mergeCandidates).toInt()
             if (lastEnd != -1) {
-                if (start - lastEnd < (lastD + d) / 2) {
+                if (start - lastEnd < min(lastD, d)) {
                     candidateBins.set(lastEnd, start)
                 }
             }
@@ -206,9 +208,6 @@ object ModelToPeaks {
         val maxClippedThreshold = clip
         val maxClippedFraction = clip / 2
         val maxClippedScore = avgNoiseDensity + maxClippedThreshold * (avgSignalDensity - avgNoiseDensity)
-        if (clip > 0) {
-            LOG.debug("Signal density $avgSignalDensity, noise density $avgNoiseDensity")
-        }
 
         // Filter result peaks by Q values
         val peaksLogQValues = Fdr.qvalidate(peaksLogPvalues, logResults = true)
@@ -256,15 +255,15 @@ object ModelToPeaks {
 
         val peaksLogPvalues = F64Array(candidatePeaks.size) { idx ->
             cancellableState?.checkCanceled()
-            val blocks = candidatePeaksBlocks[idx]
+            var blocks = candidatePeaksBlocks[idx]
             // Use the whole peaks for estimation may produce more significant results
             // beneficial for short peaks, TFs, ATAC-seq etc.
-//            if (blocks.size <= 1) {
-//                blocks = listOf(candidatePeaks[idx])
-//            }
+            if (blocks.size <= 1) {
+                blocks = listOf(candidatePeaks[idx])
+            }
             val blocksLogPs = blocks.map { (from, to) ->
                 // Model posterior log error probability for block
-                val modelLogPs = (from until to).sumOf { logNullMemberships[it] } / (to - from)
+                val modelLogPs = (from until to).sumOf { logNullMemberships[it] }
                 if (!isTreatmentAndControlAvailable) {
                     return@map modelLogPs
                 }
@@ -275,8 +274,8 @@ object ModelToPeaks {
                 val peakControl = fitInfo.controlScore(blockRange)
                 // Use +1 as a pseudo count to compute Poisson CDF
                 val signalLogPs = PoissonUtil.logPoissonCdf(
-                    ceil(peakTreatment / (to - from)).toInt() + 1,
-                    peakControl / (to - from) + 1
+                    ceil(peakTreatment).toInt() + 1,
+                    peakControl + 1
                 )
                 // Combine both model and signal estimations
                 return@map (modelLogPs + signalLogPs) / 2
