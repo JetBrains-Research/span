@@ -75,12 +75,14 @@ object SpanConstants {
     /**
      * Minimal relative distance between candidates, x min size of neighbors
      */
-    const val SPAN_CANDIDATES_DISTANCE = 1.0
+    const val SPAN_DEFAULT_GAP = 1.0
 
     /**
      * Clipping allows to fine-tune boundaries of point-wise peaks according to the local signal.
      */
-    const val SPAN_DEFAULT_CLIP = 0.4
+    const val SPAN_DEFAULT_SIGNAL_CLIP = 0.5
+
+    const val SPAN_DEFAULT_LENGTH_CLIP = 0.5
 
     /**
      * Array of steps used for reducing the range by [SPAN_CLIP_STEPS] from both sides while increasing score.

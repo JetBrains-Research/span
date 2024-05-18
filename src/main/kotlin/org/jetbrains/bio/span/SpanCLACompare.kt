@@ -7,8 +7,8 @@ import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.span.SpanCLA.LOG
 import org.jetbrains.bio.span.fit.*
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BACKGROUND_SENSITIVITY
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.peaks.ModelToPeaks
 import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.util.*
@@ -97,11 +97,11 @@ object SpanCLACompare {
                 require(bgSensitivity.isNaN() || 0 < bgSensitivity && bgSensitivity <= 1) {
                     "Illegal background sensitivity: $bgSensitivity, expected range: (0, 1]"
                 }
-                val clip = if (options.has("clip")) options.valueOf("clip") as Double else SPAN_DEFAULT_CLIP
-                require(0 <= clip && clip < 1) { "Illegal clip: $fdr, expected range: [0, 1)" }
+                val gap = if (options.has("gap")) options.valueOf("gap") as Double else SPAN_DEFAULT_GAP
+                require(gap >= 0) { "Illegal gap: $gap, expected >= 0" }
 
                 val workingDir = options.valueOf("workdir") as Path
-                val id = peaksPath?.stemGz ?: reduceIds(listOf(modelId, fdr.toString(), bgSensitivity.toString(), clip.toString()))
+                val id = peaksPath?.stemGz ?: reduceIds(listOf(modelId, fdr.toString(), bgSensitivity.toString(), gap.toString()))
                 var logPath = options.valueOf("log") as Path?
                 val chromSizesPath = options.valueOf("chrom.sizes") as Path?
 
@@ -122,7 +122,7 @@ object SpanCLACompare {
 
                 LOG.info("FDR: $fdr")
                 LOG.info("BACKGROUND SENSITIVITY: $bgSensitivity")
-                LOG.info("CLIP: $clip")
+                LOG.info("GAP: $gap")
 
                 if (peaksPath != null) {
                     LOG.info("PEAKS: $peaksPath")
@@ -150,7 +150,7 @@ object SpanCLACompare {
                         genomeQuery,
                         fdr,
                         bgSensitivity,
-                        clip
+                        gap
                     )
                     Peak.savePeaks(peaks, peaksPath, "diff_${id}.peak")
                     LOG.info("Saved result to $peaksPath")

@@ -6,7 +6,7 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BACKGROUND_SENSITIVITY
 import org.jetbrains.bio.span.peaks.ModelToPeaks
 import org.jetbrains.bio.util.Logs
@@ -79,7 +79,7 @@ class SpanModelFitExperimentTest {
                     peakCallingExperiment.results, fullGenomeQuery,
                     fdr = 0.05,
                     bgSensitivity = SPAN_DEFAULT_BACKGROUND_SENSITIVITY,
-                    clip = SPAN_DEFAULT_CLIP,
+                    gap = SPAN_DEFAULT_GAP,
                     cancellableState = null
                 )
                     .isNotEmpty(),

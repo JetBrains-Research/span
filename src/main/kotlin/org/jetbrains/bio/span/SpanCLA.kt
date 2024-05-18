@@ -9,8 +9,8 @@ import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.fit.AbstractSpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BACKGROUND_SENSITIVITY
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_MAX_ITERATIONS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanDataPaths
@@ -165,13 +165,15 @@ compare                         Differential peak calling
                 .ofType(Double::class.java)
                 .defaultsTo(SPAN_DEFAULT_BACKGROUND_SENSITIVITY)
             accepts(
-                "clip",
-                "Clip peaks to improve peaks density using local signal coverage (default: $SPAN_DEFAULT_CLIP)"
+                "gap",
+                "Gap is used for broad histone marks to join adjacent peaks.\n" +
+                        "Recommended value for generic ChIP-seq: $SPAN_DEFAULT_GAP,\n" +
+                        "Recommended value for TFs and ATAC-seq: 0.0"
             )
                 .availableIf("peaks")
                 .withRequiredArg()
                 .ofType(Double::class.java)
-                .defaultsTo(SPAN_DEFAULT_CLIP)
+                .defaultsTo(SPAN_DEFAULT_GAP)
 
             acceptsAll(listOf("w", "workdir"), "Path to the working directory. Used to save coverage and model cache")
                 .withRequiredArg().withValuesConvertedBy(PathConverter.exists())

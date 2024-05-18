@@ -13,19 +13,19 @@ import java.util.concurrent.Callable
 
 object SpanSemiSupervised {
 
-    val FDRS = listOf(
+    private val SPAN_FDRS = listOf(
         0.1, SPAN_DEFAULT_FDR, 0.01, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10
     )
 
     val SPAN_BACKGROUND_SENSITIVITY_VARIANTS =
-        doubleArrayOf(1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01).sorted()
+        doubleArrayOf(1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 1e-3, 1e-4).sorted()
 
-    val SPAN_CLIPS = doubleArrayOf(0.0, 0.2, 0.4, 0.6, 0.8)
+    val SPAN_GAPS = doubleArrayOf(0.0, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0)
 
     val PARAMETERS =
-        FDRS.sorted().flatMap { fdr ->
+        SPAN_FDRS.sorted().flatMap { fdr ->
             SPAN_BACKGROUND_SENSITIVITY_VARIANTS.sorted().flatMap { sensitivity ->
-                SPAN_CLIPS.map { clip ->
+                SPAN_GAPS.map { clip ->
                     Triple(fdr, sensitivity, clip)
                 }
             }

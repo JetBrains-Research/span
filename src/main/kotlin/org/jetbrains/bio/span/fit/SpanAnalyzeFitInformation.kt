@@ -101,12 +101,11 @@ data class SpanAnalyzeFitInformation(
         check(normalizedCoverageQueries != null) {
             "Please use prepareData before!"
         }
-        return if (normalizedCoverageQueries!!.all { it.areCachesPresent() }) {
-            normalizedCoverageQueries!!.sumOf { it.score(chromosomeRange) } /
-                    normalizedCoverageQueries!!.size
-        } else {
-            0.0
+        check(normalizedCoverageQueries!!.all { it.areCachesPresent() }) {
+            "Coverage information is not available"
         }
+        return normalizedCoverageQueries!!.sumOf { it.score(chromosomeRange) } /
+                normalizedCoverageQueries!!.size
     }
 
     @Synchronized
@@ -115,7 +114,7 @@ data class SpanAnalyzeFitInformation(
             "Please use prepareData before!"
         }
 
-        check (normalizedCoverageQueries!!.all { it.controlReads != null }) {
+        check(normalizedCoverageQueries!!.all { it.controlReads != null && it.areCachesPresent()}) {
             "Control is not available"
         }
         return normalizedCoverageQueries!!.sumOf { it.controlScore(chromosomeRange) } /

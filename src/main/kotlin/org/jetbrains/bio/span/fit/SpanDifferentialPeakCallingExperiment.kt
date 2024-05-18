@@ -3,7 +3,7 @@ package org.jetbrains.bio.span.fit
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BACKGROUND_SENSITIVITY
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.peaks.ModelToPeaks
 import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.span.statistics.hmm.ConstrainedNBZHMM
@@ -50,7 +50,7 @@ class SpanDifferentialPeakCallingExperiment private constructor(
             genomeQuery,
             fdr,
             SPAN_DEFAULT_BACKGROUND_SENSITIVITY,
-            SPAN_DEFAULT_CLIP,
+            SPAN_DEFAULT_GAP,
             null
         )
         val highLow = arrayListOf<Peak>()

@@ -14,7 +14,7 @@ import org.jetbrains.bio.genome.format.BedFormat
 import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BACKGROUND_SENSITIVITY
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_MAX_ITERATIONS
@@ -284,7 +284,7 @@ PEAKS: $peaksPath
                         modelId,
                         SPAN_DEFAULT_FDR.toString(),
                         SPAN_DEFAULT_BACKGROUND_SENSITIVITY.toString(),
-                        SPAN_DEFAULT_CLIP.toString()
+                        SPAN_DEFAULT_GAP.toString()
                     )
                 )
                 val logPath = Configuration.logsPath / "$logId.log"
@@ -329,7 +329,7 @@ PEAKS: $peaksPath
                             modelId,
                             SPAN_DEFAULT_FDR.toString(),
                             SPAN_DEFAULT_BACKGROUND_SENSITIVITY.toString(),
-                            SPAN_DEFAULT_CLIP.toString()
+                            SPAN_DEFAULT_GAP.toString()
                         )
                     )
                     assertTrue((Configuration.logsPath / "$logId.log").exists, "Log file not found")
@@ -382,7 +382,7 @@ PEAKS: $peaksPath
                             modelId,
                             SPAN_DEFAULT_FDR.toString(),
                             SPAN_DEFAULT_BACKGROUND_SENSITIVITY.toString(),
-                            SPAN_DEFAULT_CLIP.toString()
+                            SPAN_DEFAULT_GAP.toString()
                         )
                     )
                     assertTrue((Configuration.logsPath / "$logId.log").exists, "Log file not found")
@@ -605,7 +605,7 @@ FRAGMENT: auto
 MAX ITERATIONS: $SPAN_FIT_MAX_ITERATIONS
 CONVERGENCE THRESHOLD: $SPAN_FIT_THRESHOLD
 BACKGROUND SENSITIVITY: 0.1
-CLIP: 0.4
+GAP: 1.0
 EXTENDED MODEL INFO: false
 Library: ${path.fileName}, Depth:
 100${ds}00% (
@@ -924,7 +924,7 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
                         modelId,
                         SPAN_DEFAULT_FDR.toString(),
                         SPAN_DEFAULT_BACKGROUND_SENSITIVITY.toString(),
-                        SPAN_DEFAULT_CLIP.toString()
+                        SPAN_DEFAULT_GAP.toString()
                     )
                 )
                 val logPath = Configuration.logsPath / "$logId.log"

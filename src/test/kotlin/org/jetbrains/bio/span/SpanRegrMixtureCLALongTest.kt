@@ -9,7 +9,7 @@ import org.jetbrains.bio.genome.format.BedFormat
 import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BACKGROUND_SENSITIVITY
 import org.jetbrains.bio.span.fit.SpanDataPaths
@@ -179,7 +179,7 @@ class SpanRegrMixtureCLALongTest {
                             modelId,
                             SPAN_DEFAULT_FDR.toString(),
                             SPAN_DEFAULT_BACKGROUND_SENSITIVITY.toString(),
-                            SPAN_DEFAULT_CLIP.toString()
+                            SPAN_DEFAULT_GAP.toString()
                         )
                     )
                     assertTrue((Configuration.logsPath / "${logId}.log").exists, "Log file not found")
