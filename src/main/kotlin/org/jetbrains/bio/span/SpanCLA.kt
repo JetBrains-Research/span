@@ -155,7 +155,7 @@ compare                         Differential peak calling
                 .ofType(Double::class.java)
                 .defaultsTo(SPAN_DEFAULT_FDR)
             acceptsAll(
-                listOf("bgs", "bg-sensitivity"),
+                listOf("sensitivity"),
                 "Configures background sensitivity for peaks.\n" +
                         "Recommended value for generic ChIP-seq: $SPAN_DEFAULT_BACKGROUND_SENSITIVITY,\n" +
                         "Recommended value for TFs and ATAC-seq: 1.0"

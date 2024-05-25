@@ -13,10 +13,10 @@ import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.format.BedFormat
 import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BACKGROUND_SENSITIVITY
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_MAX_ITERATIONS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanDataPaths
@@ -283,8 +283,6 @@ PEAKS: $peaksPath
                     listOf(
                         modelId,
                         SPAN_DEFAULT_FDR.toString(),
-                        SPAN_DEFAULT_BACKGROUND_SENSITIVITY.toString(),
-                        SPAN_DEFAULT_GAP.toString()
                     )
                 )
                 val logPath = Configuration.logsPath / "$logId.log"
@@ -328,8 +326,6 @@ PEAKS: $peaksPath
                         listOf(
                             modelId,
                             SPAN_DEFAULT_FDR.toString(),
-                            SPAN_DEFAULT_BACKGROUND_SENSITIVITY.toString(),
-                            SPAN_DEFAULT_GAP.toString()
                         )
                     )
                     assertTrue((Configuration.logsPath / "$logId.log").exists, "Log file not found")
@@ -381,8 +377,6 @@ PEAKS: $peaksPath
                         listOf(
                             modelId,
                             SPAN_DEFAULT_FDR.toString(),
-                            SPAN_DEFAULT_BACKGROUND_SENSITIVITY.toString(),
-                            SPAN_DEFAULT_GAP.toString()
                         )
                     )
                     assertTrue((Configuration.logsPath / "$logId.log").exists, "Log file not found")
@@ -604,8 +598,6 @@ CHROM.SIZES: $chromsizes
 FRAGMENT: auto
 MAX ITERATIONS: $SPAN_FIT_MAX_ITERATIONS
 CONVERGENCE THRESHOLD: $SPAN_FIT_THRESHOLD
-BACKGROUND SENSITIVITY: 0.1
-GAP: 1.0
 EXTENDED MODEL INFO: false
 Library: ${path.fileName}, Depth:
 100${ds}00% (
@@ -630,6 +622,8 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
                     },
                     "Peak value is reported as 0.0, although the coverage cache is present"
                 )
+                assertIn("Estimating background sensitivity and gap...", out)
+                assertIn("Sensitivity: 0.1 Gap: 0.5", out)
                 assertIn("Signal mean: ", out)
                 assertIn("Noise mean: ", out)
                 assertIn("Signal to noise: ", out)
@@ -906,7 +900,7 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
                             "analyze",
                             "-cs", Genome["to1"].chromSizesPath.toString(),
                             "-w", dir.toString(),
-                            "-t", path.toString()
+                            "-t", path.toString(),
                         )
                     )
                 }
@@ -923,8 +917,6 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
                     listOf(
                         modelId,
                         SPAN_DEFAULT_FDR.toString(),
-                        SPAN_DEFAULT_BACKGROUND_SENSITIVITY.toString(),
-                        SPAN_DEFAULT_GAP.toString()
                     )
                 )
                 val logPath = Configuration.logsPath / "$logId.log"

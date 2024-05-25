@@ -35,7 +35,7 @@ class SpanModelFitExperimentTest {
                 listOf("foo"), AutoFragment, true, 200
             ).dataQuery
 
-            assertTrue(dataQuery.id.startsWith("${path.stemGz}_foo_200#"))
+            assertTrue(dataQuery.id.startsWith("${path.stemGz}_foo_200"))
             val df = dataQuery.apply(Chromosome(Genome["to1"], "chr1"))
             assertEquals("[foo]", df.labels.toList().toString())
         }
@@ -82,6 +82,7 @@ class SpanModelFitExperimentTest {
                     gap = SPAN_DEFAULT_GAP,
                     cancellableState = null
                 )
+                    .toList()
                     .isNotEmpty(),
                 "Expected peak set not to be empty."
             )

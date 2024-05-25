@@ -45,14 +45,14 @@ class SpanDifferentialPeakCallingExperiment private constructor(
     fun computeDirectedDifferencePeaks(
         fdr: Double
     ): Pair<List<Peak>, List<Peak>> {
-        val map = ModelToPeaks.getPeaksMap(
+        val map = ModelToPeaks.getPeaks(
             results,
             genomeQuery,
             fdr,
             SPAN_DEFAULT_BACKGROUND_SENSITIVITY,
             SPAN_DEFAULT_GAP,
             null
-        )
+        ).peaks
         val highLow = arrayListOf<Peak>()
         val lowHigh = arrayListOf<Peak>()
         genomeQuery.get().forEach { chromosome ->

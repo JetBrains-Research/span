@@ -64,6 +64,19 @@ object SpanConstants {
      */
     const val SPAN_DEFAULT_BACKGROUND_SENSITIVITY = 0.1
 
+    const val SPAN_DEFAULT_BACKGROUND_SENSITIVITY_FRAGMENTATION_MILD = 0.8
+    const val SPAN_DEFAULT_BACKGROUND_SENSITIVITY_FRAGMENTATION_MODERATE = 1.0
+    const val SPAN_DEFAULT_BACKGROUND_SENSITIVITY_FRAGMENTATION_SEVERE = 1.5
+
+    /**
+     * Minimal relative distance between candidates, x min size of neighbors
+     */
+    const val SPAN_DEFAULT_GAP = 0.5
+
+    const val SPAN_DEFAULT_GAP_FRAGMENTATION_MILD = 10.0
+    const val SPAN_DEFAULT_GAP_FRAGMENTATION_MODERATE = 20.0
+    const val SPAN_DEFAULT_GAP_FRAGMENTATION_SEVERE = 40.0
+
     /**
      * Fraction of top significant bins to be used for peak score estimation.
      * It should be robust wrt appending blocks of low significance,
@@ -71,11 +84,6 @@ object SpanConstants {
      * peaks which are present for stronger fdr, but missing for more relaxed settings
      */
     const val SPAN_SCORE_BLOCKS = 0.5
-
-    /**
-     * Minimal relative distance between candidates, x min size of neighbors
-     */
-    const val SPAN_DEFAULT_GAP = 1.0
 
     /**
      * Clipping allows to fine-tune boundaries of point-wise peaks according to the local signal.

@@ -178,8 +178,6 @@ class SpanRegrMixtureCLALongTest {
                         listOf(
                             modelId,
                             SPAN_DEFAULT_FDR.toString(),
-                            SPAN_DEFAULT_BACKGROUND_SENSITIVITY.toString(),
-                            SPAN_DEFAULT_GAP.toString()
                         )
                     )
                     assertTrue((Configuration.logsPath / "${logId}.log").exists, "Log file not found")

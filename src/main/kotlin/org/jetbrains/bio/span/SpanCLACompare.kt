@@ -90,18 +90,16 @@ object SpanCLACompare {
 
                 val fdr = options.valueOf("fdr") as Double
                 require(0 < fdr && fdr < 1) { "Illegal fdr: $fdr, expected range: (0, 1)" }
-                val bgSensitivity = if (options.has("bg-sensitivity"))
-                    options.valueOf("bg-sensitivity") as Double
-                else
-                    SPAN_DEFAULT_BACKGROUND_SENSITIVITY
-                require(bgSensitivity.isNaN() || 0 < bgSensitivity && bgSensitivity <= 1) {
-                    "Illegal background sensitivity: $bgSensitivity, expected range: (0, 1]"
+                val sensitivity = if (options.has("sensitivity")) options.valueOf("sensitivity") as Double else null
+                require(sensitivity == null || 0 < sensitivity && sensitivity <= 1) {
+                    "Illegal background sensitivity: $sensitivity, expected range: (0, 1]"
                 }
-                val gap = if (options.has("gap")) options.valueOf("gap") as Double else SPAN_DEFAULT_GAP
-                require(gap >= 0) { "Illegal gap: $gap, expected >= 0" }
+                val gap = if (options.has("gap")) options.valueOf("gap") as Double else null
+                require(gap == null || gap >= 0) { "Illegal gap: $gap, expected >= 0" }
 
                 val workingDir = options.valueOf("workdir") as Path
-                val id = peaksPath?.stemGz ?: reduceIds(listOf(modelId, fdr.toString(), bgSensitivity.toString(), gap.toString()))
+                val id = peaksPath?.stemGz ?:
+                reduceIds(listOfNotNull(modelId, fdr.toString(), sensitivity?.toString(), gap?.toString()))
                 var logPath = options.valueOf("log") as Path?
                 val chromSizesPath = options.valueOf("chrom.sizes") as Path?
 
@@ -121,7 +119,7 @@ object SpanCLACompare {
                 val lazyDifferentialPeakCallingResults = differentialPeakCallingResults(options)
 
                 LOG.info("FDR: $fdr")
-                LOG.info("BACKGROUND SENSITIVITY: $bgSensitivity")
+                LOG.info("BACKGROUND SENSITIVITY: $sensitivity")
                 LOG.info("GAP: $gap")
 
                 if (peaksPath != null) {
@@ -149,10 +147,10 @@ object SpanCLACompare {
                         differentialPeakCallingResults,
                         genomeQuery,
                         fdr,
-                        bgSensitivity,
+                        sensitivity,
                         gap
                     )
-                    Peak.savePeaks(peaks, peaksPath, "diff_${id}.peak")
+                    Peak.savePeaks(peaks.toList(), peaksPath, "diff_${id}.peak")
                     LOG.info("Saved result to $peaksPath")
                 }
                 if (!keepCacheFiles) {

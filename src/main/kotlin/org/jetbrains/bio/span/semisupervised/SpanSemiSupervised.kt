@@ -25,8 +25,8 @@ object SpanSemiSupervised {
     val PARAMETERS =
         SPAN_FDRS.sorted().flatMap { fdr ->
             SPAN_BACKGROUND_SENSITIVITY_VARIANTS.sorted().flatMap { sensitivity ->
-                SPAN_GAPS.map { clip ->
-                    Triple(fdr, sensitivity, clip)
+                SPAN_GAPS.map { gap ->
+                    Triple(fdr, sensitivity, gap)
                 }
             }
         }
@@ -62,7 +62,7 @@ object SpanSemiSupervised {
                     labels,
                     LocationsMergingList.create(
                         labeledGenomeQuery,
-                        peaksOnLabeledGenomeQuery.map { it.location }.iterator()
+                        peaksOnLabeledGenomeQuery.toList().map { it.location }.iterator()
                     )
                 )
                 MultitaskProgress.reportTask(id)
