@@ -79,10 +79,16 @@ object ModelToPeaks {
         }
 
         // Estimate signal and noise average signal by candidates
-        val (avgSignalDensity, avgNoiseDensity) = estimateGenomeSignalNoiseAverage(
-            genomeQuery, fitInfo, candidates
-        )
-        LOG.debug("Signal density $avgSignalDensity, noise density $avgNoiseDensity")
+        val canEstimateSignalToNoise = fitInfo is SpanAnalyzeFitInformation &&
+                fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
+
+        val (avgSignalDensity, avgNoiseDensity) = if (canEstimateSignalToNoise)
+            estimateGenomeSignalNoiseAverage(genomeQuery, fitInfo, candidates).apply {
+                LOG.debug("Signal density $first, noise density $second")
+            }
+        else
+            null to null
+
 
         // Collect peaks
         val peaks = genomeMap(genomeQuery, parallel = true) { chromosome ->
@@ -95,7 +101,7 @@ object ModelToPeaks {
             getChromosomePeaksFromCandidates(
                 chromosome, chrCandidates, fitInfo,
                 logNullMemberships, fitInfo.offsets(chromosome), fdr,
-                bgSens2use, gap2use,
+                avgSignalDensity, avgNoiseDensity,
                 cancellableState = cancellableState
             )
         }
@@ -304,8 +310,8 @@ object ModelToPeaks {
         logNullMemberships: F64Array,
         offsets: IntArray,
         fdr: Double,
-        avgSignalDensity: Double,
-        avgNoiseDensity: Double,
+        avgSignalDensity: Double?,
+        avgNoiseDensity: Double?,
         cancellableState: CancellableState?
     ): List<Peak> {
         // Compute candidate bins and peaks with relaxed background settings
@@ -344,9 +350,11 @@ object ModelToPeaks {
             }
             var start = offsets[from]
             var end = if (to < offsets.size) offsets[to] else chromosome.length
-            val (cs, ce) = clipPeakByScore(chromosome, start, end, fitInfo, avgSignalDensity, avgNoiseDensity)
-            start = cs
-            end = ce
+            if (canEstimateScore && avgSignalDensity != null && avgNoiseDensity != null) {
+                val (cs, ce) = clipPeakByScore(chromosome, start, end, fitInfo, avgSignalDensity, avgNoiseDensity)
+                start = cs
+                end = ce
+            }
             // Value is either coverage of fold change
             val value = if (canEstimateScore)
                 fitInfo.score(ChromosomeRange(start, end, chromosome))
