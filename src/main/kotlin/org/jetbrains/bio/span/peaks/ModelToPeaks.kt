@@ -20,6 +20,9 @@ import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP_FRAGMENTATION_M
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP_FRAGMENTATION_SEVERE
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_LENGTH_CLIP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_SIGNAL_CLIP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_MILD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_MODERATE
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_SEVERE
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SCORE_BLOCKS
 import org.jetbrains.bio.span.fit.SpanFitInformation
 import org.jetbrains.bio.span.fit.SpanFitResults
@@ -120,12 +123,12 @@ object ModelToPeaks {
         if (bgSensitivity != null && gap != null) {
             return bgSensitivity to gap
         }
+        val gaps2test =
+            doubleArrayOf(0.0, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0).sorted()
         if (LOG.isDebugEnabled) {
             LOG.debug("Analysing candidates characteristics wrt sensitivity and gap...")
-            val gaps2test =
-                doubleArrayOf(0.0, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0)
             val sensitivities2test =
-                doubleArrayOf(5.0, 2.0, 1.0, 0.8, 0.5, 0.2, 0.1, 0.05, 0.001, 1e-4, 1e-6, 1e-8).sorted()
+                doubleArrayOf(5.0, 2.0, 1.2, 1.0, 0.8, 0.5, 0.2, 0.1, 0.05, 0.001, 1e-4, 1e-6, 1e-8).sorted()
 
             println("Sensitivity\tGap\tCandidatesN\tCandidatesAL\tCandidatesAD")
             for (bgs in sensitivities2test) {
@@ -137,7 +140,7 @@ object ModelToPeaks {
             }
         }
         LOG.info("Estimating background sensitivity and gap...")
-        val minPivotGap = doubleArrayOf(0.0, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0).firstOrNull { g ->
+        val minPivotGap = gaps2test.firstOrNull { g ->
             val (n1, al1, _) =
                 estimateCandidatesNumberLenDist(genomeQuery, spanFitResults, fdr, 1.0, g, cancellableState)
             val (n01, al01, _) =
@@ -148,30 +151,35 @@ object ModelToPeaks {
             // Experimentally we observe that bad quality highly fragmented tracks has counterclockwise rotation
             // Counterclockwise direction can be checked as a positive sign of convex hull square formula
             val s = triangleSignedSquare(
+                n1.toDouble(), al1,
+                n01.toDouble(), al01,
+                n0001.toDouble(), al0001
+            )
+            val sLn = triangleSignedSquare(
                 ln1p(n1.toDouble()), ln1p(al1),
                 ln1p(n01.toDouble()), ln1p(al01),
                 ln1p(n0001.toDouble()), ln1p(al0001)
             )
-            return@firstOrNull s > 0
+            return@firstOrNull s > 0 || sLn > 0
         }
-        LOG.debug("Minimal pivot gap: $minPivotGap")
+        LOG.info("Minimal pivot gap: $minPivotGap")
         var bgSensitivity2use = bgSensitivity ?: SPAN_DEFAULT_BACKGROUND_SENSITIVITY
         var gap2use = gap ?: SPAN_DEFAULT_GAP
         if (minPivotGap != null) {
             when {
-                minPivotGap <= 10 -> {
+                minPivotGap <= SPAN_GAP_PIVOT_THRESHOLD_SEVERE -> {
                     LOG.warn("Severe peaks fragmentation detected.")
                     bgSensitivity2use = bgSensitivity ?: SPAN_DEFAULT_BACKGROUND_SENSITIVITY_FRAGMENTATION_SEVERE
                     gap2use = gap ?: SPAN_DEFAULT_GAP_FRAGMENTATION_SEVERE
                 }
 
-                minPivotGap <= 50 -> {
+                minPivotGap <= SPAN_GAP_PIVOT_THRESHOLD_MODERATE -> {
                     LOG.warn("Moderate peaks fragmentation detected.")
                     bgSensitivity2use = bgSensitivity ?: SPAN_DEFAULT_BACKGROUND_SENSITIVITY_FRAGMENTATION_MODERATE
                     gap2use = gap ?: SPAN_DEFAULT_GAP_FRAGMENTATION_MODERATE
                 }
 
-                minPivotGap <= 100 -> {
+                minPivotGap <= SPAN_GAP_PIVOT_THRESHOLD_MILD -> {
                     LOG.warn("Mild peaks fragmentation detected.")
                     bgSensitivity2use = bgSensitivity ?: SPAN_DEFAULT_BACKGROUND_SENSITIVITY_FRAGMENTATION_MILD
                     gap2use = gap ?: SPAN_DEFAULT_GAP_FRAGMENTATION_MILD
