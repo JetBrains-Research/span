@@ -4,7 +4,7 @@ import org.jetbrains.bio.genome.containers.GenomeMap
 
 data class SpanPeaksResult(
     val fdr: Double,
-    val bgSensitivity: Double,
+    val sensitivity: Double,
     val gap: Double,
     val peaks: GenomeMap<List<Peak>>
 ) {

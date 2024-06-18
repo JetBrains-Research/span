@@ -42,7 +42,8 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
     maxIterations, fixedModelPath, saveExtendedInfo, keepCacheFiles
 ) {
 
-    override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span"
+    override val defaultModelPath: Path =
+        experimentPath / "${fitInformation.id}.${SpanModelType.NB2Z_HMM.extension}"
 
     companion object {
 

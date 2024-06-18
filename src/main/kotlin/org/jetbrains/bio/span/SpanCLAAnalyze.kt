@@ -6,14 +6,17 @@ import org.jetbrains.bio.experiment.configurePaths
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.PeaksInfo
+import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.genome.coverage.FixedFragment
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.SpanCLA.LOG
 import org.jetbrains.bio.span.SpanCLA.checkGenomeInFitInformation
+import org.jetbrains.bio.span.SpanResultsAnalysis.doDeepAnalysis
 import org.jetbrains.bio.span.fit.*
 import org.jetbrains.bio.span.fit.experimental.*
 import org.jetbrains.bio.span.peaks.ModelToPeaks
 import org.jetbrains.bio.span.peaks.Peak
+import org.jetbrains.bio.span.peaks.SpanPeaksResult
 import org.jetbrains.bio.span.semisupervised.LocationLabel
 import org.jetbrains.bio.span.semisupervised.SpanSemiSupervised
 import org.jetbrains.bio.span.semisupervised.TuningResults
@@ -85,9 +88,10 @@ object SpanCLAAnalyze {
                 )
 
                 SpanCLA.checkMemory()
-
                 val peaksPath = options.valueOf("peaks") as Path?
                 val modelPath = options.valueOf("model") as Path?
+                val deepAnalysis = "deep-analysis" in options
+                val blacklistPath = options.valueOf("blacklist") as Path?
                 val keepCacheFiles = "keep-cache" in options
                 checkOrFail(peaksPath != null || modelPath != null || keepCacheFiles) {
                     "At least one of the parameters is required: --peaks, --model or --keep-cache."
@@ -110,8 +114,14 @@ object SpanCLAAnalyze {
                 require(gap == null || gap >= 0) { "Illegal gap: $gap, expected >= 0" }
 
                 val workingDir = options.valueOf("workdir") as Path
-                val id = peaksPath?.stemGz ?:
-                    reduceIds(listOfNotNull(modelId, fdr.toString(), sensitivity?.toString(), gap?.toString()))
+                val id = peaksPath?.stemGz ?: reduceIds(
+                    listOfNotNull(
+                        modelId,
+                        fdr.toString(),
+                        sensitivity?.toString(),
+                        gap?.toString()
+                    )
+                )
                 var logPath = options.valueOf("log") as Path?
                 val chromSizesPath = options.valueOf("chrom.sizes") as Path?
 
@@ -159,21 +169,60 @@ object SpanCLAAnalyze {
                 configureParallelism(threads)
                 LOG.info("THREADS: ${parallelismLevel()}")
 
-
-                val spanResults = lazySpanResults.value
+                // Finally get SPAN results
+                val (actualModelPath, spanResults) = lazySpanResults.value
                 val fitInfo = spanResults.fitInfo
                 check(fitInfo is AbstractSpanAnalyzeFitInformation) {
                     "Expected ${SpanAnalyzeFitInformation::class.java.simpleName}, got ${fitInfo::class.java.name}"
                 }
+                val aboutModel = spanResults.modelInformation(actualModelPath)
+                LOG.info(aboutModel.joinToString("\n") { (k, v) ->
+                    "${k.name}: ${k.render(v)}"
+                })
+
                 val genomeQuery = fitInfo.genomeQuery()
                 val fragment = fitInfo.fragment
                 val bin = fitInfo.binSize
-
+                if (deepAnalysis) {
+                    if (fitInfo !is SpanAnalyzeFitInformation) {
+                        LOG.warn("Deep analysis is possible only for analyze command")
+                    }
+                }
                 if (peaksPath != null) {
-                    if (labelsPath == null) {
-                        savePeaks(spanResults, fitInfo, genomeQuery, bin, fragment, fdr, sensitivity, gap, peaksPath)
-                    } else {
-                        saveTunedResults(spanResults, genomeQuery, bin, fragment, labelsPath, peaksPath)
+                    val peaks = if (labelsPath == null)
+                        ModelToPeaks.getPeaks(spanResults, genomeQuery, fdr, sensitivity, gap)
+                    else
+                        tune(spanResults, genomeQuery, labelsPath, peaksPath)
+                    val peaksList = processBlackList(genomeQuery, peaks, blacklistPath)
+
+                    Peak.savePeaks(
+                        peaksList, peaksPath,
+                        "peak${if (fragment is FixedFragment) "_$fragment" else ""}_" +
+                                "${bin}_${fdr}_${peaks.sensitivity}_${peaks.gap}"
+                    )
+                    LOG.info("Peaks saved to $peaksPath")
+                    val aboutPeaks = PeaksInfo.compute(
+                        genomeQuery,
+                        peaksList.map { it.location }.stream(),
+                        peaksPath.toUri(),
+                        fitInfo.paths.map { it.treatment }
+                    )
+                    LOG.info(aboutPeaks.joinToString("\n") { (k, v) ->
+                        "${k.name}: ${k.render(v)}"
+                    })
+
+                    if (deepAnalysis && fitInfo is SpanAnalyzeFitInformation) {
+                        fitInfo.prepareData()
+                        doDeepAnalysis(
+                            actualModelPath,
+                            spanResults,
+                            fitInfo,
+                            genomeQuery,
+                            fdr,
+                            blacklistPath,
+                            peaksList,
+                            peaksPath
+                        )
                     }
                 }
                 if (modelPath == null && !keepCacheFiles) {
@@ -184,44 +233,27 @@ object SpanCLAAnalyze {
         }
     }
 
-
-    private fun savePeaks(
-        spanResults: SpanFitResults,
-        fitInfo: AbstractSpanAnalyzeFitInformation,
+    private fun processBlackList(
         genomeQuery: GenomeQuery,
-        bin: Int,
-        fragment: Fragment,
-        fdr: Double,
-        sensitivity: Double?,
-        gap: Double?,
-        peaksPath: Path
-    ) {
-        val peaks = ModelToPeaks.getPeaks(spanResults, genomeQuery, fdr, sensitivity, gap)
-        Peak.savePeaks(
-            peaks.toList(), peaksPath,
-            "peak${if (fragment is FixedFragment) "_$fragment" else ""}_${bin}_${fdr}_${peaks.bgSensitivity}_${peaks.gap}"
-        )
-        LOG.info("Saved result to $peaksPath")
-        val aboutPeaks = PeaksInfo.compute(
-            genomeQuery,
-            peaks.toList().map { it.location }.stream(),
-            peaksPath.toUri(),
-            fitInfo.paths.map { it.treatment }
-        )
-        val aboutModel = spanResults.modelInformation()
-        LOG.info("\n" + (aboutPeaks + aboutModel).joinToString("\n") { (k, v) ->
-            "${k.name}: ${k.render(v)}"
-        })
+        peaks: SpanPeaksResult,
+        blacklistPath: Path?
+    ): List<Peak> {
+        var peaksList = peaks.toList()
+        if (blacklistPath != null) {
+            LOG.info("Filter out blacklisted regions")
+            val blackList = LocationsMergingList.load(genomeQuery, blacklistPath)
+            peaksList = peaksList.filter { !blackList.intersects(it.location) }
+        }
+        return peaksList
     }
 
-    private fun saveTunedResults(
+
+    private fun tune(
         spanResults: SpanFitResults,
         genomeQuery: GenomeQuery,
-        bin: Int,
-        fragment: Fragment,
         labelsPath: Path,
-        peaksPath: Path
-    ) {
+        peaksPath: Path,
+    ): SpanPeaksResult {
         val results = TuningResults()
         LOG.info("Loading labels $labelsPath...")
         val labels = LocationLabel.loadLabels(labelsPath, genomeQuery.genome)
@@ -251,15 +283,9 @@ object SpanCLAAnalyze {
             peaksPath.parent
                     / "${peaksPath.fileName.stem}_parameters.csv"
         )
-        val peaks = ModelToPeaks.getPeaks(
+        return ModelToPeaks.getPeaks(
             spanResults, genomeQuery, optimalFDR, optimalSensitivity, optimalGap
         )
-        Peak.savePeaks(
-            peaks.toList(), peaksPath,
-            "peak${if (fragment is FixedFragment) "_$fragment" else ""}_" +
-                    "${bin}_${optimalFDR}_${optimalSensitivity}"
-        )
-        LOG.info("Saved result to $peaksPath")
     }
 
     /**
@@ -311,21 +337,24 @@ object SpanCLAAnalyze {
      * Log parameters and optionally computation of SPAN model, represented by [SpanFitResults].
      * Doesn't fit the model; this happens only if .value is invoked
      */
-    private fun logParametersAndPrepareLazySpanResults(options: OptionSet): Lazy<SpanFitResults> {
+    private fun logParametersAndPrepareLazySpanResults(options: OptionSet): Lazy<Pair<Path, SpanFitResults>> {
         val modelPath = options.valueOf("model") as Path?
         if (modelPath != null) {
             LOG.info("MODEL: $modelPath")
         }
         if (modelPath != null && modelPath.exists && modelPath.size.isNotEmpty()) {
             LOG.debug(
-                "Model file $modelPath exists and is not empty, SPAN will use it to substitute " +
-                        "the missing command line arguments and verify the provided ones."
+                "Model file {} exists and is not empty, SPAN will use it to substitute the missing " +
+                        "command line arguments and verify the provided ones.",
+                modelPath
             )
             val results = SpanModelFitExperiment.loadResults(modelPath = modelPath)
             check(results.fitInfo is AbstractSpanAnalyzeFitInformation) {
                 "Expected ${SpanAnalyzeFitInformation::class.java.simpleName}, got ${results.fitInfo::class.java.name}"
             }
             prepareAndCheckTreatmentControlPaths(options, results.fitInfo, log = true)
+            val blacklistPath = options.valueOf("blacklist") as Path?
+            LOG.info("BLACKLIST FILE: $blacklistPath")
             val workingDir = options.valueOf("workdir") as Path
             LOG.info("WORKING DIR: $workingDir")
             val chromSizesPath = options.valueOf("chrom.sizes") as Path?
@@ -344,10 +373,11 @@ object SpanCLAAnalyze {
             if (!keepCacheFiles) {
                 LOG.warn("Keep cache files setting (false) is discarded, since fitted model already exists.")
             }
-            // Create fake lazy of already computed results
-            return lazyOf(results)
+            return lazyOf(modelPath to results)        // Create fake lazy of already computed results
         } else {
             val paths = prepareAndCheckTreatmentControlPaths(options, log = true)
+            val blacklistPath = options.valueOf("blacklist") as Path?
+            LOG.info("BLACKLIST FILE: $blacklistPath")
             val workingDir = options.valueOf("workdir") as Path
             LOG.info("WORKING DIR: $workingDir")
             val chromSizesPath = options.valueOf("chrom.sizes") as Path?
@@ -379,7 +409,7 @@ object SpanCLAAnalyze {
                     modelPath, saveExtendedInfo, keepCacheFiles,
                     mapabilityPath
                 )
-                experiment.results
+                experiment.modelPath to experiment.results
             }
         }
     }

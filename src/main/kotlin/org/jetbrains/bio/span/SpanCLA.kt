@@ -125,9 +125,12 @@ compare                         Differential peak calling
                     https://hgdownload.cse.ucsc.edu/goldenPath/<build>/bigZips/<build>.chrom.sizes
                     """.trimIndent()
             ).requiredUnless("model").withRequiredArg().withValuesConvertedBy(PathConverter.exists())
-            acceptsAll(
-                listOf("ext"), "Save extended states information to model file.\n" +
+            accepts(
+                "ext", "Save extended states information to model file.\n" +
                         "Required for model visualization in JBR Genome Browser"
+            )
+            accepts(
+                "deep-analysis", "Deep analysis of model includes roughness / sensitivity / peaks by sensitivity"
             )
             acceptsAll(
                 listOf("p", "peaks"),
@@ -145,6 +148,10 @@ compare                         Differential peak calling
             acceptsAll(listOf("b", "bin"), "Bin size (default: $SPAN_DEFAULT_BIN)")
                 .withRequiredArg()
                 .ofType(Int::class.java)
+
+            acceptsAll(listOf("blacklist", "bs"), "Blacklist regions file")
+                .withRequiredArg()
+                .withValuesConvertedBy(PathConverter.exists())
 
             acceptsAll(
                 listOf("f", "fdr"),

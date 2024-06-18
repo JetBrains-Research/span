@@ -78,7 +78,7 @@ abstract class SpanModelFitExperiment<
     /**
      * We use "get" because we need the actual value of [defaultModelPath] implemented in the descendant class.
      */
-    private val modelPath get() = fixedModelPath ?: defaultModelPath
+    val modelPath get() = fixedModelPath ?: defaultModelPath
 
     private val saveModel get() = fixedModelPath != null || keepModelFile
 

@@ -3,6 +3,7 @@ package org.jetbrains.bio.span.semisupervised
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanFitResults
 import org.jetbrains.bio.span.peaks.ModelToPeaks
 import org.jetbrains.bio.span.semisupervised.LocationLabel.Companion.computeErrors
@@ -18,14 +19,15 @@ object SpanSemiSupervised {
     )
 
     val SPAN_BACKGROUND_SENSITIVITY_VARIANTS =
-        doubleArrayOf(1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 1e-3, 1e-4).sorted()
+        doubleArrayOf(10.0, 5.0, 2.0, 1.2, 1.0, 0.8, 0.5, 0.2, 0.1, 0.05, 0.001, 1e-4, 1e-6, 1e-8).sorted()
 
-    val SPAN_GAPS = doubleArrayOf(0.0, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0)
+    val SPAN_GAPS_VARIANTS =
+        doubleArrayOf(0.0, SPAN_DEFAULT_GAP, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0).sorted()
 
     val PARAMETERS =
         SPAN_FDRS.sorted().flatMap { fdr ->
             SPAN_BACKGROUND_SENSITIVITY_VARIANTS.sorted().flatMap { sensitivity ->
-                SPAN_GAPS.map { gap ->
+                SPAN_GAPS_VARIANTS.map { gap ->
                     Triple(fdr, sensitivity, gap)
                 }
             }

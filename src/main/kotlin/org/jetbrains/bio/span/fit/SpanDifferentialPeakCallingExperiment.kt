@@ -40,7 +40,8 @@ class SpanDifferentialPeakCallingExperiment private constructor(
     null, false, false
 ) {
 
-    override val defaultModelPath: Path = experimentPath / "${fitInformation.id}.span"
+    override val defaultModelPath: Path =
+        experimentPath / "${fitInformation.id}.${SpanModelType.NB2Z_HMM.extension}"
 
     fun computeDirectedDifferencePeaks(
         fdr: Double

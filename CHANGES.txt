@@ -6,7 +6,7 @@ Here you can see the full list of changes between each release.
 Version 1.7
 ----------------
 
-Released on May XX, 2024
+Released on June XX, 2024
 
 - Updated scaling of treatment and control to limit treatment scaling
 - Use global genome signal and noise coverage estimation for boundaries cut
@@ -14,6 +14,8 @@ Released on May XX, 2024
 - Improved performance in extreme cases (low or high coverage, small signal-to-noise) by keeping model signal-to-noise ratio in predefined range
 - Updated initial settings for better model sensitivity
 - Updated control correction during preparation step
+- Support blacklisted regions
+- Support additional analysis of peak calling including roughness and sensitivity analysis
 
 
 Version 1.6

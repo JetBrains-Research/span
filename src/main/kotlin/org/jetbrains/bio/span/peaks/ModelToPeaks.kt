@@ -28,18 +28,22 @@ import org.jetbrains.bio.span.fit.SpanFitInformation
 import org.jetbrains.bio.span.fit.SpanFitResults
 import org.jetbrains.bio.span.fit.SpanFitResults.Companion.LOG
 import org.jetbrains.bio.span.fit.SpanModelFitExperiment
+import org.jetbrains.bio.span.semisupervised.SpanSemiSupervised.SPAN_GAPS_VARIANTS
 import org.jetbrains.bio.span.statistics.util.PoissonUtil
 import org.jetbrains.bio.statistics.f64Array
 import org.jetbrains.bio.statistics.hypothesis.Fdr
 import org.jetbrains.bio.util.CancellableState
 import org.jetbrains.bio.viktor.F64Array
 import org.jetbrains.bio.viktor.KahanSum
-import java.util.DoubleSummaryStatistics
 import kotlin.math.ceil
 import kotlin.math.ln
 import kotlin.math.ln1p
 import kotlin.math.min
 
+
+private const val COVERAGE_PERCENTILE_MIN = 5.0
+
+private const val COVERAGE_PERCENTILE_MAX = 95.0
 
 object ModelToPeaks {
 
@@ -123,24 +127,8 @@ object ModelToPeaks {
         if (bgSensitivity != null && gap != null) {
             return bgSensitivity to gap
         }
-        val gaps2test =
-            doubleArrayOf(0.0, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0).sorted()
-        if (LOG.isDebugEnabled) {
-            LOG.debug("Analysing candidates characteristics wrt sensitivity and gap...")
-            val sensitivities2test =
-                doubleArrayOf(5.0, 2.0, 1.2, 1.0, 0.8, 0.5, 0.2, 0.1, 0.05, 0.001, 1e-4, 1e-6, 1e-8).sorted()
-
-            println("Sensitivity\tGap\tCandidatesN\tCandidatesAL\tCandidatesAD")
-            for (bgs in sensitivities2test) {
-                for (g in gaps2test) {
-                    val (candidatesN, candidatesAL, candidatesAD) =
-                        estimateCandidatesNumberLenDist(genomeQuery, spanFitResults, fdr, bgs, g, cancellableState)
-                    println("$bgs\t$g\t$candidatesN\t$candidatesAL\t$candidatesAD")
-                }
-            }
-        }
         LOG.info("Estimating background sensitivity and gap...")
-        val minPivotGap = gaps2test.firstOrNull { g ->
+        val minPivotGap = SPAN_GAPS_VARIANTS.sorted().firstOrNull { g ->
             val (n1, al1, _) =
                 estimateCandidatesNumberLenDist(genomeQuery, spanFitResults, fdr, 1.0, g, cancellableState)
             val (n01, al01, _) =
@@ -195,7 +183,7 @@ object ModelToPeaks {
     private fun triangleSignedSquare(x1: Double, y1: Double, x2: Double, y2: Double, x3: Double, y3: Double) =
         x1 * y2 - x2 * y1 + x2 * y3 - x3 * y2 + x3 * y1 - x1 * y3
 
-    private fun estimateCandidatesNumberLenDist(
+    fun estimateCandidatesNumberLenDist(
         genomeQuery: GenomeQuery,
         spanFitResults: SpanFitResults,
         fdr: Double,
@@ -228,8 +216,8 @@ object ModelToPeaks {
                 prevEnd = end
             }
         }
-        val pLow = StatUtils.percentile(distances, 20.0)
-        val pHigh = StatUtils.percentile(distances, 80.0)
+        val pLow = StatUtils.percentile(distances, COVERAGE_PERCENTILE_MIN)
+        val pHigh = StatUtils.percentile(distances, COVERAGE_PERCENTILE_MAX)
         var sumP = 0.0
         i = 0
         distances.forEach {
@@ -257,7 +245,7 @@ object ModelToPeaks {
         // Check that we have information for requested chromosome
         val fitInfo = spanFitResults.fitInfo
         if (!fitInfo.containsChromosomeInfo(chromosome)) {
-//            LOG.warn("Ignore ${chromosome.name}: model doesn't contain information")
+            LOG.trace("Ignore ${chromosome.name}: model doesn't contain information")
             return emptyList<Range>() to emptyList()
         }
 
@@ -265,7 +253,7 @@ object ModelToPeaks {
             "random" in chromosome.name.lowercase() ||
             "un" in chromosome.name.lowercase()
         ) {
-//            LOG.warn("Ignore ${chromosome.name}: chromosome name looks like contig")
+            LOG.trace("Ignore ${chromosome.name}: chromosome name looks like contig")
             return emptyList<Range>() to emptyList()
         }
 

@@ -14,6 +14,7 @@ import org.jetbrains.bio.span.statistics.mixture.NegBin2ZeroRegressionMixture
 import org.jetbrains.bio.span.statistics.mixture.PoissonRegression2Mixture
 import org.jetbrains.bio.statistics.model.ClassificationModel
 import org.slf4j.LoggerFactory
+import java.nio.file.Path
 
 /**
  * Contains the results of a Span-like model-fitting experiment.
@@ -34,6 +35,7 @@ open class SpanFitResults(
     companion object {
         internal val LOG = LoggerFactory.getLogger(SpanFitResults::class.java)
 
+        val CT_MODEL_FILE = TrackAboutStringColumnType("Model")
         val CT_MODEL_TYPE = TrackAboutStringColumnType("Model type")
         val CT_SIGNAL_MEAN = TrackAboutDoubleColumnType("Signal mean")
         val CT_NOISE_MEAN = TrackAboutDoubleColumnType("Noise mean")
@@ -43,16 +45,17 @@ open class SpanFitResults(
     /**
      * @return Information about fit results including model and other parameters
      */
-    open fun modelInformation(): List<TrackAboutMetricValue<*>> {
+    open fun modelInformation(modelPath: Path): List<TrackAboutMetricValue<*>> {
         return when (model) {
             is NB2ZHMM -> {
                 val signalMean = model.means[1]
                 val noiseMean = model.means[0]
                 listOf(
+                    CT_MODEL_FILE to modelPath,
+                    CT_MODEL_TYPE to SpanModelType.NB2Z_HMM.description,
                     CT_SIGNAL_MEAN to signalMean,
                     CT_NOISE_MEAN to noiseMean,
                     CT_SIGNAL_TO_NOISE to ((signalMean + 1e-10) / (noiseMean + 1e-10)),
-                    CT_MODEL_TYPE to SpanModelType.NB2Z_HMM.description,
                 )
             }
 
@@ -60,21 +63,21 @@ open class SpanFitResults(
                 val signalMean = model.means[1]
                 val noiseMean = model.means[0]
                 listOf(
+                    CT_MODEL_TYPE to SpanModelType.NB2Z_MIXTURE.description,
                     CT_SIGNAL_MEAN to signalMean,
                     CT_NOISE_MEAN to noiseMean,
                     CT_SIGNAL_TO_NOISE to ((signalMean + 1e-10) / (noiseMean + 1e-10)),
-                    CT_MODEL_TYPE to SpanModelType.NB2Z_MIXTURE.description,
                 )
             }
 
             is PoissonRegression2Mixture -> listOf(
-                CT_SIGNAL_TO_NOISE to model.signalToNoise,
                 CT_MODEL_TYPE to SpanModelType.POISSON_REGRESSION_MIXTURE.description,
+                CT_SIGNAL_TO_NOISE to model.signalToNoise,
             )
 
             is NegBin2ZeroRegressionMixture -> listOf(
-                CT_SIGNAL_TO_NOISE to model.signalToNoise,
                 CT_MODEL_TYPE to SpanModelType.NEGBIN_REGRESSION_MIXTURE.description,
+                CT_SIGNAL_TO_NOISE to model.signalToNoise,
             )
 
             is NB3ZHMM -> listOf(CT_MODEL_TYPE to SpanModelType.NB3Z_HMM.description)
