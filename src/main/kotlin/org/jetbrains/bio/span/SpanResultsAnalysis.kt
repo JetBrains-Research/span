@@ -108,10 +108,16 @@ object SpanResultsAnalysis {
         sensDetailsWriter?.close()
 
         LOG.info("Analysing peaks segmentation wrt sensitivity")
-        val bedtoolsPath = "bedtools".toPath()
+        var bedtoolsPresent = true
+        try {
+            LOG.info("Checking if bedtools is installed...")
+            Exec.exec("bedtools", "--help", output = OutputType.TEXT)
+        } catch (e: Exception) {
+            bedtoolsPresent = false
+        }
         if (peaksPath != null) {
-            if (!bedtoolsPath.isAccessible()) {
-                LOG.warn("bedtools not installed. Cannot create sensitivity track view.")
+            if (!bedtoolsPresent) {
+                LOG.warn("bedtools not available. Cannot create sensitivity track view.")
             } else {
                 val blackList =
                     if (blacklistPath != null) LocationsMergingList.load(genomeQuery, blacklistPath) else null
