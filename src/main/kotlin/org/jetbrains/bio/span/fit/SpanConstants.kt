@@ -27,6 +27,13 @@ object SpanConstants {
     const val SPAN_DEFAULT_BETA_STEP = 0.01
 
     /**
+     * Min autocorrelation threshold
+     */
+    const val AUTOCORRELATION_THRESHOLD = 0.8
+
+    const val AUTOCORRELATION_MAX_SHIFT = 50
+
+    /**
      * Default signal-to-noise ratio used for HMM model states initialization
      */
     const val SPAN_DEFAULT_SIGNAL_TO_NOISE = 10.0
@@ -62,24 +69,22 @@ object SpanConstants {
      * to be checked by enrichment vs. control track. The less value the more candidates are presented for check.
      * Potential drawback - mixing two adjacent peaks into a single one, or too much noise.
      */
-    const val SPAN_DEFAULT_BACKGROUND_SENSITIVITY = 0.1
-
-    const val SPAN_GAP_PIVOT_THRESHOLD_SEVERE = 10
-    const val SPAN_GAP_PIVOT_THRESHOLD_MODERATE = 50
-    const val SPAN_GAP_PIVOT_THRESHOLD_MILD = 100
-
-    const val SPAN_DEFAULT_BACKGROUND_SENSITIVITY_FRAGMENTATION_SEVERE = 1.2
-    const val SPAN_DEFAULT_BACKGROUND_SENSITIVITY_FRAGMENTATION_MODERATE = 1.0
-    const val SPAN_DEFAULT_BACKGROUND_SENSITIVITY_FRAGMENTATION_MILD = 0.5
+    const val SPAN_DEFAULT_SENSITIVITY = 0.1
 
     /**
-     * Minimal relative distance between candidates, x min size of neighbors
+     * Minimal distance between candidates
      */
-    const val SPAN_DEFAULT_GAP = 0.5
+    const val SPAN_DEFAULT_GAP = 1
 
-    const val SPAN_DEFAULT_GAP_FRAGMENTATION_SEVERE = 20.0
-    const val SPAN_DEFAULT_GAP_FRAGMENTATION_MODERATE = 15.0
-    const val SPAN_DEFAULT_GAP_FRAGMENTATION_MILD = 5.0
+    const val SPAN_GAP_PIVOT_THRESHOLD_SEVERE = 5
+    const val SPAN_GAP_PIVOT_THRESHOLD_MODERATE = 10
+
+    const val SPAN_GAP_FRAGMENTATION_X_SEVERE = 10
+    const val SPAN_GAP_FRAGMENTATION_X_MODERATE = 5
+
+    const val SPAN_SENSITIVITY_FRAGMENTATION_SEVERE = 1.2
+    const val SPAN_SENSITIVITY_FRAGMENTATION_MODERATE = 0.5
+
 
     /**
      * Fraction of top significant bins to be used for peak score estimation.

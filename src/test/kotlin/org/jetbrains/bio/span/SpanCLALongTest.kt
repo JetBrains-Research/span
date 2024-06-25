@@ -13,10 +13,8 @@ import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.format.BedFormat
 import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BACKGROUND_SENSITIVITY
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_MAX_ITERATIONS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanDataPaths

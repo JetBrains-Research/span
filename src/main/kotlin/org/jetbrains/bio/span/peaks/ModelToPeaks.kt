@@ -1,32 +1,31 @@
 package org.jetbrains.bio.span.peaks
 
 import org.apache.commons.math3.stat.StatUtils
+import org.apache.commons.math3.stat.correlation.PearsonsCorrelation
+import org.apache.commons.math3.util.Precision
 import org.jetbrains.bio.dataframe.BitList
-import org.jetbrains.bio.genome.Chromosome
-import org.jetbrains.bio.genome.ChromosomeRange
-import org.jetbrains.bio.genome.GenomeQuery
-import org.jetbrains.bio.genome.Range
+import org.jetbrains.bio.genome.*
 import org.jetbrains.bio.genome.containers.GenomeMap
+import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.genome.containers.genomeMap
+import org.jetbrains.bio.span.SpanResultsAnalysis
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
+import org.jetbrains.bio.span.fit.SpanConstants.AUTOCORRELATION_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanConstants.AUTOCORRELATION_MAX_SHIFT
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_CLIP_STEPS
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BACKGROUND_SENSITIVITY
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BACKGROUND_SENSITIVITY_FRAGMENTATION_MILD
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BACKGROUND_SENSITIVITY_FRAGMENTATION_MODERATE
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BACKGROUND_SENSITIVITY_FRAGMENTATION_SEVERE
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP_FRAGMENTATION_MILD
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP_FRAGMENTATION_MODERATE
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP_FRAGMENTATION_SEVERE
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_SENSITIVITY
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SENSITIVITY_FRAGMENTATION_MODERATE
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SENSITIVITY_FRAGMENTATION_SEVERE
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_FRAGMENTATION_X_MODERATE
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_FRAGMENTATION_X_SEVERE
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_LENGTH_CLIP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_SIGNAL_CLIP
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_MILD
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_MODERATE
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_SEVERE
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SCORE_BLOCKS
 import org.jetbrains.bio.span.fit.SpanFitInformation
 import org.jetbrains.bio.span.fit.SpanFitResults
-import org.jetbrains.bio.span.fit.SpanFitResults.Companion.LOG
 import org.jetbrains.bio.span.fit.SpanModelFitExperiment
 import org.jetbrains.bio.span.semisupervised.SpanSemiSupervised.SPAN_GAPS_VARIANTS
 import org.jetbrains.bio.span.statistics.util.PoissonUtil
@@ -35,6 +34,10 @@ import org.jetbrains.bio.statistics.hypothesis.Fdr
 import org.jetbrains.bio.util.CancellableState
 import org.jetbrains.bio.viktor.F64Array
 import org.jetbrains.bio.viktor.KahanSum
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+import java.nio.file.Path
+import java.util.*
 import kotlin.math.ceil
 import kotlin.math.ln
 import kotlin.math.ln1p
@@ -46,6 +49,8 @@ private const val COVERAGE_PERCENTILE_MIN = 5.0
 private const val COVERAGE_PERCENTILE_MAX = 95.0
 
 object ModelToPeaks {
+
+    val LOG: Logger = LoggerFactory.getLogger(ModelToPeaks.javaClass)
 
     /**
      * Main method to compute peaks from the model.
@@ -65,8 +70,8 @@ object ModelToPeaks {
         spanFitResults: SpanFitResults,
         genomeQuery: GenomeQuery,
         fdr: Double,
-        bgSensitivity: Double?,
-        gap: Double?,
+        sensitivity: Double?,
+        gap: Int?,
         cancellableState: CancellableState? = null,
     ): SpanPeaksResult {
         val fitInfo = spanFitResults.fitInfo
@@ -74,7 +79,7 @@ object ModelToPeaks {
         fitInfo.prepareData()
 
         val (bgSens2use, gap2use) =
-            estimateParams(genomeQuery, spanFitResults, fdr, bgSensitivity, gap, cancellableState)
+            estimateParams(genomeQuery, spanFitResults, fdr, sensitivity, gap, cancellableState)
 
         // Collect candidates from model
         val candidates = genomeMap(genomeQuery, parallel = true) { chromosome ->
@@ -120,75 +125,167 @@ object ModelToPeaks {
         genomeQuery: GenomeQuery,
         spanFitResults: SpanFitResults,
         fdr: Double,
-        bgSensitivity: Double?,
-        gap: Double?,
+        sensitivity: Double?,
+        gap: Int?,
         cancellableState: CancellableState?
-    ): Pair<Double, Double> {
-        if (bgSensitivity != null && gap != null) {
-            return bgSensitivity to gap
+    ): Pair<Double, Int> {
+        if (sensitivity != null && gap != null) {
+            return sensitivity to gap
         }
         LOG.info("Estimating background sensitivity and gap...")
-        val minPivotGap = SPAN_GAPS_VARIANTS.sorted().firstOrNull { g ->
-            val (n1, al1, _) =
-                estimateCandidatesNumberLenDist(genomeQuery, spanFitResults, fdr, 1.0, g, cancellableState)
-            val (n01, al01, _) =
-                estimateCandidatesNumberLenDist(genomeQuery, spanFitResults, fdr, 0.1, g, cancellableState)
-            val (n0001, al0001, _) =
-                estimateCandidatesNumberLenDist(genomeQuery, spanFitResults, fdr, 0.001, g, cancellableState)
-            // Here we estimate the direction between sensitivity = 1.0, 0.1 and 0.001
-            // Experimentally we observe that bad quality highly fragmented tracks has counterclockwise rotation
-            // Counterclockwise direction can be checked as a positive sign of convex hull square formula
-            val s = triangleSignedSquare(
-                n1.toDouble(), al1,
-                n01.toDouble(), al01,
-                n0001.toDouble(), al0001
-            )
-            val sLn = triangleSignedSquare(
-                ln1p(n1.toDouble()), ln1p(al1),
-                ln1p(n01.toDouble()), ln1p(al01),
-                ln1p(n0001.toDouble()), ln1p(al0001)
-            )
-            return@firstOrNull s > 0 || sLn > 0
-        }
+        val minPivotGap = estimateMinPivotGap(genomeQuery, spanFitResults, fdr, cancellableState)
         LOG.info("Minimal pivot gap: $minPivotGap")
-        var bgSensitivity2use = bgSensitivity ?: SPAN_DEFAULT_BACKGROUND_SENSITIVITY
+
+        val (sensitivity2use, gap2use) = estimateSensitivityGap(
+            genomeQuery,
+            spanFitResults,
+            sensitivity,
+            gap,
+            minPivotGap
+        )
+        LOG.info("Sensitivity: $sensitivity2use Gap: $gap2use")
+        return sensitivity2use to gap2use
+    }
+
+    fun estimateSensitivityGap(
+        genomeQuery: GenomeQuery,
+        spanFitResults: SpanFitResults,
+        sensitivity: Double?,
+        gap: Int?,
+        minPivotGap: Int?
+    ): Pair<Double, Int> {
         var gap2use = gap ?: SPAN_DEFAULT_GAP
+        var sensitivity2use = sensitivity ?: SPAN_DEFAULT_SENSITIVITY
         if (minPivotGap != null) {
+            gap2use = detectGapModel(genomeQuery, spanFitResults)
             when {
                 minPivotGap <= SPAN_GAP_PIVOT_THRESHOLD_SEVERE -> {
                     LOG.warn("Severe peaks fragmentation detected.")
-                    bgSensitivity2use = bgSensitivity ?: SPAN_DEFAULT_BACKGROUND_SENSITIVITY_FRAGMENTATION_SEVERE
-                    gap2use = gap ?: SPAN_DEFAULT_GAP_FRAGMENTATION_SEVERE
+                    sensitivity2use = sensitivity ?: SPAN_SENSITIVITY_FRAGMENTATION_SEVERE
+                    gap2use = gap ?: (gap2use * SPAN_GAP_FRAGMENTATION_X_SEVERE)
                 }
 
                 minPivotGap <= SPAN_GAP_PIVOT_THRESHOLD_MODERATE -> {
                     LOG.warn("Moderate peaks fragmentation detected.")
-                    bgSensitivity2use = bgSensitivity ?: SPAN_DEFAULT_BACKGROUND_SENSITIVITY_FRAGMENTATION_MODERATE
-                    gap2use = gap ?: SPAN_DEFAULT_GAP_FRAGMENTATION_MODERATE
+                    sensitivity2use = sensitivity ?: SPAN_SENSITIVITY_FRAGMENTATION_MODERATE
+                    gap2use = gap ?: (gap2use * SPAN_GAP_FRAGMENTATION_X_MODERATE)
                 }
-
-                minPivotGap <= SPAN_GAP_PIVOT_THRESHOLD_MILD -> {
-                    LOG.warn("Mild peaks fragmentation detected.")
-                    bgSensitivity2use = bgSensitivity ?: SPAN_DEFAULT_BACKGROUND_SENSITIVITY_FRAGMENTATION_MILD
-                    gap2use = gap ?: SPAN_DEFAULT_GAP_FRAGMENTATION_MILD
-                }
-
-                else -> LOG.warn("Barely fragmentation detected. Using defaults.")
             }
         }
-        LOG.info("Sensitivity: $bgSensitivity2use Gap: $gap2use")
-        return bgSensitivity2use to gap2use
+        return sensitivity2use to gap2use
+    }
+
+    fun estimateMinPivotGap(
+        genomeQuery: GenomeQuery,
+        spanFitResults: SpanFitResults,
+        fdr: Double,
+        cancellableState: CancellableState? = null
+    ): Int? {
+        val minPivotGap = SPAN_GAPS_VARIANTS.sorted().firstOrNull { g ->
+            val (n5, al5, _) =
+                estimateCandidatesNumberLenDist(genomeQuery, spanFitResults, fdr, 5.0, g, cancellableState)
+            val (n01, al01, _) =
+                estimateCandidatesNumberLenDist(genomeQuery, spanFitResults, fdr, 0.1, g, cancellableState)
+            // Estimating vs 0.01 leads to many H3K36me3 tracks marked as bad quality
+            val (n0001, al0001, _) =
+                estimateCandidatesNumberLenDist(genomeQuery, spanFitResults, fdr, 0.001, g, cancellableState)
+            // Here we estimate the direction between sensitivity = points
+            // Experimentally we observe that bad quality highly fragmented tracks has counterclockwise rotation
+            // Counterclockwise direction can be checked as a positive sign of convex hull square formula
+            val sLn = triangleSignedSquare(
+                ln1p(n5.toDouble()), ln1p(al5),
+                ln1p(n01.toDouble()), ln1p(al01),
+                ln1p(n0001.toDouble()), ln1p(al0001)
+            )
+            return@firstOrNull sLn > 0
+        }
+        return minPivotGap
     }
 
     private fun triangleSignedSquare(x1: Double, y1: Double, x2: Double, y2: Double, x3: Double, y3: Double) =
         x1 * y2 - x2 * y1 + x2 * y3 - x3 * y2 + x3 * y1 - x1 * y3
+
+    /**
+     * Detects maximal gap, that signal autocorrelation is >= minCorrelation
+     */
+    fun detectGapModel(
+        genomeQuery: GenomeQuery,
+        spanFitResults: SpanFitResults,
+        blackListPath: Path? = null,
+        minCorrelation: Double = AUTOCORRELATION_THRESHOLD
+    ): Int {
+        SpanResultsAnalysis.LOG.debug("Compute maximal gap by model")
+        // Limit genome query to top non-empty chromosomes
+        val chrs = genomeQuery.get()
+            .filter { spanFitResults.logNullMemberships.containsKey(it.name) }
+            .sortedByDescending { it.length }
+            .take(3)
+            .map { it.name }.toTypedArray()
+        val limitedQuery = GenomeQuery(genomeQuery.genome, *chrs)
+        val bin = spanFitResults.fitInfo.binSize
+        val totalBins = limitedQuery.get()
+            .sumOf { spanFitResults.logNullMemberships[it.name]!!.f64Array(SpanModelFitExperiment.NULL).size }
+        val nullpvals = DoubleArray(totalBins) { 0.0 }
+        var i = 0
+        val blackList = if (blackListPath != null) LocationsMergingList.load(limitedQuery, blackListPath) else null
+        var blackListIgnored = 0
+        for (chr in limitedQuery.get()) {
+            val logNullPeps = spanFitResults.logNullMemberships[chr.name]!!.f64Array(SpanModelFitExperiment.NULL)
+            for (j in 0 until logNullPeps.size) {
+                val start = j * bin
+                val end = (j + 1) * bin
+                // Ignore blackList regions
+                if (blackList != null && blackList.intersects(Location(start, end, chr))) {
+                    blackListIgnored++
+                    continue
+                }
+                nullpvals[i++] = logNullPeps[j]
+            }
+        }
+        if (blackList != null) {
+            SpanResultsAnalysis.LOG.debug("Marked {} / {} blacklisted regions", blackListIgnored, totalBins)
+        }
+        val correlations = computeCorrelations(nullpvals)
+        val maxGap = correlations.indices.filter { correlations[it] >= minCorrelation }.maxOrNull()!!
+        return maxGap
+    }
+
+    fun computeCorrelations(
+        values: DoubleArray,
+        maxCorrelationDistance: Int = AUTOCORRELATION_MAX_SHIFT
+    ): DoubleArray {
+        val distanceCorrelations = DoubleArray(min(values.size / 2, maxCorrelationDistance) + 1)
+        distanceCorrelations[0] = 1.0
+        for (i in 1 until distanceCorrelations.size) {
+            val original = DoubleArray(values.size - i - 1)
+            System.arraycopy(values, 0, original, 0, values.size - i - 1)
+            val shifted = DoubleArray(values.size - i - 1)
+            System.arraycopy(values, i, shifted, 0, values.size - i - 1)
+            Arrays.fill(shifted, values.size - i - 1, shifted.size, 0.0)
+            var correlation = if (original.size >= 2)
+                PearsonsCorrelation().correlation(original, shifted)
+            else
+                0.0
+            // Safeguard against NaN from Pearson correlation for zero or small vectors,
+            // See example at: https://github.com/JetBrains-Research/span/issues/34
+            if (correlation.isNaN() || !correlation.isFinite()) {
+                correlation = 0.0
+            }
+            // Stop computing correlation after small one
+            if (Precision.equals(correlation, 0.0, 1e-6)) {
+                break
+            }
+            distanceCorrelations[i] = correlation
+        }
+        return distanceCorrelations
+    }
 
     fun estimateCandidatesNumberLenDist(
         genomeQuery: GenomeQuery,
         spanFitResults: SpanFitResults,
         fdr: Double,
         backgroundSensitivity: Double,
-        gap: Double,
+        gap: Int,
         cancellableState: CancellableState?
     ): Triple<Int, Double, Double> {
         val candidates = genomeMap(genomeQuery, parallel = true) { chromosome ->
@@ -236,7 +333,7 @@ object ModelToPeaks {
         chromosome: Chromosome,
         fdr: Double,
         bgSensitivity: Double,
-        gap: Double,
+        gap: Int,
         scoreBlocks: Double = SPAN_SCORE_BLOCKS,
     ): Pair<List<Range>, List<List<Range>>> {
         require(bgSensitivity >= 0) { "Sensitivity should be >=0, got $bgSensitivity" }
@@ -269,16 +366,13 @@ object ModelToPeaks {
 
         // merge candidates by min relative distance
         var lastEnd = -1
-        var lastD = Int.MAX_VALUE
         for ((start, end) in candidates) {
-            val d = ceil((end - start) * gap).toInt()
             if (lastEnd != -1) {
-                if (start - lastEnd < min(lastD, d)) {
+                if (start - lastEnd < gap) {
                     candidateBins.set(lastEnd, start)
                 }
             }
             lastEnd = end
-            lastD = d
         }
         candidates = candidateBins.aggregate()
 

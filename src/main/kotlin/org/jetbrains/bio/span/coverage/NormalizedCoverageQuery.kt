@@ -102,7 +102,7 @@ class NormalizedCoverageQuery(
         if (controlPath == null) {
             return treatmentCoverage
         }
-        val (treatmentScale, controlScale, beta) = coveragesNormalizedInfo
+        val (treatmentScale, controlScale, beta, _) = coveragesNormalizedInfo
         val controlCoverage = controlReads!!.get().getBothStrandsCoverage(t)
         // Additional 1-b correction to keep summary coverage constant as control after scaling
         return max(
@@ -117,7 +117,8 @@ class NormalizedCoverageQuery(
         data class NormalizedCoverageInfo(
             val treatmentScale: Double,
             val controlScale: Double,
-            val beta: Double
+            val beta: Double,
+            val minCorrelation: Double
         )
 
 
@@ -132,7 +133,7 @@ class NormalizedCoverageQuery(
             binSize: Int
         ): NormalizedCoverageInfo {
             if (controlCoverage == null) {
-                return NormalizedCoverageInfo(1.0, 0.0, 0.0)
+                return NormalizedCoverageInfo(1.0, 0.0, 0.0, 0.0)
             }
             val treatmentTotal = genomeQuery.get().sumOf {
                 treatmentCoverage.getBothStrandsCoverage(it.chromosomeRange).toLong()
@@ -145,15 +146,15 @@ class NormalizedCoverageQuery(
             // But keep the treatment scale within limited range
             val treatmentScale = min(1.0 * targetCoverage / treatmentTotal, SPAN_TREATMENT_SCALE_MAX)
             val controlScale = 1.0 * treatmentTotal * treatmentScale / controlTotal
-            val beta = estimateBeta(
+            val (beta, minCorrelation) = estimateBeta(
                 genomeQuery, treatmentCoverage, treatmentScale, controlCoverage, controlScale, binSize
             )
             LOG.info(
                 "Scale treatment ${"%,d".format(treatmentTotal)} x ${"%.3f".format(treatmentScale)}, " +
                         "control ${"%,d".format(controlTotal)} x ${"%.3f".format(controlScale)}, " +
-                        "beta ${"%.3f".format(beta)}"
+                        "min correlation ${"%.3f".format(minCorrelation)}, beta ${"%.3f".format(beta)}"
             )
-            return NormalizedCoverageInfo(treatmentScale, controlScale, beta)
+            return NormalizedCoverageInfo(treatmentScale, controlScale, beta, minCorrelation)
         }
 
         private fun estimateBeta(
@@ -164,10 +165,11 @@ class NormalizedCoverageQuery(
             controlScale: Double,
             bin: Int,
             betaStep: Double = SPAN_DEFAULT_BETA_STEP,
-        ): Double {
+        ): Pair<Double, Double> {
             // Estimate beta corrected signal only on not empty chromosomes
             val chromosomeWithMaxSignal = genomeQuery.get()
-                .maxByOrNull { treatmentCoverage.getBothStrandsCoverage(it.chromosomeRange) } ?: return 0.0
+                .maxByOrNull { treatmentCoverage.getBothStrandsCoverage(it.chromosomeRange) } ?:
+                return 0.0 to 0.0
             val binnedScaledTreatment = chromosomeWithMaxSignal.range.slice(bin).mapToDouble {
                 treatmentCoverage.getBothStrandsCoverage(it.on(chromosomeWithMaxSignal)) * treatmentScale
             }.toArray()
@@ -194,7 +196,7 @@ class NormalizedCoverageQuery(
             if (minB == 0.0) {
                 LOG.warn("Failed to estimate beta-value for control correction")
             }
-            return minB
+            return minB to minCorrelation
         }
     }
 

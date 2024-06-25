@@ -7,8 +7,6 @@ import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.span.SpanCLA.LOG
 import org.jetbrains.bio.span.fit.*
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BACKGROUND_SENSITIVITY
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.peaks.ModelToPeaks
 import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.util.*
@@ -94,7 +92,7 @@ object SpanCLACompare {
                 require(sensitivity == null || 0 < sensitivity && sensitivity <= 1) {
                     "Illegal background sensitivity: $sensitivity, expected range: (0, 1]"
                 }
-                val gap = if (options.has("gap")) options.valueOf("gap") as Double else null
+                val gap = if (options.has("gap")) options.valueOf("gap") as Int else null
                 require(gap == null || gap >= 0) { "Illegal gap: $gap, expected >= 0" }
 
                 val workingDir = options.valueOf("workdir") as Path
