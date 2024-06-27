@@ -52,7 +52,6 @@ class SpanDifferentialPeakCallingExperiment private constructor(
             fdr,
             SPAN_DEFAULT_SENSITIVITY,
             SPAN_DEFAULT_GAP,
-            null
         ).peaks
         val highLow = arrayListOf<Peak>()
         val lowHigh = arrayListOf<Peak>()

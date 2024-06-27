@@ -10,15 +10,18 @@ import org.jetbrains.bio.genome.format.unpack
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.AUTOCORRELATION_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_MODERATE
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_SEVERE
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_BAD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_PROBLEMATIC
 import org.jetbrains.bio.span.fit.SpanFitResults
+import org.jetbrains.bio.span.peaks.ModelToPeaks
+import org.jetbrains.bio.span.peaks.ModelToPeaks.actualSensitivityGap
 import org.jetbrains.bio.span.peaks.ModelToPeaks.computeCorrelations
 import org.jetbrains.bio.span.peaks.ModelToPeaks.detectGapModel
-import org.jetbrains.bio.span.peaks.ModelToPeaks.estimateCandidatesNumberLenDist
+import org.jetbrains.bio.span.peaks.ModelToPeaks.detectSensitivity
+import org.jetbrains.bio.span.peaks.ModelToPeaks.estimateCandidatesNumberLen
 import org.jetbrains.bio.span.peaks.ModelToPeaks.estimateMinPivotGap
-import org.jetbrains.bio.span.peaks.ModelToPeaks.estimateSensitivityGap
 import org.jetbrains.bio.span.peaks.ModelToPeaks.getChromosomeCandidates
+import org.jetbrains.bio.span.peaks.ModelToPeaks.getLogNullPvals
 import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.span.semisupervised.SpanSemiSupervised.SPAN_BACKGROUND_SENSITIVITY_VARIANTS
 import org.jetbrains.bio.span.semisupervised.SpanSemiSupervised.SPAN_GAPS_VARIANTS
@@ -28,8 +31,10 @@ import org.slf4j.LoggerFactory
 import java.io.BufferedWriter
 import java.io.FileWriter
 import java.nio.file.Path
-import java.util.*
-import kotlin.math.*
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.max
+import kotlin.math.sqrt
 
 object SpanResultsAnalysis {
 
@@ -90,6 +95,12 @@ object SpanResultsAnalysis {
             logInfo("Min control correlation: $minCorrelation", infoWriter)
         }
 
+        LOG.info("Analysing log null pvalues distribution")
+        val logNullPvals = getLogNullPvals(genomeQuery, spanFitResults, blacklistPath)
+        logInfo("LogNullPVals std: ${logNullPvals.standardDeviation()}", infoWriter)
+
+        prepareLogNullsTsvFile(logNullPvals, peaksPath)
+
         val maxGapCoverage = detectGapCoverage(
             genomeQuery, treatmentCoverage, treatmentScale, controlCoverage, controlScale, beta,
             fitInfo.binSize, blacklistPath
@@ -105,7 +116,7 @@ object SpanResultsAnalysis {
         val roughness = detectAverageRoughness(
             genomeQuery, treatmentCoverage, treatmentScale, controlCoverage, controlScale, beta
         )
-        logInfo("Track roughness: ${"%.3f".format(roughness)}", infoWriter)
+        logInfo("Track roughness score: ${"%.3f".format(roughness)}", infoWriter)
         val roughnessNoControl = detectAverageRoughness(
             genomeQuery, treatmentCoverage, treatmentScale, null, null, 0.0
         )
@@ -123,33 +134,88 @@ object SpanResultsAnalysis {
         }
 
         LOG.info("Analysing min pivot gap")
-        val minPivotGap = estimateMinPivotGap(genomeQuery, spanFitResults, fdr)
+        val sensitivityInfo = detectSensitivity(genomeQuery, spanFitResults, fdr)
+        val (detailedSensitivities, candNs, candALs, t1, t2, t3, area, t1g, t2g, t3g) = sensitivityInfo
+        logInfo("Sensitivity point 1 ${detailedSensitivities[t1]}", infoWriter)
+        logInfo("Sensitivity point 2 ${detailedSensitivities[t2]}", infoWriter)
+        logInfo("Sensitivity point 3 ${detailedSensitivities[t3]}", infoWriter)
+        logInfo("Sensitivity triangle area $area", infoWriter)
+        logInfo("Sensitivity point global 1 ${detailedSensitivities[t1g]}", infoWriter)
+        logInfo("Sensitivity point global 2 ${detailedSensitivities[t2g]}", infoWriter)
+        logInfo("Sensitivity point global 3 ${detailedSensitivities[t3g]}", infoWriter)
+
+        val minPivotGap = estimateMinPivotGap(genomeQuery, spanFitResults, fdr, sensitivityInfo)
         logInfo("Minimal pivot gap: $minPivotGap", infoWriter)
         if (minPivotGap != null) {
             when {
-                minPivotGap <= SPAN_GAP_PIVOT_THRESHOLD_SEVERE ->
-                    logInfo("Quality: severe fragmentation", infoWriter)
-                minPivotGap <= SPAN_GAP_PIVOT_THRESHOLD_MODERATE ->
-                    logInfo("Quality: moderate fragmentation", infoWriter)
+                minPivotGap <= SPAN_GAP_PIVOT_THRESHOLD_BAD ->
+                    logInfo("Quality: bad", infoWriter)
+
+                minPivotGap <= SPAN_GAP_PIVOT_THRESHOLD_PROBLEMATIC ->
+                    logInfo("Quality: problematic", infoWriter)
+
                 else ->
-                    logInfo("Quality: light fragmentation", infoWriter)
+                    logInfo("Quality: good", infoWriter)
             }
         } else {
             logInfo("Quality: good", infoWriter)
         }
 
-        val (sensitivity2use, gap2use) = estimateSensitivityGap(
-            genomeQuery,
-            spanFitResults,
+        val estimatedSensitivity = sensitivityInfo.sensitivities[sensitivityInfo.t2]
+        val (sensitivity2use, gap2use) = actualSensitivityGap(
             null,
             null,
-            minPivotGap
+            minPivotGap,
+            estimatedSensitivity,
+            maxGapModel
         )
-        logInfo("Estimated sensitivity: $sensitivity2use", infoWriter)
-        logInfo("Estimated gap: $gap2use", infoWriter)
+        logInfo("Estimated sensitivity: $estimatedSensitivity", infoWriter)
+        logInfo("Estimated gap: $maxGapModel", infoWriter)
+        logInfo("Actual sensitivity: $sensitivity2use", infoWriter)
+        logInfo("Actual gap: $gap2use", infoWriter)
 
         infoWriter?.close()
 
+        prepareSensitivitiesTsvFile(genomeQuery, spanFitResults, peaksPath, detailedSensitivities, candNs, candALs, fdr)
+
+        prepareSegmentsTsvFile(genomeQuery, spanFitResults, sensitivityInfo, peaksPath, fdr)
+
+        prepareSensitivityBedFile(genomeQuery, spanFitResults, fitInfo, peaksPath, fdr, blacklistPath)
+    }
+
+    private fun prepareLogNullsTsvFile(
+        logNullPvals: DoubleArray,
+        peaksPath: Path?
+    ) {
+        logNullPvals.sort()
+        val logNullPsFile = if (peaksPath != null) "$peaksPath.logps.tsv" else null
+        logNullPsFile?.toPath()?.deleteIfExists()
+        val logNullPsWriter = if (logNullPsFile != null)
+            BufferedWriter(FileWriter(logNullPsFile))
+        else
+            null
+        logInfo("Q\tLogNullP", logNullPsWriter, false)
+        var q = 0.0
+        var step = 1e-5
+        while (1 / step > logNullPvals.size) {
+            step *= 10
+        }
+        while (q < 0.01) {
+            logInfo("$q\t${logNullPvals[(logNullPvals.size * q).toInt()]}", logNullPsWriter, false)
+            q += step
+        }
+        logNullPsWriter?.close()
+    }
+
+    private fun prepareSensitivitiesTsvFile(
+        genomeQuery: GenomeQuery,
+        spanFitResults: SpanFitResults,
+        peaksPath: Path?,
+        detailedSensitivities: DoubleArray,
+        candNs: IntArray,
+        candALs: DoubleArray,
+        fdr: Double
+    ) {
         LOG.info("Analysing candidates characteristics wrt sensitivity and gap...")
         val sensDetailsFile = if (peaksPath != null) "$peaksPath.sensitivity.tsv" else null
         sensDetailsFile?.toPath()?.deleteIfExists()
@@ -157,20 +223,87 @@ object SpanResultsAnalysis {
             BufferedWriter(FileWriter(sensDetailsFile))
         else
             null
-        logInfo(
-            "Sensitivity\tGap\tCandidatesN\tCandidatesAL\tCandidatesAD", sensDetailsWriter, false
-        )
-        for (bgs in SPAN_BACKGROUND_SENSITIVITY_VARIANTS) {
-            for (g in SPAN_GAPS_VARIANTS) {
-                val (candidatesN, candidatesAL, candidatesAD) =
-                    estimateCandidatesNumberLenDist(genomeQuery, spanFitResults, fdr, bgs, g, null)
-                logInfo(
-                    "$bgs\t$g\t$candidatesN\t$candidatesAL\t$candidatesAD", sensDetailsWriter, false
-                )
+        logInfo("Sensitivity\tGap\tCandidatesN\tCandidatesAL", sensDetailsWriter, false)
+        // Print extended sensitivity table for gap = 0
+        for ((i, s) in detailedSensitivities.withIndex()) {
+            val candidatesN = candNs[i]
+            val candidatesAL = candALs[i]
+            logInfo("$s\t0\t$candidatesN\t$candidatesAL", sensDetailsWriter, false)
+        }
+        for (g in SPAN_GAPS_VARIANTS) {
+            if (g == 0) {
+                continue
+            }
+            for (s in SPAN_BACKGROUND_SENSITIVITY_VARIANTS) {
+                val (candidatesN, candidatesAL) =
+                    estimateCandidatesNumberLen(genomeQuery, spanFitResults, fdr, s, g, null)
+                logInfo("$s\t$g\t$candidatesN\t$candidatesAL", sensDetailsWriter, false)
             }
         }
         sensDetailsWriter?.close()
+    }
 
+    private fun prepareSegmentsTsvFile(
+        genomeQuery: GenomeQuery,
+        spanFitResults: SpanFitResults,
+        sensitivityInfo: ModelToPeaks.SensitivityInfo,
+        peaksPath: Path?,
+        fdr: Double,
+    ) {
+        LOG.info("Analysing sensitivity segments trajectory")
+        val t1 = sensitivityInfo.t1
+        val t2 = sensitivityInfo.t2
+        val t3 = sensitivityInfo.t3
+        val sensSegmentsFile = if (peaksPath != null) "$peaksPath.segments.tsv" else null
+        sensSegmentsFile?.toPath()?.deleteIfExists()
+        val sensSegmentsWriter = if (sensSegmentsFile != null)
+            BufferedWriter(FileWriter(sensSegmentsFile))
+        else
+            null
+        logInfo("I\tSensitivity\tSegment\tCommonPrev\tCommonNext\tMinus\tPlus", sensSegmentsWriter, false)
+        val step = 5
+        var i = sensitivityInfo.sensitivities.size - 1
+        var prevPeaks: List<Peak> = ModelToPeaks.getPeaks(
+            spanFitResults, genomeQuery, fdr, sensitivityInfo.sensitivities[i], 0, false,
+            CancellableState.current()
+        ).toList()
+        var prevLL = LocationsMergingList.create(genomeQuery, prevPeaks.map { it.location })
+        i -= step
+        while (i > 0) {
+            val segment = when {
+                i > t1 -> 1
+                i > t2 -> 2
+                i > t3 -> 3
+                else -> 4
+            }
+            val currentPeaks: List<Peak> = ModelToPeaks.getPeaks(
+                spanFitResults, genomeQuery, fdr, sensitivityInfo.sensitivities[i], 0, false,
+                CancellableState.current()
+            ).toList()
+            val currentLL = LocationsMergingList.create(genomeQuery, currentPeaks.map { it.location })
+            val prevCommon = prevPeaks.count { currentLL.intersects(it.location) }
+            val currentCommon = currentPeaks.count { prevLL.intersects(it.location) }
+            val minusPeaks = prevPeaks.size - prevCommon
+            val plusPeaks = currentPeaks.size - currentCommon
+            logInfo(
+                "$i\t${sensitivityInfo.sensitivities[i]}\t$segment\t$prevCommon\t$currentCommon\t$minusPeaks\t$plusPeaks",
+                sensSegmentsWriter, false
+            )
+            prevPeaks = currentPeaks
+            prevLL = currentLL
+            i -= step
+        }
+        sensSegmentsWriter?.close()
+    }
+
+    private fun prepareSensitivityBedFile(
+        genomeQuery: GenomeQuery,
+        spanFitResults: SpanFitResults,
+        fitInfo: SpanAnalyzeFitInformation,
+        peaksPath: Path?,
+        fdr: Double,
+        blacklistPath: Path?
+    ) {
         LOG.info("Analysing peaks segmentation wrt sensitivity")
         var bedtoolsPresent = true
         try {

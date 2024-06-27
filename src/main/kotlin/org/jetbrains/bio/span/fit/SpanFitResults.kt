@@ -1,6 +1,7 @@
 package org.jetbrains.bio.span.fit
 
 import org.jetbrains.bio.dataframe.DataFrame
+import org.jetbrains.bio.genome.TrackAboutBooleanColumnType
 import org.jetbrains.bio.genome.TrackAboutDoubleColumnType
 import org.jetbrains.bio.genome.TrackAboutMetricValue
 import org.jetbrains.bio.genome.TrackAboutStringColumnType
@@ -40,6 +41,7 @@ open class SpanFitResults(
         val CT_SIGNAL_MEAN = TrackAboutDoubleColumnType("Signal mean")
         val CT_NOISE_MEAN = TrackAboutDoubleColumnType("Noise mean")
         val CT_SIGNAL_TO_NOISE = TrackAboutDoubleColumnType("Signal to noise")
+        val CT_OUT_OF_SNR_HIT = TrackAboutBooleanColumnType("Out of signal-to-noise range hit")
     }
 
     /**
@@ -48,6 +50,7 @@ open class SpanFitResults(
     open fun modelInformation(modelPath: Path): List<TrackAboutMetricValue<*>> {
         return when (model) {
             is NB2ZHMM -> {
+                val outOfSnrHit = model.outOfSignalToNoiseRatioRangeHit
                 val signalMean = model.means[1]
                 val noiseMean = model.means[0]
                 listOf(
@@ -56,6 +59,7 @@ open class SpanFitResults(
                     CT_SIGNAL_MEAN to signalMean,
                     CT_NOISE_MEAN to noiseMean,
                     CT_SIGNAL_TO_NOISE to ((signalMean + 1e-10) / (noiseMean + 1e-10)),
+                    CT_OUT_OF_SNR_HIT to outOfSnrHit,
                 )
             }
 

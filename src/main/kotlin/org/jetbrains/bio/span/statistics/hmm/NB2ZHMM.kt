@@ -26,6 +26,8 @@ class NB2ZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) :
         transitionProbabilities = F64Array.invoke(3, 3) { i, j -> SPAN_DEFAULT_NB2ZHMM_TRANSITIONS_[i][j] }
     ) {
 
+    // Indicator value to save that model fit was corrected during fitting
+    var outOfSignalToNoiseRatioRangeHit: Boolean = false
 
     private var prevDistributions: List<Pair<NegBinEmissionScheme, NegBinEmissionScheme>> = emptyList()
 
@@ -41,10 +43,11 @@ class NB2ZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) :
             val highState = getEmissionScheme(2, d) as NegBinEmissionScheme
             val snr = highState.mean / lowState.mean
             LOG.debug("Signal-to-noise ratio $snr")
-            if (snr !in SPAN_MIN_SIGNAL_TO_NOISE.. SPAN_MAX_SIGNAL_TO_NOISE) {
+            if (snr !in SPAN_MIN_SIGNAL_TO_NOISE..SPAN_MAX_SIGNAL_TO_NOISE) {
                 LOG.warn(
                     "Signal-to-noise ratio not in $SPAN_MIN_SIGNAL_TO_NOISE-$SPAN_MAX_SIGNAL_TO_NOISE, fixing..."
                 )
+                outOfSignalToNoiseRatioRangeHit = true
 
                 val gMean = if (prevDistributions.isNotEmpty())
                     sqrt(prevDistributions[d].first.mean * prevDistributions[d].second.mean)
@@ -78,7 +81,7 @@ class NB2ZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) :
         @Suppress("MayBeConstant", "unused")
         @Transient
         @JvmField
-        val VERSION: Int = 2
+        val VERSION: Int = 3
 
         private val LOG: Logger = org.slf4j.LoggerFactory.getLogger(NB2ZHMM::class.java)
 

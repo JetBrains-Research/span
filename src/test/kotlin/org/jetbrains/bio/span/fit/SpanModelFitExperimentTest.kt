@@ -78,8 +78,8 @@ class SpanModelFitExperimentTest {
                 ModelToPeaks.getPeaks(
                     peakCallingExperiment.results, fullGenomeQuery,
                     fdr = 0.05,
-                    sensitivity = SPAN_DEFAULT_SENSITIVITY,
-                    gap = SPAN_DEFAULT_GAP,
+                    sensitivityCmdArg = SPAN_DEFAULT_SENSITIVITY,
+                    gapCmdArg = SPAN_DEFAULT_GAP,
                     cancellableState = null
                 )
                     .toList()

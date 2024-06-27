@@ -58,7 +58,7 @@ object SpanSemiSupervised {
                 val peaksOnLabeledGenomeQuery =
                     ModelToPeaks.getPeaks(
                         results, labeledGenomeQuery, fdr, sensitivity, gap,
-                        CancellableState.current()
+                        cancellableState = CancellableState.current()
                     )
                 labelErrorsGrid[index] = computeErrors(
                     labels,

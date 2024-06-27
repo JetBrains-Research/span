@@ -10,20 +10,18 @@ import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.span.SpanResultsAnalysis
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
-import org.jetbrains.bio.span.fit.SpanConstants.AUTOCORRELATION_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanConstants.AUTOCORRELATION_MAX_SHIFT
+import org.jetbrains.bio.span.fit.SpanConstants.AUTOCORRELATION_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_CLIP_STEPS
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_SENSITIVITY
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SENSITIVITY_FRAGMENTATION_MODERATE
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SENSITIVITY_FRAGMENTATION_SEVERE
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_FRAGMENTATION_X_MODERATE
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_FRAGMENTATION_X_SEVERE
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_LENGTH_CLIP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_SIGNAL_CLIP
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_MODERATE
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_SEVERE
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PROBLEMATIC_D
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_BAD_D
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_PROBLEMATIC
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_BAD
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SCORE_BLOCKS
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SENSITIVITY_PROBLEMATIC_X
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SENSITIVITY_BAD_X
 import org.jetbrains.bio.span.fit.SpanFitInformation
 import org.jetbrains.bio.span.fit.SpanFitResults
 import org.jetbrains.bio.span.fit.SpanModelFitExperiment
@@ -38,15 +36,8 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
 import java.util.*
-import kotlin.math.ceil
-import kotlin.math.ln
-import kotlin.math.ln1p
-import kotlin.math.min
+import kotlin.math.*
 
-
-private const val COVERAGE_PERCENTILE_MIN = 5.0
-
-private const val COVERAGE_PERCENTILE_MAX = 95.0
 
 object ModelToPeaks {
 
@@ -70,16 +61,17 @@ object ModelToPeaks {
         spanFitResults: SpanFitResults,
         genomeQuery: GenomeQuery,
         fdr: Double,
-        sensitivity: Double?,
-        gap: Int?,
+        sensitivityCmdArg: Double?,
+        gapCmdArg: Int?,
+        clip: Boolean = true,
         cancellableState: CancellableState? = null,
     ): SpanPeaksResult {
         val fitInfo = spanFitResults.fitInfo
         // Prepare fit information for scores computations
         fitInfo.prepareData()
 
-        val (bgSens2use, gap2use) =
-            estimateParams(genomeQuery, spanFitResults, fdr, sensitivity, gap, cancellableState)
+        val (sensitivity2use, gap2use) =
+            estimateParams(genomeQuery, spanFitResults, fdr, sensitivityCmdArg, gapCmdArg, cancellableState)
 
         // Collect candidates from model
         val candidates = genomeMap(genomeQuery, parallel = true) { chromosome ->
@@ -87,11 +79,11 @@ object ModelToPeaks {
             if (!fitInfo.containsChromosomeInfo(chromosome)) {
                 return@genomeMap emptyList<Range>() to emptyList()
             }
-            getChromosomeCandidates(spanFitResults, chromosome, fdr, bgSens2use, gap2use)
+            getChromosomeCandidates(spanFitResults, chromosome, fdr, sensitivity2use, gap2use)
         }
 
         // Estimate signal and noise average signal by candidates
-        val canEstimateSignalToNoise = fitInfo is SpanAnalyzeFitInformation &&
+        val canEstimateSignalToNoise = clip && fitInfo is SpanAnalyzeFitInformation &&
                 fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
 
         val (avgSignalDensity, avgNoiseDensity) = if (canEstimateSignalToNoise)
@@ -117,7 +109,7 @@ object ModelToPeaks {
                 cancellableState = cancellableState
             )
         }
-        return SpanPeaksResult(fdr, bgSens2use, gap2use, peaks)
+        return SpanPeaksResult(fdr, sensitivity2use, gap2use, peaks)
     }
 
 
@@ -125,51 +117,60 @@ object ModelToPeaks {
         genomeQuery: GenomeQuery,
         spanFitResults: SpanFitResults,
         fdr: Double,
-        sensitivity: Double?,
-        gap: Int?,
+        sensitivityCmdArg: Double?,
+        gapCmdArg: Int?,
         cancellableState: CancellableState?
     ): Pair<Double, Int> {
-        if (sensitivity != null && gap != null) {
-            return sensitivity to gap
+        if (sensitivityCmdArg != null && gapCmdArg != null) {
+            return sensitivityCmdArg to gapCmdArg
         }
         LOG.info("Estimating background sensitivity and gap...")
-        val minPivotGap = estimateMinPivotGap(genomeQuery, spanFitResults, fdr, cancellableState)
+        val sensitivityInfos = detectSensitivity(genomeQuery, spanFitResults, fdr)
+        val minPivotGap = estimateMinPivotGap(genomeQuery, spanFitResults, fdr, sensitivityInfos, cancellableState)
         LOG.info("Minimal pivot gap: $minPivotGap")
 
-        val (sensitivity2use, gap2use) = estimateSensitivityGap(
-            genomeQuery,
-            spanFitResults,
-            sensitivity,
-            gap,
-            minPivotGap
+        val estimatedSensitivity = sensitivityInfos.sensitivities[sensitivityInfos.t2]
+        val estimatedGap = detectGapModel(genomeQuery, spanFitResults)
+        LOG.info("Estimated sensitivity: $estimatedSensitivity gap: $estimatedGap")
+        val (sensitivity2use, gap2use) = actualSensitivityGap(
+            sensitivityCmdArg,
+            gapCmdArg,
+            minPivotGap,
+            estimatedSensitivity,
+            estimatedGap
         )
-        LOG.info("Sensitivity: $sensitivity2use Gap: $gap2use")
+        LOG.info("Actual sensitivity: $sensitivity2use gap: $gap2use")
         return sensitivity2use to gap2use
     }
 
-    fun estimateSensitivityGap(
-        genomeQuery: GenomeQuery,
-        spanFitResults: SpanFitResults,
-        sensitivity: Double?,
-        gap: Int?,
-        minPivotGap: Int?
+    fun actualSensitivityGap(
+        sensitivityCmdArg: Double?,
+        gapCmdArg: Int?,
+        minPivotGap: Int?,
+        estimatedSensitivity: Double,
+        estimatedGap: Int
     ): Pair<Double, Int> {
-        var gap2use = gap ?: SPAN_DEFAULT_GAP
-        var sensitivity2use = sensitivity ?: SPAN_DEFAULT_SENSITIVITY
-        if (minPivotGap != null) {
-            gap2use = detectGapModel(genomeQuery, spanFitResults)
-            when {
-                minPivotGap <= SPAN_GAP_PIVOT_THRESHOLD_SEVERE -> {
-                    LOG.warn("Severe peaks fragmentation detected.")
-                    sensitivity2use = sensitivity ?: SPAN_SENSITIVITY_FRAGMENTATION_SEVERE
-                    gap2use = gap ?: (gap2use * SPAN_GAP_FRAGMENTATION_X_SEVERE)
+        val sensitivity2use: Double
+        val gap2use: Int
+        when {
+                minPivotGap != null && minPivotGap <= SPAN_GAP_PIVOT_THRESHOLD_BAD -> {
+                    LOG.warn("Bad quality detected, adjusting parameters.")
+                    sensitivity2use = 
+                        sensitivityCmdArg ?: (estimatedSensitivity * SPAN_SENSITIVITY_BAD_X)
+                    gap2use = 
+                        gapCmdArg ?: (estimatedGap + SPAN_GAP_BAD_D)
                 }
 
-                minPivotGap <= SPAN_GAP_PIVOT_THRESHOLD_MODERATE -> {
-                    LOG.warn("Moderate peaks fragmentation detected.")
-                    sensitivity2use = sensitivity ?: SPAN_SENSITIVITY_FRAGMENTATION_MODERATE
-                    gap2use = gap ?: (gap2use * SPAN_GAP_FRAGMENTATION_X_MODERATE)
+                minPivotGap != null && minPivotGap <= SPAN_GAP_PIVOT_THRESHOLD_PROBLEMATIC -> {
+                    LOG.warn("Problematic quality detected, adjusting parameters.")
+                    sensitivity2use =
+                        sensitivityCmdArg ?: (estimatedSensitivity * SPAN_SENSITIVITY_PROBLEMATIC_X)
+                    gap2use =
+                        gapCmdArg ?: (estimatedGap + SPAN_GAP_PROBLEMATIC_D)
                 }
+            else -> {
+                sensitivity2use = sensitivityCmdArg ?: estimatedSensitivity
+                gap2use = gapCmdArg ?: estimatedGap
             }
         }
         return sensitivity2use to gap2use
@@ -179,23 +180,27 @@ object ModelToPeaks {
         genomeQuery: GenomeQuery,
         spanFitResults: SpanFitResults,
         fdr: Double,
+        sensitivityInfo: SensitivityInfo,
         cancellableState: CancellableState? = null
     ): Int? {
+        val sensitivities = sensitivityInfo.sensitivities
+        val ts1 = sensitivities[sensitivityInfo.t1]
+        val ts2 = sensitivities[sensitivityInfo.t2]
+        val ts3 = sensitivities[sensitivityInfo.t3]
         val minPivotGap = SPAN_GAPS_VARIANTS.sorted().firstOrNull { g ->
-            val (n5, al5, _) =
-                estimateCandidatesNumberLenDist(genomeQuery, spanFitResults, fdr, 5.0, g, cancellableState)
-            val (n01, al01, _) =
-                estimateCandidatesNumberLenDist(genomeQuery, spanFitResults, fdr, 0.1, g, cancellableState)
-            // Estimating vs 0.01 leads to many H3K36me3 tracks marked as bad quality
-            val (n0001, al0001, _) =
-                estimateCandidatesNumberLenDist(genomeQuery, spanFitResults, fdr, 0.001, g, cancellableState)
+            val (n1, al1) =
+                estimateCandidatesNumberLen(genomeQuery, spanFitResults, fdr, ts1, g, cancellableState)
+            val (n2, al2) =
+                estimateCandidatesNumberLen(genomeQuery, spanFitResults, fdr, ts2, g, cancellableState)
+            val (n3, al3) =
+                estimateCandidatesNumberLen(genomeQuery, spanFitResults, fdr, ts3, g, cancellableState)
             // Here we estimate the direction between sensitivity = points
             // Experimentally we observe that bad quality highly fragmented tracks has counterclockwise rotation
             // Counterclockwise direction can be checked as a positive sign of convex hull square formula
             val sLn = triangleSignedSquare(
-                ln1p(n5.toDouble()), ln1p(al5),
-                ln1p(n01.toDouble()), ln1p(al01),
-                ln1p(n0001.toDouble()), ln1p(al0001)
+                ln1p(n1.toDouble()), ln1p(al1),
+                ln1p(n2.toDouble()), ln1p(al2),
+                ln1p(n3.toDouble()), ln1p(al3)
             )
             return@firstOrNull sLn > 0
         }
@@ -204,6 +209,132 @@ object ModelToPeaks {
 
     private fun triangleSignedSquare(x1: Double, y1: Double, x2: Double, y2: Double, x3: Double, y3: Double) =
         x1 * y2 - x2 * y1 + x2 * y3 - x3 * y2 + x3 * y1 - x1 * y3
+
+    data class SensitivityInfo(
+        val sensitivities: DoubleArray,
+        val candidatesNs: IntArray,
+        val candidatesALs: DoubleArray,
+        val t1: Int, val t2: Int, val t3: Int, val triangleArea: Double,
+        val t1global: Int, val t2global: Int, val t3global: Int
+    )
+
+    /**
+     * Detects sensitivity
+     */
+    fun detectSensitivity(
+        genomeQuery: GenomeQuery,
+        spanFitResults: SpanFitResults,
+        fdr: Double,
+        n: Int = 100
+    ): SensitivityInfo {
+        LOG.debug("Compute sensitivity")
+        val sensitivities =
+            DoubleArray(n) { exp((-8 + (2 - -8) * it.toDouble() / n) * ln(10.0)) }
+        val candidatesNs = IntArray(n)
+        val candidatesALs = DoubleArray(n)
+        for ((i, s) in sensitivities.withIndex()) {
+            val (candidatesN, candidatesAL) =
+                estimateCandidatesNumberLen(genomeQuery, spanFitResults, fdr, s, 0, null)
+            candidatesNs[i] = candidatesN
+            candidatesALs[i] = candidatesAL
+        }
+        val im1 = distanceArgmin(sensitivities, 0.5)
+        val im2 = distanceArgmin(sensitivities, 0.0001)
+        var maxArea = 0.0
+        var i1 = -1
+        var i3 = -1
+        var im = -1
+        for (i in im2 until im1) {
+            val i3spb = findSensitivityPivotBetween(
+                candidatesNs, candidatesALs, 0, i, -1
+            )
+            val i1spb = findSensitivityPivotBetween(
+                candidatesNs, candidatesALs, i, n - 1, -1
+            )
+            val area = i1spb[3] + i3spb[3]
+            if (area > maxArea) {
+                maxArea = area
+                i1 = i1spb[1].toInt()
+                i3 = i3spb[1].toInt()
+                im = i
+            }
+        }
+        var triangle = findSensitivityPivotBetween(
+            candidatesNs, candidatesALs,
+            i3, i1, 1
+        )
+        while (triangle[1] == -1.0) {
+            LOG.debug("Failed to detect major triangle, updating boundaries")
+            i3 = findSensitivityPivotBetween(candidatesNs, candidatesALs, i3, im, -1)[1].toInt()
+            i1 = findSensitivityPivotBetween(candidatesNs, candidatesALs, i1, im, -1)[1].toInt()
+            triangle = findSensitivityPivotBetween(
+                candidatesNs, candidatesALs,
+                i3, i1, 1
+            )
+        }
+        val result = SensitivityInfo(
+            sensitivities, candidatesNs, candidatesALs,
+            triangle[0].toInt(), triangle[1].toInt(), triangle[2].toInt(), triangle[3],
+            n - 1, im, 0
+        )
+        LOG.debug(
+            "Sensitivity triangle: " +
+                    "${sensitivities[result.t1]}, ${sensitivities[result.t2]}, ${sensitivities[result.t3]}"
+        )
+        return result
+    }
+
+    private fun findSensitivityPivotBetween(
+        candidatesNs: IntArray,
+        candidatesALs: DoubleArray,
+        i3: Int, i1: Int, sign: Int = 1
+    ): DoubleArray {
+        if (i3 > i1) {
+            return findSensitivityPivotBetween(candidatesNs, candidatesALs, i1, i3, sign)
+        }
+        var maxI1 = -1
+        var maxI2 = -1
+        var maxI3 = -1
+        var maxArea = 0.0
+
+        val n1 = candidatesNs[i1]
+        val al1 = candidatesALs[i1]
+        val n3 = candidatesNs[i3]
+        val al3 = candidatesALs[i3]
+
+        for (i2 in i3 until i1) {
+            val n2 = candidatesNs[i2]
+            val al2 = candidatesALs[i2]
+            var area2 = triangleSignedSquare(
+                ln1p(n1.toDouble()), ln1p(al1),
+                ln1p(n2.toDouble()), ln1p(al2),
+                ln1p(n3.toDouble()), ln1p(al3))
+            if (area2 * sign > 0)
+                continue
+            area2 = abs(area2)
+            if (area2 > maxArea) {
+                maxI1 = i1
+                maxI2 = i2
+                maxI3 = i3
+                maxArea = area2
+            }
+        }
+        return doubleArrayOf(maxI1.toDouble(), maxI2.toDouble(), maxI3.toDouble(), maxArea)
+    }
+
+    private fun distanceArgmin(array: DoubleArray, x: Double): Int {
+        var minD = Double.MAX_VALUE
+        var minI = -1
+        for ((i, a) in array.withIndex()) {
+            val d = abs(a - x)
+            if (d < minD) {
+                minD = d
+                minI = i
+            }
+        }
+        return minI
+    }
+
 
     /**
      * Detects maximal gap, that signal autocorrelation is >= minCorrelation
@@ -215,6 +346,17 @@ object ModelToPeaks {
         minCorrelation: Double = AUTOCORRELATION_THRESHOLD
     ): Int {
         SpanResultsAnalysis.LOG.debug("Compute maximal gap by model")
+        val logNullPvals = getLogNullPvals(genomeQuery, spanFitResults, blackListPath)
+        val correlations = computeCorrelations(logNullPvals)
+        val maxGap = correlations.indices.filter { correlations[it] >= minCorrelation }.maxOrNull()!!
+        return maxGap
+    }
+
+    fun getLogNullPvals(
+        genomeQuery: GenomeQuery,
+        spanFitResults: SpanFitResults,
+        blackListPath: Path?
+    ): DoubleArray {
         // Limit genome query to top non-empty chromosomes
         val chrs = genomeQuery.get()
             .filter { spanFitResults.logNullMemberships.containsKey(it.name) }
@@ -225,7 +367,7 @@ object ModelToPeaks {
         val bin = spanFitResults.fitInfo.binSize
         val totalBins = limitedQuery.get()
             .sumOf { spanFitResults.logNullMemberships[it.name]!!.f64Array(SpanModelFitExperiment.NULL).size }
-        val nullpvals = DoubleArray(totalBins) { 0.0 }
+        val result = DoubleArray(totalBins) { 0.0 }
         var i = 0
         val blackList = if (blackListPath != null) LocationsMergingList.load(limitedQuery, blackListPath) else null
         var blackListIgnored = 0
@@ -239,15 +381,13 @@ object ModelToPeaks {
                     blackListIgnored++
                     continue
                 }
-                nullpvals[i++] = logNullPeps[j]
+                result[i++] = logNullPeps[j]
             }
         }
         if (blackList != null) {
             SpanResultsAnalysis.LOG.debug("Marked {} / {} blacklisted regions", blackListIgnored, totalBins)
         }
-        val correlations = computeCorrelations(nullpvals)
-        val maxGap = correlations.indices.filter { correlations[it] >= minCorrelation }.maxOrNull()!!
-        return maxGap
+        return result
     }
 
     fun computeCorrelations(
@@ -280,20 +420,20 @@ object ModelToPeaks {
         return distanceCorrelations
     }
 
-    fun estimateCandidatesNumberLenDist(
+    fun estimateCandidatesNumberLen(
         genomeQuery: GenomeQuery,
         spanFitResults: SpanFitResults,
         fdr: Double,
-        backgroundSensitivity: Double,
+        sensitivity: Double,
         gap: Int,
         cancellableState: CancellableState?
-    ): Triple<Int, Double, Double> {
+    ): Pair<Int, Double> {
         val candidates = genomeMap(genomeQuery, parallel = true) { chromosome ->
             cancellableState?.checkCanceled()
             if (!spanFitResults.fitInfo.containsChromosomeInfo(chromosome)) {
                 return@genomeMap emptyList<Range>() to emptyList()
             }
-            getChromosomeCandidates(spanFitResults, chromosome, fdr, backgroundSensitivity, gap)
+            getChromosomeCandidates(spanFitResults, chromosome, fdr, sensitivity, gap)
         }
         val candidatesN = genomeQuery.get().sumOf { candidates[it].first.size }
         val candidatesL = genomeQuery.get().sumOf {
@@ -302,29 +442,7 @@ object ModelToPeaks {
             }
         }
         val candidatesAL = if (candidatesN > 0) candidatesL.toDouble() / candidatesN else 0.0
-        val distances = DoubleArray(candidatesN)
-        var i = 0
-        genomeQuery.get().forEach { chr ->
-            var prevEnd = -1
-            candidates[chr].first.forEach { (start, end) ->
-                if (prevEnd != -1) {
-                    distances[i++] = (start - prevEnd).toDouble()
-                }
-                prevEnd = end
-            }
-        }
-        val pLow = StatUtils.percentile(distances, COVERAGE_PERCENTILE_MIN)
-        val pHigh = StatUtils.percentile(distances, COVERAGE_PERCENTILE_MAX)
-        var sumP = 0.0
-        i = 0
-        distances.forEach {
-            if (it in pLow..pHigh) {
-                sumP += it
-                i += 1
-            }
-        }
-        val candidatesAD = if (i != 0) sumP / i else 0.0
-        return Triple(candidatesN, candidatesAL, candidatesAD)
+        return candidatesN to candidatesAL
     }
 
 
@@ -332,11 +450,11 @@ object ModelToPeaks {
         spanFitResults: SpanFitResults,
         chromosome: Chromosome,
         fdr: Double,
-        bgSensitivity: Double,
+        sensitivity: Double,
         gap: Int,
         scoreBlocks: Double = SPAN_SCORE_BLOCKS,
     ): Pair<List<Range>, List<List<Range>>> {
-        require(bgSensitivity >= 0) { "Sensitivity should be >=0, got $bgSensitivity" }
+        require(sensitivity >= 0) { "Sensitivity should be >=0, got $sensitivity" }
         require(scoreBlocks in 0.0..1.0) { "Blocks for score computation should be in range 0-1, got $scoreBlocks" }
 
         // Check that we have information for requested chromosome
@@ -356,7 +474,7 @@ object ModelToPeaks {
 
         val logNullMemberships = getLogNulls(spanFitResults, chromosome)
         val logFdr = ln(fdr)
-        val candidateBins = BitList(logNullMemberships.size) { logNullMemberships[it] <= logFdr * bgSensitivity }
+        val candidateBins = BitList(logNullMemberships.size) { logNullMemberships[it] <= logFdr * sensitivity }
 
         // Background candidates with foreground inside
         var candidates = candidateBins.aggregate()
