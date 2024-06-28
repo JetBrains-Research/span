@@ -59,12 +59,12 @@ object SpanConstants {
      * SPAN_FIT_THRESHOLD is a constant variable that represents the threshold value used
      * in the SPAN peak-fitting algorithm, relative delta between the model log likelihood
      */
-    const val SPAN_FIT_THRESHOLD = 1e-5
+    const val SPAN_FIT_THRESHOLD = 1e-4
 
     /**
      * The maximum number of iterations to perform during the fitting process in the SPAN algorithm.
      */
-    const val SPAN_FIT_MAX_ITERATIONS = 20
+    const val SPAN_FIT_MAX_ITERATIONS = 10
 
     /**
      * Sensitivity background configures threshold of candidate enriched bins, allowing for bigger number of candidates
@@ -87,7 +87,7 @@ object SpanConstants {
     const val SPAN_SENSITIVITY_MULTIPLIER_BAD = 10
     const val SPAN_SENSITIVITY_MULTIPLIER_PROBLEMATIC = 5
 
-    const val SPAN_MAX_SENSITIVITY_BAD = 2.0
+    const val SPAN_MAX_SENSITIVITY_BAD = 1.5
     const val SPAN_MAX_SENSITIVITY_PROBLEMATIC = 1.2
 
 

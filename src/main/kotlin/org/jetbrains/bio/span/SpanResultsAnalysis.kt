@@ -1,15 +1,12 @@
 package org.jetbrains.bio.span
 
 import com.google.common.collect.MinMaxPriorityQueue
-import org.apache.commons.csv.CSVFormat
 import org.jetbrains.bio.genome.*
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.genome.coverage.Coverage
-import org.jetbrains.bio.genome.format.BedFormat
-import org.jetbrains.bio.genome.format.unpack
+import org.jetbrains.bio.genome.coverage.FixedFragment
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.AUTOCORRELATION_THRESHOLD
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_BAD
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_PROBLEMATIC
 import org.jetbrains.bio.span.fit.SpanFitResults
@@ -20,7 +17,6 @@ import org.jetbrains.bio.span.peaks.ModelToPeaks.detectGapModel
 import org.jetbrains.bio.span.peaks.ModelToPeaks.detectSensitivity
 import org.jetbrains.bio.span.peaks.ModelToPeaks.estimateCandidatesNumberLen
 import org.jetbrains.bio.span.peaks.ModelToPeaks.estimateMinPivotGap
-import org.jetbrains.bio.span.peaks.ModelToPeaks.getChromosomeCandidates
 import org.jetbrains.bio.span.peaks.ModelToPeaks.getLogNullPvals
 import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.span.semisupervised.SpanSemiSupervised.SPAN_BACKGROUND_SENSITIVITY_VARIANTS
@@ -176,25 +172,28 @@ object SpanResultsAnalysis {
 
         prepareSensitivitiesTsvFile(genomeQuery, spanFitResults, peaksPath, detailedSensitivities, candNs, candALs, fdr)
 
-        prepareSegmentsTsvFile(genomeQuery, spanFitResults, sensitivityInfo, peaksPath, fdr)
-
-        prepareSensitivityBedFile(genomeQuery, spanFitResults, fitInfo, peaksPath, fdr, blacklistPath)
+        prepareSegmentsFiles(genomeQuery, spanFitResults, sensitivityInfo, peaksPath, fdr)
     }
 
     private fun prepareLogNullsTsvFile(
         logNullPvals: DoubleArray,
         peaksPath: Path?
     ) {
+        LOG.info("Analysing log nulls percentiles...")
         logNullPvals.sort()
         val logNullPsFile = if (peaksPath != null) "$peaksPath.logps.tsv" else null
         logNullPsFile?.toPath()?.deleteIfExists()
+        if (logNullPsFile != null) {
+            LOG.info("See $logNullPsFile")
+        }
+
         val logNullPsWriter = if (logNullPsFile != null)
             BufferedWriter(FileWriter(logNullPsFile))
         else
             null
         logInfo("Q\tLogNullP", logNullPsWriter, false)
         var q = 0.0
-        var step = 1e-4
+        var step = 1e-5
         while (1 / step > logNullPvals.size) {
             step *= 10
         }
@@ -216,6 +215,9 @@ object SpanResultsAnalysis {
     ) {
         LOG.info("Analysing candidates characteristics wrt sensitivity and gap...")
         val sensDetailsFile = if (peaksPath != null) "$peaksPath.sensitivity.tsv" else null
+        if (sensDetailsFile != null) {
+            LOG.info("See $sensDetailsFile")
+        }
         sensDetailsFile?.toPath()?.deleteIfExists()
         val sensDetailsWriter = if (sensDetailsFile != null)
             BufferedWriter(FileWriter(sensDetailsFile))
@@ -241,159 +243,41 @@ object SpanResultsAnalysis {
         sensDetailsWriter?.close()
     }
 
-    private fun prepareSegmentsTsvFile(
+    private fun prepareSegmentsFiles(
         genomeQuery: GenomeQuery,
         spanFitResults: SpanFitResults,
         sensitivityInfo: ModelToPeaks.SensitivityInfo,
         peaksPath: Path?,
         fdr: Double,
     ) {
-        LOG.info("Analysing sensitivity segments trajectory")
+        if (peaksPath == null) {
+            return
+        }
+        LOG.info("Analysing sensitivity segments...")
+        val t0 = 0
         val t1 = sensitivityInfo.t1
         val t2 = sensitivityInfo.t2
         val t3 = sensitivityInfo.t3
-        val sensSegmentsFile = if (peaksPath != null) "$peaksPath.segments.tsv" else null
-        sensSegmentsFile?.toPath()?.deleteIfExists()
-        val sensSegmentsWriter = if (sensSegmentsFile != null)
-            BufferedWriter(FileWriter(sensSegmentsFile))
-        else
-            null
-        logInfo("I\tSensitivity\tSegment\tCommonPrev\tCommonNext\tMinus\tPlus", sensSegmentsWriter, false)
-        val step = 5
-        var i = sensitivityInfo.sensitivities.size - 1
-        var prevPeaks: List<Peak> = ModelToPeaks.getPeaks(
-            spanFitResults, genomeQuery, fdr, sensitivityInfo.sensitivities[i], 0, false,
-            CancellableState.current()
-        ).toList()
-        var prevLL = LocationsMergingList.create(genomeQuery, prevPeaks.map { it.location })
-        i -= step
-        while (i > 0) {
-            val segment = when {
-                i > t1 -> 1
-                i > t2 -> 2
-                i > t3 -> 3
-                else -> 4
-            }
-            val currentPeaks: List<Peak> = ModelToPeaks.getPeaks(
-                spanFitResults, genomeQuery, fdr, sensitivityInfo.sensitivities[i], 0, false,
+        val t4 = sensitivityInfo.sensitivities.size - 1
+        val segments = intArrayOf(t4, t3, t2, t1, t0)
+        segments.forEachIndexed { i, t ->
+            val s = "%.2e".format(sensitivityInfo.sensitivities[t])
+            val segmentPath = "$peaksPath.segment${i}_$s.bed"
+            LOG.info("Preparing $segmentPath")
+            val peaks = ModelToPeaks.getPeaks(
+                spanFitResults, genomeQuery, fdr, sensitivityInfo.sensitivities[t], 0, false,
                 CancellableState.current()
             ).toList()
-            val currentLL = LocationsMergingList.create(genomeQuery, currentPeaks.map { it.location })
-            val prevCommon = prevPeaks.count { currentLL.intersects(it.location) }
-            val currentCommon = currentPeaks.count { prevLL.intersects(it.location) }
-            val minusPeaks = prevPeaks.size - prevCommon
-            val plusPeaks = currentPeaks.size - currentCommon
-            logInfo(
-                "$i\t${sensitivityInfo.sensitivities[i]}\t$segment\t$prevCommon\t$currentCommon\t$minusPeaks\t$plusPeaks",
-                sensSegmentsWriter, false
+            Peak.savePeaks(
+                peaks, segmentPath.toPath(),
+                "segment${i}_$s"
             )
-            prevPeaks = currentPeaks
-            prevLL = currentLL
-            i -= step
-        }
-        sensSegmentsWriter?.close()
-    }
-
-    private fun prepareSensitivityBedFile(
-        genomeQuery: GenomeQuery,
-        spanFitResults: SpanFitResults,
-        fitInfo: SpanAnalyzeFitInformation,
-        peaksPath: Path?,
-        fdr: Double,
-        blacklistPath: Path?
-    ) {
-        LOG.info("Analysing peaks segmentation wrt sensitivity")
-        var bedtoolsPresent = true
-        try {
-            LOG.info("Checking if bedtools is installed...")
-            Exec.exec("bedtools", "--help", output = OutputType.TEXT)
-        } catch (e: Exception) {
-            bedtoolsPresent = false
-        }
-        if (peaksPath != null) {
-            if (!bedtoolsPresent) {
-                LOG.warn("bedtools not available. Cannot create sensitivity track view.")
-            } else {
-                val blackList =
-                    if (blacklistPath != null) LocationsMergingList.load(genomeQuery, blacklistPath) else null
-                withTempDirectory(peaksPath.fileName!!.stem) { dir ->
-                    LOG.info("Saving sensitivity peaks to $dir")
-                    val peaksPaths = arrayListOf<String>()
-                    val peaksSens = doubleArrayOf(10.0, 5.0, 1.0, 0.1, 1e-4, 1e-6)
-                    for (s in peaksSens) {
-                        val candidates = genomeQuery.get()
-                            .flatMap { chr ->
-                                if (!spanFitResults.fitInfo.containsChromosomeInfo(chr)) {
-                                    return@flatMap emptyList<ChromosomeRange>()
-                                }
-                                getChromosomeCandidates(
-                                    spanFitResults,
-                                    chr,
-                                    fdr,
-                                    s,
-                                    SPAN_DEFAULT_GAP
-                                ).first.map { it.on(chr) }
-                            }
-                            .filter { blackList == null || !blackList.intersects(it.location) }
-                        val path = dir / "peaks_$s.peak"
-                        CSVFormat.TDF.print(path.bufferedWriter()).use { printer ->
-                            candidates.forEach { r ->
-                                printer.printRecord(r.chromosome.name, r.startOffset.toString(), r.endOffset.toString())
-                            }
-                        }
-                        peaksPaths.add(path.toString())
-                    }
-                    val out = dir / "multiinter.peak"
-                    val sensitivityTrack = "$peaksPath.sensitivity.bed"
-                    sensitivityTrack.toPath().deleteIfExists()
-                    withTempFile("script", ".sh") { script ->
-                        script.bufferedWriter().use { w ->
-                            w.write("bedtools multiinter -i ${peaksPaths.joinToString(" ")} | awk -v OFS='\\t' '{print $1, $2, $3, $5}' > $out")
-                        }
-                        "bash".exec(script.toString())
-                    }
-                    val scoredLocations = arrayListOf<XLocation<String>>()
-                    val format = BedFormat.auto(out)
-                    format.parse(out) {
-                        it.forEach { entry ->
-                            val chromosome = genomeQuery[entry.chrom]
-                            if (chromosome != null) {
-                                val e = entry.unpack(format)
-                                scoredLocations.add(XLocation(Location(e.start, e.end, chromosome), e.name))
-                            }
-                        }
-                    }
-                    val lls = Array(peaksPaths.size) { LocationsMergingList.builder(genomeQuery) }
-                    scoredLocations.sortedBy { it.l }.forEach { r ->
-                        val idx = r.x.split(',').minOf { it.toInt() }
-                        lls[idx - 1].add(r.l)
-                    }
-                    val peaks =
-                        lls.flatMapIndexed { i, ll -> ll.build().toList().map { XLocation(it, i) } }.sortedBy { it.l }
-                    CSVFormat.TDF.print(sensitivityTrack.toPath().bufferedWriter()).use { printer ->
-                        peaks.forEach { r ->
-                            val score = (1000.0 * (peaksSens.size - r.x) / peaksSens.size).toInt()
-                            val s = peaksSens[r.x]
-                            printer.printRecord(
-                                r.l.chromosome.name,
-                                r.l.startOffset * fitInfo.binSize,
-                                r.l.endOffset * fitInfo.binSize,
-                                "s$s",
-                                score
-                            )
-                        }
-                        LOG.info("Sensitivity file saved to $sensitivityTrack")
-                    }
-                }
-            }
         }
     }
 
     private fun logInfo(msg: String, infoWriter: BufferedWriter?, useLog: Boolean = true) {
         if (useLog)
             SpanCLA.LOG.info(msg)
-        else
-            println(msg)
         if (infoWriter != null) {
             infoWriter.write(msg)
             infoWriter.newLine()

@@ -41,7 +41,8 @@ open class SpanFitResults(
         val CT_SIGNAL_MEAN = TrackAboutDoubleColumnType("Signal mean")
         val CT_NOISE_MEAN = TrackAboutDoubleColumnType("Noise mean")
         val CT_SIGNAL_TO_NOISE = TrackAboutDoubleColumnType("Signal to noise")
-        val CT_OUT_OF_SNR_HIT = TrackAboutBooleanColumnType("Out of signal-to-noise range hit")
+        val CT_OUT_OF_SNR_UP = TrackAboutBooleanColumnType("Out of signal-to-noise range up")
+        val CT_OUT_OF_SNR_DOWN = TrackAboutBooleanColumnType("Out of signal-to-noise range down")
     }
 
     /**
@@ -50,7 +51,8 @@ open class SpanFitResults(
     open fun modelInformation(modelPath: Path): List<TrackAboutMetricValue<*>> {
         return when (model) {
             is NB2ZHMM -> {
-                val outOfSnrHit = model.outOfSignalToNoiseRatioRangeHit
+                val outOfSnrHitUp = model.outOfSignalToNoiseRatioRangeUp
+                val outOfSnrHitDown = model.outOfSignalToNoiseRatioRangeDown
                 val signalMean = model.means[1]
                 val noiseMean = model.means[0]
                 listOf(
@@ -59,7 +61,8 @@ open class SpanFitResults(
                     CT_SIGNAL_MEAN to signalMean,
                     CT_NOISE_MEAN to noiseMean,
                     CT_SIGNAL_TO_NOISE to ((signalMean + 1e-10) / (noiseMean + 1e-10)),
-                    CT_OUT_OF_SNR_HIT to outOfSnrHit,
+                    CT_OUT_OF_SNR_UP to outOfSnrHitUp,
+                    CT_OUT_OF_SNR_DOWN to outOfSnrHitDown,
                 )
             }
 

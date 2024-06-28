@@ -28,7 +28,8 @@ class NB2ZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) :
     ) {
 
     // Indicator value to save that model fit was corrected during fitting
-    var outOfSignalToNoiseRatioRangeHit: Boolean = false
+    var outOfSignalToNoiseRatioRangeUp: Boolean = false
+    var outOfSignalToNoiseRatioRangeDown: Boolean = false
 
     private var prevDistributions: List<Pair<NegBinEmissionScheme, NegBinEmissionScheme>> = emptyList()
 
@@ -48,17 +49,20 @@ class NB2ZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) :
                 LOG.warn(
                     "Signal-to-noise ratio not in $SPAN_MIN_SIGNAL_TO_NOISE-$SPAN_MAX_SIGNAL_TO_NOISE, fixing..."
                 )
-                outOfSignalToNoiseRatioRangeHit = true
 
                 val gMean = if (prevDistributions.isNotEmpty())
                     sqrt(prevDistributions[d].first.mean * prevDistributions[d].second.mean)
                 else
                     sqrt(lowState.mean * highState.mean)
                 val snrRange = SPAN_MAX_SIGNAL_TO_NOISE - SPAN_MIN_SIGNAL_TO_NOISE
-                val targetSnr = if (snr < SPAN_MIN_SIGNAL_TO_NOISE)
-                    SPAN_MIN_SIGNAL_TO_NOISE + SPAN_SIGNAL_TO_NOISE_PUSHBACK * snrRange
-                else
-                    SPAN_MAX_SIGNAL_TO_NOISE - SPAN_SIGNAL_TO_NOISE_PUSHBACK * snrRange
+                val targetSnr: Double
+                if (snr < SPAN_MIN_SIGNAL_TO_NOISE) {
+                    outOfSignalToNoiseRatioRangeDown = true
+                    targetSnr = SPAN_MIN_SIGNAL_TO_NOISE + SPAN_SIGNAL_TO_NOISE_PUSHBACK * snrRange
+                } else {
+                    outOfSignalToNoiseRatioRangeUp = true
+                    targetSnr = SPAN_MAX_SIGNAL_TO_NOISE - SPAN_SIGNAL_TO_NOISE_PUSHBACK * snrRange
+                }
 
                 // We update mean values
                 lowState.mean = gMean / sqrt(targetSnr)
