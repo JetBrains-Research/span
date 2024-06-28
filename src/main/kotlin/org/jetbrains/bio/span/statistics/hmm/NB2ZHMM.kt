@@ -5,6 +5,7 @@ import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_NB2ZHMM_PRIORS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_NB2ZHMM_TRANSITIONS_
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_MAX_SIGNAL_TO_NOISE
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_MIN_SIGNAL_TO_NOISE
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SIGNAL_TO_NOISE_PUSHBACK
 import org.jetbrains.bio.span.statistics.emission.NegBinEmissionScheme
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.model.Fitter
@@ -53,7 +54,11 @@ class NB2ZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) :
                     sqrt(prevDistributions[d].first.mean * prevDistributions[d].second.mean)
                 else
                     sqrt(lowState.mean * highState.mean)
-                val targetSnr = (SPAN_MIN_SIGNAL_TO_NOISE + SPAN_MAX_SIGNAL_TO_NOISE) / 2
+                val snrRange = SPAN_MAX_SIGNAL_TO_NOISE - SPAN_MIN_SIGNAL_TO_NOISE
+                val targetSnr = if (snr < SPAN_MIN_SIGNAL_TO_NOISE)
+                    SPAN_MIN_SIGNAL_TO_NOISE + SPAN_SIGNAL_TO_NOISE_PUSHBACK * snrRange
+                else
+                    SPAN_MAX_SIGNAL_TO_NOISE - SPAN_SIGNAL_TO_NOISE_PUSHBACK * snrRange
 
                 // We update mean values
                 lowState.mean = gMean / sqrt(targetSnr)

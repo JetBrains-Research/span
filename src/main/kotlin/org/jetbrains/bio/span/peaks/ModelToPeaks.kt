@@ -19,9 +19,11 @@ import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PROBLEMATIC_D
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_BAD_D
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_PROBLEMATIC
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_BAD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_MAX_SENSITIVITY_BAD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_MAX_SENSITIVITY_PROBLEMATIC
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SENSITIVITY_MULTIPLIER_BAD
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SCORE_BLOCKS
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SENSITIVITY_PROBLEMATIC_X
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SENSITIVITY_BAD_X
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SENSITIVITY_MULTIPLIER_PROBLEMATIC
 import org.jetbrains.bio.span.fit.SpanFitInformation
 import org.jetbrains.bio.span.fit.SpanFitResults
 import org.jetbrains.bio.span.fit.SpanModelFitExperiment
@@ -132,18 +134,18 @@ object ModelToPeaks {
         val estimatedSensitivity = sensitivityInfos.sensitivities[sensitivityInfos.t2]
         val estimatedGap = detectGapModel(genomeQuery, spanFitResults)
         LOG.info("Estimated sensitivity: $estimatedSensitivity gap: $estimatedGap")
-        val (sensitivity2use, gap2use) = actualSensitivityGap(
+        val (sensitivity2use, gap2use) = adjustQualitySensitivityGap(
             sensitivityCmdArg,
             gapCmdArg,
             minPivotGap,
             estimatedSensitivity,
             estimatedGap
         )
-        LOG.info("Actual sensitivity: $sensitivity2use gap: $gap2use")
+        LOG.info("Adjusted sensitivity: $sensitivity2use gap: $gap2use")
         return sensitivity2use to gap2use
     }
 
-    fun actualSensitivityGap(
+    fun adjustQualitySensitivityGap(
         sensitivityCmdArg: Double?,
         gapCmdArg: Int?,
         minPivotGap: Int?,
@@ -155,18 +157,18 @@ object ModelToPeaks {
         when {
                 minPivotGap != null && minPivotGap <= SPAN_GAP_PIVOT_THRESHOLD_BAD -> {
                     LOG.warn("Bad quality detected, adjusting parameters.")
-                    sensitivity2use = 
-                        sensitivityCmdArg ?: (estimatedSensitivity * SPAN_SENSITIVITY_BAD_X)
-                    gap2use = 
-                        gapCmdArg ?: (estimatedGap + SPAN_GAP_BAD_D)
+                    sensitivity2use = sensitivityCmdArg ?:
+                        min(SPAN_MAX_SENSITIVITY_BAD,
+                            estimatedSensitivity * SPAN_SENSITIVITY_MULTIPLIER_BAD)
+                    gap2use = gapCmdArg ?: (estimatedGap + SPAN_GAP_BAD_D)
                 }
 
                 minPivotGap != null && minPivotGap <= SPAN_GAP_PIVOT_THRESHOLD_PROBLEMATIC -> {
                     LOG.warn("Problematic quality detected, adjusting parameters.")
-                    sensitivity2use =
-                        sensitivityCmdArg ?: (estimatedSensitivity * SPAN_SENSITIVITY_PROBLEMATIC_X)
-                    gap2use =
-                        gapCmdArg ?: (estimatedGap + SPAN_GAP_PROBLEMATIC_D)
+                    sensitivity2use = sensitivityCmdArg ?:
+                        min(SPAN_MAX_SENSITIVITY_PROBLEMATIC,
+                            estimatedSensitivity * SPAN_SENSITIVITY_MULTIPLIER_PROBLEMATIC)
+                    gap2use = gapCmdArg ?: (estimatedGap + SPAN_GAP_PROBLEMATIC_D)
                 }
             else -> {
                 sensitivity2use = sensitivityCmdArg ?: estimatedSensitivity
@@ -198,9 +200,9 @@ object ModelToPeaks {
             // Experimentally we observe that bad quality highly fragmented tracks has counterclockwise rotation
             // Counterclockwise direction can be checked as a positive sign of convex hull square formula
             val sLn = triangleSignedSquare(
-                ln1p(n1.toDouble()), ln1p(al1),
+                ln1p(n3.toDouble()), ln1p(al3),
                 ln1p(n2.toDouble()), ln1p(al2),
-                ln1p(n3.toDouble()), ln1p(al3)
+                ln1p(n1.toDouble()), ln1p(al1),
             )
             return@firstOrNull sLn > 0
         }
@@ -215,7 +217,6 @@ object ModelToPeaks {
         val candidatesNs: IntArray,
         val candidatesALs: DoubleArray,
         val t1: Int, val t2: Int, val t3: Int, val triangleArea: Double,
-        val t1global: Int, val t2global: Int, val t3global: Int
     )
 
     /**
@@ -238,48 +239,35 @@ object ModelToPeaks {
             candidatesNs[i] = candidatesN
             candidatesALs[i] = candidatesAL
         }
-        val im1 = distanceArgmin(sensitivities, 0.5)
-        val im2 = distanceArgmin(sensitivities, 0.0001)
+        val im1 = distanceArgmin(sensitivities, 1e-4)
+        val im2 = distanceArgmin(sensitivities, 2.0)
         var maxArea = 0.0
-        var i1 = -1
         var i3 = -1
-        var im = -1
-        for (i in im2 until im1) {
+        var i2 = -1
+        var i1 = -1
+        for (i in im1 until im2) {
             val i3spb = findSensitivityPivotBetween(
                 candidatesNs, candidatesALs, 0, i, -1
             )
             val i1spb = findSensitivityPivotBetween(
                 candidatesNs, candidatesALs, i, n - 1, -1
             )
-            val area = i1spb[3] + i3spb[3]
+            if (i3spb[1] == -1.0 || i1spb[1] == -1.0) {
+                continue
+            }
+            // We want both parts to be balanced so geometric mean optimization is better here
+            val area = sqrt(i1spb[3] * i3spb[3])
             if (area > maxArea) {
                 maxArea = area
                 i1 = i1spb[1].toInt()
                 i3 = i3spb[1].toInt()
-                im = i
+                i2 = i
             }
         }
-        var triangle = findSensitivityPivotBetween(
-            candidatesNs, candidatesALs,
-            i3, i1, 1
-        )
-        while (triangle[1] == -1.0) {
-            LOG.debug("Failed to detect major triangle, updating boundaries")
-            i3 = findSensitivityPivotBetween(candidatesNs, candidatesALs, i3, im, -1)[1].toInt()
-            i1 = findSensitivityPivotBetween(candidatesNs, candidatesALs, i1, im, -1)[1].toInt()
-            triangle = findSensitivityPivotBetween(
-                candidatesNs, candidatesALs,
-                i3, i1, 1
-            )
-        }
-        val result = SensitivityInfo(
-            sensitivities, candidatesNs, candidatesALs,
-            triangle[0].toInt(), triangle[1].toInt(), triangle[2].toInt(), triangle[3],
-            n - 1, im, 0
-        )
+        val result = SensitivityInfo(sensitivities, candidatesNs, candidatesALs, i3, i2, i1, maxArea)
         LOG.debug(
             "Sensitivity triangle: " +
-                    "${sensitivities[result.t1]}, ${sensitivities[result.t2]}, ${sensitivities[result.t3]}"
+                    "$i3: ${sensitivities[i3]}, $i2: ${sensitivities[i2]}, $i1: ${sensitivities[i1]}"
         )
         return result
     }

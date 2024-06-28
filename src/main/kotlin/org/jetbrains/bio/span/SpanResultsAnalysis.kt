@@ -14,7 +14,7 @@ import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_BAD
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_PROBLEMATIC
 import org.jetbrains.bio.span.fit.SpanFitResults
 import org.jetbrains.bio.span.peaks.ModelToPeaks
-import org.jetbrains.bio.span.peaks.ModelToPeaks.actualSensitivityGap
+import org.jetbrains.bio.span.peaks.ModelToPeaks.adjustQualitySensitivityGap
 import org.jetbrains.bio.span.peaks.ModelToPeaks.computeCorrelations
 import org.jetbrains.bio.span.peaks.ModelToPeaks.detectGapModel
 import org.jetbrains.bio.span.peaks.ModelToPeaks.detectSensitivity
@@ -135,14 +135,12 @@ object SpanResultsAnalysis {
 
         LOG.info("Analysing min pivot gap")
         val sensitivityInfo = detectSensitivity(genomeQuery, spanFitResults, fdr)
-        val (detailedSensitivities, candNs, candALs, t1, t2, t3, area, t1g, t2g, t3g) = sensitivityInfo
+        val (detailedSensitivities, candNs, candALs, t1, t2, t3, area) = sensitivityInfo
+        LOG.info("t1 $t1, t2 $t2, t3 $t3")
         logInfo("Sensitivity point 1 ${detailedSensitivities[t1]}", infoWriter)
         logInfo("Sensitivity point 2 ${detailedSensitivities[t2]}", infoWriter)
         logInfo("Sensitivity point 3 ${detailedSensitivities[t3]}", infoWriter)
         logInfo("Sensitivity triangle area $area", infoWriter)
-        logInfo("Sensitivity point global 1 ${detailedSensitivities[t1g]}", infoWriter)
-        logInfo("Sensitivity point global 2 ${detailedSensitivities[t2g]}", infoWriter)
-        logInfo("Sensitivity point global 3 ${detailedSensitivities[t3g]}", infoWriter)
 
         val minPivotGap = estimateMinPivotGap(genomeQuery, spanFitResults, fdr, sensitivityInfo)
         logInfo("Minimal pivot gap: $minPivotGap", infoWriter)
@@ -162,7 +160,7 @@ object SpanResultsAnalysis {
         }
 
         val estimatedSensitivity = sensitivityInfo.sensitivities[sensitivityInfo.t2]
-        val (sensitivity2use, gap2use) = actualSensitivityGap(
+        val (sensitivity2use, gap2use) = adjustQualitySensitivityGap(
             null,
             null,
             minPivotGap,
@@ -171,8 +169,8 @@ object SpanResultsAnalysis {
         )
         logInfo("Estimated sensitivity: $estimatedSensitivity", infoWriter)
         logInfo("Estimated gap: $maxGapModel", infoWriter)
-        logInfo("Actual sensitivity: $sensitivity2use", infoWriter)
-        logInfo("Actual gap: $gap2use", infoWriter)
+        logInfo("Adjusted sensitivity: $sensitivity2use", infoWriter)
+        logInfo("Adjusted gap: $gap2use", infoWriter)
 
         infoWriter?.close()
 
@@ -196,11 +194,11 @@ object SpanResultsAnalysis {
             null
         logInfo("Q\tLogNullP", logNullPsWriter, false)
         var q = 0.0
-        var step = 1e-5
+        var step = 1e-4
         while (1 / step > logNullPvals.size) {
             step *= 10
         }
-        while (q < 0.01) {
+        while (q < 0.005) {
             logInfo("$q\t${logNullPvals[(logNullPvals.size * q).toInt()]}", logNullPsWriter, false)
             q += step
         }

@@ -45,6 +45,8 @@ object SpanConstants {
 
     const val SPAN_MAX_SIGNAL_TO_NOISE = 15.0
 
+    const val SPAN_SIGNAL_TO_NOISE_PUSHBACK = 0.1
+
     // k27me3 tweaked initialization priors from low signal-to-noise ratio ChIP-seq
     val SPAN_DEFAULT_NB2ZHMM_PRIORS = F64Array.of(0.75, 0.24, 0.01)
 
@@ -79,11 +81,14 @@ object SpanConstants {
     const val SPAN_GAP_PIVOT_THRESHOLD_BAD = 5
     const val SPAN_GAP_PIVOT_THRESHOLD_PROBLEMATIC = 10
 
-    const val SPAN_GAP_BAD_D = 20
+    const val SPAN_GAP_BAD_D = 30
     const val SPAN_GAP_PROBLEMATIC_D = 10
 
-    const val SPAN_SENSITIVITY_BAD_X = 10
-    const val SPAN_SENSITIVITY_PROBLEMATIC_X = 5
+    const val SPAN_SENSITIVITY_MULTIPLIER_BAD = 10
+    const val SPAN_SENSITIVITY_MULTIPLIER_PROBLEMATIC = 5
+
+    const val SPAN_MAX_SENSITIVITY_BAD = 2.0
+    const val SPAN_MAX_SENSITIVITY_PROBLEMATIC = 1.2
 
 
     /**
