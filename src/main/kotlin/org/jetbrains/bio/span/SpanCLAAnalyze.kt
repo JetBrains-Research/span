@@ -91,7 +91,7 @@ object SpanCLAAnalyze {
                 val peaksPath = options.valueOf("peaks") as Path?
                 val modelPath = options.valueOf("model") as Path?
                 val deepAnalysis = "deep-analysis" in options
-                val blacklistPath = options.valueOf("blacklist") as Path?
+                val blackListPath = options.valueOf("blacklist") as Path?
                 val keepCacheFiles = "keep-cache" in options
                 checkOrFail(peaksPath != null || modelPath != null || keepCacheFiles) {
                     "At least one of the parameters is required: --peaks, --model or --keep-cache."
@@ -190,11 +190,14 @@ object SpanCLAAnalyze {
                 }
                 if (peaksPath != null) {
                     val peaks = if (labelsPath == null)
-                        ModelToPeaks.getPeaks(spanResults, genomeQuery, fdr, sensitivity, gap)
+                        ModelToPeaks.getPeaks(
+                            spanResults, genomeQuery, fdr, sensitivity, gap, blackListPath = blackListPath
+                        )
                     else
-                        tune(spanResults, genomeQuery, labelsPath, peaksPath)
-                    val peaksList = processBlackList(genomeQuery, peaks, blacklistPath)
+                        tune(spanResults, genomeQuery, labelsPath, peaksPath, blackListPath)
+                    val peaksList = processBlackList(genomeQuery, peaks, blackListPath)
 
+                    LOG.info("Format chromosome, start, end, name, score, strand, signal, -log(p), -log(q)")
                     Peak.savePeaks(
                         peaksList, peaksPath,
                         "peak${if (fragment is FixedFragment) "_$fragment" else ""}_" +
@@ -219,7 +222,9 @@ object SpanCLAAnalyze {
                             fitInfo,
                             genomeQuery,
                             fdr,
-                            blacklistPath,
+                            sensitivity,
+                            gap,
+                            blackListPath,
                             peaksList,
                             peaksPath
                         )
@@ -253,6 +258,7 @@ object SpanCLAAnalyze {
         genomeQuery: GenomeQuery,
         labelsPath: Path,
         peaksPath: Path,
+        blackListPath: Path? = null,
     ): SpanPeaksResult {
         val results = TuningResults()
         LOG.info("Loading labels $labelsPath...")
@@ -284,7 +290,8 @@ object SpanCLAAnalyze {
                     / "${peaksPath.fileName.stem}_parameters.csv"
         )
         return ModelToPeaks.getPeaks(
-            spanResults, genomeQuery, optimalFDR, optimalSensitivity, optimalGap
+            spanResults, genomeQuery, optimalFDR, optimalSensitivity, optimalGap,
+            blackListPath = blackListPath
         )
     }
 

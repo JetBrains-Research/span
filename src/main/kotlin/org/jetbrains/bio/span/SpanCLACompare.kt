@@ -148,6 +148,7 @@ object SpanCLACompare {
                         sensitivity,
                         gap
                     )
+                    LOG.info("Format chromosome, start, end, name, score, strand, foldchange, -log(p), -log(q)")
                     Peak.savePeaks(peaks.toList(), peaksPath, "diff_${id}.peak")
                     LOG.info("Saved result to $peaksPath")
                 }

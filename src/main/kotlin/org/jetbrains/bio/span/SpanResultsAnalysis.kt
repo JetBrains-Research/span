@@ -1,27 +1,33 @@
 package org.jetbrains.bio.span
 
 import com.google.common.collect.MinMaxPriorityQueue
+import gnu.trove.list.array.TDoubleArrayList
+import org.apache.commons.math3.stat.StatUtils
 import org.jetbrains.bio.genome.*
+import org.jetbrains.bio.genome.containers.GenomeMap
 import org.jetbrains.bio.genome.containers.LocationsMergingList
+import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.Coverage
-import org.jetbrains.bio.genome.coverage.FixedFragment
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
-import org.jetbrains.bio.span.fit.SpanConstants.AUTOCORRELATION_THRESHOLD
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_BAD
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_PIVOT_THRESHOLD_PROBLEMATIC
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_AUTOCORRELATION_CHECKPOINT
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTATION_CHECKPOINT
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTATION_MAX_GAP
+import org.jetbrains.bio.span.fit.SpanFitInformation
 import org.jetbrains.bio.span.fit.SpanFitResults
 import org.jetbrains.bio.span.peaks.ModelToPeaks
-import org.jetbrains.bio.span.peaks.ModelToPeaks.adjustQualitySensitivityGap
+import org.jetbrains.bio.span.peaks.ModelToPeaks.actualSensitivityGap
+import org.jetbrains.bio.span.peaks.ModelToPeaks.analyzeAdditiveCandidates
 import org.jetbrains.bio.span.peaks.ModelToPeaks.computeCorrelations
-import org.jetbrains.bio.span.peaks.ModelToPeaks.detectGapModel
-import org.jetbrains.bio.span.peaks.ModelToPeaks.detectSensitivity
-import org.jetbrains.bio.span.peaks.ModelToPeaks.estimateCandidatesNumberLen
-import org.jetbrains.bio.span.peaks.ModelToPeaks.estimateMinPivotGap
+import org.jetbrains.bio.span.peaks.ModelToPeaks.detectSensitivityTriangle
+import org.jetbrains.bio.span.peaks.ModelToPeaks.estimateGenomeSignalNoiseAverage
+import org.jetbrains.bio.span.peaks.ModelToPeaks.getChromosomeCandidates
 import org.jetbrains.bio.span.peaks.ModelToPeaks.getLogNullPvals
 import org.jetbrains.bio.span.peaks.Peak
-import org.jetbrains.bio.span.semisupervised.SpanSemiSupervised.SPAN_BACKGROUND_SENSITIVITY_VARIANTS
 import org.jetbrains.bio.span.semisupervised.SpanSemiSupervised.SPAN_GAPS_VARIANTS
-import org.jetbrains.bio.util.*
+import org.jetbrains.bio.span.semisupervised.SpanSemiSupervised.SPAN_SENSITIVITY_VARIANTS
+import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
+import org.jetbrains.bio.util.deleteIfExists
+import org.jetbrains.bio.util.toPath
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.BufferedWriter
@@ -42,7 +48,9 @@ object SpanResultsAnalysis {
         fitInfo: SpanAnalyzeFitInformation,
         genomeQuery: GenomeQuery,
         fdr: Double,
-        blacklistPath: Path?,
+        sensitivityCmdArg: Double?,
+        gapCmdArg: Int?,
+        blackListPath: Path?,
         peaksList: List<Peak>,
         peaksPath: Path?
     ) {
@@ -70,10 +78,13 @@ object SpanResultsAnalysis {
                 "${k.name}: ${k.render(v)}"
             } + "\n")
         }
+        val modelLowSignalToNoise = spanFitResults.model is NB2ZHMM &&
+                spanFitResults.model.outOfSignalToNoiseRatioRangeDown
+        logInfo("Model low signal to noise: $modelLowSignalToNoise", infoWriter)
 
         LOG.info("Analysing auto correlations...")
         val ncq = fitInfo.normalizedCoverageQueries!!.first()
-        val (treatmentScale, controlScale, beta, minCorrelation) = ncq.coveragesNormalizedInfo
+        val (controlScale, beta, minCorrelation) = ncq.coveragesNormalizedInfo
         val treatmentCoverage = ncq.treatmentReads.coverage()
         val treatmentTotal = genomeQuery.get().sumOf {
             treatmentCoverage.getBothStrandsCoverage(it.chromosomeRange).toLong()
@@ -84,44 +95,43 @@ object SpanResultsAnalysis {
             val controlTotal = genomeQuery.get().sumOf {
                 controlCoverage.getBothStrandsCoverage(it.chromosomeRange).toLong()
             }
-            logInfo("Treatment scale: $treatmentScale", infoWriter)
             logInfo("Control coverage: $controlTotal", infoWriter)
             logInfo("Control scale: $controlScale", infoWriter)
             logInfo("Beta: $beta", infoWriter)
             logInfo("Min control correlation: $minCorrelation", infoWriter)
         }
+        LOG.info("Analysing coverage distribution...")
+        var coverage = computeCoverageScores(
+            genomeQuery,
+            treatmentCoverage, controlCoverage, controlScale,
+            beta, fitInfo.binSize, blackListPath
+        )
+        logInfo("Coverage >0 %: ${(100.0 * coverage.count { it > 0 } / coverage.size).toInt()}", infoWriter)
+        coverage = coverage.filter { it > 0 }.toDoubleArray()
+        logInfo("Coverage >0 max: ${coverage.maxOrNull()}", infoWriter)
+        logInfo("Coverage >0 mean: ${coverage.average()}", infoWriter)
+        logInfo("Coverage >0 median: ${StatUtils.percentile(coverage, 50.0)}", infoWriter)
+        logInfo("Coverage >0 std: ${coverage.standardDeviation()}", infoWriter)
 
-        LOG.info("Analysing log null pvalues distribution")
-        val logNullPvals = getLogNullPvals(genomeQuery, spanFitResults, blacklistPath)
+        LOG.info("Analysing log null pvalues distribution...")
+        val logNullPvals = getLogNullPvals(genomeQuery, spanFitResults, blackListPath)
+        logInfo("LogNullPVals mean: ${logNullPvals.average()}", infoWriter)
         logInfo("LogNullPVals std: ${logNullPvals.standardDeviation()}", infoWriter)
 
-        prepareLogNullsTsvFile(logNullPvals, peaksPath)
-
-        val maxGapCoverage = detectGapCoverage(
-            genomeQuery, treatmentCoverage, treatmentScale, controlCoverage, controlScale, beta,
-            fitInfo.binSize, blacklistPath
-        )
-        logInfo("Maximal gap coverage: $maxGapCoverage", infoWriter)
-
-        val maxGapModel = detectGapModel(
-            genomeQuery, spanFitResults, blacklistPath
-        )
-        logInfo("Maximal gap model: $maxGapModel", infoWriter)
-
         LOG.info("Analysing tracks roughness...")
-        val roughness = detectAverageRoughness(
-            genomeQuery, treatmentCoverage, treatmentScale, controlCoverage, controlScale, beta
+        val roughness = computeAverageRoughness(
+            genomeQuery, treatmentCoverage, controlCoverage, controlScale, beta
         )
         logInfo("Track roughness score: ${"%.3f".format(roughness)}", infoWriter)
-        val roughnessNoControl = detectAverageRoughness(
-            genomeQuery, treatmentCoverage, treatmentScale, null, null, 0.0
+        val roughnessNoControl = computeAverageRoughness(
+            genomeQuery, treatmentCoverage, null, null, 0.0
         )
         logInfo("Track roughness no control: ${"%.3f".format(roughnessNoControl)}", infoWriter)
 
-        if (blacklistPath != null) {
-            LOG.info("Computing blacklisted roughness")
-            val roughnessBlackListed = detectAverageRoughness(
-                genomeQuery, treatmentCoverage, 1.0, null, null, 0.0, blacklistPath
+        if (blackListPath != null) {
+            LOG.info("Computing blacklisted roughness...")
+            val roughnessBlackListed = computeAverageRoughness(
+                genomeQuery, treatmentCoverage, null, null, 0.0, blackListPath
             )
             logInfo(
                 "Track roughness blacklisted: ${"%.3f".format(roughnessBlackListed)}",
@@ -129,55 +139,119 @@ object SpanResultsAnalysis {
             )
         }
 
-        LOG.info("Analysing min pivot gap")
-        val sensitivityInfo = detectSensitivity(genomeQuery, spanFitResults, fdr)
-        val (detailedSensitivities, candNs, candALs, t1, t2, t3, area) = sensitivityInfo
-        LOG.info("t1 $t1, t2 $t2, t3 $t3")
-        logInfo("Sensitivity point 1 ${detailedSensitivities[t1]}", infoWriter)
-        logInfo("Sensitivity point 2 ${detailedSensitivities[t2]}", infoWriter)
-        logInfo("Sensitivity point 3 ${detailedSensitivities[t3]}", infoWriter)
-        logInfo("Sensitivity triangle area $area", infoWriter)
+        LOG.info("Analysing sensitivity and gap...")
+        val sensitivityInfo = detectSensitivityTriangle(genomeQuery, spanFitResults, fdr)
+        val (sensitivities, t1, t2, t3, area) = sensitivityInfo
+        logInfo("Sensitivity point 1: ${sensitivities[t1]}", infoWriter)
+        logInfo("Sensitivity index 1 : $t1", infoWriter)
+        logInfo("Sensitivity point 2: ${sensitivities[t2]}", infoWriter)
+        logInfo("Sensitivity index 2: $t2", infoWriter)
+        logInfo("Sensitivity point 3: ${sensitivities[t3]}", infoWriter)
+        logInfo("Sensitivity index 3: $t3", infoWriter)
 
-        val minPivotGap = estimateMinPivotGap(genomeQuery, spanFitResults, fdr, sensitivityInfo)
-        logInfo("Minimal pivot gap: $minPivotGap", infoWriter)
-        if (minPivotGap != null) {
-            when {
-                minPivotGap <= SPAN_GAP_PIVOT_THRESHOLD_BAD ->
-                    logInfo("Quality: bad", infoWriter)
+        logInfo("Sensitivity triangle area: $area", infoWriter)
 
-                minPivotGap <= SPAN_GAP_PIVOT_THRESHOLD_PROBLEMATIC ->
-                    logInfo("Quality: problematic", infoWriter)
+        LOG.debug("Analysing autocorrelation...")
+        val coverageCorrelations = computeCorrelations(coverage)
+        val logNullPValsCorrelations = computeCorrelations(logNullPvals)
+        val autocorrelationScore = logNullPValsCorrelations[SPAN_AUTOCORRELATION_CHECKPOINT]
+        logInfo("Autocorrelation score: $autocorrelationScore", infoWriter)
 
-                else ->
-                    logInfo("Quality: good", infoWriter)
+        LOG.debug("Analysing fragmentation...")
+        val candidateGapNs = computeGaps(genomeQuery, spanFitResults, fdr, sensitivities[t2])
+        val fragmentationScore = candidateGapNs[SPAN_FRAGMENTATION_CHECKPOINT].toDouble() / candidateGapNs[0]
+        logInfo("Fragmentation score: $fragmentationScore", infoWriter)
+
+        val (sensitivity2use, gap2use) = actualSensitivityGap(
+            sensitivityInfo, sensitivityCmdArg, gapCmdArg,
+            autocorrelationScore, fragmentationScore
+        )
+        logInfo("Actual sensitivity: $sensitivity2use", infoWriter)
+        logInfo("Actual gap: $gap2use", infoWriter)
+
+        val candidates = genomeMap(genomeQuery, parallel = true) { chromosome ->
+            if (!fitInfo.containsChromosomeInfo(chromosome)) {
+                return@genomeMap emptyList<Range>() to emptyList()
             }
-        } else {
-            logInfo("Quality: good", infoWriter)
+            getChromosomeCandidates(spanFitResults, chromosome, fdr, sensitivity2use, gap2use)
         }
 
-        val estimatedSensitivity = sensitivityInfo.sensitivities[sensitivityInfo.t2]
-        val (sensitivity2use, gap2use) = adjustQualitySensitivityGap(
-            null,
-            null,
-            minPivotGap,
-            estimatedSensitivity,
-            maxGapModel
-        )
-        logInfo("Estimated sensitivity: $estimatedSensitivity", infoWriter)
-        logInfo("Estimated gap: $maxGapModel", infoWriter)
-        logInfo("Adjusted sensitivity: $sensitivity2use", infoWriter)
-        logInfo("Adjusted gap: $gap2use", infoWriter)
+        // Estimate signal and noise average signal by candidates
+        fitInfo.prepareData()
 
+        val (avgSignalDensity, avgNoiseDensity) =
+            estimateGenomeSignalNoiseAverage(genomeQuery, fitInfo, candidates)
+        logInfo("Candidates signal density: $avgSignalDensity", infoWriter)
+        logInfo("Candidates noise density: $avgNoiseDensity", infoWriter)
+        val signalToNoise = if (avgNoiseDensity != 0.0) avgSignalDensity / avgNoiseDensity else 0.0
+        logInfo("Coverage signal to noise: $signalToNoise", infoWriter)
+
+        if (spanFitResults.fitInfo.isControlAvailable()) {
+            val signalToControl = computeSignalToControlAverage(genomeQuery, fitInfo, candidates)
+            logInfo("Coverage signal to control: $signalToControl", infoWriter)
+        }
         infoWriter?.close()
 
-        prepareSensitivitiesTsvFile(genomeQuery, spanFitResults, peaksPath, detailedSensitivities, candNs, candALs, fdr)
+        prepareCoveragePercentilesTsvFile(coverage, peaksPath)
 
-        prepareSegmentsFiles(genomeQuery, spanFitResults, sensitivityInfo, peaksPath, fdr)
+        prepareLogNullPercentilesTsvFile(logNullPvals, peaksPath)
+
+        prepareAutocorrelationTsvFile(coverageCorrelations, ".ac.coverage.tsv", peaksPath)
+
+        prepareAutocorrelationTsvFile(logNullPValsCorrelations, ".ac.pvals.tsv", peaksPath)
+
+        prepareFragmentationTsvFile(peaksPath, candidateGapNs)
+
+        prepareSensitivitiesTsvFile(genomeQuery, spanFitResults, peaksPath, sensitivities, fdr)
+
+        prepareSegmentsTsvFile(genomeQuery, spanFitResults, sensitivityInfo, fdr, peaksPath)
     }
 
-    private fun prepareLogNullsTsvFile(
-        logNullPvals: DoubleArray,
+    private fun prepareAutocorrelationTsvFile(correlations: DoubleArray, suffix: String, peaksPath: Path?) {
+        val autocorrelationFile = if (peaksPath != null) "$peaksPath$suffix" else null
+        autocorrelationFile?.toPath()?.deleteIfExists()
+        if (autocorrelationFile != null) {
+            LOG.info("See $autocorrelationFile")
+        }
+
+        val autocorrelationWriter = if (autocorrelationFile != null)
+            BufferedWriter(FileWriter(autocorrelationFile))
+        else
+            null
+        logInfo("D\tCorrelation", autocorrelationWriter, false)
+        correlations.forEachIndexed { i, d ->
+            logInfo("${i + 1}\t$d", autocorrelationWriter, false)
+        }
+        autocorrelationWriter?.close()
+    }
+
+    private fun prepareCoveragePercentilesTsvFile(
+        coverage: DoubleArray,
         peaksPath: Path?
+    ) {
+        LOG.info("Analysing coverage percentiles...")
+        val coveragePercFile = if (peaksPath != null) "$peaksPath.coverage.tsv" else null
+        coveragePercFile?.toPath()?.deleteIfExists()
+        if (coveragePercFile != null) {
+            LOG.info("See $coveragePercFile")
+        }
+
+        val coveragePercWriter = if (coveragePercFile != null)
+            BufferedWriter(FileWriter(coveragePercFile))
+        else
+            null
+        logInfo("Q\tCoverage", coveragePercWriter, false)
+        for (i in 0 until 100) {
+            logInfo("${i + 1}\t${StatUtils.percentile(coverage, i + 1.0)}", coveragePercWriter, false)
+        }
+        coveragePercWriter?.close()
+    }
+
+    private fun prepareLogNullPercentilesTsvFile(
+        logNullPvals: DoubleArray,
+        peaksPath: Path?,
+        maxQ: Double = 0.01,
+        step: Double = 1e-5,
     ) {
         LOG.info("Analysing log nulls percentiles...")
         logNullPvals.sort()
@@ -192,25 +266,77 @@ object SpanResultsAnalysis {
         else
             null
         logInfo("Q\tLogNullP", logNullPsWriter, false)
-        var q = 0.0
-        var step = 1e-5
+        var realStep = step
         while (1 / step > logNullPvals.size) {
-            step *= 10
+            realStep *= 10
         }
-        while (q < 0.005) {
+        var q = 0.0
+        while (q < maxQ) {
             logInfo("$q\t${logNullPvals[(logNullPvals.size * q).toInt()]}", logNullPsWriter, false)
-            q += step
+            q += realStep
         }
         logNullPsWriter?.close()
     }
+
+    private fun prepareFragmentationTsvFile(
+        peaksPath: Path?,
+        candidateGapNs: IntArray,
+    ) {
+        LOG.info("Analysing candidates wrt gap...")
+        val gapsDetailsFile = if (peaksPath != null) "$peaksPath.gaps.tsv" else null
+        if (gapsDetailsFile != null) {
+            LOG.info("See $gapsDetailsFile")
+        }
+        gapsDetailsFile?.toPath()?.deleteIfExists()
+        val gapsDetailsWriter = if (gapsDetailsFile != null)
+            BufferedWriter(FileWriter(gapsDetailsFile))
+        else
+            null
+        logInfo(
+            "Gap\tCandidatesN",
+            gapsDetailsWriter, false
+        )
+        candidateGapNs.forEachIndexed { g, n ->
+            logInfo("$g\t$n", gapsDetailsWriter, false)
+        }
+        gapsDetailsWriter?.close()
+    }
+
+    fun computeGaps(
+        genomeQuery: GenomeQuery,
+        spanFitResults: SpanFitResults,
+        fdr: Double,
+        sensitivity: Double,
+        maxGap: Int = SPAN_FRAGMENTATION_MAX_GAP
+    ): IntArray = IntArray(maxGap) { getCandidates(genomeQuery, spanFitResults, fdr, sensitivity, it).size }
+
+    fun getCandidates(
+        genomeQuery: GenomeQuery,
+        spanFitResults: SpanFitResults,
+        fdr: Double,
+        sensitivity: Double,
+        gap: Int
+    ): List<Location> {
+        val candidates = genomeMap(genomeQuery, parallel = true) { chromosome ->
+            if (!spanFitResults.fitInfo.containsChromosomeInfo(chromosome)) {
+                return@genomeMap emptyList<Range>() to emptyList()
+            }
+            getChromosomeCandidates(spanFitResults, chromosome, fdr, sensitivity, gap)
+        }
+        val candidatesList = genomeQuery.get().flatMap { chromosome ->
+            candidates[chromosome].first.map {
+                Location(it.startOffset, it.endOffset, chromosome)
+            }
+        }
+        return candidatesList
+    }
+
 
     private fun prepareSensitivitiesTsvFile(
         genomeQuery: GenomeQuery,
         spanFitResults: SpanFitResults,
         peaksPath: Path?,
         detailedSensitivities: DoubleArray,
-        candNs: IntArray,
-        candALs: DoubleArray,
         fdr: Double
     ) {
         LOG.info("Analysing candidates characteristics wrt sensitivity and gap...")
@@ -223,56 +349,82 @@ object SpanResultsAnalysis {
             BufferedWriter(FileWriter(sensDetailsFile))
         else
             null
-        logInfo("Sensitivity\tGap\tCandidatesN\tCandidatesAL", sensDetailsWriter, false)
-        // Print extended sensitivity table for gap = 0
-        for ((i, s) in detailedSensitivities.withIndex()) {
-            val candidatesN = candNs[i]
-            val candidatesAL = candALs[i]
-            logInfo("$s\t0\t$candidatesN\t$candidatesAL", sensDetailsWriter, false)
-        }
+        logInfo(
+            "Sensitivity\tGap\tCandidatesN\tCandidatesAL\tCandidatesML\tSignalNoiseRatio\tSignalControlRatio",
+            sensDetailsWriter, false
+        )
         for (g in SPAN_GAPS_VARIANTS) {
-            if (g == 0) {
-                continue
-            }
-            for (s in SPAN_BACKGROUND_SENSITIVITY_VARIANTS) {
-                val (candidatesN, candidatesAL) =
-                    estimateCandidatesNumberLen(genomeQuery, spanFitResults, fdr, s, g, null)
-                logInfo("$s\t$g\t$candidatesN\t$candidatesAL", sensDetailsWriter, false)
+            // Print full sensitivity table for gap = 0
+            val sensitivities = if (g == 0) detailedSensitivities else SPAN_SENSITIVITY_VARIANTS
+            for (s in sensitivities.sorted()) {
+                val candidates = genomeMap(genomeQuery, parallel = true) { chromosome ->
+                    if (!spanFitResults.fitInfo.containsChromosomeInfo(chromosome)) {
+                        return@genomeMap emptyList<Range>() to emptyList()
+                    }
+                    getChromosomeCandidates(spanFitResults, chromosome, fdr, s, g)
+                }
+                val candidatesList = genomeQuery.get().flatMap { chromosome ->
+                    candidates[chromosome].first.map {
+                        Location(it.startOffset, it.endOffset, chromosome)
+                    }
+                }
+                val total = candidatesList.size
+                val lengths = DoubleArray(total) { candidatesList[it].length().toDouble() }
+                val avgL = lengths.average()
+                val medianL = StatUtils.percentile(lengths, 50.0)
+                val signalToNoise: Double
+                val signalToControl: Double
+                if (g == 0) {
+                    val (avgSignalDensity, avgNoiseDensity) =
+                        estimateGenomeSignalNoiseAverage(genomeQuery, spanFitResults.fitInfo, candidates)
+                    signalToNoise = if (avgNoiseDensity != 0.0) avgSignalDensity / avgNoiseDensity else 0.0
+                    signalToControl = if (spanFitResults.fitInfo.isControlAvailable()) {
+                        computeSignalToControlAverage(genomeQuery, spanFitResults.fitInfo, candidates)
+                    } else 0.0
+                } else {
+                    signalToNoise = 0.0
+                    signalToControl = 0.0
+                }
+                logInfo("$s\t$g\t$total\t$avgL\t$medianL\t$signalToNoise\t$signalToControl", sensDetailsWriter, false)
             }
         }
         sensDetailsWriter?.close()
     }
 
-    private fun prepareSegmentsFiles(
+    private fun prepareSegmentsTsvFile(
         genomeQuery: GenomeQuery,
         spanFitResults: SpanFitResults,
         sensitivityInfo: ModelToPeaks.SensitivityInfo,
-        peaksPath: Path?,
         fdr: Double,
+        peaksPath: Path?,
     ) {
-        if (peaksPath == null) {
-            return
+        val (totals, news) =
+            analyzeAdditiveCandidates(genomeQuery, spanFitResults, sensitivityInfo, fdr)
+
+        LOG.info("Analysing segments...")
+        val segmentsFile = if (peaksPath != null) "$peaksPath.segments.tsv" else null
+        if (segmentsFile != null) {
+            LOG.info("See $segmentsFile")
         }
-        LOG.info("Analysing sensitivity segments...")
-        val t0 = 0
-        val t1 = sensitivityInfo.t1
-        val t2 = sensitivityInfo.t2
-        val t3 = sensitivityInfo.t3
-        val t4 = sensitivityInfo.sensitivities.size - 1
-        val segments = intArrayOf(t4, t3, t2, t1, t0)
-        segments.forEachIndexed { i, t ->
-            val s = "%.2e".format(sensitivityInfo.sensitivities[t])
-            val segmentPath = "$peaksPath.segment${i}_$s.bed"
-            LOG.info("Preparing $segmentPath")
-            val peaks = ModelToPeaks.getPeaks(
-                spanFitResults, genomeQuery, fdr, sensitivityInfo.sensitivities[t], 0, false,
-                CancellableState.current()
-            ).toList()
-            Peak.savePeaks(
-                peaks, segmentPath.toPath(),
-                "segment${i}_$s"
+        segmentsFile?.toPath()?.deleteIfExists()
+        val segmentsWriter = if (segmentsFile != null)
+            BufferedWriter(FileWriter(segmentsFile))
+        else
+            null
+        logInfo(
+            "Sensitivity\tCandidatesN\tNew\tOld",
+            segmentsWriter, false
+        )
+        sensitivityInfo.sensitivities.forEachIndexed { i, s ->
+            val total = totals[i]
+            val new = news[i]
+            val old = total - new
+            logInfo(
+                "$s\t$total\t$new\t$old",
+                segmentsWriter, false
             )
         }
+        segmentsWriter?.close()
     }
 
     private fun logInfo(msg: String, infoWriter: BufferedWriter?, useLog: Boolean = true) {
@@ -284,11 +436,6 @@ object SpanResultsAnalysis {
         }
     }
 
-    class XLocation<T>(val l: Location, val x: T) : LocationAware {
-        override val location: Location
-            get() = l
-    }
-
     val REGION_LEN = 10_000
     val TOP_REGIONS = 10_000
     val WORK_REGIONS = 200
@@ -297,10 +444,9 @@ object SpanResultsAnalysis {
     /**
      * Detects roughness of the coverage.
      */
-    fun detectAverageRoughness(
+    private fun computeAverageRoughness(
         genomeQuery: GenomeQuery,
         treatmentCoverage: Coverage,
-        treatmentScale: Double,
         controlCoverage: Coverage?,
         controlScale: Double?,
         beta: Double,
@@ -344,7 +490,7 @@ object SpanResultsAnalysis {
                 }
                 val c = coverage(
                     chr, start, end,
-                    treatmentCoverage, treatmentScale, controlCoverage, controlScale, beta
+                    treatmentCoverage, controlCoverage, controlScale, beta
                 )
                 region_coverages.add(Triple(chr, i, c))
             }
@@ -371,7 +517,7 @@ object SpanResultsAnalysis {
             val stats = DoubleArray(region_len / resolution) {
                 coverage(
                     chr, start + it * resolution, start + (it + 1) * resolution,
-                    treatmentCoverage, treatmentScale, controlCoverage, controlScale, beta
+                    treatmentCoverage, controlCoverage, controlScale, beta
                 )
             }
             val mean = stats.average()
@@ -382,21 +528,44 @@ object SpanResultsAnalysis {
     }
 
 
-    /**
-     * Detects maximal gap, that signal autocorrelation is >= minCorrelation
-     */
-    fun detectGapCoverage(
+    private fun computeSignalToControlAverage(
+        genomeQuery: GenomeQuery,
+        fitInfo: SpanFitInformation,
+        candidates: GenomeMap<Pair<List<Range>, List<List<Range>>>>,
+    ): Double {
+        val canEstimateSignalToNoise = fitInfo is SpanAnalyzeFitInformation &&
+                fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
+        if (!canEstimateSignalToNoise) {
+            return 0.0
+        }
+        val signalToControls = TDoubleArrayList()
+        genomeQuery.get().forEach { chromosome ->
+            if (!fitInfo.containsChromosomeInfo(chromosome) || chromosome !in candidates) {
+                return@forEach
+            }
+            val offsets = fitInfo.offsets(chromosome)
+            candidates[chromosome].first.forEach { (from, to) ->
+                val start = offsets[from]
+                val end = if (to < offsets.size) offsets[to] else chromosome.length
+                val score = fitInfo.score(ChromosomeRange(start, end, chromosome))
+                val controlScore = fitInfo.controlScore(ChromosomeRange(start, end, chromosome))
+                val ratio = if (controlScore != 0.0) score / controlScore else 0.0
+                signalToControls.add(ratio)
+            }
+        }
+        return signalToControls.sum() / signalToControls.size()
+    }
+
+
+    private fun computeCoverageScores(
         genomeQuery: GenomeQuery,
         treatmentCoverage: Coverage,
-        treatmentScale: Double,
         controlCoverage: Coverage?,
         controlScale: Double?,
         beta: Double,
         bin: Int,
-        blackListPath: Path? = null,
-        minCorrelation: Double = AUTOCORRELATION_THRESHOLD
-    ): Int {
-        LOG.debug("Compute maximal gap by coverage")
+        blackListPath: Path?
+    ): DoubleArray {
         // Limit genome query to top non-empty chromosomes
         val chrs = genomeQuery.get()
             .filter { treatmentCoverage.getBothStrandsCoverage(it.chromosomeRange) > 0 }
@@ -420,16 +589,14 @@ object SpanResultsAnalysis {
                 }
                 coverage[i++] = coverage(
                     chr, start, end,
-                    treatmentCoverage, treatmentScale, controlCoverage, controlScale, beta
+                    treatmentCoverage, controlCoverage, controlScale, beta
                 )
             }
         }
         if (blackList != null) {
             LOG.debug("Marked {} / {} blacklisted regions", blackListIgnored, totalBins)
         }
-        val correlations = computeCorrelations(coverage)
-        val maxGap = correlations.indices.filter { correlations[it] >= minCorrelation }.maxOrNull()!!
-        return maxGap
+        return coverage
     }
 
 
@@ -437,13 +604,12 @@ object SpanResultsAnalysis {
         chromosome: Chromosome,
         start: Int, end: Int,
         treatmentCoverage: Coverage,
-        treatmentScale: Double,
         controlCoverage: Coverage?,
         controlScale: Double?,
         beta: Double
     ): Double {
         val chromosomeRange = ChromosomeRange(start, end, chromosome)
-        val tc = treatmentCoverage.getBothStrandsCoverage(chromosomeRange) * treatmentScale
+        val tc = treatmentCoverage.getBothStrandsCoverage(chromosomeRange).toDouble()
         return if (controlCoverage != null && controlScale != null) {
             val cc = controlCoverage.getBothStrandsCoverage(chromosomeRange) * controlScale
             max(0.0, tc - beta * cc)

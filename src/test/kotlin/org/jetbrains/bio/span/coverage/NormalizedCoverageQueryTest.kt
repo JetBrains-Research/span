@@ -23,11 +23,10 @@ class NormalizedCoverageQueryTest {
             data[chromosome1, Strand.PLUS].addAll(intArrayOf(0, 2, 4, 6, 10, 12, 14, 20, 21, 22, 25))
         }.build(unique = false)
 
-        val (scaleTreatment, scaleControl, beta) =
+        val (scaleControl, beta, _) =
             NormalizedCoverageQuery.analyzeCoverage(genomeQuery, cond, control, 200)
-        assertTrue(Precision.equals(1.375, scaleTreatment, 0.01))
-        assertTrue(Precision.equals(1.0, scaleControl, 0.01))
-        assertTrue(Precision.equals(0.63, beta, 0.01))
+        assertTrue(Precision.equals(0.72, scaleControl, 0.01))
+        assertTrue(Precision.equals(0.21, beta, 0.01))
     }
 }
 

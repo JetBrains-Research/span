@@ -11,7 +11,6 @@ import org.jetbrains.bio.genome.query.Query
 import org.jetbrains.bio.genome.query.ReadsQuery
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BETA_STEP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_TREATMENT_SCALE_MAX
 import org.jetbrains.bio.util.isAccessible
 import org.jetbrains.bio.util.reduceIds
 import org.jetbrains.bio.util.stemGz
@@ -19,22 +18,21 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.max
-import kotlin.math.min
 
 /**
  * A class representing a normalized coverage query.
  *
- * normCov = (treatmentCov * treatmentScale - controlCov * controlScale * beta)
+ * normCov = (treatmentCov - controlCov * controlScale * beta) / (1 - beta)
  *
- * treatmentScale and controlScale are computed to upscale a smaller library,
- *      limiting treatmentScale from [SPAN_TREATMENT_SCALE_MIN] to [SPAN_TREATMENT_SCALE_MAX]
  * beta is estimated as value between 0 and 1 minimizing absolute correlation between
  *      normalized coverage and control coverage:
- *      | correlation(treatmentCov * treatmentScale - controlCov * controlScale * beta, controlCov) |
+ *      | correlation(treatmentCov - controlCov * controlScale * beta, controlCov) |
  *
  * Scaling is inspired by https://genomebiology.biomedcentral.com/articles/10.1186/gb-2008-9-9-r137
  * Beta is inspired by https://www.cell.com/biophysj/fulltext/S0006-3495(17)30032-2#sec2
+ * 1 - beta compensation is introduced to align scores with and without control
  *
  * @property genomeQuery The genome query.
  * @property treatmentPath The path to the treatment file.
@@ -65,7 +63,7 @@ class NormalizedCoverageQuery(
         get() = "Treatment: $treatmentPath, Control: $controlPath, " +
                 "Fragment: $fragment, Keep-duplicates: ${!unique}"
 
-    internal val treatmentReads by lazy {
+    val treatmentReads by lazy {
         ReadsQuery(genomeQuery, treatmentPath, unique, fragment, showLibraryInfo = showLibraryInfo)
     }
 
@@ -79,7 +77,7 @@ class NormalizedCoverageQuery(
      * Shows whether the relevant caches are present.
      */
     fun areCachesPresent(): Boolean =
-        treatmentReads.npzPath().isAccessible() && controlReads?.npzPath()?.isAccessible() ?: true
+        treatmentReads.npzPath().isAccessible() && (controlReads?.npzPath()?.isAccessible() ?: true)
 
     /**
      * Cached value for treatment and control scales, see [analyzeCoverage]
@@ -89,7 +87,11 @@ class NormalizedCoverageQuery(
     }
 
     fun score(t: ChromosomeRange): Double {
-        return treatmentReads.get().getBothStrandsCoverage(t) * coveragesNormalizedInfo.treatmentScale
+        return treatmentReads.get().getBothStrandsCoverage(t).toDouble()
+    }
+
+    fun isControlAvailable(): Boolean {
+        return controlReads != null
     }
 
     fun controlScore(chromosomeRange: ChromosomeRange): Double {
@@ -102,25 +104,19 @@ class NormalizedCoverageQuery(
         if (controlPath == null) {
             return treatmentCoverage
         }
-        val (treatmentScale, controlScale, beta, _) = coveragesNormalizedInfo
+        val (controlScale, beta, _) = coveragesNormalizedInfo
         val controlCoverage = controlReads!!.get().getBothStrandsCoverage(t)
-        // Additional 1-b correction to keep summary coverage constant as control after scaling
-        return max(
-            0.0,
-            (treatmentCoverage * treatmentScale - controlCoverage * controlScale * beta) / (1 - beta)
-        ).toInt()
+        return max(0.0, ceil(treatmentCoverage - controlCoverage * controlScale * beta) / (1 - beta)).toInt()
     }
 
     companion object {
         private val LOG: Logger = LoggerFactory.getLogger(NormalizedCoverageQuery::class.java)
 
         data class NormalizedCoverageInfo(
-            val treatmentScale: Double,
             val controlScale: Double,
             val beta: Double,
             val minCorrelation: Double
         )
-
 
         /**
          * Compute coefficients to normalize coverage, see [NormalizedCoverageInfo].
@@ -133,7 +129,7 @@ class NormalizedCoverageQuery(
             binSize: Int
         ): NormalizedCoverageInfo {
             if (controlCoverage == null) {
-                return NormalizedCoverageInfo(1.0, 0.0, 0.0, 0.0)
+                return NormalizedCoverageInfo(0.0, 0.0, 0.0)
             }
             val treatmentTotal = genomeQuery.get().sumOf {
                 treatmentCoverage.getBothStrandsCoverage(it.chromosomeRange).toLong()
@@ -141,26 +137,22 @@ class NormalizedCoverageQuery(
             val controlTotal = genomeQuery.get().sumOf {
                 controlCoverage.getBothStrandsCoverage(it.chromosomeRange).toLong()
             }
-            // Upscale coverage to bigger one
-            val targetCoverage = max(treatmentTotal, controlTotal)
-            // But keep the treatment scale within limited range
-            val treatmentScale = min(1.0 * targetCoverage / treatmentTotal, SPAN_TREATMENT_SCALE_MAX)
-            val controlScale = 1.0 * treatmentTotal * treatmentScale / controlTotal
+            // Scale control to treatment
+            val controlScale = 1.0 * treatmentTotal  / controlTotal
             val (beta, minCorrelation) = estimateBeta(
-                genomeQuery, treatmentCoverage, treatmentScale, controlCoverage, controlScale, binSize
+                genomeQuery, treatmentCoverage, controlCoverage, controlScale, binSize
             )
             LOG.info(
-                "Scale treatment ${"%,d".format(treatmentTotal)} x ${"%.3f".format(treatmentScale)}, " +
+                "Treatment ${"%,d".format(treatmentTotal)}, " +
                         "control ${"%,d".format(controlTotal)} x ${"%.3f".format(controlScale)}, " +
                         "min correlation ${"%.3f".format(minCorrelation)}, beta ${"%.3f".format(beta)}"
             )
-            return NormalizedCoverageInfo(treatmentScale, controlScale, beta, minCorrelation)
+            return NormalizedCoverageInfo(controlScale, beta, minCorrelation)
         }
 
         private fun estimateBeta(
             genomeQuery: GenomeQuery,
             treatmentCoverage: Coverage,
-            treatmentScale: Double,
             controlCoverage: Coverage,
             controlScale: Double,
             bin: Int,
@@ -171,7 +163,7 @@ class NormalizedCoverageQuery(
                 .maxByOrNull { treatmentCoverage.getBothStrandsCoverage(it.chromosomeRange) } ?:
                 return 0.0 to 0.0
             val binnedScaledTreatment = chromosomeWithMaxSignal.range.slice(bin).mapToDouble {
-                treatmentCoverage.getBothStrandsCoverage(it.on(chromosomeWithMaxSignal)) * treatmentScale
+                treatmentCoverage.getBothStrandsCoverage(it.on(chromosomeWithMaxSignal)).toDouble()
             }.toArray()
             val binnedScaledControl = chromosomeWithMaxSignal.range.slice(bin).mapToDouble {
                 controlCoverage.getBothStrandsCoverage(it.on(chromosomeWithMaxSignal)) * controlScale
@@ -202,10 +194,14 @@ class NormalizedCoverageQuery(
 
 }
 
+/**
+ * Calculates the binned coverage DataFrame for a list of normalized coverage queries.
+ * Using clip percentile may slightly help to avoid out-of-range during model fit.
+ */
 fun List<NormalizedCoverageQuery>.binnedCoverageDataFrame(
     chromosome: Chromosome,
     binSize: Int,
-    labels: Array<String>
+    labels: Array<String>,
 ): DataFrame {
     var res = DataFrame()
     forEachIndexed { d, inputQuery ->

@@ -15,26 +15,27 @@ object SpanConstants {
     const val SPAN_DEFAULT_FDR = 0.05
 
     /**
-     * The maximum scale used for treatment in the span treatment analysis
-     */
-    const val SPAN_TREATMENT_SCALE_MAX = 2.0
-
-    /**
      * The default step size used for beta values in the SPAN calculation.
      * Beta value is used to minimize correlation between treatment and control track.
      * Step is used to iterate in the [0, 1] interval.
      */
     const val SPAN_DEFAULT_BETA_STEP = 0.01
 
-    /**
-     * Min autocorrelation threshold
-     */
-    const val AUTOCORRELATION_THRESHOLD = 0.8
+    const val SPAN_AUTOCORRELATION_MAX_SHIFT = 100
 
-    const val AUTOCORRELATION_MAX_SHIFT = 50
+    const val SPAN_AUTOCORRELATION_CHECKPOINT = 10
+
+    const val SPAN_AUTOCORRELATION_NARROW_THRESHOLD = 0.3
+
+    const val SPAN_FRAGMENTATION_MAX_GAP = 100
+
+    const val SPAN_FRAGMENTATION_CHECKPOINT = 20
+
+    const val SPAN_GAP_FRAGMENTATION_THRESHOLD = 0.8
 
     /**
      * Default signal-to-noise ratio used for HMM model states initialization
+     * Too high values lead to not enough sensitivity for narrow mark cases
      */
     const val SPAN_DEFAULT_SIGNAL_TO_NOISE = 10.0
 
@@ -43,7 +44,7 @@ object SpanConstants {
      */
     const val SPAN_MIN_SIGNAL_TO_NOISE = 1.5
 
-    const val SPAN_MAX_SIGNAL_TO_NOISE = 15.0
+    const val SPAN_MAX_SIGNAL_TO_NOISE = 20.0
 
     const val SPAN_SIGNAL_TO_NOISE_PUSHBACK = 0.1
 
@@ -74,21 +75,23 @@ object SpanConstants {
     const val SPAN_DEFAULT_SENSITIVITY = 0.1
 
     /**
-     * Minimal distance between candidates
+     * Sensitivity range to go from none peaks to the whole chromosomes as a single peaks
      */
-    const val SPAN_DEFAULT_GAP = 1
+    const val SPAN_TRIANGLE_RELAXED_SENSITIVITY = 1e-7
 
-    const val SPAN_GAP_PIVOT_THRESHOLD_BAD = 5
-    const val SPAN_GAP_PIVOT_THRESHOLD_PROBLEMATIC = 10
+    const val SPAN_TRIANGLE_STRICT_SENSITIVITY = 1e4
 
-    const val SPAN_GAP_BAD_D = 30
-    const val SPAN_GAP_PROBLEMATIC_D = 10
+    /**
+     * Number of points between relaxed and strict sensitivity to analyse
+     */
+    const val SPAN_TRIANGLE_N = 100
 
-    const val SPAN_SENSITIVITY_MULTIPLIER_BAD = 10
-    const val SPAN_SENSITIVITY_MULTIPLIER_PROBLEMATIC = 5
+     // Minimal distance between candidates
+    const val SPAN_DEFAULT_GAP = 3
 
-    const val SPAN_MAX_SENSITIVITY_BAD = 1.5
-    const val SPAN_MAX_SENSITIVITY_PROBLEMATIC = 1.2
+    // This gap will be used as a multiplier to compensate for high fragmentation
+    const val SPAN_BROAD_GAP = 100
+
 
 
     /**

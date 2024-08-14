@@ -40,5 +40,7 @@
   ],
   "num_states": 3,
   "model.class.fqn": "org.jetbrains.bio.span.statistics.hmm.NB2ZHMM",
-  "model.class.format": "2"
+  "out_of_signal_to_noise_ratio_range_up": false,
+  "out_of_signal_to_noise_ratio_range_down": true,
+  "model.class.format": "3"
 }

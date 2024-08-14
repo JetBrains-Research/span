@@ -82,6 +82,10 @@ data class SpanCompareFitInformation(
         }
     }
 
+    override fun isControlAvailable(): Boolean {
+        return false
+    }
+
     /**
      * Return log2 fold change of average summary coverage across data
      */

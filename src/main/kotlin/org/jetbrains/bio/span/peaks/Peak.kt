@@ -39,10 +39,6 @@ data class Peak(
         internal val LOG = LoggerFactory.getLogger(Peak::class.java)
 
         fun savePeaks(peaks: List<Peak>, path: Path, peakName: String = "") {
-            LOG.debug(
-                """FORMAT $path:
-chromosome, start, end, name, score, strand, coverage/foldchange, -log(pvalue), -log(qvalue)"""
-            )
             CSVFormat.TDF.print(path.bufferedWriter()).use { printer ->
                 peaks.sorted().forEachIndexed { i, peak ->
                     /* See MACS2 output format for details https://github.com/taoliu/MACS/ */

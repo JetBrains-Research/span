@@ -108,13 +108,16 @@ data class SpanAnalyzeFitInformation(
                 normalizedCoverageQueries!!.size
     }
 
+    override fun isControlAvailable(): Boolean =
+        normalizedCoverageQueries!!.all { it.controlReads != null && it.areCachesPresent() }
+
     @Synchronized
     override fun controlScore(chromosomeRange: ChromosomeRange): Double {
         check(normalizedCoverageQueries != null) {
             "Please use prepareData before!"
         }
 
-        check(normalizedCoverageQueries!!.all { it.controlReads != null && it.areCachesPresent()}) {
+        check(isControlAvailable()) {
             "Control is not available"
         }
         return normalizedCoverageQueries!!.sumOf { it.controlScore(chromosomeRange) } /

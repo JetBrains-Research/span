@@ -7,10 +7,8 @@ import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.fit.AbstractSpanAnalyzeFitInformation
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_SENSITIVITY
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_MAX_ITERATIONS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanDataPaths
@@ -163,24 +161,18 @@ compare                         Differential peak calling
                 .defaultsTo(SPAN_DEFAULT_FDR)
             acceptsAll(
                 listOf("sensitivity"),
-                "Configures background sensitivity for peaks.\n" +
-                        "Recommended value for generic ChIP-seq: $SPAN_DEFAULT_SENSITIVITY,\n" +
-                        "Recommended value for TFs and ATAC-seq: 1.0"
+                "Configures background sensitivity for peaks. Estimated from the data"
             )
                 .availableIf("peaks")
                 .withRequiredArg()
                 .ofType(Double::class.java)
-                .defaultsTo(SPAN_DEFAULT_SENSITIVITY)
             accepts(
                 "gap",
-                "Gap is used for broad histone marks to join adjacent peaks.\n" +
-                        "Recommended value for generic ChIP-seq: $SPAN_DEFAULT_GAP,\n" +
-                        "Recommended value for TFs and ATAC-seq: 0.0"
+                "Gap is used for broad histone marks to join adjacent peaks. Estimated from the data"
             )
                 .availableIf("peaks")
                 .withRequiredArg()
                 .ofType(Int::class.java)
-                .defaultsTo(SPAN_DEFAULT_GAP)
 
             acceptsAll(listOf("w", "workdir"), "Path to the working directory. Used to save coverage and model cache")
                 .withRequiredArg().withValuesConvertedBy(PathConverter.exists())

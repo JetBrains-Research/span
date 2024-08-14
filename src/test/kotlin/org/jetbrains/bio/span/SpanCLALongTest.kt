@@ -95,7 +95,7 @@ class SpanCLALongTest {
             println("Saved sampled track file: $path")
 
             withTempDirectory("work") {
-                val peaksPath = it / "peaks.bed"
+                val  peaksPath = it / "peaks.bed"
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 val (out, _) = Logs.captureLoggingOutput {
                     SpanCLA.main(
@@ -620,8 +620,7 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
                     },
                     "Peak value is reported as 0.0, although the coverage cache is present"
                 )
-                assertIn("Estimating background sensitivity and gap...", out)
-                assertIn("Sensitivity: 0.1 Gap: 0.5", out)
+                assertIn("Analysing sensitivity and gap...", out)
                 assertIn("Signal mean: ", out)
                 assertIn("Noise mean: ", out)
                 assertIn("Signal to noise: ", out)

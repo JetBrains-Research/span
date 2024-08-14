@@ -97,6 +97,10 @@ data class SpanRegrMixtureAnalyzeFitInformation(
         }
     }
 
+    override fun isControlAvailable(): Boolean {
+        return normalizedCoverageQuery?.controlReads != null && normalizedCoverageQuery!!.controlReads!!.isAccessible()
+    }
+
     override fun score(chromosomeRange: ChromosomeRange): Double {
         check(normalizedCoverageQuery != null) {
             "Please use prepareData before!"

@@ -18,15 +18,15 @@ object SpanSemiSupervised {
         0.1, SPAN_DEFAULT_FDR, 0.01, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10
     )
 
-    val SPAN_BACKGROUND_SENSITIVITY_VARIANTS =
-        doubleArrayOf(100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.5, 1.0, 0.5, 0.2, 0.1, 0.05, 0.01, 0.001, 1e-4, 1e-6, 1e-8).sorted()
+    val SPAN_SENSITIVITY_VARIANTS: DoubleArray =
+        doubleArrayOf(100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.5, 1.0, 0.5, 0.2, 0.1, 0.01, 0.001, 1e-4, 1e-6, 1e-8)
 
     val SPAN_GAPS_VARIANTS =
         intArrayOf(0, SPAN_DEFAULT_GAP, 2, 5, 10, 20, 50, 100).sorted()
 
     val PARAMETERS =
         SPAN_FDRS.sorted().flatMap { fdr ->
-            SPAN_BACKGROUND_SENSITIVITY_VARIANTS.sorted().flatMap { sensitivity ->
+            SPAN_SENSITIVITY_VARIANTS.sorted().flatMap { sensitivity ->
                 SPAN_GAPS_VARIANTS.map { gap ->
                     Triple(fdr, sensitivity, gap)
                 }
