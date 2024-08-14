@@ -1,7 +1,5 @@
 package org.jetbrains.bio.span
 
-import jdk.management.jfr.ConfigurationInfo
-import kotlinx.support.jdk7.use
 import org.jetbrains.bio.Tests.assertIn
 import org.jetbrains.bio.experiment.Configuration
 import org.jetbrains.bio.genome.Genome

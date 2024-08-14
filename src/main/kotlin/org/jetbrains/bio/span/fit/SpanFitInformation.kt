@@ -3,7 +3,6 @@ package org.jetbrains.bio.span.fit
 import com.google.common.math.IntMath
 import com.google.gson.*
 import com.google.gson.reflect.TypeToken
-import kotlinx.support.jdk7.use
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.ChromosomeRange

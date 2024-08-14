@@ -1,6 +1,5 @@
 package org.jetbrains.bio.span.coverage
 
-import kotlinx.support.jdk7.use
 import org.jetbrains.bio.big.BedEntry
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.GenomeMap
@@ -42,7 +41,7 @@ object SpanCoverageSampler {
             val model = ClassificationModel.load<NB2ZHMM>(modelPath)
             model.logPriorProbabilities[0] = Double.NEGATIVE_INFINITY
             val chromosomes = genomeQuery.get()
-            BedFormat().print(path).use {
+            with(BedFormat().print(path)) {
                 val genomeLength = chromosomes.sumOf { it.length.toLong() }
                 chromosomes.forEach { chr ->
                     val bins = chr.length / bin
@@ -72,7 +71,7 @@ object SpanCoverageSampler {
                         // Keep reads sorted
                         (0 until readsInBin).map { it % bin }.sorted().forEach { i ->
                             val start = b * bin + i
-                            it.print(BedEntry(chr.name, start, start + 1))
+                            this.print(BedEntry(chr.name, start, start + 1))
                         }
                     }
                 }

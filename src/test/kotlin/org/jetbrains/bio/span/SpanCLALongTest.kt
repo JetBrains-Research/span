@@ -1,6 +1,5 @@
 package org.jetbrains.bio.span
 
-import kotlinx.support.jdk7.use
 import org.jetbrains.bio.Tests.assertIn
 import org.jetbrains.bio.Tests.assertMatches
 import org.jetbrains.bio.experiment.Configuration
