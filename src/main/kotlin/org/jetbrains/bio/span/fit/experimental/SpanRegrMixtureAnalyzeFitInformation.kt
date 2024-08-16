@@ -86,7 +86,6 @@ data class SpanRegrMixtureAnalyzeFitInformation(
     @Transient
     var normalizedCoverageQuery: NormalizedCoverageQuery? = null
 
-    @Synchronized
     override fun prepareData() {
         if (normalizedCoverageQuery == null) {
             normalizedCoverageQuery =
@@ -98,7 +97,8 @@ data class SpanRegrMixtureAnalyzeFitInformation(
     }
 
     override fun isControlAvailable(): Boolean {
-        return normalizedCoverageQuery?.controlReads != null && normalizedCoverageQuery!!.controlReads!!.isAccessible()
+        return normalizedCoverageQuery?.controlReads != null &&
+                normalizedCoverageQuery!!.controlReads!!.isAccessible()
     }
 
     override fun score(chromosomeRange: ChromosomeRange): Double {

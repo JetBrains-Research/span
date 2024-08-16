@@ -22,7 +22,7 @@ object SpanSemiSupervised {
         doubleArrayOf(100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.5, 1.0, 0.5, 0.2, 0.1, 0.01, 0.001, 1e-4, 1e-6, 1e-8)
 
     val SPAN_GAPS_VARIANTS =
-        intArrayOf(0, SPAN_DEFAULT_GAP, 2, 5, 10, 20, 50, 100).sorted()
+        intArrayOf(0, SPAN_DEFAULT_GAP, 2, 10, 20, 50, 100).sorted()
 
     val PARAMETERS =
         SPAN_FDRS.sorted().flatMap { fdr ->

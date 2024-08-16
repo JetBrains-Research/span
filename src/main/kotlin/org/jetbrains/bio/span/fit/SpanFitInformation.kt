@@ -60,6 +60,8 @@ interface SpanFitInformation {
     /**
      * Computes range score, either coverage for analyze experiment or log2 fold change for difference.
      * Call [prepareData] beforehand!
+     * Can be slow in multi-thread usage, due to synchronized lazy on NormalizedCoverageQuery#treatmentReads
+     * Consider replacing to direct calls to ReadsCoverage
      */
     fun score(chromosomeRange: ChromosomeRange): Double
 
@@ -68,6 +70,8 @@ interface SpanFitInformation {
     /**
      * Returns scaled control score or null if not available.
      * Call [prepareData] beforehand!
+     * Can be slow in multi-thread usage, due to synchronized lazy on NormalizedCoverageQuery#treatmentReads
+     * Consider replacing to direct calls to ReadsCoverage
      */
     fun controlScore(chromosomeRange: ChromosomeRange): Double
 

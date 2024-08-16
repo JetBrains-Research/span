@@ -52,7 +52,6 @@ data class SpanCompareFitInformation(
     @Transient
     var normalizedCoverageQueries2: List<NormalizedCoverageQuery>? = null
 
-    @Synchronized
     override fun prepareData() {
         if (normalizedCoverageQueries1 == null) {
             normalizedCoverageQueries1 = data1.map {
@@ -89,7 +88,6 @@ data class SpanCompareFitInformation(
     /**
      * Return log2 fold change of average summary coverage across data
      */
-    @Synchronized
     override fun score(chromosomeRange: ChromosomeRange): Double {
         check(normalizedCoverageQueries1 != null && normalizedCoverageQueries2 != null) {
             "Please use prepareData before!"
@@ -107,7 +105,6 @@ data class SpanCompareFitInformation(
         }
     }
 
-    @Synchronized
     override fun controlScore(chromosomeRange: ChromosomeRange): Double {
         check(normalizedCoverageQueries1 != null && normalizedCoverageQueries2 != null) {
             "Please use prepareData before!"

@@ -221,7 +221,6 @@ object SpanCLAAnalyze {
                             spanResults,
                             fitInfo,
                             genomeQuery,
-                            fdr,
                             sensitivity,
                             gap,
                             blackListPath,

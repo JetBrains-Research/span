@@ -4,6 +4,7 @@ import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
+import org.jetbrains.bio.genome.coverage.Coverage
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.genome.query.CachingQuery
 import org.jetbrains.bio.genome.query.Query
@@ -48,13 +49,6 @@ data class SpanAnalyzeFitInformation(
         get() = generateId(paths, fragment, binSize, unique)
 
 
-    fun hasControlData(): Boolean {
-        check(normalizedCoverageQueries != null) {
-            "Please use prepareData before!"
-        }
-        return normalizedCoverageQueries!!.any { it.controlPath != null }
-    }
-
     override val dataQuery: Query<Chromosome, DataFrame>
         get() {
             prepareData()
@@ -76,7 +70,6 @@ data class SpanAnalyzeFitInformation(
     @Transient
     var normalizedCoverageQueries: List<NormalizedCoverageQuery>? = null
 
-    @Synchronized
     override fun prepareData() {
         if (normalizedCoverageQueries == null) {
             normalizedCoverageQueries = paths.map {
@@ -96,27 +89,15 @@ data class SpanAnalyzeFitInformation(
     /**
      * Returns average coverage by tracks
      */
-    @Synchronized
     override fun score(chromosomeRange: ChromosomeRange): Double {
-        check(normalizedCoverageQueries != null) {
-            "Please use prepareData before!"
-        }
-        check(normalizedCoverageQueries!!.all { it.areCachesPresent() }) {
-            "Coverage information is not available"
-        }
         return normalizedCoverageQueries!!.sumOf { it.score(chromosomeRange) } /
                 normalizedCoverageQueries!!.size
     }
 
     override fun isControlAvailable(): Boolean =
-        normalizedCoverageQueries!!.all { it.controlReads != null && it.areCachesPresent() }
+        normalizedCoverageQueries!!.all { it.controlReads != null }
 
-    @Synchronized
     override fun controlScore(chromosomeRange: ChromosomeRange): Double {
-        check(normalizedCoverageQueries != null) {
-            "Please use prepareData before!"
-        }
-
         check(isControlAvailable()) {
             "Control is not available"
         }
@@ -177,5 +158,25 @@ data class SpanAnalyzeFitInformation(
                 SpanFitInformation.chromSizes(genomeQueryWithData)
             )
         }
+
+        /**
+         * Optimization to avoid synchronized lazy on NormalizedCoverageQuery#treatmentReads
+         * Replacing calls NormalizedCoverageQuery#score with non-blocked direct realization
+         */
+        fun fastScore(treatmentCoverages: List<Coverage>, range: ChromosomeRange) =
+            treatmentCoverages.sumOf { it.getBothStrandsCoverage(range) }.toDouble() / treatmentCoverages.size
+
+        /**
+         * Optimization to avoid synchronized lazy on NormalizedCoverageQuery#controlReads
+         * Replacing calls NormalizedCoverageQuery#controlScore with non-blocked direct realization
+         */
+        fun fastControlScore(
+            controlCoverages: List<Coverage>,
+            controlScales: List<Double>,
+            chromosomeRange: ChromosomeRange
+        ) = controlCoverages.zip(controlScales)
+            .sumOf { (c, s) -> c.getBothStrandsCoverage(chromosomeRange) * s } / controlCoverages.size
+
+
     }
 }

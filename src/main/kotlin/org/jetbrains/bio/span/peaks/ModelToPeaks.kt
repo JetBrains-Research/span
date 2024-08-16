@@ -1,5 +1,6 @@
 package org.jetbrains.bio.span.peaks
 
+import com.google.common.util.concurrent.AtomicDouble
 import org.apache.commons.math3.stat.StatUtils
 import org.apache.commons.math3.stat.correlation.PearsonsCorrelation
 import org.apache.commons.math3.util.Precision
@@ -8,9 +9,10 @@ import org.jetbrains.bio.genome.*
 import org.jetbrains.bio.genome.containers.GenomeMap
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.genome.containers.genomeMap
+import org.jetbrains.bio.genome.containers.toRangeMergingList
+import org.jetbrains.bio.genome.coverage.Coverage
 import org.jetbrains.bio.span.SpanResultsAnalysis
-import org.jetbrains.bio.span.SpanResultsAnalysis.getCandidates
-import org.jetbrains.bio.span.fit.*
+import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_AUTOCORRELATION_CHECKPOINT
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_AUTOCORRELATION_MAX_SHIFT
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_AUTOCORRELATION_NARROW_THRESHOLD
@@ -19,23 +21,27 @@ import org.jetbrains.bio.span.fit.SpanConstants.SPAN_CLIP_STEPS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_LENGTH_CLIP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_SIGNAL_CLIP
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTATION_CHECKPOINT
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTATION_GAP_CHECKPOINT
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_GAP_FRAGMENTATION_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SCORE_BLOCKS
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_TRIANGLE_N
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_TRIANGLE_RELAXED_SENSITIVITY
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_TRIANGLE_STRICT_SENSITIVITY
-import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SENSITIVITY_N
+import org.jetbrains.bio.span.fit.SpanFitInformation
+import org.jetbrains.bio.span.fit.SpanFitResults
+import org.jetbrains.bio.span.fit.SpanModelFitExperiment
 import org.jetbrains.bio.span.statistics.util.PoissonUtil
 import org.jetbrains.bio.statistics.f64Array
 import org.jetbrains.bio.statistics.hypothesis.Fdr
 import org.jetbrains.bio.util.CancellableState
+import org.jetbrains.bio.util.await
 import org.jetbrains.bio.viktor.F64Array
 import org.jetbrains.bio.viktor.KahanSum
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
 import java.util.*
+import java.util.concurrent.Callable
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.*
 
 
@@ -68,24 +74,42 @@ object ModelToPeaks {
         gapCmdArg: Int?,
         clip: Boolean = true,
         blackListPath: Path? = null,
+        parallel: Boolean = true,
         cancellableState: CancellableState? = null,
     ): SpanPeaksResult {
         val fitInfo = spanFitResults.fitInfo
         // Prepare fit information for scores computations
         fitInfo.prepareData()
 
+        // Collect candidates from model
+        val logNullMembershipsMap = genomeMap(genomeQuery, parallel = parallel) { chromosome ->
+            if (!fitInfo.containsChromosomeInfo(chromosome)) {
+                // HACK, it shouldn't be used
+                // Cannot be null because of GenomeMap and empty F64Array is not supported
+                return@genomeMap F64Array.full(1, 0.0)
+            }
+            getLogNulls(spanFitResults, chromosome)
+        }
+        val bitList2reuseMap = genomeMap(genomeQuery, parallel = parallel) { chromosome ->
+            BitList(logNullMembershipsMap[chromosome].length)
+        }
+
         val (sensitivity2use, gap2use) = estimateParams(
-            genomeQuery, spanFitResults, fdr, sensitivityCmdArg, gapCmdArg,
-            blackListPath, cancellableState
+            genomeQuery, spanFitResults, logNullMembershipsMap, bitList2reuseMap,
+            sensitivityCmdArg, gapCmdArg,
+            blackListPath, parallel, cancellableState
         )
 
-        // Collect candidates from model
-        val candidates = genomeMap(genomeQuery, parallel = true) { chromosome ->
+        val candidatesMap = genomeMap(genomeQuery, parallel = parallel) { chromosome ->
             cancellableState?.checkCanceled()
             if (!fitInfo.containsChromosomeInfo(chromosome)) {
-                return@genomeMap emptyList<Range>() to emptyList()
+                return@genomeMap emptyList<Range>()
             }
-            getChromosomeCandidates(spanFitResults, chromosome, fdr, sensitivity2use, gap2use)
+            val logNullMemberships = logNullMembershipsMap[chromosome]
+            val bitList2reuse = bitList2reuseMap[chromosome]
+            getChromosomeCandidates(
+                chromosome, logNullMemberships, bitList2reuse, sensitivity2use, gap2use
+            )
         }
 
         // Estimate signal and noise average signal by candidates
@@ -93,25 +117,28 @@ object ModelToPeaks {
                 fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
 
         val (avgSignalDensity, avgNoiseDensity) = if (canEstimateSignalToNoise)
-            estimateGenomeSignalNoiseAverage(genomeQuery, fitInfo, candidates).apply {
+            estimateGenomeSignalNoiseAverage(genomeQuery, fitInfo, candidatesMap, parallel).apply {
                 LOG.debug("Signal density $first, noise density $second")
             }
         else
             null to null
 
+        val readsControlAvailable = fitInfo is SpanAnalyzeFitInformation &&
+                fitInfo.isControlAvailable() &&
+                fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
 
         // Collect peaks
-        val peaks = genomeMap(genomeQuery, parallel = true) { chromosome ->
+        val peaks = genomeMap(genomeQuery, parallel = parallel) { chromosome ->
             cancellableState?.checkCanceled()
-            if (!fitInfo.containsChromosomeInfo(chromosome) || chromosome !in candidates) {
+            if (!fitInfo.containsChromosomeInfo(chromosome)) {
                 return@genomeMap emptyList<Peak>()
             }
-            val chrCandidates = candidates[chromosome]
-            val logNullMemberships = getLogNulls(spanFitResults, chromosome)
+            val logNullMemberships = logNullMembershipsMap[chromosome]
+            val candidates = candidatesMap[chromosome]
+            val offsets = fitInfo.offsets(chromosome)
             getChromosomePeaksFromCandidates(
-                chromosome, chrCandidates, fitInfo,
-                logNullMemberships, fitInfo.offsets(chromosome), fdr,
-                avgSignalDensity, avgNoiseDensity,
+                chromosome, candidates, fitInfo, logNullMemberships, offsets,
+                fdr, avgSignalDensity, avgNoiseDensity, readsControlAvailable,
                 cancellableState = cancellableState
             )
         }
@@ -122,10 +149,12 @@ object ModelToPeaks {
     private fun estimateParams(
         genomeQuery: GenomeQuery,
         spanFitResults: SpanFitResults,
-        fdr: Double,
+        logNullMembershipsMap: GenomeMap<F64Array>,
+        bitList2reuseMap: GenomeMap<BitList>,
         sensitivityCmdArg: Double?,
         gapCmdArg: Int?,
         blackListPath: Path?,
+        parallel: Boolean,
         cancellableState: CancellableState?
     ): Pair<Double, Int> {
         if (sensitivityCmdArg != null && gapCmdArg != null) {
@@ -133,31 +162,38 @@ object ModelToPeaks {
         }
         cancellableState?.checkCanceled()
 
-        val modelLowSignalToNoise = spanFitResults.model is NB2ZHMM &&
-                spanFitResults.model.outOfSignalToNoiseRatioRangeDown
-        LOG.info("Low signal to noise: $modelLowSignalToNoise")
-        cancellableState?.checkCanceled()
-
         LOG.info("Analysing sensitivity and gap...")
-        val sensitivityInfo = detectSensitivityTriangle(genomeQuery, spanFitResults, fdr)
+        val minLogNull = genomeQuery.get().minOf { logNullMembershipsMap[it].min() }
+        // Limit value due to floating point errors
+        val maxLogNull = min(-1e-10, genomeQuery.get().maxOf { logNullMembershipsMap[it].max() })
+        val sensitivities = linSpace(minLogNull, maxLogNull)
+        val si = detectSensitivityTriangle(
+            genomeQuery, spanFitResults.fitInfo, logNullMembershipsMap, bitList2reuseMap, sensitivities
+        )
         cancellableState?.checkCanceled()
 
-        LOG.info("Analysing log null pvalues distribution...")
+        val fitInfo = spanFitResults.fitInfo
+
+        LOG.info("Analysing autocorrelation...")
         val logNullPvals = getLogNullPvals(genomeQuery, spanFitResults, blackListPath)
         val autocorrelationScore = getAutocorrelation(logNullPvals, SPAN_AUTOCORRELATION_CHECKPOINT)
         LOG.info("Autocorrelation score: $autocorrelationScore")
 
         LOG.info("Analysing fragmentation...")
-        val sensitivities = sensitivityInfo.sensitivities
-        val s2 = sensitivities[sensitivityInfo.t2]
-        val candidatesNGapI = getCandidates(genomeQuery, spanFitResults, fdr, s2, SPAN_FRAGMENTATION_CHECKPOINT).size
-        val candidatesNGap0 = getCandidates(genomeQuery, spanFitResults, fdr, s2, 0).size
-        val fragmentationScore = if (candidatesNGap0 == 0) 1.0 else candidatesNGapI.toDouble() / candidatesNGap0
+        val candidatesNGapI = estimateCandidatesNumberAvgLen(
+            genomeQuery, fitInfo, logNullMembershipsMap, bitList2reuseMap,
+            sensitivities[si.stable], SPAN_FRAGMENTATION_GAP_CHECKPOINT
+        ).first
+        val candidatesNGap0 = estimateCandidatesNumberAvgLen(
+            genomeQuery, fitInfo, logNullMembershipsMap, bitList2reuseMap,
+            sensitivities[si.stable], 0
+        ).first
+        val fragmentationScore =
+            if (candidatesNGap0 == 0) 1.0 else candidatesNGapI.toDouble() / candidatesNGap0
         LOG.info("Fragmentation score: $fragmentationScore")
 
         val (sensitivity2use, gap2use) = actualSensitivityGap(
-            sensitivityInfo, sensitivityCmdArg, gapCmdArg,
-            autocorrelationScore, fragmentationScore
+            si, sensitivities, sensitivityCmdArg, gapCmdArg, autocorrelationScore, fragmentationScore,
         )
         LOG.info("Actual sensitivity: $sensitivity2use gap: $gap2use")
         cancellableState?.checkCanceled()
@@ -171,152 +207,133 @@ object ModelToPeaks {
     ) =
         x1 * y2 - x2 * y1 + x2 * y3 - x3 * y2 + x3 * y1 - x1 * y3
 
-    @Suppress("ArrayInDataClass")
     data class SensitivityInfo(
-        val sensitivities: DoubleArray,
-        val t1: Int, val t2: Int, val t3: Int, val triangleArea: Double,
+        val beforeMerge: Int, val stable: Int, val beforeNoise: Int,
     )
 
     fun detectSensitivityTriangle(
         genomeQuery: GenomeQuery,
-        spanFitResults: SpanFitResults,
-        fdr: Double,
-        relaxed: Double = SPAN_TRIANGLE_RELAXED_SENSITIVITY,
-        strict: Double = SPAN_TRIANGLE_STRICT_SENSITIVITY,
-        n: Int = SPAN_TRIANGLE_N
+        spanFitInformation: SpanFitInformation,
+        logNullMembershipsMap: GenomeMap<F64Array>,
+        bitList2reuseMap: GenomeMap<BitList>,
+        sensitivities: DoubleArray,
     ): SensitivityInfo {
         LOG.debug("Compute sensitivity triangle...")
-        val strictLog10 = log10(strict)
-        val relaxedLog10 = log10(relaxed)
-        val sensitivities =
-            DoubleArray(n) { exp((relaxedLog10 + (strictLog10 - relaxedLog10) * it.toDouble() / (n - 1)) * ln(10.0)) }
-        val candidatesNs = IntArray(n)
+        val n = sensitivities.size
+        val candidatesNs = DoubleArray(n)
         val candidatesALs = DoubleArray(n)
         for ((i, s) in sensitivities.withIndex()) {
-            val (candidatesN, candidatesAL) = estimateCandidatesNumberLen(genomeQuery, spanFitResults, fdr, s, 0)
-            candidatesNs[i] = candidatesN
-            candidatesALs[i] = candidatesAL
+            val (cN, cAL) = estimateCandidatesNumberAvgLen(
+                genomeQuery, spanFitInformation, logNullMembershipsMap, bitList2reuseMap, s, 0
+            )
+            candidatesNs[i] = ln1p(cN.toDouble())
+            candidatesALs[i] = ln1p(cAL)
         }
-        val im1 = distanceArgmin(sensitivities, 1e-4)
-        val im2 = distanceArgmin(sensitivities, 10.0)
-        LOG.debug("Limit im1: {}, im2: {}", im1, im2)
         var maxArea = 0.0
-        var i3 = -1
-        var i2 = -1
         var i1 = -1
-        for (i in im1 until im2) {
-            val i3spb = findSensitivityTriangleMaxAreaBetween(
+        var i2 = -1
+        var i3 = -1
+        for (i in 1 until n - 1) {
+            val i1mab = findSensitivityTriangleMaxAreaBetween(
                 candidatesNs, candidatesALs, 0, i, -1
             )
-            val i1spb = findSensitivityTriangleMaxAreaBetween(
+            val i3mab = findSensitivityTriangleMaxAreaBetween(
                 candidatesNs, candidatesALs, i, n - 1, -1
             )
-            if (i3spb[1] == -1.0 || i1spb[1] == -1.0) {
+            if (i1mab.first == -1 || i3mab.first == -1) {
                 continue
             }
             // We want both parts to be balanced so geometric mean optimization is better here
-            val area = sqrt(i1spb[3] * i3spb[3])
+            val area = sqrt(i1mab.second * i3mab.second)
             if (area > maxArea) {
                 maxArea = area
-                i1 = i1spb[1].toInt()
-                i3 = i3spb[1].toInt()
+                i1 = i1mab.first
+                i3 = i3mab.first
                 i2 = i
             }
         }
-        LOG.debug("Intermediate I3: {}, I2: {}, I1: {}", i3, i2, i1)
-        if (i3 == -1 || i2 == -1 || i1 == -1) {
+        if (i1 == -1 || i2 == -1 || i3 == -1) {
+            LOG.debug("Result beforeMerge: {}, stable: {}, beforeNoise: {}", i3, i2, i1)
             LOG.warn("Failed to estimate sensitivity triangle")
-            return SensitivityInfo(sensitivities, im2, (im1 + im2) / 2, im1, maxArea)
+            return SensitivityInfo(0, (n - 1) / 2, n - 1)
         }
         // Update i3, i1 points to be closer to i2 for more accurate pivot estimations
-        val i3spb = findSensitivityTriangleMaxAreaBetween(candidatesNs, candidatesALs, i3, i2, -1)
-        if (i3spb[1].toInt() != -1) {
-            i3 = i3spb[1].toInt()
+        val i3mab = findSensitivityTriangleMaxAreaBetween(candidatesNs, candidatesALs, i3, i2, -1)
+        if (i3mab.first != -1) {
+            i3 = i3mab.first
         }
-        val i1spb = findSensitivityTriangleMaxAreaBetween(candidatesNs, candidatesALs, i2, i1, -1)
-        if (i1spb[1].toInt() != -1) {
-            i1 = i1spb[1].toInt()
+        val i1mab = findSensitivityTriangleMaxAreaBetween(candidatesNs, candidatesALs, i2, i1, -1)
+        if (i1mab.first != -1) {
+            i1 = i1mab.first
         }
-        val result = SensitivityInfo(sensitivities, i3, i2, i1, maxArea)
+        val result = SensitivityInfo(i1, i2, i3)
         LOG.debug(
-            "Result I3: {}: {}, I2: {}: {}, I1: {}: {}",
-            i3, sensitivities[i3], i2, sensitivities[i2], i1, sensitivities[i1]
+            "Result beforeMerge: {}: {}, stable: {}: {}, beforeNoise: {}: {}",
+            i1, sensitivities[i1], i2, sensitivities[i2], i3, sensitivities[i3],
         )
         return result
     }
 
-    private fun findSensitivityTriangleMaxAreaBetween(
-        candidatesNs: IntArray,
-        candidatesALs: DoubleArray,
-        i3: Int, i1: Int, sign: Int = 1
-    ): DoubleArray {
-        if (i3 > i1) {
-            return findSensitivityTriangleMaxAreaBetween(candidatesNs, candidatesALs, i1, i3, sign)
+    internal fun linSpace(min: Double, max: Double, n: Int = SPAN_SENSITIVITY_N): DoubleArray {
+        // If we use linear space here, we can't see the plots with merge
+//        return DoubleArray(n) {
+//            min + (max - min) * it.toDouble() / (n - 1)
+//        }
+        require(min * max >= 0) { "Both min and max should have same sign, got $min, $max" }
+        val sign = if (min + max < 0) -1 else 1
+        val maxLog = log10(max * sign)
+        val minLog = log10(min * sign)
+        return DoubleArray(n) {
+            sign * exp((minLog + (maxLog - minLog) * it.toDouble() / (n - 1)) * ln(10.0))
         }
-        var maxI1 = -1
-        var maxI2 = -1
-        var maxI3 = -1
-        var maxArea = 0.0
-
-        val n1 = candidatesNs[i1]
-        val al1 = candidatesALs[i1]
-        val n3 = candidatesNs[i3]
-        val al3 = candidatesALs[i3]
-
-        for (i2 in i3 until i1) {
-            val n2 = candidatesNs[i2]
-            val al2 = candidatesALs[i2]
-            var area2 = triangleSignedSquare(
-                ln1p(n1.toDouble()), ln1p(al1),
-                ln1p(n2.toDouble()), ln1p(al2),
-                ln1p(n3.toDouble()), ln1p(al3)
-            )
-            if (area2 * sign > 0)
-                continue
-            area2 = abs(area2)
-            if (area2 > maxArea) {
-                maxI1 = i1
-                maxI2 = i2
-                maxI3 = i3
-                maxArea = area2
-            }
-        }
-        return doubleArrayOf(maxI1.toDouble(), maxI2.toDouble(), maxI3.toDouble(), maxArea)
     }
 
-    private fun distanceArgmin(array: DoubleArray, x: Double, start: Int = -1, end: Int = -1): Int {
-        var minD = Double.MAX_VALUE
-        var minI = -1
+    private fun findSensitivityTriangleMaxAreaBetween(
+        candidatesNs: DoubleArray,
+        candidatesALs: DoubleArray,
+        start: Int, end: Int, sign: Int = 1
+    ): Pair<Int, Double> {
+        if (start > end) {
+            return findSensitivityTriangleMaxAreaBetween(candidatesNs, candidatesALs, end, start, sign)
+        }
+        var maxI = -1
+        var maxArea = 0.0
 
+        val startN = candidatesNs[start]
+        val startAL = candidatesALs[start]
+        val endN = candidatesNs[end]
+        val endAL = candidatesALs[end]
 
-        for (i in array.indices) {
-            if (start != -1 && i < start || end != -1 && i >= end) {
+        for (i in start + 1 until end) {
+            val n = candidatesNs[i]
+            val al = candidatesALs[i]
+            var area = triangleSignedSquare(startN, startAL, n, al, endN, endAL)
+            if (area * sign > 0)
                 continue
-            }
-            val a = array[i]
-            val d = abs(a - x)
-            if (d < minD) {
-                minD = d
-                minI = i
+            area = abs(area)
+            if (area > maxArea) {
+                maxI = i
+                maxArea = area
             }
         }
-        return minI
+        return maxI to maxArea
     }
 
     fun actualSensitivityGap(
         sensitivityInfos: SensitivityInfo,
+        sensitivities: DoubleArray,
         sensitivityCmdArg: Double?,
         gapCmdArg: Int?,
         autocorrelationScore: Double,
-        fragmentationScore: Double
+        fragmentationScore: Double,
     ): Pair<Double, Int> {
         val sensitivity2use = when {
             sensitivityCmdArg != null -> sensitivityCmdArg
             // Keep narrow signal narrow
             autocorrelationScore < SPAN_AUTOCORRELATION_NARROW_THRESHOLD ->
-                sensitivityInfos.sensitivities[sensitivityInfos.t3]
+                sensitivities[sensitivityInfos.beforeMerge]
             // Stable point of HMM
-            else -> sensitivityInfos.sensitivities[sensitivityInfos.t2]
+            else -> sensitivities[sensitivityInfos.stable]
         }
         val gap2use = when {
             gapCmdArg != null -> gapCmdArg
@@ -331,55 +348,49 @@ object ModelToPeaks {
 
     fun analyzeAdditiveCandidates(
         genomeQuery: GenomeQuery,
-        spanFitResults: SpanFitResults,
-        sensitivityInfo: SensitivityInfo,
-        fdr: Double,
+        spanFitInformation: SpanFitInformation,
+        logNullMembershipsMap: GenomeMap<F64Array>,
+        bitList2reuseMap: GenomeMap<BitList>,
+        sensitivities: DoubleArray,
+        parallel: Boolean
     ): Pair<IntArray, IntArray> {
-        // Collect candidates from model
-        val sensitivities = sensitivityInfo.sensitivities
-        val candidatesPrev = genomeQuery.get().flatMap { chromosome ->
-            if (!spanFitResults.fitInfo.containsChromosomeInfo(chromosome)) {
-                return@flatMap emptyList()
+        // Collect candidates from model for most strict sensitivity
+        // We assume that sensitivities are sorted ascending
+        var candidatesPrev = genomeMap(genomeQuery, parallel = parallel) { chromosome ->
+            if (!spanFitInformation.containsChromosomeInfo(chromosome)) {
+                return@genomeMap emptyList<Range>().toRangeMergingList()
             }
-            getChromosomeCandidates(
-                spanFitResults, chromosome, fdr,
-                sensitivities[sensitivities.size - 1], 0
-            )
-                .first.map {
-                    Location(it.startOffset, it.endOffset, chromosome)
-                }
+            val logNullMemberships = logNullMembershipsMap[chromosome]
+            val bitList2reuse = bitList2reuseMap[chromosome]
+            getChromosomeCandidates(chromosome, logNullMemberships, bitList2reuse, sensitivities[0], 0)
+                .toRangeMergingList()
         }
 
         val totals = IntArray(sensitivities.size)
         val news = IntArray(sensitivities.size)
-        var llPrev = LocationsMergingList.create(genomeQuery, candidatesPrev)
-        totals[sensitivities.size - 1] = candidatesPrev.size
-        news[sensitivities.size - 1] = candidatesPrev.size
-        var i = sensitivities.size - 2
-        while (i >= 0) {
+        val candidatesPrevSize = genomeQuery.get().sumOf { candidatesPrev[it].size }
+        totals[0] = candidatesPrevSize
+        news[0] = candidatesPrevSize
+        for (i in 1 until sensitivities.size) {
             val s = sensitivities[i]
-            val candidates = genomeMap(genomeQuery, parallel = true) { chromosome ->
-                if (!spanFitResults.fitInfo.containsChromosomeInfo(chromosome)) {
-                    return@genomeMap emptyList<Range>() to emptyList()
+            val candidates = genomeMap(genomeQuery, parallel = parallel) { chromosome ->
+                if (!spanFitInformation.containsChromosomeInfo(chromosome)) {
+                    return@genomeMap emptyList<Range>().toRangeMergingList()
                 }
-                getChromosomeCandidates(spanFitResults, chromosome, fdr, s, 0)
+                val logNullMemberships = logNullMembershipsMap[chromosome]
+                val bitList2reuse = bitList2reuseMap[chromosome]
+                getChromosomeCandidates(chromosome, logNullMemberships, bitList2reuse, s, 0).toRangeMergingList()
             }
-
-            val candidatesList = genomeQuery.get().flatMap { chromosome ->
-                if (!spanFitResults.fitInfo.containsChromosomeInfo(chromosome)) {
-                    return@flatMap emptyList()
-                }
-                candidates[chromosome].first.map {
-                    Location(it.startOffset, it.endOffset, chromosome)
-                }
+            val candidatesSize = genomeQuery.get().sumOf { candidates[it].size }
+            val total = candidatesSize
+            val old = genomeQuery.get().sumOf { chromosome ->
+                val chrCandidatesPrev = candidatesPrev[chromosome]
+                candidates[chromosome].count { chrCandidatesPrev.intersectionLength(it) > 0 }
             }
-            val total = candidatesList.size
-            val old = candidatesList.count { llPrev.intersects(it) }
             val new = total - old
             totals[i] = total
             news[i] = new
-            llPrev = LocationsMergingList.create(genomeQuery, candidatesList)
-            i -= 1
+            candidatesPrev = candidates
         }
         return totals to news
     }
@@ -457,66 +468,58 @@ object ModelToPeaks {
         return correlation
     }
 
-    fun estimateCandidatesNumberLen(
+    fun estimateCandidatesNumberAvgLen(
         genomeQuery: GenomeQuery,
-        spanFitResults: SpanFitResults,
-        fdr: Double,
+        spanFitInformation: SpanFitInformation,
+        logNullMembershipsMap: GenomeMap<F64Array>,
+        bitList2reuseMap: GenomeMap<BitList>,
         sensitivity: Double,
         gap: Int
     ): Pair<Int, Double> {
-        val candidates = getCandidates(genomeQuery, spanFitResults, fdr, sensitivity, gap)
-        val candidatesN = candidates.size
-        val candidatesL = candidates.sumOf { it.length().toLong() }
-        val candidatesAL = if (candidatesN > 0) candidatesL.toDouble() / candidatesN else 0.0
-        return candidatesN to candidatesAL
+        val candidatesN = AtomicInteger()
+        val candidatesL = AtomicLong()
+        genomeQuery.get().map { chromosome ->
+            Callable {
+                if (!spanFitInformation.containsChromosomeInfo(chromosome)) {
+                    return@Callable
+                }
+                val logNullMemberships = logNullMembershipsMap[chromosome]
+                val bitList2reuse = bitList2reuseMap[chromosome]
+                val candidates = getChromosomeCandidates(
+                    chromosome, logNullMemberships, bitList2reuse, sensitivity, gap
+                )
+                candidatesN.addAndGet(candidates.size)
+                candidatesL.addAndGet(candidates.sumOf { it.length().toLong() })
+            }
+        }.await(true)
+        return candidatesN.get() to
+                (if (candidatesN.get() == 0) 0.0 else candidatesL.get().toDouble() / candidatesN.get())
     }
 
 
     fun getChromosomeCandidates(
-        spanFitResults: SpanFitResults,
         chromosome: Chromosome,
-        fdr: Double,
+        logNullMemberships: F64Array,
+        bitList2reuse: BitList?,
         sensitivity: Double,
         gap: Int,
-    ): Pair<List<Range>, List<List<Range>>> {
-        require(sensitivity >= 0) { "Sensitivity should be >=0, got $sensitivity" }
-        require(gap >= 0) { "Gap should be >=0, got $gap" }
-
-        // Check that we have information for requested chromosome
-        val fitInfo = spanFitResults.fitInfo
-        if (!fitInfo.containsChromosomeInfo(chromosome)) {
-            LOG.trace("Ignore ${chromosome.name}: model doesn't contain information")
-            return emptyList<Range>() to emptyList()
-        }
-
+    ): List<Range> {
         if ('_' in chromosome.name ||
             "random" in chromosome.name.lowercase() ||
             "un" in chromosome.name.lowercase()
         ) {
             LOG.trace("Ignore ${chromosome.name}: chromosome name looks like contig")
-            return emptyList<Range>() to emptyList()
+            return emptyList()
         }
-
-        val logNullMemberships = getLogNulls(spanFitResults, chromosome)
-        val logFdr = ln(fdr)
-        val candidateBins = BitList(logNullMemberships.size) { logNullMemberships[it] <= logFdr * sensitivity }
-
-        // Background candidates with foreground inside
-        val candidates = candidateBins.aggregate(gap)
-        if (candidates.isEmpty()) {
-            return emptyList<Range>() to emptyList()
+        check(bitList2reuse == null || logNullMemberships.length == bitList2reuse.size())
+        val bins = if (bitList2reuse != null)
+            bitList2reuse
+        else
+            BitList(logNullMemberships.length)
+        for (i in 0 until logNullMemberships.length) {
+            bins.set(i, logNullMemberships[i] <= sensitivity)
         }
-        // Compute significant blocks within candidate
-        val candidateBlocks = candidates.map { (start, end) ->
-            val p = StatUtils.percentile(
-                logNullMemberships.slice(start, end).toDoubleArray(), SPAN_SCORE_BLOCKS * 100
-            )
-            val currentPeakBlocks = BitList(end - start) {
-                logNullMemberships[it + start] <= p
-            }.aggregate(SPAN_DEFAULT_GAP).map { Range(start + it.startOffset, start + it.endOffset) }
-            return@map currentPeakBlocks
-        }
-        return candidates to candidateBlocks
+        return bins.aggregate(gap)
     }
 
     fun getLogNulls(
@@ -526,20 +529,20 @@ object ModelToPeaks {
 
     fun getChromosomePeaksFromCandidates(
         chromosome: Chromosome,
-        candidates: Pair<List<Range>, List<List<Range>>>?,
+        candidates: List<Range>,
         fitInfo: SpanFitInformation,
         logNullMemberships: F64Array,
         offsets: IntArray,
         fdr: Double,
         avgSignalDensity: Double?,
         avgNoiseDensity: Double?,
+        readsControlAvailable: Boolean,
         cancellableState: CancellableState?
     ): List<Peak> {
         // Compute candidate bins and peaks with relaxed background settings
         // 1) Return broad peaks in case of broad modifications even for strict FDR settings
         // 2) Mitigate the problem when the number of peaks for strict FDR is much bigger than for relaxed FDR
-        val (candidatePeaks, candidatePeaksBlocks) = candidates!!
-        if (candidatePeaks.isEmpty()) {
+        if (candidates.isEmpty()) {
             return emptyList()
         }
 
@@ -549,11 +552,11 @@ object ModelToPeaks {
         // Peak score is computed as length-weighted average p-value in its consequent enriched bins.
         val peaksLogPvalues = estimateCandidatesLogPs(
             chromosome,
-            candidatePeaks,
-            candidatePeaksBlocks,
+            candidates,
             fitInfo,
             logNullMemberships,
             offsets,
+            readsControlAvailable,
             cancellableState
         )
 
@@ -562,7 +565,7 @@ object ModelToPeaks {
         val lnFdr = ln(fdr)
         val canEstimateScore = fitInfo is SpanAnalyzeFitInformation &&
                 fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
-        val resultPeaks = candidatePeaks.mapIndexedNotNull { i, (from, to) ->
+        val resultPeaks = candidates.mapIndexedNotNull { i, (from, to) ->
             cancellableState?.checkCanceled()
             val logPValue = peaksLogPvalues[i]
             val logQValue = peaksLogQValues[i]
@@ -599,44 +602,58 @@ object ModelToPeaks {
 
     private fun estimateCandidatesLogPs(
         chromosome: Chromosome,
-        candidatePeaks: List<Range>,
-        candidatePeaksBlocks: List<List<Range>>,
+        candidates: List<Range>,
         fitInfo: SpanFitInformation,
         logNullMemberships: F64Array,
         offsets: IntArray,
+        readsControlAvailable: Boolean,
         cancellableState: CancellableState?
     ): F64Array {
-        val isTreatmentAndControlAvailable = fitInfo is SpanAnalyzeFitInformation &&
-                fitInfo.hasControlData() &&
-                fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
+        // Compute significant blocks within candidate
+        val candidatesBlocks = candidatesBlocks(candidates, logNullMemberships)
+        // Optimization to avoid synchronized lazy on NormalizedCoverageQuery#treatmentReads
+        // Replacing calls NormalizedCoverageQuery#score and NormalizedCoverageQuery#controlScore
+        val treatmentCovs = (fitInfo as SpanAnalyzeFitInformation)
+            .normalizedCoverageQueries!!.map { it.treatmentReads.get() }
+        val controlCovs: List<Coverage>
+        val controlScales: List<Double>
+        if (readsControlAvailable) {
+            controlCovs = fitInfo.normalizedCoverageQueries!!.map { it.controlReads!!.get() }
+            controlScales = fitInfo.normalizedCoverageQueries!!
+                .map { it.coveragesNormalizedInfo.controlScale }
+        } else {
+            controlCovs = emptyList()
+            controlScales = emptyList()
+        }
 
-        val peaksLogPvalues = F64Array(candidatePeaks.size) { idx ->
+        val peaksLogPvalues = F64Array(candidates.size) { idx ->
             cancellableState?.checkCanceled()
-            var blocks = candidatePeaksBlocks[idx]
+            var blocks = candidatesBlocks[idx]
             // Use the whole peaks for estimation may produce more significant results
             // beneficial for short peaks, TFs, ATAC-seq etc.
             if (blocks.size <= 1) {
-                blocks = listOf(candidatePeaks[idx])
+                blocks = listOf(candidates[idx])
             }
             val blocksLogPs = blocks.map { (from, to) ->
                 // Model posterior log error probability for block
                 val modelLogPs = (from until to).sumOf { logNullMemberships[it] }
-                if (!isTreatmentAndControlAvailable) {
+                if (!readsControlAvailable) {
                     return@map modelLogPs
                 }
                 val blockStart = offsets[from]
                 val blockEnd = if (to < offsets.size) offsets[to] else chromosome.length
-                val blockRange = ChromosomeRange(blockStart, blockEnd, chromosome)
-                val peakTreatment = fitInfo.score(blockRange)
-                val peakControl = fitInfo.controlScore(blockRange)
+                val chromosomeRange = ChromosomeRange(blockStart, blockEnd, chromosome)
+                // val score = fitInfo.score(chromosomeRange)
+                val score = SpanAnalyzeFitInformation.fastScore(treatmentCovs, chromosomeRange)
+                // val controlScore = fitInfo.controlScore(chromosomeRange)
+                val controlScore =
+                    SpanAnalyzeFitInformation.fastControlScore(controlCovs, controlScales, chromosomeRange)
                 // Use +1 as a pseudo count to compute Poisson CDF
                 val signalLogPs = PoissonUtil.logPoissonCdf(
-                    ceil(peakTreatment).toInt() + 1,
-                    peakControl + 1
+                    ceil(score).toInt() + 1,
+                    controlScore + 1
                 )
                 // Combine both model and signal estimations
-                // These can be of different magnitude, geometric mean is more stable
-//                return@map -sqrt(modelLogPs * signalLogPs)
                 return@map (modelLogPs + signalLogPs) / 2
             }
             return@F64Array lengthWeightedScores(blocks, blocksLogPs)
@@ -644,41 +661,73 @@ object ModelToPeaks {
         return peaksLogPvalues
     }
 
+    fun candidatesBlocks(
+        candidates: List<Range>,
+        logNullMemberships: F64Array
+    ) = candidates.map { (start, end) ->
+        val p = StatUtils.percentile(
+            logNullMemberships.slice(start, end).toDoubleArray(), SPAN_SCORE_BLOCKS * 100
+        )
+        return@map BitList(end - start) {
+            logNullMemberships[it + start] <= p
+        }.aggregate(SPAN_DEFAULT_GAP).map { Range(start + it.startOffset, start + it.endOffset) }
+    }
+
     fun estimateGenomeSignalNoiseAverage(
         genomeQuery: GenomeQuery,
         fitInfo: SpanFitInformation,
-        candidates: GenomeMap<Pair<List<Range>, List<List<Range>>>>,
+        candidates: GenomeMap<List<Range>>,
+        parallel: Boolean
     ): Pair<Double, Double> {
         val canEstimateSignalToNoise = fitInfo is SpanAnalyzeFitInformation &&
                 fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
         if (!canEstimateSignalToNoise) {
             return 0.0 to 0.0
         }
-        var sumSignalScore = 0.0
-        var sumSignalLength = 0L
-        var sumNoiseScore = 0.0
-        var sumNoiseLength = 0L
-        genomeQuery.get().forEach { chromosome ->
-            if (!fitInfo.containsChromosomeInfo(chromosome) || chromosome !in candidates) {
-                return@forEach
+        val sumSignalScoreA = AtomicDouble()
+        val sumSignalLengthA = AtomicLong()
+        val sumNoiseScoreA = AtomicDouble()
+        val sumNoiseLengthA = AtomicLong()
+        // Optimization to avoid synchronized lazy on NormalizedCoverageQuery#treatmentReads
+        // Replacing calls NormalizedCoverageQuery#score and NormalizedCoverageQuery#controlScore
+        val treatmentCovs = (fitInfo as SpanAnalyzeFitInformation)
+            .normalizedCoverageQueries!!.map { it.treatmentReads.get() }
+        genomeQuery.get().map {  chromosome ->
+            Callable {
+                if (!fitInfo.containsChromosomeInfo(chromosome) || chromosome !in candidates) {
+                    return@Callable
+                }
+                val chrCandidates = candidates[chromosome]
+                val offsets = fitInfo.offsets(chromosome)
+                var prevNoiseStart = 0
+                chrCandidates.forEach { (from, to) ->
+                    val start = offsets[from]
+                    val end = if (to < offsets.size) offsets[to] else chromosome.length
+                    val range = ChromosomeRange(start, end, chromosome)
+                    // val score = fitInfo.score(range)
+                    val score = SpanAnalyzeFitInformation.fastScore(treatmentCovs, range)
+                    sumSignalScoreA.addAndGet(score)
+                    sumSignalLengthA.addAndGet(end.toLong() - start)
+                    val rangeNoise = ChromosomeRange(prevNoiseStart, start, chromosome)
+                    // val scoreNoise = fitInfo.score(rangeNoise)
+                    val scoreNoise = SpanAnalyzeFitInformation.fastScore(treatmentCovs, rangeNoise)
+                    sumNoiseScoreA.addAndGet(scoreNoise)
+                    sumNoiseLengthA.addAndGet(start.toLong() - prevNoiseStart)
+                    prevNoiseStart = end
+                }
+                if (prevNoiseStart < chromosome.length) {
+                    val rangeNoise = ChromosomeRange(prevNoiseStart, chromosome.length, chromosome)
+                    // val scoreNoise = fitInfo.score(rangeNoise)
+                    val scoreNoise = SpanAnalyzeFitInformation.fastScore(treatmentCovs, rangeNoise)
+                    sumNoiseScoreA.addAndGet(scoreNoise)
+                    sumNoiseLengthA.addAndGet(chromosome.length.toLong() - prevNoiseStart)
+                }
             }
-            val chrCandidates = candidates[chromosome]
-            val offsets = fitInfo.offsets(chromosome)
-            var prevNoiseStart = 0
-            chrCandidates.first.forEach { (from, to) ->
-                val start = offsets[from]
-                val end = if (to < offsets.size) offsets[to] else chromosome.length
-                sumSignalScore += fitInfo.score(ChromosomeRange(start, end, chromosome))
-                sumSignalLength += end - start
-                sumNoiseScore += fitInfo.score(ChromosomeRange(prevNoiseStart, start, chromosome))
-                sumNoiseLength += start - prevNoiseStart
-                prevNoiseStart = end
-            }
-            if (prevNoiseStart < chromosome.length) {
-                sumNoiseScore += fitInfo.score(ChromosomeRange(prevNoiseStart, chromosome.length, chromosome))
-                sumNoiseLength += chromosome.length - prevNoiseStart
-            }
-        }
+        }.await(parallel)
+        val sumSignalScore = sumSignalScoreA.get()
+        val sumSignalLength = sumSignalLengthA.get()
+        val sumNoiseScore = sumNoiseScoreA.get()
+        val sumNoiseLength = sumNoiseLengthA.get()
         val avgSignalDensity = if (sumSignalLength > 0) sumSignalScore / sumSignalLength else 0.0
         val avgNoiseDensity = if (sumNoiseLength > 0) sumNoiseScore / sumNoiseLength else 0.0
         if (sumSignalLength != 0L && sumNoiseLength != 0L && avgSignalDensity <= avgNoiseDensity) {
@@ -686,6 +735,7 @@ object ModelToPeaks {
         }
         return avgSignalDensity to avgNoiseDensity
     }
+
 
 
     private fun clipPeakByScore(

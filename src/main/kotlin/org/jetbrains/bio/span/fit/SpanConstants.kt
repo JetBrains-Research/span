@@ -21,17 +21,15 @@ object SpanConstants {
      */
     const val SPAN_DEFAULT_BETA_STEP = 0.01
 
-    const val SPAN_AUTOCORRELATION_MAX_SHIFT = 100
+    const val SPAN_AUTOCORRELATION_MAX_SHIFT = 50
 
     const val SPAN_AUTOCORRELATION_CHECKPOINT = 10
 
     const val SPAN_AUTOCORRELATION_NARROW_THRESHOLD = 0.3
 
-    const val SPAN_FRAGMENTATION_MAX_GAP = 100
+    const val SPAN_FRAGMENTATION_MAX_GAP = 50
 
-    const val SPAN_FRAGMENTATION_CHECKPOINT = 20
-
-    const val SPAN_GAP_FRAGMENTATION_THRESHOLD = 0.8
+    const val SPAN_FRAGMENTATION_GAP_CHECKPOINT = 20
 
     /**
      * Default signal-to-noise ratio used for HMM model states initialization
@@ -75,24 +73,17 @@ object SpanConstants {
     const val SPAN_DEFAULT_SENSITIVITY = 0.1
 
     /**
-     * Sensitivity range to go from none peaks to the whole chromosomes as a single peaks
-     */
-    const val SPAN_TRIANGLE_RELAXED_SENSITIVITY = 1e-7
-
-    const val SPAN_TRIANGLE_STRICT_SENSITIVITY = 1e4
-
-    /**
      * Number of points between relaxed and strict sensitivity to analyse
      */
-    const val SPAN_TRIANGLE_N = 100
+    const val SPAN_SENSITIVITY_N = 100
 
      // Minimal distance between candidates
-    const val SPAN_DEFAULT_GAP = 3
+    const val SPAN_DEFAULT_GAP = 5
 
-    // This gap will be used as a multiplier to compensate for high fragmentation
-    const val SPAN_BROAD_GAP = 100
+    // These threshold and gap will be used to compensate for high fragmentation
+    const val SPAN_GAP_FRAGMENTATION_THRESHOLD = 0.8
 
-
+    const val SPAN_BROAD_GAP = 50
 
     /**
      * Fraction of top significant bins to be used for peak score estimation.
