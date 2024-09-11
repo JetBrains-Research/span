@@ -124,7 +124,7 @@ object SpanCLACompare {
                     LOG.info("PEAKS: $peaksPath")
                 } else {
                     LOG.info("NO peaks path given, process model fitting only.")
-                    LOG.info("Labels, fdr, background sensitivity, clip options are ignored.")
+                    LOG.info("Labels, fdr, sensitivity, gap, noclip options are ignored.")
                 }
 
                 val threads = options.valueOf("threads") as Int? ?: Runtime.getRuntime().availableProcessors()
@@ -140,13 +140,19 @@ object SpanCLACompare {
 
                 val differentialPeakCallingResults = lazyDifferentialPeakCallingResults.value
                 val genomeQuery = differentialPeakCallingResults.fitInfo.genomeQuery()
+
+                val noclip = options.has("noclip")
+                LOG.info("NOCLIP: $noclip")
+                val blackListPath = options.valueOf("blacklist") as Path?
+
                 if (peaksPath != null) {
                     val peaks = ModelToPeaks.getPeaks(
                         differentialPeakCallingResults,
                         genomeQuery,
                         fdr,
                         sensitivity,
-                        gap
+                        gap,
+                        clip = !noclip, blackListPath = blackListPath
                     )
                     LOG.info("Format chromosome, start, end, name, score, strand, foldchange, -log(p), -log(q)")
                     Peak.savePeaks(peaks.toList(), peaksPath, "diff_${id}.peak")

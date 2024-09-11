@@ -82,7 +82,7 @@ data class SpanCompareFitInformation(
     }
 
     override fun isControlAvailable(): Boolean {
-        return false
+        return true
     }
 
     /**

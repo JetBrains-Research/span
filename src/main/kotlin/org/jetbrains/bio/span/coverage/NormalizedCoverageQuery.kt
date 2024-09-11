@@ -24,7 +24,7 @@ import kotlin.math.max
 /**
  * A class representing a normalized coverage query.
  *
- * normCov = (treatmentCov - controlCov * controlScale * beta) / (1 - beta)
+ * normCov = treatmentCov - controlCov * controlScale * beta
  *
  * beta is estimated as value between 0 and 1 minimizing absolute correlation between
  *      normalized coverage and control coverage:
@@ -32,7 +32,6 @@ import kotlin.math.max
  *
  * Scaling is inspired by https://genomebiology.biomedcentral.com/articles/10.1186/gb-2008-9-9-r137
  * Beta is inspired by https://www.cell.com/biophysj/fulltext/S0006-3495(17)30032-2#sec2
- * 1 - beta compensation is introduced to align scores with and without control
  *
  * @property genomeQuery The genome query.
  * @property treatmentPath The path to the treatment file.
@@ -106,7 +105,7 @@ class NormalizedCoverageQuery(
         }
         val (controlScale, beta, _) = coveragesNormalizedInfo
         val controlCoverage = controlReads!!.get().getBothStrandsCoverage(t)
-        return max(0.0, ceil(treatmentCoverage - controlCoverage * controlScale * beta) / (1 - beta)).toInt()
+        return max(0.0, ceil(treatmentCoverage - controlCoverage * controlScale * beta)).toInt()
     }
 
     companion object {

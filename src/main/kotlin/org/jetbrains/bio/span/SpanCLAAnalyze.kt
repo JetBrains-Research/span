@@ -140,10 +140,13 @@ object SpanCLAAnalyze {
                 // Call now to preserve params logging order
                 val lazySpanResults = logParametersAndPrepareLazySpanResults(options)
 
+                val noclip = options.has("noclip")
+                LOG.info("NOCLIP: $noclip")
+
                 if (peaksPath != null) {
                     if (labelsPath != null) {
                         LOG.info("LABELS: $labelsPath")
-                        LOG.info("Fdr, background sensitivity, clip options are ignored.")
+                        LOG.info("Fdr, sensitivity, gap, noclip options are ignored.")
                     } else {
                         LOG.info("FDR: $fdr")
                         if (sensitivity != null) {
@@ -156,7 +159,7 @@ object SpanCLAAnalyze {
                     LOG.info("PEAKS: $peaksPath")
                 } else {
                     LOG.info("NO peaks path given, process model fitting only.")
-                    LOG.info("Labels, fdr, background sensitivity, clip options are ignored.")
+                    LOG.info("Labels, fdr, sensitivity, gap, noclip options are ignored.")
                 }
 
                 val threads = options.valueOf("threads") as Int? ?: Runtime.getRuntime().availableProcessors()
@@ -191,7 +194,8 @@ object SpanCLAAnalyze {
                 if (peaksPath != null) {
                     val peaks = if (labelsPath == null)
                         ModelToPeaks.getPeaks(
-                            spanResults, genomeQuery, fdr, sensitivity, gap, blackListPath = blackListPath
+                            spanResults, genomeQuery, fdr, sensitivity, gap,
+                            clip=!noclip, blackListPath = blackListPath
                         )
                     else
                         tune(spanResults, genomeQuery, labelsPath, peaksPath, blackListPath)
@@ -275,10 +279,10 @@ object SpanCLAAnalyze {
         val (optimalFDR, optimalSensitivity, optimalGap) = SpanSemiSupervised.PARAMETERS[optimalIndex]
         LOG.info("Optimal settings: FDR=$optimalFDR, SENSITIVITY=$optimalSensitivity, GAP=$optimalGap")
         labelErrorsGrid.forEachIndexed { i, error ->
-            val (fdrTuning, sensitivityTuning, clipTuning) = SpanSemiSupervised.PARAMETERS[i]
+            val (fdrTuning, sensitivityTuning, gapTuning) = SpanSemiSupervised.PARAMETERS[i]
             results.addRecord(
                 "result",
-                "${fdrTuning}_${sensitivityTuning}_${clipTuning}",
+                "${fdrTuning}_${sensitivityTuning}_${gapTuning}",
                 error,
                 i == optimalIndex
             )

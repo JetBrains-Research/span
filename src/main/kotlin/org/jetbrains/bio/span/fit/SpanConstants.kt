@@ -1,6 +1,7 @@
 package org.jetbrains.bio.span.fit
 
 import org.jetbrains.bio.viktor.F64Array
+import kotlin.math.ln
 
 object SpanConstants {
     /**
@@ -24,8 +25,6 @@ object SpanConstants {
     const val SPAN_AUTOCORRELATION_MAX_SHIFT = 50
 
     const val SPAN_AUTOCORRELATION_CHECKPOINT = 10
-
-    const val SPAN_AUTOCORRELATION_NARROW_THRESHOLD = 0.3
 
     const val SPAN_FRAGMENTATION_MAX_GAP = 50
 
@@ -70,20 +69,13 @@ object SpanConstants {
      * to be checked by enrichment vs. control track. The less value the more candidates are presented for check.
      * Potential drawback - mixing two adjacent peaks into a single one, or too much noise.
      */
-    const val SPAN_DEFAULT_SENSITIVITY = 0.1
+    val SPAN_DEFAULT_SENSITIVITY = ln(1e-3)
 
     /**
      * Number of points between relaxed and strict sensitivity to analyse
      */
     const val SPAN_SENSITIVITY_N = 100
 
-     // Minimal distance between candidates
-    const val SPAN_DEFAULT_GAP = 5
-
-    // These threshold and gap will be used to compensate for high fragmentation
-    const val SPAN_GAP_FRAGMENTATION_THRESHOLD = 0.8
-
-    const val SPAN_BROAD_GAP = 50
 
     /**
      * Fraction of top significant bins to be used for peak score estimation.
@@ -93,6 +85,8 @@ object SpanConstants {
      */
     const val SPAN_SCORE_BLOCKS = 0.5
 
+     // Minimal distance between bins to create core blocks in candidates
+    const val SPAN_DEFAULT_GAP = 3
     /**
      * Clipping allows to fine-tune boundaries of point-wise peaks according to the local signal.
      */

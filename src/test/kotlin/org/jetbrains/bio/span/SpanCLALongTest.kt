@@ -94,7 +94,7 @@ class SpanCLALongTest {
             println("Saved sampled track file: $path")
 
             withTempDirectory("work") {
-                val  peaksPath = it / "peaks.bed"
+                val peaksPath = it / "peaks.bed"
                 val chromsizes = Genome["to1"].chromSizesPath.toString()
                 val (out, _) = Logs.captureLoggingOutput {
                     SpanCLA.main(
@@ -198,7 +198,7 @@ PEAKS: $peaksPath
                 }
                 assertIn(
                     "NO peaks path given, process model fitting only.\n" +
-                            "Labels, fdr, background sensitivity, clip options are ignored.", out
+                            "Labels, fdr, sensitivity, gap, noclip options are ignored.", out
                 )
                 assertIn(".span: done in ", out)
                 assertIn("Model saved: ", out)
@@ -694,55 +694,67 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
     }
 
     @Test
-    fun analyzeSampledEnrichmentPeaksVsIslands() {
-        withTempFile("track", ".bed.gz") { coveragePath ->
-            val enrichedRegions = genomeMap(TO) {
-                val enriched = BitSet()
-                if (it.name == "chr1") {
-                    enriched.set(1000, 2000)
-                }
-                enriched
+    fun analyzeSampledEnrichmentReplicated() {
+        val enrichedRegions = genomeMap(TO) {
+            val enriched = BitSet()
+            if (it.name == "chr1") {
+                enriched.set(1000, 2000)
             }
+            enriched
+        }
 
-            val zeroRegions = genomeMap(TO) {
-                val zeroes = BitSet()
-                if (it.name == "chr1") {
-                    zeroes[3000] = 4000
-                }
-                zeroes
+        val zeroRegions = genomeMap(TO) {
+            val zeroes = BitSet()
+            if (it.name == "chr1") {
+                zeroes[3000] = 4000
             }
-            sampleCoverage(
-                coveragePath,
-                TO,
-                SPAN_DEFAULT_BIN,
-                enrichedRegions,
-                zeroRegions,
-                goodQuality = true
-            )
-            println("Saved sampled track file: $coveragePath")
+            zeroes
+        }
+        withTempFile("track1", ".bed.gz") { coveragePath1 ->
+            withTempFile("track2", ".bed.gz") { coveragePath2 ->
+                sampleCoverage(
+                    coveragePath1,
+                    TO,
+                    SPAN_DEFAULT_BIN,
+                    enrichedRegions,
+                    zeroRegions,
+                    goodQuality = true
+                )
+                println("Saved sampled track file 1: $coveragePath1")
 
-            withTempDirectory("work") { dir ->
-                val peaksPath = dir / "peaks.bed"
-                SpanCLA.main(
-                    arrayOf(
-                        "analyze",
-                        "-cs", Genome["to1"].chromSizesPath.toString(),
-                        "-w", dir.toString(),
-                        "--peaks", peaksPath.toString(),
-                        "-fdr", SPAN_DEFAULT_FDR.toString(),
-                        "-t", coveragePath.toString()
+                sampleCoverage(
+                    coveragePath2,
+                    TO,
+                    SPAN_DEFAULT_BIN,
+                    enrichedRegions,
+                    zeroRegions,
+                    goodQuality = true
+                )
+                println("Saved sampled track file 2: $coveragePath2")
+
+                withTempDirectory("work") { dir ->
+                    val peaksPath = dir / "peaks_rep.bed"
+                    SpanCLA.main(
+                        arrayOf(
+                            "analyze",
+                            "-cs", Genome["to1"].chromSizesPath.toString(),
+                            "-w", dir.toString(),
+                            "--peaks", peaksPath.toString(),
+                            "-fdr", SPAN_DEFAULT_FDR.toString(),
+                            "-t", "$coveragePath1,$coveragePath2"
+                        )
                     )
-                )
-                // Check created bed file
-                val peaksLocations = LocationsMergingList.load(TO, peaksPath)
-                assertTrue(
-                    Location(
-                        1100 * SPAN_DEFAULT_BIN,
-                        1900 * SPAN_DEFAULT_BIN,
-                        TO.get().first()
-                    ) in peaksLocations,
-                    "Expected location not found in called peaks"
-                )
+                    // Check created bed file
+                    val peaksLocations = LocationsMergingList.load(TO, peaksPath)
+                    assertTrue(
+                        Location(
+                            1100 * SPAN_DEFAULT_BIN,
+                            1900 * SPAN_DEFAULT_BIN,
+                            TO.get().first()
+                        ) in peaksLocations,
+                        "Expected location not found in called peaks"
+                    )
+                }
             }
         }
     }

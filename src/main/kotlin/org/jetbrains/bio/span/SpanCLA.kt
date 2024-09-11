@@ -153,7 +153,7 @@ compare                         Differential peak calling
 
             acceptsAll(
                 listOf("f", "fdr"),
-                "False Discovery Rate cutoff to call significant regions (default: $SPAN_DEFAULT_FDR)"
+                "False Discovery Rate cutoff to call significant regions"
             )
                 .availableIf("peaks")
                 .withRequiredArg()
@@ -208,6 +208,7 @@ compare                         Differential peak calling
                 "Keep cache files.\n" +
                         "By default SPAN creates cache files in working directory and removes them after computation is done"
             )
+            accepts("noclip", "Do not perform additional peaks clipping to increase reads density")
         }
     }
 

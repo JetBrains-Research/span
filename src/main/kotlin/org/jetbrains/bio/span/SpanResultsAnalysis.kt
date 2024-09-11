@@ -11,11 +11,13 @@ import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.Coverage
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_AUTOCORRELATION_CHECKPOINT
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_SENSITIVITY
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTATION_GAP_CHECKPOINT
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTATION_MAX_GAP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SENSITIVITY_N
 import org.jetbrains.bio.span.fit.SpanFitInformation
 import org.jetbrains.bio.span.fit.SpanFitResults
-import org.jetbrains.bio.span.peaks.ModelToPeaks.actualSensitivityGap
+import org.jetbrains.bio.span.peaks.ModelToPeaks
 import org.jetbrains.bio.span.peaks.ModelToPeaks.analyzeAdditiveCandidates
 import org.jetbrains.bio.span.peaks.ModelToPeaks.computeCorrelations
 import org.jetbrains.bio.span.peaks.ModelToPeaks.detectSensitivityTriangle
@@ -150,47 +152,46 @@ object SpanResultsAnalysis {
         val minLogNull = genomeQuery.get().minOf { logNullMembershipsMap[it].min() }
         // Limit value due to floating point errors
         val maxLogNull = min(-1e-10, genomeQuery.get().maxOf { logNullMembershipsMap[it].max() })
-        val sensitivities = linSpace(minLogNull, maxLogNull)
+        val sensitivities = linSpace(minLogNull, maxLogNull, SPAN_SENSITIVITY_N)
         val si = detectSensitivityTriangle(
-            genomeQuery, fitInfo, logNullMembershipsMap, bitList2reuseMap, sensitivities
+            genomeQuery, spanFitResults, logNullMembershipsMap, bitList2reuseMap, sensitivities
         )
-        val (beforeMerge, stable, beforeNoise) = si
-        logInfo("Sensitivity beforeMerge: ${sensitivities[beforeMerge]}", infoWriter)
-        logInfo("Sensitivity beforeMerge index : $beforeMerge", infoWriter)
-        logInfo("Sensitivity stable: ${sensitivities[stable]}", infoWriter)
-        logInfo("Sensitivity stable index: $stable", infoWriter)
-        logInfo("Sensitivity beforeNoise: ${sensitivities[beforeNoise]}", infoWriter)
-        logInfo("Sensitivity beforeNoise index: $beforeNoise", infoWriter)
+        val sensitivity2use: Double
+        if (si != null) {
+            val (beforeMerge, stable, beforeNoise) = si
+            logInfo("Sensitivity beforeMerge: ${sensitivities[beforeMerge]}", infoWriter)
+            logInfo("Sensitivity beforeMerge index: $beforeMerge", infoWriter)
+            logInfo("Sensitivity stable: ${sensitivities[stable]}", infoWriter)
+            logInfo("Sensitivity stable index: $stable", infoWriter)
+            logInfo("Sensitivity beforeNoise: ${sensitivities[beforeNoise]}", infoWriter)
+            logInfo("Sensitivity beforeNoise index: $beforeNoise", infoWriter)
 
-        val min = sensitivities[si.beforeMerge]
-        val max = sensitivities[si.stable]
-        val sensitivitiesDetailed = linSpace(min, max)
-        val (totals, news) = analyzeAdditiveCandidates(
-            genomeQuery, fitInfo, logNullMembershipsMap, bitList2reuseMap,
-            sensitivitiesDetailed, true
-        )
-        val minAdditionalIdx = sensitivitiesDetailed.indices
-            .minByOrNull { news[it].toDouble() / totals[it].toDouble() }!!
-        val minAdditionalSensitivity = sensitivitiesDetailed[minAdditionalIdx]
-        logInfo("Minimal additional: $minAdditionalSensitivity", infoWriter)
-        logInfo("Minimal additional index: $minAdditionalIdx", infoWriter)
-
+            val sensitivitiesLimited =
+                sensitivities.slice(si.beforeMerge until si.stable).toDoubleArray()
+            val (totals, news) = analyzeAdditiveCandidates(
+                genomeQuery, fitInfo, logNullMembershipsMap, bitList2reuseMap,
+                sensitivitiesLimited, true
+            )
+            val minAdditionalIdx = sensitivitiesLimited.indices
+                .minByOrNull { news[it].toDouble() / totals[it].toDouble() }!!
+            val minAdditionalSensitivity = sensitivitiesLimited[minAdditionalIdx]
+            logInfo("Minimal additional: $minAdditionalSensitivity", infoWriter)
+            logInfo("Minimal additional index: $minAdditionalIdx", infoWriter)
+            sensitivity2use = minAdditionalSensitivity
+        } else {
+            LOG.error("Failed to automatically estimate sensitivity")
+            sensitivity2use = SPAN_DEFAULT_SENSITIVITY
+        }
         LOG.debug("Analysing fragmentation...")
         val candidateGapNs = IntArray(SPAN_FRAGMENTATION_MAX_GAP) {
             estimateCandidatesNumberAvgLen(
                 genomeQuery, fitInfo, logNullMembershipsMap, bitList2reuseMap,
-                sensitivities[si.stable], it
+                sensitivity2use, it
             ).first
         }
         val fragmentationScore =
             candidateGapNs[SPAN_FRAGMENTATION_GAP_CHECKPOINT].toDouble() / candidateGapNs[0]
         logInfo("Fragmentation score: $fragmentationScore", infoWriter)
-
-        val (sensitivity2use, gap2use) = actualSensitivityGap(
-            si, sensitivities, sensitivityCmdArg, gapCmdArg, autocorrelationScore, fragmentationScore
-        )
-        logInfo("Actual sensitivity: $sensitivity2use", infoWriter)
-        logInfo("Actual gap: $gap2use", infoWriter)
 
         val candidatesMap = genomeMap(genomeQuery, parallel = true) { chromosome ->
             if (!fitInfo.containsChromosomeInfo(chromosome)) {
@@ -198,7 +199,7 @@ object SpanResultsAnalysis {
             }
             val logNullMemberships = logNullMembershipsMap[chromosome]
             val bitList2reuse = bitList2reuseMap[chromosome]
-            getChromosomeCandidates(chromosome, logNullMemberships, bitList2reuse, sensitivity2use, gap2use)
+            getChromosomeCandidates(chromosome, logNullMemberships, bitList2reuse, sensitivity2use, 0)
         }
 
         val (avgSignalDensity, avgNoiseDensity) =
