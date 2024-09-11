@@ -41,7 +41,7 @@ object SpanCoverageSampler {
             val model = ClassificationModel.load<NB2ZHMM>(modelPath)
             model.logPriorProbabilities[0] = Double.NEGATIVE_INFINITY
             val chromosomes = genomeQuery.get()
-            with(BedFormat().print(path)) {
+            BedFormat().print(path).use { printer ->
                 val genomeLength = chromosomes.sumOf { it.length.toLong() }
                 chromosomes.forEach { chr ->
                     val bins = chr.length / bin
@@ -71,7 +71,7 @@ object SpanCoverageSampler {
                         // Keep reads sorted
                         (0 until readsInBin).map { it % bin }.sorted().forEach { i ->
                             val start = b * bin + i
-                            this.print(BedEntry(chr.name, start, start + 1))
+                            printer.print(BedEntry(chr.name, start, start + 1))
                         }
                     }
                 }
