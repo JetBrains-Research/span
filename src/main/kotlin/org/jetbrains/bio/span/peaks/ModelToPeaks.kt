@@ -183,7 +183,7 @@ object ModelToPeaks {
             val minAdditionalIdx = sensitivitiesLimited.indices
                 .minByOrNull { news[it].toDouble() / totals[it].toDouble() }!!
             val minAdditionalSensitivity = sensitivitiesLimited[minAdditionalIdx]
-            LOG.info("Minimal additional $minAdditionalIdx: $minAdditionalSensitivity")
+            LOG.info("Minimal additional ${si.beforeMerge + minAdditionalIdx}: $minAdditionalSensitivity")
             sensitivity2use = minAdditionalSensitivity
         } else {
             LOG.error("Failed to estimate sensitivity, using defaults.")
@@ -204,6 +204,13 @@ object ModelToPeaks {
         val beforeMerge: Int, val stable: Int, val beforeNoise: Int,
     )
 
+    /**
+     * Detects major semantic changes along sensitivity values.
+     * 1) Before merge adjacent candidates
+     * 2) Merge - stable
+     * 3) Before noise calling
+     * See [SensitivityInfo] for details
+     */
     fun detectSensitivityTriangle(
         genomeQuery: GenomeQuery,
         spanFitResults: SpanFitResults,
@@ -228,17 +235,7 @@ object ModelToPeaks {
         var i1 = -1
         var i2 = -1
         var i3 = -1
-        val p20 = StatUtils.percentile(candidatesLogNs, 20.0)
-        val p80 = StatUtils.percentile(candidatesLogNs, 80.0)
-        var limMin = distanceArgMin(candidatesLogNs, p20)
-        var limMax = distanceArgMin(candidatesLogNs, p80)
-        if (limMax - limMin < 20) {
-            LOG.warn("Adjusting percentiles of candidates Ns...")
-            val c = (limMin + limMax) / 2
-            limMin = max(0, c - 10)
-            limMax = min(candidatesLogNs.size - 1, c + 10)
-        }
-        for (i in limMin..limMax) {
+        for (i in (n * 0.2).toInt()..(n * 0.8).toInt()) {
             val i1mab = findSensitivityTriangleMaxAreaBetween(
                 candidatesLogNs, candidatesLogALs, 0, i, -1
             )
@@ -275,23 +272,6 @@ object ModelToPeaks {
             i1, sensitivities[i1], i2, sensitivities[i2], i3, sensitivities[i3],
         )
         return result
-    }
-
-    private fun distanceArgMin(array: DoubleArray, x: Double, start: Int = -1, end: Int = -1): Int {
-        var minD = Double.MAX_VALUE
-        var minI = -1
-        for (i in array.indices) {
-            if (start != -1 && i < start || end != -1 && i >= end) {
-                continue
-            }
-            val a = array[i]
-            val d = abs(a - x)
-            if (d < minD) {
-                minD = d
-                minI = i
-            }
-        }
-        return minI
     }
 
     internal fun linSpace(min: Double, max: Double, n: Int): DoubleArray {

@@ -176,7 +176,7 @@ object SpanResultsAnalysis {
                 .minByOrNull { news[it].toDouble() / totals[it].toDouble() }!!
             val minAdditionalSensitivity = sensitivitiesLimited[minAdditionalIdx]
             logInfo("Minimal additional: $minAdditionalSensitivity", infoWriter)
-            logInfo("Minimal additional index: $minAdditionalIdx", infoWriter)
+            logInfo("Minimal additional index: ${si.beforeMerge + minAdditionalIdx}", infoWriter)
             sensitivity2use = minAdditionalSensitivity
         } else {
             LOG.error("Failed to automatically estimate sensitivity")
