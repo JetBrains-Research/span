@@ -114,12 +114,6 @@ object ModelToPeaks {
         else
             null to null
 
-        // TODO[oleg] support SpanCompareFitInformation
-        val readsControlAvailable =
-            fitInfo is SpanAnalyzeFitInformation &&
-                    fitInfo.isControlAvailable() &&
-                    fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
-
         val blackList =
             if (blackListPath != null) LocationsMergingList.load(genomeQuery, blackListPath) else null
 
@@ -135,7 +129,7 @@ object ModelToPeaks {
             getChromosomePeaksFromCandidates(
                 chromosome, candidates, fitInfo, logNullMemberships, offsets,
                 fdr, blackList,
-                avgSignalDensity, avgNoiseDensity, readsControlAvailable,
+                avgSignalDensity, avgNoiseDensity,
                 cancellableState = cancellableState
             )
         }
@@ -511,7 +505,6 @@ object ModelToPeaks {
         blackList: LocationsMergingList?,
         avgSignalDensity: Double?,
         avgNoiseDensity: Double?,
-        readsControlAvailable: Boolean,
         cancellableState: CancellableState?
     ): List<Peak> {
         // Compute candidate bins and peaks with relaxed background settings
@@ -531,7 +524,6 @@ object ModelToPeaks {
             fitInfo,
             logNullMemberships,
             offsets,
-            readsControlAvailable,
             cancellableState
         )
 
@@ -584,13 +576,22 @@ object ModelToPeaks {
         fitInfo: SpanFitInformation,
         logNullMemberships: F64Array,
         offsets: IntArray,
-        readsControlAvailable: Boolean,
         cancellableState: CancellableState?
     ): F64Array {
+        // TODO[oleg] support SpanCompareFitInformation
+        val readsTreatmentAvailable =
+            fitInfo is SpanAnalyzeFitInformation &&
+                    fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
+        val readsControlAvailable =
+            fitInfo is SpanAnalyzeFitInformation &&
+                    fitInfo.isControlAvailable() &&
+                    fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
+
         // Optimization to avoid synchronized lazy on NormalizedCoverageQuery#treatmentReads
         // Replacing calls NormalizedCoverageQuery#score and NormalizedCoverageQuery#controlScore
-        val treatmentCovs = when (fitInfo) {
-            is SpanAnalyzeFitInformation -> fitInfo.normalizedCoverageQueries!!.map { it.treatmentReads.get() }
+        val treatmentCovs = when {
+            readsTreatmentAvailable && fitInfo is SpanAnalyzeFitInformation ->
+                fitInfo.normalizedCoverageQueries!!.map { it.treatmentReads.get() }
             else -> emptyList()
         }
 
@@ -621,7 +622,7 @@ object ModelToPeaks {
             val blocksLogPs = blocks.map { (from, to) ->
                 // Model posterior log error probability for block
                 val modelLogPs = (from until to).sumOf { logNullMemberships[it] }
-                if (!readsControlAvailable) {
+                if (!readsTreatmentAvailable || !readsControlAvailable) {
                     return@map modelLogPs
                 }
                 val blockStart = offsets[from]
