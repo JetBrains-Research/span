@@ -3,8 +3,8 @@ package org.jetbrains.bio.span.fit
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_MAX_ITERATIONS
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FIT_MAX_ITERATIONS
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FIT_THRESHOLD
 import org.jetbrains.bio.span.statistics.hmm.ConstrainedNBZHMM
 import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
@@ -66,8 +66,8 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
             fragment: Fragment = AutoFragment,
             unique: Boolean = true,
             fixedModelPath: Path? = null,
-            threshold: Double = SPAN_FIT_THRESHOLD,
-            maxIterations: Int = SPAN_FIT_MAX_ITERATIONS,
+            threshold: Double = SPAN_DEFAULT_FIT_THRESHOLD,
+            maxIterations: Int = SPAN_DEFAULT_FIT_MAX_ITERATIONS,
             saveExtendedInfo: Boolean = false,
             keepCacheFiles: Boolean = false
         ): SpanPeakCallingExperiment<out ClassificationModel> {

@@ -5,8 +5,8 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.fit.*
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_MAX_ITERATIONS
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FIT_MAX_ITERATIONS
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FIT_THRESHOLD
 import org.jetbrains.bio.span.statistics.hmm.FreeNBZHMM
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
@@ -50,8 +50,8 @@ class SpanPeakCallingExperimentNB5ZHMM<Model : ClassificationModel> private cons
             fragment: Fragment = AutoFragment,
             unique: Boolean = true,
             fixedModelPath: Path? = null,
-            threshold: Double = SPAN_FIT_THRESHOLD,
-            maxIterations: Int = SPAN_FIT_MAX_ITERATIONS,
+            threshold: Double = SPAN_DEFAULT_FIT_THRESHOLD,
+            maxIterations: Int = SPAN_DEFAULT_FIT_MAX_ITERATIONS,
             saveExtendedInfo: Boolean = false,
             keepModelFile: Boolean = false
         ): SpanPeakCallingExperimentNB5ZHMM<out ClassificationModel> {
@@ -107,8 +107,8 @@ class NB5ZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) : FreeNBZHMM(nbMean
                 threshold: Double,
                 maxIterations: Int
             ): NB5ZHMM {
-                val (means, failures) = guess(preprocessed, 5)
-                return NB5ZHMM(means, failures)
+                val guess = guess(preprocessed, 5)
+                return NB5ZHMM(guess.means, guess.failures)
             }
         }
     }

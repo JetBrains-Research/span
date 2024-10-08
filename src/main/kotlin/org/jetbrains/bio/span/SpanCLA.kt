@@ -9,8 +9,9 @@ import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.fit.AbstractSpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_MAX_ITERATIONS
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FIT_MAX_ITERATIONS
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FIT_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanDataPaths
 import org.jetbrains.bio.span.fit.SpanFitInformation
 import org.jetbrains.bio.util.*
@@ -152,6 +153,15 @@ compare                         Differential peak calling
                 .withValuesConvertedBy(PathConverter.exists())
 
             acceptsAll(
+                listOf("multiple"),
+                "Multiple hypothesis testing adjustment"
+            )
+                .availableIf("peaks")
+                .withRequiredArg()
+                .ofType(String::class.java)
+                .defaultsTo(SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION.name)
+
+            acceptsAll(
                 listOf("f", "fdr"),
                 "False Discovery Rate cutoff to call significant regions"
             )
@@ -189,14 +199,14 @@ compare                         Differential peak calling
             )
                 .withRequiredArg()
                 .ofType(Int::class.java)
-                .defaultsTo(SPAN_FIT_MAX_ITERATIONS)
+                .defaultsTo(SPAN_DEFAULT_FIT_MAX_ITERATIONS)
             acceptsAll(
                 listOf("tr", "threshold"),
                 "Convergence threshold for EM algorithm, use --debug option to see detailed info"
             )
                 .withRequiredArg()
                 .ofType(Double::class.java)
-                .defaultsTo(SPAN_FIT_THRESHOLD)
+                .defaultsTo(SPAN_DEFAULT_FIT_THRESHOLD)
             acceptsAll(
                 listOf("kd", "keep-duplicates"),
                 "Keep duplicates.\n" +
@@ -254,14 +264,14 @@ compare                         Differential peak calling
     internal fun getThreshold(
         options: OptionSet, log: Boolean = false
     ) = getProperty(
-        options.valueOf("threshold") as Double?, null, SPAN_FIT_THRESHOLD,
+        options.valueOf("threshold") as Double?, null, SPAN_DEFAULT_FIT_THRESHOLD,
         "convergence threshold", "CONVERGENCE THRESHOLD", log
     )
 
     internal fun getMaxIter(
         options: OptionSet, log: Boolean = false
     ) = getProperty(
-        options.valueOf("iterations") as Int?, null, SPAN_FIT_MAX_ITERATIONS,
+        options.valueOf("iterations") as Int?, null, SPAN_DEFAULT_FIT_MAX_ITERATIONS,
         "max iterations", "MAX ITERATIONS", log
     )
 

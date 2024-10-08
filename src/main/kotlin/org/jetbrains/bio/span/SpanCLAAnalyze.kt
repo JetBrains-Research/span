@@ -13,8 +13,11 @@ import org.jetbrains.bio.span.SpanCLA.LOG
 import org.jetbrains.bio.span.SpanCLA.checkGenomeInFitInformation
 import org.jetbrains.bio.span.SpanResultsAnalysis.doDeepAnalysis
 import org.jetbrains.bio.span.fit.*
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION
+import org.jetbrains.bio.span.fit.SpanConstants.printSpanConstants
 import org.jetbrains.bio.span.fit.experimental.*
 import org.jetbrains.bio.span.peaks.ModelToPeaks
+import org.jetbrains.bio.span.peaks.MultipleTesting
 import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.span.peaks.SpanPeaksResult
 import org.jetbrains.bio.span.semisupervised.LocationLabel
@@ -143,6 +146,12 @@ object SpanCLAAnalyze {
                 val noclip = options.has("noclip")
                 LOG.info("NOCLIP: $noclip")
 
+                val multipleTesting = if ("multiple" in params)
+                    MultipleTesting.valueOf(options.valueOf("multiple") as String)
+                else
+                    SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION
+                LOG.info("MULTIPLE TEST CORRECTION: ${multipleTesting.description}")
+
                 if (peaksPath != null) {
                     if (labelsPath != null) {
                         LOG.info("LABELS: $labelsPath")
@@ -172,6 +181,11 @@ object SpanCLAAnalyze {
                 configureParallelism(threads)
                 LOG.info("THREADS: ${parallelismLevel()}")
 
+                // Print all the constants, which are not configured using command line
+                if (LOG.isDebugEnabled) {
+                    printSpanConstants()
+                }
+
                 // Finally get SPAN results
                 val (actualModelPath, spanResults) = lazySpanResults.value
                 val fitInfo = spanResults.fitInfo
@@ -182,6 +196,7 @@ object SpanCLAAnalyze {
                 LOG.info(aboutModel.joinToString("\n") { (k, v) ->
                     "${k.name}: ${k.render(v)}"
                 })
+                LOG.debug(spanResults.model.toString())
 
                 val genomeQuery = fitInfo.genomeQuery()
                 val fragment = fitInfo.fragment
@@ -194,7 +209,8 @@ object SpanCLAAnalyze {
                 if (peaksPath != null) {
                     val peaks = if (labelsPath == null)
                         ModelToPeaks.getPeaks(
-                            spanResults, genomeQuery, fdr, sensitivity, gap,
+                            spanResults, genomeQuery, fdr, multipleTesting,
+                            sensitivity, gap,
                             clip=!noclip, blackListPath = blackListPath
                         )
                     else
@@ -293,7 +309,8 @@ object SpanCLAAnalyze {
                     / "${peaksPath.fileName.stem}_parameters.csv"
         )
         return ModelToPeaks.getPeaks(
-            spanResults, genomeQuery, optimalFDR, optimalSensitivity, optimalGap,
+            spanResults, genomeQuery, optimalFDR, SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION,
+            optimalSensitivity, optimalGap,
             blackListPath = blackListPath
         )
     }

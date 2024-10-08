@@ -2,6 +2,7 @@ package org.jetbrains.bio.span.fit.experimental
 
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.span.statistics.emission.NegBinEmissionScheme
+import org.jetbrains.bio.span.statistics.util.NegBinUtil
 import org.jetbrains.bio.span.statistics.util.NegBinUtil.guessByData
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.emission.IntegerEmissionScheme
@@ -47,7 +48,7 @@ open class FreeNBHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) : MLFreeHMM(
     companion object {
         private val LOG = LoggerFactory.getLogger(NB2HMM::class.java)
 
-        fun guess(preprocessed: List<Preprocessed<DataFrame>>, n: Int): Pair<DoubleArray, DoubleArray> {
+        fun guess(preprocessed: List<Preprocessed<DataFrame>>, n: Int): NegBinUtil.Guess {
             val emissions = preprocessed.flatMap {
                 it.get().let { df -> df.sliceAsInt(df.labels.first()).toList() }
             }.toIntArray()

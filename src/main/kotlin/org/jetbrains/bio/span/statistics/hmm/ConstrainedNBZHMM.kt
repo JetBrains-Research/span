@@ -103,7 +103,7 @@ class ConstrainedNBZHMM(
                             "Model can't be trained on empty coverage, exiting."
                         }
                         LOG.debug("Replicate $d")
-                        val (meansD, failuresD) = guessByData(emissions, 2)
+                        val (meansD, failuresD, _, _) = guessByData(emissions, 2)
                         means[d] = meansD[0]
                         means[d + numReplicates] = meansD[1]
                         failures[d] = failuresD[0]
@@ -154,7 +154,7 @@ class ConstrainedNBZHMM(
                             "Model can't be trained on empty coverage (track $d1), exiting."
                         }
                         LOG.debug("Replicate $d1")
-                        val (meansD1, failuresD1) = guessByData(emissions1, 2)
+                        val (meansD1, failuresD1, _, _) = guessByData(emissions1, 2)
                         means[d1] = meansD1[0]
                         means[d1 + numReplicates1] = meansD1[1]
                         failures[d1] = failuresD1[0]
@@ -167,7 +167,7 @@ class ConstrainedNBZHMM(
                             "Model can't be trained on empty coverage (track ${d2 + numReplicates1}), exiting."
                         }
                         LOG.debug("Replicate $d2")
-                        val (meansD2, failuresD2) = guessByData(emissions2, 2)
+                        val (meansD2, failuresD2, _, _) = guessByData(emissions2, 2)
                         means[d2 + numReplicates1 * 2] = meansD2[0]
                         means[d2 + numReplicates2 + numReplicates1 * 2] = meansD2[1]
                         failures[d2 + numReplicates1 * 2] = failuresD2[0]

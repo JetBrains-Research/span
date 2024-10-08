@@ -49,7 +49,7 @@ class SpanDifferentialPeakCallingExperiment private constructor(
         val map = ModelToPeaks.getPeaks(
             results,
             genomeQuery,
-            fdr,
+            fdr, SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION,
             SPAN_DEFAULT_SENSITIVITY,
             SPAN_DEFAULT_GAP,
         ).peaks

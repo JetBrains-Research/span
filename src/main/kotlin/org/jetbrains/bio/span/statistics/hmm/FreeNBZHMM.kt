@@ -3,6 +3,7 @@ package org.jetbrains.bio.span.statistics.hmm
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.span.fit.experimental.FreeNBHMM
 import org.jetbrains.bio.span.statistics.emission.NegBinEmissionScheme
+import org.jetbrains.bio.span.statistics.util.NegBinUtil
 import org.jetbrains.bio.span.statistics.util.NegBinUtil.guessByData
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.emission.ConstantIntegerEmissionScheme
@@ -75,7 +76,7 @@ open class FreeNBZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray,
         @JvmField
         val VERSION: Int = 1
 
-        fun guess(preprocessed: List<Preprocessed<DataFrame>>, n: Int): Pair<DoubleArray, DoubleArray> {
+        fun guess(preprocessed: List<Preprocessed<DataFrame>>, n: Int): NegBinUtil.Guess {
             // Filter out 0s, since they are covered by dedicated ZERO state
             val emissions = preprocessed.flatMap {
                 it.get().let { df -> df.sliceAsInt(df.labels.first()).toList() }

@@ -7,6 +7,7 @@ import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_SENSITIVITY
 import org.jetbrains.bio.span.peaks.ModelToPeaks
 import org.jetbrains.bio.util.Logs
@@ -80,7 +81,8 @@ class SpanModelFitExperimentTest {
                     fdr = 0.05,
                     sensitivityCmdArg = SPAN_DEFAULT_SENSITIVITY,
                     gapCmdArg = SPAN_DEFAULT_GAP,
-                    cancellableState = null
+                    cancellableState = null,
+                    multipleTesting = SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION
                 )
                     .toList()
                     .isNotEmpty(),

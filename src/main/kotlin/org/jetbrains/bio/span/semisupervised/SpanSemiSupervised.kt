@@ -2,6 +2,7 @@ package org.jetbrains.bio.span.semisupervised
 
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.LocationsMergingList
+import org.jetbrains.bio.span.fit.SpanConstants
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanFitResults
@@ -57,7 +58,9 @@ object SpanSemiSupervised {
                 cancellableState.checkCanceled()
                 val peaksOnLabeledGenomeQuery =
                     ModelToPeaks.getPeaks(
-                        results, labeledGenomeQuery, fdr, sensitivity, gap,
+                        results, labeledGenomeQuery, fdr,
+                        SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION,
+                        sensitivity, gap,
                         cancellableState = CancellableState.current()
                     )
                 labelErrorsGrid[index] = computeErrors(

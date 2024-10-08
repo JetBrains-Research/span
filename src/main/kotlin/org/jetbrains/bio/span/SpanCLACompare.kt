@@ -7,7 +7,10 @@ import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.span.SpanCLA.LOG
 import org.jetbrains.bio.span.fit.*
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION
+import org.jetbrains.bio.span.fit.SpanConstants.printSpanConstants
 import org.jetbrains.bio.span.peaks.ModelToPeaks
+import org.jetbrains.bio.span.peaks.MultipleTesting
 import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.util.*
 import org.slf4j.event.Level
@@ -137,21 +140,31 @@ object SpanCLACompare {
                 configureParallelism(threads)
                 LOG.info("THREADS: ${parallelismLevel()}")
 
+                // Print all the constants, which are not configured using command line
+                if (LOG.isDebugEnabled) {
+                    printSpanConstants()
+                }
 
                 val differentialPeakCallingResults = lazyDifferentialPeakCallingResults.value
                 val genomeQuery = differentialPeakCallingResults.fitInfo.genomeQuery()
 
                 val noclip = options.has("noclip")
                 LOG.info("NOCLIP: $noclip")
+
+                val multipleTesting = if ("multiple" in params)
+                    MultipleTesting.valueOf(options.valueOf("multiple") as String)
+                else
+                    SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION
+                LOG.info("MULTIPLE TEST CORRECTION: ${multipleTesting.description}")
+
                 val blackListPath = options.valueOf("blacklist") as Path?
 
                 if (peaksPath != null) {
                     val peaks = ModelToPeaks.getPeaks(
                         differentialPeakCallingResults,
                         genomeQuery,
-                        fdr,
-                        sensitivity,
-                        gap,
+                        fdr, multipleTesting,
+                        sensitivity, gap,
                         clip = !noclip, blackListPath = blackListPath
                     )
                     LOG.info("Format chromosome, start, end, name, score, strand, foldchange, -log(p), -log(q)")

@@ -11,17 +11,18 @@ import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.Coverage
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_AUTOCORRELATION_CHECKPOINT
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_SENSITIVITY
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTATION_GAP_CHECKPOINT
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTATION_MAX_GAP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_MIN_SENSITIVITY
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SENSITIVITY_N
 import org.jetbrains.bio.span.fit.SpanFitInformation
 import org.jetbrains.bio.span.fit.SpanFitResults
-import org.jetbrains.bio.span.peaks.ModelToPeaks
 import org.jetbrains.bio.span.peaks.ModelToPeaks.analyzeAdditiveCandidates
 import org.jetbrains.bio.span.peaks.ModelToPeaks.computeCorrelations
 import org.jetbrains.bio.span.peaks.ModelToPeaks.detectSensitivityTriangle
-import org.jetbrains.bio.span.peaks.ModelToPeaks.estimateCandidatesNumberAvgLen
+import org.jetbrains.bio.span.peaks.ModelToPeaks.estimateCandidatesNumberLens
 import org.jetbrains.bio.span.peaks.ModelToPeaks.estimateGenomeSignalNoiseAverage
 import org.jetbrains.bio.span.peaks.ModelToPeaks.getChromosomeCandidates
 import org.jetbrains.bio.span.peaks.ModelToPeaks.getLogNullPvals
@@ -104,11 +105,15 @@ object SpanResultsAnalysis {
             logInfo("Beta: $beta", infoWriter)
             logInfo("Min control correlation: $minCorrelation", infoWriter)
         }
+        val blackList = if (blackListPath != null) {
+            LOG.info("Loading blacklist regions: $blackListPath")
+            LocationsMergingList.load(genomeQuery, blackListPath)
+        } else null
         LOG.info("Analysing coverage distribution...")
         var coverage = computeCoverageScores(
             genomeQuery,
             treatmentCoverage, controlCoverage, controlScale,
-            beta, fitInfo.binSize, blackListPath
+            beta, fitInfo.binSize, blackList
         )
         logInfo("Coverage >0 %: ${(100.0 * coverage.count { it > 0 } / coverage.size).toInt()}", infoWriter)
         coverage = coverage.filter { it > 0 }.toDoubleArray()
@@ -118,13 +123,13 @@ object SpanResultsAnalysis {
         logInfo("Coverage >0 std: ${coverage.standardDeviation()}", infoWriter)
 
         LOG.info("Analysing log null pvalues distribution...")
-        val logNullPvals = getLogNullPvals(genomeQuery, spanFitResults, blackListPath)
+        val logNullPvals = getLogNullPvals(genomeQuery, spanFitResults, blackList)
         logInfo("LogNullPVals mean: ${logNullPvals.average()}", infoWriter)
         logInfo("LogNullPVals std: ${logNullPvals.standardDeviation()}", infoWriter)
 
         LOG.info("Analysing tracks roughness...")
         val roughness = computeAverageRoughness(
-            genomeQuery, treatmentCoverage, controlCoverage, controlScale, beta, blackListPath
+            genomeQuery, treatmentCoverage, controlCoverage, controlScale, beta, blackList
         )
         logInfo("Track roughness: ${"%.3f".format(roughness)}", infoWriter)
 
@@ -146,52 +151,65 @@ object SpanResultsAnalysis {
         val coverageCorrelations = computeCorrelations(coverage)
         val logNullPValsCorrelations = computeCorrelations(logNullPvals)
         val autocorrelationScore = logNullPValsCorrelations[SPAN_AUTOCORRELATION_CHECKPOINT]
-        logInfo("Autocorrelation score: $autocorrelationScore", infoWriter)
+        logInfo("Autocorrelation score at d=$SPAN_AUTOCORRELATION_CHECKPOINT: $autocorrelationScore",
+            infoWriter)
+        val avgAutoCorrelation = logNullPValsCorrelations.average()
+        logInfo("Average autocorrelation score: $avgAutoCorrelation", infoWriter)
 
-        LOG.info("Analysing sensitivity and gap...")
+        LOG.info("Analysing sensitivity...")
         val minLogNull = genomeQuery.get().minOf { logNullMembershipsMap[it].min() }
         // Limit value due to floating point errors
-        val maxLogNull = min(-1e-10, genomeQuery.get().maxOf { logNullMembershipsMap[it].max() })
+        val maxLogNull = min(SPAN_MIN_SENSITIVITY, genomeQuery.get().maxOf { logNullMembershipsMap[it].max() })
         val sensitivities = linSpace(minLogNull, maxLogNull, SPAN_SENSITIVITY_N)
         val si = detectSensitivityTriangle(
             genomeQuery, spanFitResults, logNullMembershipsMap, bitList2reuseMap, sensitivities
         )
         val sensitivity2use: Double
-        if (si != null) {
-            val (beforeMerge, stable, beforeNoise) = si
-            logInfo("Sensitivity beforeMerge: ${sensitivities[beforeMerge]}", infoWriter)
-            logInfo("Sensitivity beforeMerge index: $beforeMerge", infoWriter)
-            logInfo("Sensitivity stable: ${sensitivities[stable]}", infoWriter)
-            logInfo("Sensitivity stable index: $stable", infoWriter)
-            logInfo("Sensitivity beforeNoise: ${sensitivities[beforeNoise]}", infoWriter)
-            logInfo("Sensitivity beforeNoise index: $beforeNoise", infoWriter)
+        when {
+            sensitivityCmdArg != null ->
+                sensitivity2use = sensitivityCmdArg
+            si != null -> {
+                val (beforeMerge, stable, beforeNoise) = si
+                logInfo("Sensitivity beforeMerge: ${sensitivities[beforeMerge]}", infoWriter)
+                logInfo("Sensitivity beforeMerge index: $beforeMerge", infoWriter)
+                logInfo("Sensitivity stable: ${sensitivities[stable]}", infoWriter)
+                logInfo("Sensitivity stable index: $stable", infoWriter)
+                logInfo("Sensitivity beforeNoise: ${sensitivities[beforeNoise]}", infoWriter)
+                logInfo("Sensitivity beforeNoise index: $beforeNoise", infoWriter)
 
-            val sensitivitiesLimited =
-                sensitivities.slice(si.beforeMerge until si.stable).toDoubleArray()
-            val (totals, news) = analyzeAdditiveCandidates(
-                genomeQuery, fitInfo, logNullMembershipsMap, bitList2reuseMap,
-                sensitivitiesLimited, true
-            )
-            val minAdditionalIdx = sensitivitiesLimited.indices
-                .minByOrNull { news[it].toDouble() / totals[it].toDouble() }!!
-            val minAdditionalSensitivity = sensitivitiesLimited[minAdditionalIdx]
-            logInfo("Minimal additional: $minAdditionalSensitivity", infoWriter)
-            logInfo("Minimal additional index: ${si.beforeMerge + minAdditionalIdx}", infoWriter)
-            sensitivity2use = minAdditionalSensitivity
-        } else {
-            LOG.error("Failed to automatically estimate sensitivity")
-            sensitivity2use = SPAN_DEFAULT_SENSITIVITY
+                val sensitivitiesLimited =
+                    sensitivities.slice(si.beforeMerge until si.stable).toDoubleArray()
+                val (totals, news) = analyzeAdditiveCandidates(
+                    genomeQuery, fitInfo, logNullMembershipsMap, bitList2reuseMap,
+                    sensitivitiesLimited, true
+                )
+                val minAdditionalIdx = sensitivitiesLimited.indices
+                    .minByOrNull { news[it].toDouble() / totals[it].toDouble() }!!
+                val minAdditionalSensitivity = sensitivitiesLimited[minAdditionalIdx]
+                logInfo("Minimal additional: $minAdditionalSensitivity", infoWriter)
+                logInfo("Minimal additional index: ${si.beforeMerge + minAdditionalIdx}", infoWriter)
+                sensitivity2use = minAdditionalSensitivity
+            }
+            else -> {
+                LOG.error("Failed to automatically estimate sensitivity")
+                sensitivity2use = SPAN_DEFAULT_SENSITIVITY
+            }
         }
+        logInfo("Sensitivity2use: $sensitivity2use", infoWriter)
+        val gap2use = gapCmdArg ?: SPAN_DEFAULT_GAP
+        logInfo("Gap2use: $gap2use", infoWriter)
         LOG.debug("Analysing fragmentation...")
         val candidateGapNs = IntArray(SPAN_FRAGMENTATION_MAX_GAP) {
-            estimateCandidatesNumberAvgLen(
+            estimateCandidatesNumberLens(
                 genomeQuery, fitInfo, logNullMembershipsMap, bitList2reuseMap,
                 sensitivity2use, it
-            ).first
+            ).n
         }
         val fragmentationScore =
             candidateGapNs[SPAN_FRAGMENTATION_GAP_CHECKPOINT].toDouble() / candidateGapNs[0]
-        logInfo("Fragmentation score: $fragmentationScore", infoWriter)
+        logInfo("Fragmentation score at g=$SPAN_FRAGMENTATION_GAP_CHECKPOINT: $fragmentationScore", infoWriter)
+        val avgFragmentationScore = candidateGapNs.sumOf { it.toDouble() / candidateGapNs[0] }
+        logInfo("Average fragmentation score: $avgFragmentationScore", infoWriter)
 
         val candidatesMap = genomeMap(genomeQuery, parallel = true) { chromosome ->
             if (!fitInfo.containsChromosomeInfo(chromosome)) {
@@ -199,7 +217,7 @@ object SpanResultsAnalysis {
             }
             val logNullMemberships = logNullMembershipsMap[chromosome]
             val bitList2reuse = bitList2reuseMap[chromosome]
-            getChromosomeCandidates(chromosome, logNullMemberships, bitList2reuse, sensitivity2use, 0)
+            getChromosomeCandidates(chromosome, logNullMemberships, bitList2reuse, sensitivity2use, gap2use)
         }
 
         val (avgSignalDensity, avgNoiseDensity) =
@@ -215,22 +233,22 @@ object SpanResultsAnalysis {
         }
         infoWriter?.close()
 
-        prepareCoveragePercentilesTsvFile(coverage, peaksPath)
-
-        prepareLogNullPercentilesTsvFile(logNullPvals, peaksPath)
-
-        prepareAutocorrelationTsvFile(coverageCorrelations, ".ac.coverage.tsv", peaksPath)
-
-        prepareAutocorrelationTsvFile(logNullPValsCorrelations, ".ac.pvals.tsv", peaksPath)
-
-        prepareFragmentationTsvFile(peaksPath, candidateGapNs)
-
-        prepareSensitivitiesTsvFile(
-            genomeQuery, spanFitResults, logNullMembershipsMap, bitList2reuseMap,
-            peaksPath, sensitivities
-        )
-
-        prepareSegmentsTsvFile(genomeQuery, fitInfo, logNullMembershipsMap, bitList2reuseMap, sensitivities, peaksPath)
+//        prepareCoveragePercentilesTsvFile(coverage, peaksPath)
+//
+//        prepareLogNullPercentilesTsvFile(logNullPvals, peaksPath)
+//
+//        prepareAutocorrelationTsvFile(coverageCorrelations, ".ac.coverage.tsv", peaksPath)
+//
+//        prepareAutocorrelationTsvFile(logNullPValsCorrelations, ".ac.pvals.tsv", peaksPath)
+//
+//        prepareFragmentationTsvFile(peaksPath, candidateGapNs)
+//
+//        prepareSensitivitiesTsvFile(
+//            genomeQuery, spanFitResults, logNullMembershipsMap, bitList2reuseMap,
+//            peaksPath, sensitivities
+//        )
+//
+//        prepareSegmentsTsvFile(genomeQuery, fitInfo, logNullMembershipsMap, bitList2reuseMap, sensitivities, peaksPath)
     }
 
     private fun prepareAutocorrelationTsvFile(correlations: DoubleArray, suffix: String, peaksPath: Path?) {
@@ -452,7 +470,7 @@ object SpanResultsAnalysis {
         controlCoverage: Coverage?,
         controlScale: Double?,
         beta: Double,
-        blackListPath: Path? = null,
+        blackList: LocationsMergingList? = null,
         region_len: Int = REGION_LEN,
         top_regions: Int = TOP_REGIONS,
         work_regions: Int = WORK_REGIONS,
@@ -478,7 +496,6 @@ object SpanResultsAnalysis {
                 .maximumSize(top_regions)
                 .create()
         var regions = 0
-        val blackList = if (blackListPath != null) LocationsMergingList.load(limitedQuery, blackListPath) else null
         var blackListIgnored = 0
         for (chr in limitedQuery.get()) {
             for (i in 0 until floor(chr.length.toDouble() / region_len).toInt()) {
@@ -581,7 +598,7 @@ object SpanResultsAnalysis {
         controlScale: Double?,
         beta: Double,
         bin: Int,
-        blackListPath: Path?
+        blackList: LocationsMergingList?
     ): DoubleArray {
         // Limit genome query to top non-empty chromosomes
         val chrs = genomeQuery.get()
@@ -593,7 +610,6 @@ object SpanResultsAnalysis {
         val totalBins = limitedQuery.get().sumOf { floor(it.length.toDouble() / bin).toInt() }
         val coverage = DoubleArray(totalBins) { 0.0 }
         var i = 0
-        val blackList = if (blackListPath != null) LocationsMergingList.load(limitedQuery, blackListPath) else null
         var blackListIgnored = 0
         for (chr in limitedQuery.get()) {
             for (j in 0 until floor(chr.length.toDouble() / bin).toInt()) {

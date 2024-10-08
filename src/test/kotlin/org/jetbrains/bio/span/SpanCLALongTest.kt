@@ -14,8 +14,8 @@ import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_MAX_ITERATIONS
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FIT_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FIT_MAX_ITERATIONS
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FIT_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanDataPaths
 import org.jetbrains.bio.statistics.distribution.Sampling
 import org.jetbrains.bio.util.*
@@ -138,7 +138,7 @@ PEAKS: $peaksPath
                 // Check model fit has progress:
                 // XXX: Not so important to make to types of tests for US and EU locales
                 val ds = DecimalFormatSymbols(Locale.getDefault()).decimalSeparator
-                assertIn("0${ds}00% (0/${SPAN_FIT_MAX_ITERATIONS}), Elapsed time", out)
+                assertIn("0${ds}00% (0/${SPAN_DEFAULT_FIT_MAX_ITERATIONS}), Elapsed time", out)
                 assertIn("100${ds}00% (", out)
             }
         }
@@ -231,9 +231,8 @@ PEAKS: $peaksPath
                         )
                     )
                 }
-                // This shouldn't be happening anymore after additional signal-to-noise ratio guard during fit
-                assertFalse("After fitting the model, emission's parameter p in LOW state" in out)
-                assertFalse("Low quality of data detected after fitting the model." in out)
+                assertTrue("After fitting the model, emission's parameter p in LOW state" in out)
+                assertTrue("Low quality of data detected after fitting the model." in out)
             }
         }
     }
@@ -593,8 +592,8 @@ TREATMENT: $path
 CONTROL: none
 CHROM.SIZES: $chromsizes
 FRAGMENT: auto
-MAX ITERATIONS: $SPAN_FIT_MAX_ITERATIONS
-CONVERGENCE THRESHOLD: $SPAN_FIT_THRESHOLD
+MAX ITERATIONS: $SPAN_DEFAULT_FIT_MAX_ITERATIONS
+CONVERGENCE THRESHOLD: $SPAN_DEFAULT_FIT_THRESHOLD
 EXTENDED MODEL INFO: false
 Library: ${path.fileName}, Depth:
 100${ds}00% (
@@ -619,7 +618,7 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
                     },
                     "Peak value is reported as 0.0, although the coverage cache is present"
                 )
-                assertIn("Analysing sensitivity and gap...", out)
+                assertIn("Adjusting sensitivity...", out)
                 assertIn("Signal mean: ", out)
                 assertIn("Noise mean: ", out)
                 assertIn("Signal to noise: ", out)

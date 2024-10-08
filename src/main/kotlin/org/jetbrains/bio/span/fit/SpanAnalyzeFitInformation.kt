@@ -81,7 +81,11 @@ data class SpanAnalyzeFitInformation(
                     unique,
                     binSize,
                     showLibraryInfo = true
-                )
+                ).apply {
+                    // Force computing caches
+                    treatmentReads.get()
+                    controlReads?.get()
+                }
             }
         }
     }
