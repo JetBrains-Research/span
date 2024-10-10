@@ -13,15 +13,21 @@ import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.containers.toRangeMergingList
 import org.jetbrains.bio.genome.coverage.Coverage
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_MIN_SENSITIVITY
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_AUTOCORRELATION_MAX_SHIFT
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_BROAD_AC_MIN_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_BROAD_EXTRA_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_CLIP_STEPS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_LENGTH_CLIP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_SENSITIVITY
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SIGNAL_CLIP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTATION_MAX_GAP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTED_EXTRA_GAP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTED_MAX_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_LENGTH_CLIP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_MIN_SENSITIVITY
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SCORE_BLOCKS
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SCORE_BLOCKS_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SENSITIVITY_N
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SIGNAL_CLIP
 import org.jetbrains.bio.span.fit.SpanFitInformation
 import org.jetbrains.bio.span.fit.SpanFitResults
 import org.jetbrains.bio.span.fit.SpanModelFitExperiment
@@ -93,9 +99,38 @@ object ModelToPeaks {
                 parallel, cancellableState
             )
         }
+
+        val blackList =
+            if (blackListPath != null) {
+                LOG.info("Loading blacklisted regions: $blackListPath")
+                LocationsMergingList.load(genomeQuery, blackListPath)
+            } else null
+
         LOG.info("Candidates selection with sensitivity: $sensitivity2use")
-        val gap2use = gapCmdArg ?: SPAN_DEFAULT_GAP
+
+        val gap2use = if (gapCmdArg != null) {
+            gapCmdArg
+        } else {
+            LOG.info("Analysing pvalues autocorrelation...")
+            val logNullPvals = getLogNullPvals(genomeQuery, spanFitResults, blackList)
+            val logNullPValsCorrelations = computeCorrelations(logNullPvals)
+            val avgAutoCorrelation = logNullPValsCorrelations.average()
+            LOG.info("Average autocorrelation score: $avgAutoCorrelation")
+
+            LOG.info("Analysing fragmentation...")
+            val candidateGapNs = IntArray(SPAN_FRAGMENTATION_MAX_GAP) {
+                estimateCandidatesNumberLens(
+                    genomeQuery, fitInfo, logNullMembershipsMap, bitList2reuseMap,
+                    sensitivity2use, it
+                ).n
+            }
+            val avgFragmentationScore = candidateGapNs.sumOf { it.toDouble() / candidateGapNs[0] }
+            LOG.info("Average fragmentation score: $avgFragmentationScore")
+
+            estimateGap(avgAutoCorrelation, avgFragmentationScore)
+        }
         LOG.info("Candidates selection with gap: $gap2use")
+
         val candidatesMap = genomeMap(genomeQuery, parallel = parallel) { chromosome ->
             cancellableState?.checkCanceled()
             if (!fitInfo.containsChromosomeInfo(chromosome)) {
@@ -155,12 +190,6 @@ object ModelToPeaks {
         else
             F64Array(genomeLogPVals.length) { genomeLogPVals[it] + ln(genomeLogPVals.length.toDouble()) }
 
-        val blackList =
-            if (blackListPath != null) {
-                LOG.info("Loading blacklisted regions: $blackListPath")
-                LocationsMergingList.load(genomeQuery, blackListPath)
-            } else null
-
         // Collect peaks together from all chromosomes
         val peaks = genomeMap(genomeQuery, parallel = parallel) { chromosome ->
             cancellableState?.checkCanceled()
@@ -216,6 +245,29 @@ object ModelToPeaks {
             )
         }
         return logPValsMap
+    }
+
+    fun estimateGap(
+        avgAutocorrelation: Double,
+        avgFragmentation: Double
+    ): Int {
+        LOG.debug("Estimating gap...")
+        var extraGap = 0
+        if (avgAutocorrelation > SPAN_BROAD_AC_MIN_THRESHOLD) {
+            LOG.info(
+                "Autocorrelation $avgAutocorrelation > $SPAN_BROAD_AC_MIN_THRESHOLD, " +
+                        "adding +$SPAN_BROAD_EXTRA_GAP"
+            )
+            extraGap += SPAN_BROAD_EXTRA_GAP
+        }
+        if (avgFragmentation < SPAN_FRAGMENTED_MAX_THRESHOLD) {
+            LOG.info(
+                "Fragmentation $avgFragmentation < $SPAN_FRAGMENTED_MAX_THRESHOLD, " +
+                        "adding +$SPAN_FRAGMENTED_EXTRA_GAP"
+            )
+            extraGap += SPAN_FRAGMENTED_EXTRA_GAP
+        }
+        return SPAN_DEFAULT_GAP + extraGap
     }
 
 
@@ -689,7 +741,11 @@ object ModelToPeaks {
             cancellableState?.checkCanceled()
             val candidate = candidates[idx]
             // Compute significant blocks within candidate
-            val blocks = candidateBlocks(logNullMemberships, candidate.startOffset, candidate.endOffset)
+            var blocks = candidateBlocks(logNullMemberships, candidate.startOffset, candidate.endOffset)
+            // Expand single block to the whole candidate, useful for short peaks
+            if (blocks.size == 1) {
+                blocks = listOf(Range(candidate.startOffset, candidate.endOffset))
+            }
             val blocksLogPs = blocks.map { (from, to) ->
                 // Model posterior log error probability for block
                 val modelLogPs = (from until to).sumOf { logNullMemberships[it] }
@@ -728,7 +784,7 @@ object ModelToPeaks {
         )
         return BitList(end - start) {
             logNullMemberships[it + start] <= p
-        }.aggregate().map { Range(start + it.startOffset, start + it.endOffset) }
+        }.aggregate(SPAN_SCORE_BLOCKS_GAP).map { Range(start + it.startOffset, start + it.endOffset) }
     }
 
     fun estimateGenomeSignalNoiseAverage(

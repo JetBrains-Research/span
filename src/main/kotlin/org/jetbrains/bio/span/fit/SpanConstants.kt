@@ -6,6 +6,10 @@ import org.jetbrains.bio.viktor.F64Array
 import java.lang.reflect.Modifier
 import kotlin.math.ln
 
+/**
+ * Constants used in SPAN.
+ * Those, configurable from command line interface, have "DEFAULT" in their names.
+ */
 object SpanConstants {
     /**
      * Default bin size used for binned centered reads coverage aggregation.
@@ -27,13 +31,12 @@ object SpanConstants {
      */
     const val SPAN_BETA_STEP = 0.01
 
+    // Max shift to compute auto correlations
     const val SPAN_AUTOCORRELATION_MAX_SHIFT = 50
 
-    const val SPAN_AUTOCORRELATION_CHECKPOINT = 10
-
+    // Max gap to compute fragmentation,
+    // i.e. reduction of candidate number when merging with gap
     const val SPAN_FRAGMENTATION_MAX_GAP = 50
-
-    const val SPAN_FRAGMENTATION_GAP_CHECKPOINT = 20
 
     // Minimal coefficient between variance and mean of Negative Binomials
     const val SPAN_NB_VAR_MEAN_MULTIPLIER = 1.1
@@ -96,8 +99,21 @@ object SpanConstants {
      */
     const val SPAN_SCORE_BLOCKS = 0.5
 
-     // Minimal distance between candidates
-    const val SPAN_DEFAULT_GAP = 3
+    const val SPAN_SCORE_BLOCKS_GAP = 3
+
+    const val SPAN_DEFAULT_GAP = 0
+
+    /**
+     * Gap value is computed from model bins autocorrelation and fragmentation
+     * These thresholds were estimated empirically from `--deep-analysis` SPAN output
+     * after analysing autocorrelation_average_score vs fragmentation_average_score
+     */
+    const val SPAN_BROAD_AC_MIN_THRESHOLD = 0.6
+    const val SPAN_BROAD_EXTRA_GAP = 10
+
+    const val SPAN_FRAGMENTED_MAX_THRESHOLD = 30
+    const val SPAN_FRAGMENTED_EXTRA_GAP = 20
+
 
     /**
      * Clipping allows to fine-tune boundaries of point-wise peaks according to the local signal.
@@ -107,19 +123,15 @@ object SpanConstants {
     const val SPAN_LENGTH_CLIP = 0.5
 
     /**
-     * Array of steps used for reducing the range by [SPAN_CLIP_STEPS] from both sides while increasing score.
+     * Array of steps used for reducing the range by [SPAN_CLIP_STEPS]
+     * from both sides while increasing score.
      */
     val SPAN_CLIP_STEPS = intArrayOf(10, 20, 50, 100, 200, 500, 1000)
 
     fun printSpanConstants() {
         for (field in SpanConstants::class.java.declaredFields) {
             // Ignore singleton and fields, configured with params
-            if (field.name in setOf(
-                    "INSTANCE",
-                    "SPAN_DEFAULT_BIN", "SPAN_DEFAULT_FDR",
-                    "SPAN_DEFAULT_SENSITIVITY", "SPAN_DEFAULT_GAP",
-                    "SPAN_FIT_THRESHOLD", "SPAN_FIT_MAX_ITERATIONS"
-                )) {
+            if (field.name == "INSTANCE" || "DEFAULT" in field.name) {
                 continue
             }
             if (Modifier.isStatic(field.modifiers) && Modifier.isFinal(field.modifiers)) {

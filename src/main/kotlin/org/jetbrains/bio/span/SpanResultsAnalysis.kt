@@ -10,10 +10,7 @@ import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.Coverage
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_AUTOCORRELATION_CHECKPOINT
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_SENSITIVITY
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTATION_GAP_CHECKPOINT
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTATION_MAX_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_MIN_SENSITIVITY
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SENSITIVITY_N
@@ -23,6 +20,7 @@ import org.jetbrains.bio.span.peaks.ModelToPeaks.analyzeAdditiveCandidates
 import org.jetbrains.bio.span.peaks.ModelToPeaks.computeCorrelations
 import org.jetbrains.bio.span.peaks.ModelToPeaks.detectSensitivityTriangle
 import org.jetbrains.bio.span.peaks.ModelToPeaks.estimateCandidatesNumberLens
+import org.jetbrains.bio.span.peaks.ModelToPeaks.estimateGap
 import org.jetbrains.bio.span.peaks.ModelToPeaks.estimateGenomeSignalNoiseAverage
 import org.jetbrains.bio.span.peaks.ModelToPeaks.getChromosomeCandidates
 import org.jetbrains.bio.span.peaks.ModelToPeaks.getLogNullPvals
@@ -150,9 +148,6 @@ object SpanResultsAnalysis {
         LOG.debug("Analysing autocorrelation...")
         val coverageCorrelations = computeCorrelations(coverage)
         val logNullPValsCorrelations = computeCorrelations(logNullPvals)
-        val autocorrelationScore = logNullPValsCorrelations[SPAN_AUTOCORRELATION_CHECKPOINT]
-        logInfo("Autocorrelation score at d=$SPAN_AUTOCORRELATION_CHECKPOINT: $autocorrelationScore",
-            infoWriter)
         val avgAutoCorrelation = logNullPValsCorrelations.average()
         logInfo("Average autocorrelation score: $avgAutoCorrelation", infoWriter)
 
@@ -196,8 +191,7 @@ object SpanResultsAnalysis {
             }
         }
         logInfo("Sensitivity2use: $sensitivity2use", infoWriter)
-        val gap2use = gapCmdArg ?: SPAN_DEFAULT_GAP
-        logInfo("Gap2use: $gap2use", infoWriter)
+
         LOG.debug("Analysing fragmentation...")
         val candidateGapNs = IntArray(SPAN_FRAGMENTATION_MAX_GAP) {
             estimateCandidatesNumberLens(
@@ -205,11 +199,16 @@ object SpanResultsAnalysis {
                 sensitivity2use, it
             ).n
         }
-        val fragmentationScore =
-            candidateGapNs[SPAN_FRAGMENTATION_GAP_CHECKPOINT].toDouble() / candidateGapNs[0]
-        logInfo("Fragmentation score at g=$SPAN_FRAGMENTATION_GAP_CHECKPOINT: $fragmentationScore", infoWriter)
         val avgFragmentationScore = candidateGapNs.sumOf { it.toDouble() / candidateGapNs[0] }
         logInfo("Average fragmentation score: $avgFragmentationScore", infoWriter)
+
+        val gap2use = if (gapCmdArg != null) {
+            gapCmdArg
+        } else {
+            estimateGap(avgAutoCorrelation, avgFragmentationScore)
+        }
+
+        logInfo("Gap2use: $gap2use", infoWriter)
 
         val candidatesMap = genomeMap(genomeQuery, parallel = true) { chromosome ->
             if (!fitInfo.containsChromosomeInfo(chromosome)) {
@@ -233,22 +232,22 @@ object SpanResultsAnalysis {
         }
         infoWriter?.close()
 
-//        prepareCoveragePercentilesTsvFile(coverage, peaksPath)
-//
-//        prepareLogNullPercentilesTsvFile(logNullPvals, peaksPath)
-//
-//        prepareAutocorrelationTsvFile(coverageCorrelations, ".ac.coverage.tsv", peaksPath)
-//
-//        prepareAutocorrelationTsvFile(logNullPValsCorrelations, ".ac.pvals.tsv", peaksPath)
-//
-//        prepareFragmentationTsvFile(peaksPath, candidateGapNs)
-//
-//        prepareSensitivitiesTsvFile(
-//            genomeQuery, spanFitResults, logNullMembershipsMap, bitList2reuseMap,
-//            peaksPath, sensitivities
-//        )
-//
-//        prepareSegmentsTsvFile(genomeQuery, fitInfo, logNullMembershipsMap, bitList2reuseMap, sensitivities, peaksPath)
+        prepareCoveragePercentilesTsvFile(coverage, peaksPath)
+
+        prepareLogNullPercentilesTsvFile(logNullPvals, peaksPath)
+
+        prepareAutocorrelationTsvFile(coverageCorrelations, ".ac.coverage.tsv", peaksPath)
+
+        prepareAutocorrelationTsvFile(logNullPValsCorrelations, ".ac.pvals.tsv", peaksPath)
+
+        prepareFragmentationTsvFile(peaksPath, candidateGapNs)
+
+        prepareSensitivitiesTsvFile(
+            genomeQuery, spanFitResults, logNullMembershipsMap, bitList2reuseMap,
+            peaksPath, sensitivities
+        )
+
+        prepareSegmentsTsvFile(genomeQuery, fitInfo, logNullMembershipsMap, bitList2reuseMap, sensitivities, peaksPath)
     }
 
     private fun prepareAutocorrelationTsvFile(correlations: DoubleArray, suffix: String, peaksPath: Path?) {
