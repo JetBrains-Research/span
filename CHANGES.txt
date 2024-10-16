@@ -15,6 +15,7 @@ Released on October XX, 2024
 - Support blacklisted regions `--blacklist`
 - Support `--deep-analysis` additional analysis of peak calling producing important statistics
 - Extended logging in debug mode `--debug`
+- Configure multiple hypothesis adjustment method with `--multiple`
 - Sensitivity and gap are computed automatically based on experimental data, but can be configured manually with `--sensitivity` and `--gap`
 
 
