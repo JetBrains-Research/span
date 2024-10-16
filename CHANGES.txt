@@ -3,19 +3,19 @@ SPAN Changelog
 
 Here you can see the full list of changes between each release.
 
-Version 1.7
+Version 2.0
 ----------------
 
-Released on June XX, 2024
+Released on October XX, 2024
 
-- Updated scaling of treatment and control to limit treatment scaling
+- Improved performance in various signal-to-noise conditions with data-estimated constraints of signal-to-noise ratio and minimal noise state threshold
+- Improved constrained model fitting states adjustment
+- Fixed aggressive signal upscaling in case of exceeding control library sizes
 - Use global genome signal and noise coverage estimation for boundaries cut
-- Combine both model and data estimates to assign p-value for peak blocks
-- Improved performance in extreme cases (low or high coverage, small signal-to-noise) by keeping model signal-to-noise ratio in predefined range
-- Updated initial settings for better model sensitivity
-- Updated control correction during preparation step
-- Support blacklisted regions
-- Support additional analysis of peak calling including roughness and sensitivity analysis
+- Support blacklisted regions `--blacklist`
+- Support `--deep-analysis` additional analysis of peak calling producing important statistics
+- Extended logging in debug mode `--debug`
+- Sensitivity and gap are computed automatically based on experimental data, but can be configured manually with `--sensitivity` and `--gap`
 
 
 Version 1.6

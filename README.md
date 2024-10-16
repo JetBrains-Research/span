@@ -15,15 +15,25 @@ SPAN Peak Analyzer
     ~_^~-^~~_~^-^~-~~^_~^~^~^
 ```
 
-**SPAN Peak Analyzer** is a multipurpose peak caller capable of processing a broad range of ChIP-seq, ATAC-seq, and
-single-cell ATAC-seq datasets.<br>
-In [semi-supervised mode](https://artyomovlab.wustl.edu/aging/tools) it is capable to robustly handle multiple
+**SPAN Peak Analyzer** is a universal HMM-based peak caller capable of processing a broad range of ChIP-seq, ATAC-seq, and
+single-cell ATAC-seq datasets of different quality.<br>
+
+**Open Access Paper:** 
+ Shpynov O, Dievskii A, Chernyatchik R, Tsurinov P, Artyomov MN. Semi-supervised peak calling with SPAN and
+JBR Genome Browser. Bioinformatics. 2021 May 21. https://doi.org/10.1093/bioinformatics/btab376
+
+Features
+--------
+
+* Supports both narrow and broad footprint experiments
+* Produces robust results on datasets of different signal-to-noise ratio, including Ultra-Low-Input ChIP-seq
+* Produces highly consistent results in multiple-replicates experiment setup
+* Tolerates missing control experiment
+* Integrated into the JetBrains Research ChIP-seq analysis [pipeline](https://github.com/JetBrains-Research/chipseq-smk-pipeline) from raw reads to visualization and peak calling
+* Integrated with the [JBR](https://github.com/jetBrains-Research/jbr) Genome Browser, uploaded data model allows for interactive visualization and fine-tuning
+* _Experimentally_ supports multi-replicated mode and differential peak calling mode
+* In [semi-supervised mode](https://artyomovlab.wustl.edu/aging/tools) it is capable to robustly handle multiple
 replicates and noise by leveraging limited manual annotation information.
-
-**Open Access Paper:** https://doi.org/10.1093/bioinformatics/btab376
-
-**Citation:** Shpynov O, Dievskii A, Chernyatchik R, Tsurinov P, Artyomov MN. Semi-supervised peak calling with SPAN and
-JBR Genome Browser. Bioinformatics. 2021 May 21.
 
 Latest release
 ------------------
@@ -62,7 +72,8 @@ Examples:
 Differential peak calling
 -------------------------
 
-The compare two (possibly replicated) biological conditions use the `compare`. See help for details:
+_Experimental!_
+To compare two (possibly replicated) biological conditions use the `compare`. See help for details:
 
 ```bash
 $ java -jar span.jar compare --help
@@ -103,12 +114,6 @@ Example
 -------
 Step-by-step example with test dataset is available [here](https://github.com/JetBrains-Research/span/wiki).
 
-
-Pipeline
---------
-SPAN can be used as a part of [snakemake](https://snakemake.readthedocs.io/en/stable/) pipeline.\
-Example of ChIP-seq analysis pipeline from raw reads to visualization and peak calling can be
-found [here](https://github.com/JetBrains-Research/chipseq-smk-pipeline).
 
 Build from sources
 ------------------
