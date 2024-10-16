@@ -1,5 +1,6 @@
 package org.jetbrains.bio.span.statistics.util
 
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_MAX_MEAN_TO_STD
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_INITIAL_SCORES_HIGH
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_INITIAL_SCORES_LOW
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_NB_VAR_MEAN_MULTIPLIER
@@ -40,9 +41,14 @@ object NegBinUtil {
         emissions.sortDescending()
         val highEmissions =
             IntArray((emissions.size * SPAN_INITIAL_SCORES_HIGH).toInt()) { emissions[it] }
-        val meanH = highEmissions.average()
+        var meanH = highEmissions.average()
         val sdH = highEmissions.standardDeviation()
         LOG.debug("High $SPAN_INITIAL_SCORES_HIGH emissions mean $meanH\t std $sdH")
+        if (meanH > SPAN_MAX_MEAN_TO_STD * (sdH + 1e-10)) {
+            LOG.warn("High mean / std > $SPAN_MAX_MEAN_TO_STD, adjusting...")
+            meanH = (sdH + 1e-10) * SPAN_MAX_MEAN_TO_STD
+            LOG.debug("Adjusted high $SPAN_INITIAL_SCORES_HIGH emissions mean $meanH\t std $sdH")
+        }
 
         val lowEmissions = IntArray((emissions.size * SPAN_INITIAL_SCORES_LOW).toInt()) {
             emissions[emissions.size - it - 1]

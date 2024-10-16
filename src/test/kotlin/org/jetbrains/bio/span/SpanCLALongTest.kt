@@ -231,8 +231,8 @@ PEAKS: $peaksPath
                         )
                     )
                 }
-                assertTrue("After fitting the model, emission's parameter p in LOW state" in out)
-                assertTrue("Low quality of data detected after fitting the model." in out)
+                assertFalse("After fitting the model, emission's parameter p in LOW state" in out)
+                assertFalse("Low quality of data detected after fitting the model." in out)
             }
         }
     }

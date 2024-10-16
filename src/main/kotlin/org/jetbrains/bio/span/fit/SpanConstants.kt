@@ -45,7 +45,7 @@ object SpanConstants {
     // used to estimate signal-to-noise
     // Useful for narrow marks even with high noise,
     // however too small value leads to fragmentation of broad marks
-    const val SPAN_INITIAL_SCORES_HIGH = 0.1
+    const val SPAN_INITIAL_SCORES_HIGH = 0.05
 
     // Fraction low scores used for HMM low state initialization
     // used to estimate signal-to-noise
@@ -53,7 +53,10 @@ object SpanConstants {
 
     // Keep SPAN noise state at least estimated noise * this multiplier,
     // generally low mean ~1 and low value prevents fragmentation in broad marks
-    const val SPAN_NOISE_MULTIPLIER = 0.4
+    const val SPAN_NOISE_MULTIPLIER = 0.3
+
+    // Threshold to limit mean to std, guards against artificial data without noise
+    const val SPAN_MAX_MEAN_TO_STD = 5
 
     // k27me3 tweaked initialization priors from low signal-to-noise ratio ChIP-seq
     val SPAN_NB2ZHMM_PRIORS = F64Array.of(0.75, 0.24, 0.01)
@@ -109,7 +112,7 @@ object SpanConstants {
      * after analysing autocorrelation_average_score vs fragmentation_average_score
      */
     const val SPAN_BROAD_AC_MIN_THRESHOLD = 0.6
-    const val SPAN_BROAD_EXTRA_GAP = 10
+    const val SPAN_BROAD_EXTRA_GAP = 20
 
     const val SPAN_FRAGMENTED_MAX_THRESHOLD = 30
     const val SPAN_FRAGMENTED_EXTRA_GAP = 20
