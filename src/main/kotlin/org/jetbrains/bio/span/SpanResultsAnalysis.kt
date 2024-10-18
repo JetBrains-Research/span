@@ -29,6 +29,7 @@ import org.jetbrains.bio.span.peaks.ModelToPeaks.linSpace
 import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.span.semisupervised.SpanSemiSupervised.SPAN_GAPS_VARIANTS
 import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
+import org.jetbrains.bio.statistics.hypothesis.Fdr
 import org.jetbrains.bio.util.await
 import org.jetbrains.bio.util.deleteIfExists
 import org.jetbrains.bio.util.toPath
@@ -51,6 +52,7 @@ object SpanResultsAnalysis {
         spanFitResults: SpanFitResults,
         fitInfo: SpanAnalyzeFitInformation,
         genomeQuery: GenomeQuery,
+        fdr: Double,
         sensitivityCmdArg: Double?,
         gapCmdArg: Int?,
         blackListPath: Path?,
@@ -183,11 +185,13 @@ object SpanResultsAnalysis {
                 val minAdditionalSensitivity = sensitivitiesLimited[minAdditionalIdx]
                 logInfo("Minimal additional: $minAdditionalSensitivity", infoWriter)
                 logInfo("Minimal additional index: ${si.beforeMerge + minAdditionalIdx}", infoWriter)
-                sensitivity2use = minAdditionalSensitivity
+                // We want to be able to get shorter peaks with stringent fdr values
+                sensitivity2use = min(ln(fdr), minAdditionalSensitivity)
             }
             else -> {
                 LOG.error("Failed to automatically estimate sensitivity")
-                sensitivity2use = SPAN_DEFAULT_SENSITIVITY
+                // We want to be able to get shorter peaks with stringent fdr values
+                sensitivity2use = min(ln(fdr), SPAN_DEFAULT_SENSITIVITY)
             }
         }
         logInfo("Sensitivity2use: $sensitivity2use", infoWriter)

@@ -94,10 +94,11 @@ object ModelToPeaks {
         val sensitivity2use = if (sensitivityCmdArg != null) {
             sensitivityCmdArg
         } else {
-            estimateSensitivity(
+            // We want to be able to get shorter peaks with stringent fdr values
+            min(ln(fdr), estimateSensitivity(
                 genomeQuery, spanFitResults, logNullMembershipsMap, bitList2reuseMap,
                 parallel, cancellableState
-            )
+            ))
         }
 
         val blackList =
