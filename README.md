@@ -15,11 +15,11 @@ SPAN Peak Analyzer
     ~_^~-^~~_~^-^~-~~^_~^~^~^
 ```
 
-**SPAN Peak Analyzer** is a universal HMM-based peak caller capable of processing a broad range of ChIP-seq, ATAC-seq, and
-single-cell ATAC-seq datasets of different quality.<br>
+**SPAN Peak Analyzer** is a universal HMM-based peak caller capable of processing a broad range of ChIP-seq, ATAC-seq,
+and single-cell ATAC-seq datasets of different quality.<br>
 
-**Open Access Paper:** 
- Shpynov O, Dievskii A, Chernyatchik R, Tsurinov P, Artyomov MN. Semi-supervised peak calling with SPAN and
+**Open Access Paper:**
+Shpynov O, Dievskii A, Chernyatchik R, Tsurinov P, Artyomov MN. Semi-supervised peak calling with SPAN and
 JBR Genome Browser. Bioinformatics. 2021 May 21. https://doi.org/10.1093/bioinformatics/btab376
 
 Features
@@ -29,11 +29,14 @@ Features
 * Produces robust results on datasets of different signal-to-noise ratio, including Ultra-Low-Input ChIP-seq
 * Produces highly consistent results in multiple-replicates experiment setup
 * Tolerates missing control experiment
-* Integrated into the JetBrains Research ChIP-seq analysis [pipeline](https://github.com/JetBrains-Research/chipseq-smk-pipeline) from raw reads to visualization and peak calling
-* Integrated with the [JBR](https://github.com/jetBrains-Research/jbr) Genome Browser, uploaded data model allows for interactive visualization and fine-tuning
+* Integrated into the JetBrains Research ChIP-seq
+  analysis [pipeline](https://github.com/JetBrains-Research/chipseq-smk-pipeline) from raw reads to visualization and
+  peak calling
+* Integrated with the [JBR](https://github.com/jetBrains-Research/jbr) Genome Browser, uploaded data model allows for
+  interactive visualization and fine-tuning
 * _Experimentally_ supports multi-replicated mode and differential peak calling mode
 * In [semi-supervised mode](https://artyomovlab.wustl.edu/aging/tools) it is capable to robustly handle multiple
-replicates and noise by leveraging limited manual annotation information.
+  replicates and noise by leveraging limited manual annotation information.
 
 Latest release
 ------------------
@@ -96,6 +99,7 @@ Command line options
 | `--labels LABELS`                                       | Labels BED file. Used in semi-supervised peak calling.                                                                                                                                                                                                               |
 | `-m, --model MODEL`                                     | This option is used to specify SPAN model path. Required for further semi-supervised peak calling.                                                                                                                                                                   |
 | `-w, --workdir PATH`                                    | Path to the working directory. Used to save coverage and model cache.                                                                                                                                                                                                |
+| `--bigwig`                                              | Create beta-control corrected counts per million normalized track.                                                                                                                                                                                                   |
 | `--sensitivity SENSITIVITY`                             | Configures log sensitivity for candidates selection.<br>Automatically estimated from the data, or during semi-supervised peak calling.                                                                                                                               |
 | `--gap GAP`                                             | Configures minimal gap between peaks.<br>Generally, not required, but used in semi-supervised peak calling.                                                                                                                                                          |
 | `--noclip`                                              | Disables local coverage based clipping of peaks, useful for low quality data.                                                                                                                                                                                        |

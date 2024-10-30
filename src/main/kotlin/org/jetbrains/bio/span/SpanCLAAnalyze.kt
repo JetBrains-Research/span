@@ -55,6 +55,10 @@ object SpanCLAAnalyze {
                 .withRequiredArg()
                 .withValuesSeparatedBy(",")
                 .withValuesConvertedBy(PathConverter.noCheck())
+
+            accepts("bigwig", "Create beta-control corrected counts per million normalized track")
+                .availableIf("peaks")
+
             accepts("labels", "Labels BED file. Used in semi-supervised peak calling")
                 .availableIf("peaks")
                 .withRequiredArg()
@@ -143,6 +147,9 @@ object SpanCLAAnalyze {
                 // Call now to preserve params logging order
                 val lazySpanResults = logParametersAndPrepareLazySpanResults(options)
 
+                val bigWig = options.contains("bigwig")
+                LOG.info("BIGWIG: $bigWig")
+
                 val noclip = options.has("noclip")
                 LOG.info("NOCLIP: $noclip")
 
@@ -201,6 +208,16 @@ object SpanCLAAnalyze {
                 val genomeQuery = fitInfo.genomeQuery()
                 val fragment = fitInfo.fragment
                 val bin = fitInfo.binSize
+
+                if (bigWig) {
+                    if (fitInfo !is SpanAnalyzeFitInformation) {
+                        LOG.warn("Bigwig coverage is possible only for analyze command")
+                    } else {
+                        val bigWigPath = (peaksPath!!.toString() + ".bw").toPath()
+                        SpanBigWigWriter.write(spanResults, genomeQuery, bigWigPath, blackListPath)
+                    }
+                }
+
                 if (deepAnalysis) {
                     if (fitInfo !is SpanAnalyzeFitInformation) {
                         LOG.warn("Deep analysis is possible only for analyze command")
@@ -211,7 +228,7 @@ object SpanCLAAnalyze {
                         ModelToPeaks.getPeaks(
                             spanResults, genomeQuery, fdr, multipleTesting,
                             sensitivity, gap,
-                            clip=!noclip, blackListPath = blackListPath
+                            clip = !noclip, blackListPath = blackListPath
                         )
                     else
                         tune(spanResults, genomeQuery, labelsPath, peaksPath, blackListPath)

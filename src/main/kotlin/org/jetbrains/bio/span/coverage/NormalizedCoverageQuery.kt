@@ -98,6 +98,11 @@ class NormalizedCoverageQuery(
         return controlReads!!.get().getBothStrandsCoverage(chromosomeRange) * coveragesNormalizedInfo.controlScale
     }
 
+    /**
+     * Returns normalized coverage value for given range.
+     * normCov = treatmentCov - controlCov * controlScale * beta
+     * See #estimateScaleAndBeta
+     */
     override fun apply(t: ChromosomeRange): Int {
         val treatmentCoverage = treatmentReads.get().getBothStrandsCoverage(t)
         if (controlPath == null) {
@@ -136,48 +141,59 @@ class NormalizedCoverageQuery(
             val controlTotal = genomeQuery.get().sumOf {
                 controlCoverage.getBothStrandsCoverage(it.chromosomeRange).toLong()
             }
-            // Scale control to treatment
-            val controlScale = 1.0 * treatmentTotal  / controlTotal
-            val (beta, minCorrelation) = estimateBeta(
-                genomeQuery, treatmentCoverage, controlCoverage, controlScale, binSize
+            val ncq = estimateScaleAndBeta(
+                genomeQuery, treatmentCoverage, controlCoverage, treatmentTotal, controlTotal, binSize
             )
             LOG.info(
                 "Treatment ${"%,d".format(treatmentTotal)}, " +
-                        "control ${"%,d".format(controlTotal)} x ${"%.3f".format(controlScale)}, " +
-                        "min correlation ${"%.3f".format(minCorrelation)}, beta ${"%.3f".format(beta)}"
+                        "control ${"%,d".format(controlTotal)} x ${"%.3f".format(ncq.controlScale)}, " +
+                        "min correlation ${"%.3f".format(ncq.minCorrelation)}, beta ${"%.3f".format(ncq.beta)}"
             )
-            return NormalizedCoverageInfo(controlScale, beta, minCorrelation)
+            return ncq
         }
 
-        private fun estimateBeta(
+        /**
+         * Estimates beta between 0 and 1 minimizing absolute correlation between
+         * beta-control-corrected coverage and control coverage:
+         * | correlation(treatmentCov - controlCov * controlScale * beta, controlCov) |
+         * See NormalizedCoverageQuery#apply
+         */
+        private fun estimateScaleAndBeta(
             genomeQuery: GenomeQuery,
             treatmentCoverage: Coverage,
             controlCoverage: Coverage,
-            controlScale: Double,
+            treatmentTotal: Long,
+            controlTotal: Long,
             bin: Int,
             betaStep: Double = SPAN_BETA_STEP,
-        ): Pair<Double, Double> {
+        ): NormalizedCoverageInfo {
+            if (controlTotal == 0L) {
+                return NormalizedCoverageInfo(0.0, 0.0, 0.0)
+            }
+            // Scale control to treatment
+            val controlScale = treatmentTotal.toDouble()  / controlTotal
             // Estimate beta corrected signal only on not empty chromosomes
             val chromosomeWithMaxSignal = genomeQuery.get()
                 .maxByOrNull { treatmentCoverage.getBothStrandsCoverage(it.chromosomeRange) } ?:
-                return 0.0 to 0.0
-            val binnedScaledTreatment = chromosomeWithMaxSignal.range.slice(bin).mapToDouble {
+                return NormalizedCoverageInfo(0.0, 0.0, 0.0)
+            val binnedTreatment = chromosomeWithMaxSignal.range.slice(bin).mapToDouble {
                 treatmentCoverage.getBothStrandsCoverage(it.on(chromosomeWithMaxSignal)).toDouble()
             }.toArray()
-            val binnedScaledControl = chromosomeWithMaxSignal.range.slice(bin).mapToDouble {
-                controlCoverage.getBothStrandsCoverage(it.on(chromosomeWithMaxSignal)) * controlScale
+            val binnedControl = chromosomeWithMaxSignal.range.slice(bin).mapToDouble {
+                controlCoverage.getBothStrandsCoverage(it.on(chromosomeWithMaxSignal)).toDouble()
             }.toArray()
             var b = 0.0
             var minCorrelation = 1.0
             var minB = 0.0
-            // Reuse array to reduce GC
-            val binnedNorm = DoubleArray(binnedScaledTreatment.size)
+            // Reuse array to reduce GC pressure
+            val binnedNorm = DoubleArray(binnedTreatment.size)
             val pearsonCorrelation = PearsonsCorrelation()
             while (b < 1) {
                 for (i in binnedNorm.indices) {
-                    binnedNorm[i] = binnedScaledTreatment[i] - binnedScaledControl[i] * b
+                    // Using norm here may lead to high beta and signal vanishing
+                    binnedNorm[i] = binnedTreatment[i] - b * controlScale * binnedControl[i]
                 }
-                val c = abs(pearsonCorrelation.correlation(binnedNorm, binnedScaledControl))
+                val c = abs(pearsonCorrelation.correlation(binnedNorm, binnedControl))
                 if (c <= minCorrelation) {
                     minCorrelation = c
                     minB = b
@@ -187,10 +203,9 @@ class NormalizedCoverageQuery(
             if (minB == 0.0) {
                 LOG.warn("Failed to estimate beta-value for control correction")
             }
-            return minB to minCorrelation
+            return NormalizedCoverageInfo(controlScale, minB, minCorrelation)
         }
     }
-
 }
 
 /**
