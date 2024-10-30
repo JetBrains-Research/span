@@ -11,6 +11,7 @@ import org.jetbrains.bio.genome.query.Query
 import org.jetbrains.bio.span.coverage.NormalizedCoverageQuery
 import org.jetbrains.bio.span.coverage.binnedCoverageDataFrame
 import org.jetbrains.bio.util.deleteIfExists
+import org.jetbrains.bio.util.isAccessible
 import org.jetbrains.bio.util.reduceIds
 import org.jetbrains.bio.util.stemGz
 
@@ -72,19 +73,22 @@ data class SpanAnalyzeFitInformation(
 
     override fun prepareData() {
         if (normalizedCoverageQueries == null) {
-            normalizedCoverageQueries = paths.map {
-                NormalizedCoverageQuery(
-                    genomeQuery(),
-                    it.treatment,
-                    it.control,
-                    fragment,
-                    unique,
-                    binSize,
-                    showLibraryInfo = true
-                ).apply {
-                    // Force computing caches
-                    treatmentReads.get()
-                    controlReads?.get()
+            val pathsPresent = paths.all { it.treatment.isAccessible() && it.control?.isAccessible() != false }
+            if (pathsPresent) {
+                normalizedCoverageQueries = paths.map {
+                    NormalizedCoverageQuery(
+                        genomeQuery(),
+                        it.treatment,
+                        it.control,
+                        fragment,
+                        unique,
+                        binSize,
+                        showLibraryInfo = true
+                    ).apply {
+                        // Force computing caches
+                        treatmentReads.get()
+                        controlReads?.get()
+                    }
                 }
             }
         }
@@ -94,17 +98,16 @@ data class SpanAnalyzeFitInformation(
      * Returns average coverage by tracks
      */
     override fun score(chromosomeRange: ChromosomeRange): Double {
+        check(normalizedCoverageQueries != null) { "Score is not available, use prepareData first!" }
         return normalizedCoverageQueries!!.sumOf { it.score(chromosomeRange) } /
                 normalizedCoverageQueries!!.size
     }
 
     override fun isControlAvailable(): Boolean =
-        normalizedCoverageQueries!!.all { it.controlReads != null }
+        normalizedCoverageQueries?.all { it.controlReads != null } ?: false
 
     override fun controlScore(chromosomeRange: ChromosomeRange): Double {
-        check(isControlAvailable()) {
-            "Control is not available"
-        }
+        check(isControlAvailable()) { "Control is not available" }
         return normalizedCoverageQueries!!.sumOf { it.controlScore(chromosomeRange) } /
                 normalizedCoverageQueries!!.size
     }

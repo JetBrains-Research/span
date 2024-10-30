@@ -95,10 +95,12 @@ object ModelToPeaks {
             sensitivityCmdArg
         } else {
             // We want to be able to get shorter peaks with stringent fdr values
-            min(ln(fdr), estimateSensitivity(
-                genomeQuery, spanFitResults, logNullMembershipsMap, bitList2reuseMap,
-                parallel, cancellableState
-            ))
+            min(
+                ln(fdr), estimateSensitivity(
+                    genomeQuery, spanFitResults, logNullMembershipsMap, bitList2reuseMap,
+                    parallel, cancellableState
+                )
+            )
         }
 
         val blackList =
@@ -160,7 +162,7 @@ object ModelToPeaks {
 
         // Estimate signal and noise average signal by candidates
         val canEstimateSignalToNoise = clip && fitInfo is SpanAnalyzeFitInformation &&
-                fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
+                fitInfo.normalizedCoverageQueries?.all { it.areCachesPresent() } ?: false
 
         val (avgSignalDensity, avgNoiseDensity) = if (canEstimateSignalToNoise)
             estimateGenomeSignalNoiseAverage(genomeQuery, fitInfo, candidatesMap, parallel).apply {
@@ -657,7 +659,7 @@ object ModelToPeaks {
 
         val lnFdr = ln(fdr)
         val canEstimateScore = fitInfo is SpanAnalyzeFitInformation &&
-                fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
+                fitInfo.normalizedCoverageQueries?.all { it.areCachesPresent() } ?: false
         val resultPeaks = candidates.mapIndexedNotNull { i, (from, to) ->
             cancellableState?.checkCanceled()
             val logPValue = logPVals[i]
@@ -713,18 +715,17 @@ object ModelToPeaks {
         // TODO[oleg] support SpanCompareFitInformation
         val readsTreatmentAvailable =
             fitInfo is SpanAnalyzeFitInformation &&
-                    fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
+                    fitInfo.normalizedCoverageQueries?.all { it.areCachesPresent() } ?: false
         val readsControlAvailable =
             fitInfo is SpanAnalyzeFitInformation &&
                     fitInfo.isControlAvailable() &&
-                    fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
+                    fitInfo.normalizedCoverageQueries?.all { it.areCachesPresent() } ?: false
 
         // Optimization to avoid synchronized lazy on NormalizedCoverageQuery#treatmentReads
         // Replacing calls NormalizedCoverageQuery#score and NormalizedCoverageQuery#controlScore
         val treatmentCovs = when {
             readsTreatmentAvailable && fitInfo is SpanAnalyzeFitInformation ->
-                fitInfo.normalizedCoverageQueries!!.map { it.treatmentReads.get() }
-
+                fitInfo.normalizedCoverageQueries?.map { it.treatmentReads.get() } ?: emptyList()
             else -> emptyList()
         }
 
@@ -733,8 +734,7 @@ object ModelToPeaks {
         when {
             readsControlAvailable && fitInfo is SpanAnalyzeFitInformation -> {
                 controlCovs = fitInfo.normalizedCoverageQueries!!.map { it.controlReads!!.get() }
-                controlScales = fitInfo.normalizedCoverageQueries!!
-                    .map { it.coveragesNormalizedInfo.controlScale }
+                controlScales = fitInfo.normalizedCoverageQueries!!.map { it.coveragesNormalizedInfo.controlScale }
             }
 
             else -> {
@@ -799,7 +799,7 @@ object ModelToPeaks {
         parallel: Boolean
     ): Pair<Double, Double> {
         val canEstimateSignalToNoise = fitInfo is SpanAnalyzeFitInformation &&
-                fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }
+                fitInfo.normalizedCoverageQueries?.all { it.areCachesPresent() } ?: false
         if (!canEstimateSignalToNoise) {
             return 0.0 to 0.0
         }
