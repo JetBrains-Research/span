@@ -153,6 +153,10 @@ object ModelToPeaks {
             chromosomeCandidatesOffsets[chromosome] = candidatesTotal to candidatesTotal + chrCandidatesN
             candidatesTotal += chrCandidatesN
         }
+        // Return empty list when nothing found
+        if (candidatesTotal == 0) {
+            return SpanPeaksResult(fdr, sensitivity2use, gap2use, genomeMap(genomeQuery) { emptyList() })
+        }
 
         // Estimate signal and noise average signal by candidates
         val canEstimateSignalToNoise = clip && fitInfo is SpanAnalyzeFitInformation &&
