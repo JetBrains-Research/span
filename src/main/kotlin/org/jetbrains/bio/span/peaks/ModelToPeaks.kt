@@ -309,8 +309,14 @@ object ModelToPeaks {
                 sensitivitiesLimited,
                 parallel
             )
-            val minAdditionalIdx = sensitivitiesLimited.indices
-                .minByOrNull { news[it].toDouble() / totals[it].toDouble() }!!
+            val newCandidatesList = sensitivitiesLimited.indices
+                .map { news[it].toDouble() / totals[it].toDouble() }
+            val minAdditionalIdx = newCandidatesList.indices.minByOrNull { newCandidatesList[it] }!!
+            if (LOG.isDebugEnabled) {
+                LOG.debug("Candidates additive\n" +
+                        "$newCandidatesList\n" +
+                        "Min [$minAdditionalIdx] = ${newCandidatesList[minAdditionalIdx]}")
+            }
             val minAdditionalSensitivity = sensitivitiesLimited[minAdditionalIdx]
             LOG.info("Minimal additional ${si.beforeMerge + minAdditionalIdx}: $minAdditionalSensitivity")
             return minAdditionalSensitivity
@@ -349,7 +355,9 @@ object ModelToPeaks {
         val n = sensitivities.size
         val candidatesLogNs = DoubleArray(n)
         val candidatesLogALs = DoubleArray(n)
-//        println("Sensitivity\tGap\tCandidatesN\tCandidatesAL")
+        var sensTable = ""
+        if (LOG.isDebugEnabled)
+            sensTable += "Sensitivity\tGap\tCandidatesN\tCandidatesAL\n"
         for ((i, s) in sensitivities.withIndex()) {
             val ci = estimateCandidatesNumberLens(
                 genomeQuery, spanFitResults.fitInfo, logNullMembershipsMap, bitList2reuseMap,
@@ -357,7 +365,11 @@ object ModelToPeaks {
             )
             candidatesLogNs[i] = ln1p(ci.n.toDouble())
             candidatesLogALs[i] = ln1p(ci.averageLen)
-//            println("$s\t0\t${ci.n}\t${ci.averageLen}")
+            if (LOG.isDebugEnabled)
+            sensTable += "$s\t0\t${ci.n}\t${ci.averageLen}\n"
+        }
+        if (LOG.isDebugEnabled) {
+            LOG.debug("Sensitivity table:\n$sensTable")
         }
         var maxArea = 0.0
         var i1 = -1
