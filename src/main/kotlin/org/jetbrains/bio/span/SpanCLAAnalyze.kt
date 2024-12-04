@@ -403,10 +403,15 @@ object SpanCLAAnalyze {
             val workingDir = options.valueOf("workdir") as Path
             LOG.info("WORKING DIR: $workingDir")
             val chromSizesPath = options.valueOf("chrom.sizes") as Path?
+            LOG.info("CHROM.SIZES: $chromSizesPath")
+            val chromosomesToProcess = if (options.has("chromosomes"))
+                options.valueOf("chromosomes").toString().split(',', ' ')
+            else
+                null
+            LOG.info("CHROMOSOMES: ${chromosomesToProcess?.joinToString(", ")}")
             if (chromSizesPath != null) {
                 checkGenomeInFitInformation(chromSizesPath, results.fitInfo)
             }
-            LOG.info("CHROM.SIZES: $chromSizesPath")
             SpanCLA.getBin(options, results.fitInfo, log = true)
             SpanCLA.getFragment(options, results.fitInfo, log = true)
             SpanCLA.getUnique(options, results.fitInfo, log = true)
@@ -427,6 +432,11 @@ object SpanCLAAnalyze {
             LOG.info("WORKING DIR: $workingDir")
             val chromSizesPath = options.valueOf("chrom.sizes") as Path?
             LOG.info("CHROM.SIZES: $chromSizesPath")
+            val chromosomesToProcess = if (options.has("chromosomes"))
+                options.valueOf("chromosomes").toString().split(',', ' ')
+            else
+                null
+            LOG.info("CHROMOSOMES: ${chromosomesToProcess?.joinToString(", ")}")
             val bin = SpanCLA.getBin(options, log = true)
             val fragment = SpanCLA.getFragment(options, log = true)
             val unique = SpanCLA.getUnique(options, log = true)
@@ -447,7 +457,10 @@ object SpanCLAAnalyze {
             val keepCacheFiles = "keep-cache" in options
             LOG.info("KEEP-CACHE: $keepCacheFiles")
             return lazy {
-                val genomeQuery = GenomeQuery(Genome[chromSizesPath!!])
+                val genomeQuery = if (chromosomesToProcess != null)
+                    GenomeQuery(Genome[chromSizesPath!!], *chromosomesToProcess.toTypedArray())
+                else
+                    GenomeQuery(Genome[chromSizesPath!!])
                 val experiment = getExperimentByModelType(
                     modelType, genomeQuery, paths, unique, fragment, bin,
                     threshold, maxIterations,

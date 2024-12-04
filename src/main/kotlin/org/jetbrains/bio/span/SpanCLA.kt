@@ -124,6 +124,13 @@ compare                         Differential peak calling
                     https://hgdownload.cse.ucsc.edu/goldenPath/<build>/bigZips/<build>.chrom.sizes
                     """.trimIndent()
             ).requiredUnless("model").withRequiredArg().withValuesConvertedBy(PathConverter.exists())
+            acceptsAll(
+                listOf("chr", "chromosomes"),
+                """
+                    Chromosome names to process, should be a comma-separated list. 
+                    """.trimIndent()
+            ).withRequiredArg()
+
             accepts(
                 "ext", "Save extended states information to model file.\n" +
                         "Required for model visualization in JBR Genome Browser"
