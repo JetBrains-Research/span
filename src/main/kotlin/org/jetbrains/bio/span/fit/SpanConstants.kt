@@ -38,32 +38,24 @@ object SpanConstants {
     // i.e. reduction of candidate number when merging with gap
     const val SPAN_FRAGMENTATION_MAX_GAP = 50
 
-    // Minimal coefficient between variance and mean of Negative Binomials
-    const val SPAN_NB_VAR_MEAN_MULTIPLIER = 1.1
+    // Technical minimal coefficient between variance and mean of Negative Binomials
+    const val SPAN_HMM_NB_VAR_MEAN_MULTIPLIER = 1.1
 
-    // Fraction top scores used for HMM high state initialization,
-    // used to estimate signal-to-noise
-    // Useful for narrow marks even with high noise,
-    // however too small value leads to fragmentation of broad marks
-    const val SPAN_INITIAL_SCORES_HIGH = 0.05
+    // Fraction scores used for HMM signal estimation, guards for good signal-to-noise ratio
+    const val SPAN_HMM_SIGNAL_ESTIMATE = 0.05
 
-    // Fraction low scores used for HMM low state initialization
-    // used to estimate signal-to-noise
-    const val SPAN_INITIAL_SCORES_LOW = 0.6
+    // Minimal low state mean threshold, guards against over-peak calling and too broad peaks
+    const val SPAN_HMM_LOW_THRESHOLD = 0.3
 
-    // Keep SPAN noise state at least estimated noise * this multiplier,
-    // generally low mean ~1 and low value prevents fragmentation in broad marks
-    const val SPAN_NOISE_MULTIPLIER = 0.3
+    // Technical threshold to limit mean to std, guards against artificial data without noise
+    const val SPAN_HMM_MAX_MEAN_TO_STD = 5.0
 
-    // Threshold to limit mean to std, guards against artificial data without noise
-    const val SPAN_MAX_MEAN_TO_STD = 5
+    // General model priors and priors based on real data peaks footprint
+    val SPAN_HMM_PRIORS = F64Array.of(0.75, 0.249, 0.001)
 
-    // k27me3 tweaked initialization priors from low signal-to-noise ratio ChIP-seq
-    val SPAN_NB2ZHMM_PRIORS = F64Array.of(0.75, 0.24, 0.01)
-
-    val SPAN_NB2ZHMM_TRANSITIONS = listOf(
-        doubleArrayOf(0.75, 0.249, 0.001),
-        doubleArrayOf(0.2, 0.78, 0.02),
+    val SPAN_HMM_TRANSITIONS = listOf(
+        doubleArrayOf(0.75, 0.2499, 0.0001),
+        doubleArrayOf(0.2, 0.798, 0.002),
         doubleArrayOf(0.005, 0.015, 0.98))
 
     /**
@@ -76,13 +68,6 @@ object SpanConstants {
      * The maximum number of iterations to perform during the fitting
      */
     const val SPAN_DEFAULT_FIT_MAX_ITERATIONS = 10
-
-    /**
-     * Sensitivity background configures threshold of candidate enriched bins, allowing for bigger number of candidates
-     * to be checked by enrichment vs. control track. The less value the more candidates are presented for check.
-     * Potential drawback - mixing two adjacent peaks into a single one, or too much noise.
-     */
-    val SPAN_DEFAULT_SENSITIVITY = ln(1e-3)
 
     /**
      * Number of points between relaxed and strict sensitivity to analyse
@@ -106,30 +91,30 @@ object SpanConstants {
 
     const val SPAN_DEFAULT_GAP = 0
 
+    val SPAN_DEFAULT_SENSITIVITY = ln(SPAN_DEFAULT_FDR)
+
     /**
      * Gap value is computed from model bins autocorrelation and fragmentation
      * These thresholds were estimated empirically from `--deep-analysis` SPAN output
      * after analysing autocorrelation_average_score vs fragmentation_average_score
      */
-    const val SPAN_BROAD_AC_MIN_THRESHOLD = 0.6
-    const val SPAN_BROAD_EXTRA_GAP = 20
+
+    const val SPAN_BROAD_AC_MIN_THRESHOLD = 0.5
+
+    const val SPAN_BROAD_EXTRA_GAP = 10  // x default bin 100bp
 
     const val SPAN_FRAGMENTED_MAX_THRESHOLD = 30
-    const val SPAN_FRAGMENTED_EXTRA_GAP = 20
 
+    const val SPAN_FRAGMENTED_EXTRA_GAP = 20  // x default bin 100bp
 
     /**
      * Clipping allows to fine-tune boundaries of point-wise peaks according to the local signal.
      */
-    const val SPAN_SIGNAL_CLIP = 0.5
+    const val SPAN_CLIP_MAX_SIGNAL = 0.5
 
-    const val SPAN_LENGTH_CLIP = 0.5
+    const val SPAN_CLIP_MAX_LENGTH = 0.8
 
-    /**
-     * Array of steps used for reducing the range by [SPAN_CLIP_STEPS]
-     * from both sides while increasing score.
-     */
-    val SPAN_CLIP_STEPS = intArrayOf(10, 20, 50, 100, 200, 500, 1000)
+    val SPAN_CLIP_STEPS = doubleArrayOf(0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 1.5, 2.0, 5.0, 10.0)
 
     fun printSpanConstants() {
         for (field in SpanConstants::class.java.declaredFields) {

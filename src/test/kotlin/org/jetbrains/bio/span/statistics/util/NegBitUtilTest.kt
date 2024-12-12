@@ -23,9 +23,9 @@ class NegBitUtilTest {
             emissions, 2
         )
         assertEquals(1.3, means0[0], .1)
-        assertEquals(13.4, means0[1], .1)
+        assertEquals(8.7, means0[1], .1)
         assertEquals(0.1, failures0[0], .1)
-        assertEquals(16.2, failures0[1], .1)
+        assertEquals(4.8, failures0[1], .1)
     }
 
     @Test
@@ -42,11 +42,11 @@ class NegBitUtilTest {
             emissions, 3
         )
         assertEquals(1.7, means0[0], .1)
-        assertEquals(7.5, means0[1], .1)
-        assertEquals(32.4, means0[2], .1)
+        assertEquals(6.2, means0[1], .1)
+        assertEquals(23.6, means0[2], .1)
         assertEquals(0.1, failures0[0], .1)
-        assertEquals(1.2, failures0[1], .1)
-        assertEquals(54.3, failures0[2], .1)
+        assertEquals(0.8, failures0[1], .1)
+        assertEquals(19.8, failures0[2], .1)
     }
 
 }

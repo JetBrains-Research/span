@@ -16,18 +16,18 @@ import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_AUTOCORRELATION_MAX_SHIFT
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_BROAD_AC_MIN_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_BROAD_EXTRA_GAP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_CLIP_MAX_LENGTH
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_CLIP_MAX_SIGNAL
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_CLIP_STEPS
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_SENSITIVITY
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTATION_MAX_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTED_EXTRA_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTED_MAX_THRESHOLD
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_LENGTH_CLIP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_MIN_SENSITIVITY
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SCORE_BLOCKS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SCORE_BLOCKS_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SENSITIVITY_N
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SIGNAL_CLIP
 import org.jetbrains.bio.span.fit.SpanFitInformation
 import org.jetbrains.bio.span.fit.SpanFitResults
 import org.jetbrains.bio.span.fit.SpanModelFitExperiment
@@ -94,13 +94,13 @@ object ModelToPeaks {
         val sensitivity2use = if (sensitivityCmdArg != null) {
             sensitivityCmdArg
         } else {
-            // We want to be able to get shorter peaks with stringent fdr values
-            min(
-                ln(fdr), estimateSensitivity(
-                    genomeQuery, spanFitResults, logNullMembershipsMap, bitList2reuseMap,
-                    parallel, cancellableState
-                )
+            val estimatedSensitivity = estimateSensitivity(
+                genomeQuery, spanFitResults, logNullMembershipsMap, bitList2reuseMap,
+                parallel, cancellableState
             )
+            estimatedSensitivity
+//            // We want to be able to get shorter peaks with stringent fdr values
+//            (ln(fdr) + estimatedSensitivity) / 2
         }
 
         val blackList =
@@ -291,7 +291,9 @@ object ModelToPeaks {
         LOG.info("Adjusting sensitivity...")
         val minLogNull = genomeQuery.get().minOf { logNullMembershipsMap[it].min() }
         // Limit value due to floating point errors
-        val maxLogNull = min(SPAN_MIN_SENSITIVITY, genomeQuery.get().maxOf { logNullMembershipsMap[it].max() })
+        val maxLogNull = min(
+            SPAN_MIN_SENSITIVITY, genomeQuery.get().maxOf { logNullMembershipsMap[it].max() }
+        )
         val sensitivities = linSpace(minLogNull, maxLogNull, SPAN_SENSITIVITY_N)
         val si = detectSensitivityTriangle(
             genomeQuery, spanFitResults, logNullMembershipsMap, bitList2reuseMap, sensitivities
@@ -312,17 +314,13 @@ object ModelToPeaks {
             val newCandidatesList = sensitivitiesLimited.indices
                 .map { news[it].toDouble() / totals[it].toDouble() }
             val minAdditionalIdx = newCandidatesList.indices.minByOrNull { newCandidatesList[it] }!!
-            if (LOG.isDebugEnabled) {
-                LOG.debug("Candidates additive\n" +
-                        "$newCandidatesList\n" +
-                        "Min [$minAdditionalIdx] = ${newCandidatesList[minAdditionalIdx]}")
-            }
+//            println("New $newCandidatesList[$minAdditionalIdx] = ${newCandidatesList[minAdditionalIdx]}")
             val minAdditionalSensitivity = sensitivitiesLimited[minAdditionalIdx]
             LOG.info("Minimal additional ${si.beforeMerge + minAdditionalIdx}: $minAdditionalSensitivity")
             return minAdditionalSensitivity
         } else {
             LOG.error("Failed to estimate sensitivity, using defaults.")
-            return SPAN_DEFAULT_SENSITIVITY
+            return ln(SPAN_DEFAULT_FDR)
         }
     }
 
@@ -355,9 +353,7 @@ object ModelToPeaks {
         val n = sensitivities.size
         val candidatesLogNs = DoubleArray(n)
         val candidatesLogALs = DoubleArray(n)
-        var sensTable = ""
-        if (LOG.isDebugEnabled)
-            sensTable += "Sensitivity\tGap\tCandidatesN\tCandidatesAL\n"
+//        println("Sensitivity\tGap\tCandidatesN\tCandidatesAL")
         for ((i, s) in sensitivities.withIndex()) {
             val ci = estimateCandidatesNumberLens(
                 genomeQuery, spanFitResults.fitInfo, logNullMembershipsMap, bitList2reuseMap,
@@ -365,11 +361,7 @@ object ModelToPeaks {
             )
             candidatesLogNs[i] = ln1p(ci.n.toDouble())
             candidatesLogALs[i] = ln1p(ci.averageLen)
-            if (LOG.isDebugEnabled)
-            sensTable += "$s\t0\t${ci.n}\t${ci.averageLen}\n"
-        }
-        if (LOG.isDebugEnabled) {
-            LOG.debug("Sensitivity table:\n$sensTable")
+//            println("$s\t0\t${ci.n}\t${ci.averageLen}")
         }
         var maxArea = 0.0
         var i1 = -1
@@ -475,8 +467,9 @@ object ModelToPeaks {
             }
             val logNullMemberships = logNullMembershipsMap[chromosome]
             val bitList2reuse = bitList2reuseMap[chromosome]
-            getChromosomeCandidates(chromosome, logNullMemberships, bitList2reuse, sensitivities[0], 0)
-                .toRangeMergingList()
+            getChromosomeCandidates(
+                chromosome, logNullMemberships, bitList2reuse, sensitivities[0], 0,
+            ).toRangeMergingList()
         }
 
         val totals = IntArray(sensitivities.size)
@@ -492,7 +485,9 @@ object ModelToPeaks {
                 }
                 val logNullMemberships = logNullMembershipsMap[chromosome]
                 val bitList2reuse = bitList2reuseMap[chromosome]
-                getChromosomeCandidates(chromosome, logNullMemberships, bitList2reuse, s, 0).toRangeMergingList()
+                getChromosomeCandidates(
+                    chromosome, logNullMemberships, bitList2reuse, s, 0,
+                ).toRangeMergingList()
             }
             val candidatesSize = genomeQuery.get().sumOf { candidates[it].size }
             val total = candidatesSize
@@ -601,7 +596,7 @@ object ModelToPeaks {
                 val logNullMemberships = logNullMembershipsMap[chromosome]
                 val bitList2reuse = bitList2reuseMap[chromosome]
                 val candidates = getChromosomeCandidates(
-                    chromosome, logNullMemberships, bitList2reuse, sensitivity, gap
+                    chromosome, logNullMemberships, bitList2reuse, sensitivity, gap,
                 )
                 if (candidates.isNotEmpty()) {
                     synchronized(lens) {
@@ -676,7 +671,7 @@ object ModelToPeaks {
             cancellableState?.checkCanceled()
             val logPValue = logPVals[i]
             val logQValue = logQVals[i]
-            if (logPValue > lnFdr || logQValue > lnFdr) {
+            if (logQValue > lnFdr) {
                 return@mapIndexedNotNull null
             }
             var start = offsets[from]
@@ -738,6 +733,7 @@ object ModelToPeaks {
         val treatmentCovs = when {
             readsTreatmentAvailable && fitInfo is SpanAnalyzeFitInformation ->
                 fitInfo.normalizedCoverageQueries?.map { it.treatmentReads.get() } ?: emptyList()
+
             else -> emptyList()
         }
 
@@ -875,50 +871,52 @@ object ModelToPeaks {
         fitInfo: SpanFitInformation,
         avgSignalDensity: Double,
         avgNoiseDensity: Double,
-        clipSignal: Double = SPAN_SIGNAL_CLIP,
-        clipLength: Double = SPAN_LENGTH_CLIP,
+        clipSignal: Double = SPAN_CLIP_MAX_SIGNAL,
+        clipLength: Double = SPAN_CLIP_MAX_LENGTH,
+        clipSteps: DoubleArray = SPAN_CLIP_STEPS,
     ): Pair<Int, Int> {
         if (avgSignalDensity <= avgNoiseDensity) {
             return start to end
         }
         // Additionally, clip peaks by local coverage signal
-        val maxClippedScore = avgNoiseDensity + clipSignal * (avgSignalDensity - avgNoiseDensity)
-        val maxClippedLength = (end - start) * (1 - clipLength) / 2
+        val maxClippedDensity = avgNoiseDensity + clipSignal * (avgSignalDensity - avgNoiseDensity)
+        val maxClippedSideLength = (end - start) * clipLength / 2
+        val bin = fitInfo.binSize
 
         // Try to change the left boundary
-        val maxStart = start + maxClippedLength
+        val maxStart = start + maxClippedSideLength
         var clippedStart = start
-        var step = SPAN_CLIP_STEPS.size - 1
+        var step = clipSteps.size - 1
         while (step >= 0 && clippedStart <= maxStart) {
-            val newStart = clippedStart + SPAN_CLIP_STEPS[step]
+            val newStart = clippedStart + (clipSteps[step] * bin).toInt()
             if (newStart > maxStart) {
                 step -= 1
                 continue
             }
             // Clip while clipped part score is less than average density
-            val clipScore = fitInfo.score(ChromosomeRange(start, newStart, chromosome)) / (newStart - start)
-            if (clipScore < maxClippedScore) {
+            val clippedDensity = fitInfo.score(ChromosomeRange(start, newStart, chromosome)) / (newStart - start)
+            if (clippedDensity < maxClippedDensity) {
                 clippedStart = newStart
-                step = min(step + 1, SPAN_CLIP_STEPS.size - 1)
+                step = min(step + 1, clipSteps.size - 1)
             } else {
                 step -= 1
             }
         }
         // Try to change the right boundary
-        val minEnd = end - maxClippedLength
+        val minEnd = end - maxClippedSideLength
         var clippedEnd = end
-        step = SPAN_CLIP_STEPS.size - 1
+        step = clipSteps.size - 1
         while (step >= 0 && clippedEnd >= minEnd) {
-            val newEnd = clippedEnd - SPAN_CLIP_STEPS[step]
+            val newEnd = clippedEnd - (clipSteps[step] * bin).toInt()
             if (newEnd < minEnd) {
                 step -= 1
                 continue
             }
             // Clip while clipped part score is less than average density
-            val clipScore = fitInfo.score(ChromosomeRange(newEnd, end, chromosome)) / (end - newEnd)
-            if (clipScore < maxClippedScore) {
+            val clippedDensity = fitInfo.score(ChromosomeRange(newEnd, end, chromosome)) / (end - newEnd)
+            if (clippedDensity < maxClippedDensity) {
                 clippedEnd = newEnd
-                step = min(step + 1, SPAN_CLIP_STEPS.size - 1)
+                step = min(step + 1, clipSteps.size - 1)
             } else {
                 step -= 1
             }

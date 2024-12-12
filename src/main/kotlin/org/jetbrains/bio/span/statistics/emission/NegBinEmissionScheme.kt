@@ -37,6 +37,8 @@ class NegBinEmissionScheme(mean: Double, failures: Double) :
 
     val successProbability: Double get() = mean / (mean + failures)
 
+    val variance: Double get() = estimateVariance(mean, failures)
+
     override fun sampler(): IntSupplier {
         val distribution =
             NegativeBinomialDistribution(Sampling.RANDOM_DATA_GENERATOR.randomGenerator, mean, failures)

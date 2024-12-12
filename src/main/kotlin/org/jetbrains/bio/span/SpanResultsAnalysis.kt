@@ -185,13 +185,13 @@ object SpanResultsAnalysis {
                 val minAdditionalSensitivity = sensitivitiesLimited[minAdditionalIdx]
                 logInfo("Minimal additional: $minAdditionalSensitivity", infoWriter)
                 logInfo("Minimal additional index: ${si.beforeMerge + minAdditionalIdx}", infoWriter)
-                // We want to be able to get shorter peaks with stringent fdr values
-                sensitivity2use = min(ln(fdr), minAdditionalSensitivity)
+                sensitivity2use = minAdditionalSensitivity
+//                // We want to be able to get shorter peaks with stringent fdr values
+//                sensitivity2use = (ln(fdr) + minAdditionalSensitivity) / 2
             }
             else -> {
                 LOG.error("Failed to automatically estimate sensitivity")
-                // We want to be able to get shorter peaks with stringent fdr values
-                sensitivity2use = min(ln(fdr), SPAN_DEFAULT_SENSITIVITY)
+                sensitivity2use = ln(fdr)
             }
         }
         logInfo("Sensitivity2use: $sensitivity2use", infoWriter)

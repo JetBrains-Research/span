@@ -1,9 +1,10 @@
 package org.jetbrains.bio.span.statistics.hmm
 
 import org.jetbrains.bio.dataframe.DataFrame
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_NB2ZHMM_PRIORS
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_NB2ZHMM_TRANSITIONS
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_NB_VAR_MEAN_MULTIPLIER
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_HMM_LOW_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_HMM_PRIORS
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_HMM_TRANSITIONS
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_HMM_NB_VAR_MEAN_MULTIPLIER
 import org.jetbrains.bio.span.statistics.emission.NegBinEmissionScheme
 import org.jetbrains.bio.span.statistics.util.NegBinUtil
 import org.jetbrains.bio.statistics.Preprocessed
@@ -11,10 +12,11 @@ import org.jetbrains.bio.statistics.distribution.NegativeBinomialDistribution.Co
 import org.jetbrains.bio.statistics.model.Fitter
 import org.jetbrains.bio.viktor.F64Array
 import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import kotlin.math.max
 
 /**
- * A zero-inflated HMM with univariate Negative Binomial emissions.
+ * A zero-inflated HMM with univariate Negative Binomial emissions and constraints.
  *
  * @author Alexey Dievsky
  * @author Sergei Lebedev
@@ -23,12 +25,13 @@ import kotlin.math.max
  */
 class NB2ZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) :
     FreeNBZHMM(nbMeans, nbFailures,
-        priorProbabilities = SPAN_NB2ZHMM_PRIORS,
-        transitionProbabilities = F64Array.invoke(3, 3) { i, j -> SPAN_NB2ZHMM_TRANSITIONS[i][j] }
+        priorProbabilities = SPAN_HMM_PRIORS,
+        transitionProbabilities = F64Array.invoke(3, 3) { i, j -> SPAN_HMM_TRANSITIONS[i][j] }
     ) {
 
-    // Indicator value to save that model fit was corrected during fitting
+    // Indicator: signal-to-noise ratio is smaller than estimation
     var outOfSignalToNoiseRatioRangeDown: Boolean = false
+    // Indicator: low state mean value is smaller than threshold
     var outOfLowerNoise: Boolean = false
 
     /**
@@ -45,14 +48,15 @@ class NB2ZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) :
             // Need to update transients in case of any change
             var updated = false
 
-            // This check is required for broad marks with low SNR
-            if (lowState.mean < guess.noiseMean) {
-                LOG.warn("Low state mean ${lowState.mean} < ${guess.noiseMean}, fixing...")
+            // This check is required to prevent low state go too close to 0, causing too broad peaks
+            val lowMeanThreshold = guess.lowMean * SPAN_HMM_LOW_THRESHOLD
+            if (lowState.mean < lowMeanThreshold) {
+                LOG.warn("Low state mean ${lowState.mean} < ${lowMeanThreshold}, fixing...")
                 outOfLowerNoise = true
-                lowState.mean = guess.noiseMean
+                lowState.mean = lowMeanThreshold
                 lowState.failures = estimateFailuresUsingMoments(
                     lowState.mean,
-                    max(lowState.mean * SPAN_NB_VAR_MEAN_MULTIPLIER, guess.varsL)
+                    max(lowState.mean * SPAN_HMM_NB_VAR_MEAN_MULTIPLIER, lowState.variance)
                 )
                 updated = true
             }
@@ -65,7 +69,7 @@ class NB2ZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) :
                 highState.mean = lowState.mean * guess.signalToNoise
                 highState.failures = estimateFailuresUsingMoments(
                     highState.mean,
-                    max(highState.mean * SPAN_NB_VAR_MEAN_MULTIPLIER, guess.varsH)
+                    max(highState.mean * SPAN_HMM_NB_VAR_MEAN_MULTIPLIER, highState.variance)
                 )
                 updated = true
             }
@@ -86,7 +90,7 @@ class NB2ZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) :
         // This will be updated during guess step
         lateinit var guess: NegBinUtil.Guess
 
-        private val LOG: Logger = org.slf4j.LoggerFactory.getLogger(NB2ZHMM::class.java)
+        private val LOG: Logger = LoggerFactory.getLogger(NB2ZHMM::class.java)
 
         fun fitter() = object : Fitter<NB2ZHMM> {
             override fun guess(
@@ -103,8 +107,6 @@ class NB2ZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) :
                 maxIterations: Int
             ): NB2ZHMM {
                 guess = guess(preprocessed, 2)
-                LOG.info("Target signal to noise ratio: ${guess.signalToNoise}")
-                LOG.info("Target noise mean: ${guess.noiseMean}")
                 return NB2ZHMM(guess.means, guess.failures)
             }
         }
