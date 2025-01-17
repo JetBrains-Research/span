@@ -198,7 +198,7 @@ PEAKS: $peaksPath
                 }
                 assertIn(
                     "NO peaks path given, process model fitting only.\n" +
-                            "Labels, fdr, sensitivity, gap, noclip options are ignored.", out
+                            "Labels, fdr, sensitivity, gap, clip options are ignored.", out
                 )
                 assertIn(".span: done in ", out)
                 assertIn("Model saved: ", out)
@@ -231,8 +231,10 @@ PEAKS: $peaksPath
                         )
                     )
                 }
-                assertTrue("After fitting the model, emission's parameter p in LOW state" in out)
-                assertTrue("Low quality of data detected after fitting the model." in out)
+                // After better initialization and constraints on the HMM learning process,
+                // we don't expect these post fitting warnings anymore
+                assertFalse("After fitting the model, emission's parameter p in LOW state" in out)
+                assertFalse("Low quality of data detected after fitting the model." in out)
             }
         }
     }

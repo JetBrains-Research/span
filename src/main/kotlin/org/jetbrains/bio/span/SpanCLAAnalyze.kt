@@ -13,7 +13,12 @@ import org.jetbrains.bio.span.SpanCLA.LOG
 import org.jetbrains.bio.span.SpanCLA.checkGenomeInFitInformation
 import org.jetbrains.bio.span.SpanResultsAnalysis.doDeepAnalysis
 import org.jetbrains.bio.span.fit.*
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP_MAX_SIGNAL
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_HMM_LOW_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_HMM_ESTIMATE_SNR
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanConstants.printSpanConstants
 import org.jetbrains.bio.span.fit.experimental.*
 import org.jetbrains.bio.span.peaks.ModelToPeaks
@@ -71,6 +76,43 @@ object SpanCLAAnalyze {
                 .withRequiredArg()
                 .defaultsTo(SpanModelType.NB2Z_HMM.id)
 
+            accepts(
+                "ext", "Save extended states information to model file.\n" +
+                        "Required for model visualization in JBR Genome Browser"
+            )
+
+            accepts(
+                "deep-analysis",
+                "Deep analysis of model including analysis of coverage / candidates / peaks"
+            )
+
+            accepts("hmm-snr",
+                "Fraction of coverage to estimate and guard signal to noise ratio, 0 to disable")
+                .withRequiredArg()
+                .ofType(Double::class.java)
+                .defaultsTo(SPAN_DEFAULT_HMM_ESTIMATE_SNR)
+
+            accepts("hmm-low",
+                "Minimal low state mean threshold, guards against too broad peaks, 0 to disable")
+                .withRequiredArg()
+                .ofType(Double::class.java)
+                .defaultsTo(SPAN_DEFAULT_HMM_LOW_THRESHOLD)
+
+            accepts("fragmentation",
+                "Fragmentation threshold to enable compensation")
+                .availableUnless("gap")
+                .withRequiredArg()
+                .ofType(Double::class.java)
+                .defaultsTo(SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD)
+
+
+            accepts("gap-fragmented",
+                "Additional compensation gap for tracks with high fragmentation")
+                .availableUnless("gap")
+                .withRequiredArg()
+                .ofType(Int::class.java)
+                .defaultsTo(SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP)
+
             // Additional parameter for *_REGRESSION_MIXTURE models
             accepts(
                 "mapability",
@@ -114,9 +156,6 @@ object SpanCLAAnalyze {
                 val fdr = options.valueOf("fdr") as Double
                 require(0 < fdr && fdr < 1) { "Illegal fdr: $fdr, expected range: (0, 1)" }
                 val sensitivity = if (options.has("sensitivity")) options.valueOf("sensitivity") as Double else null
-                require(sensitivity == null || 0 < sensitivity && sensitivity <= 1) {
-                    "Illegal background sensitivity: $sensitivity, expected range: (0, 1]"
-                }
                 val gap = if (options.has("gap")) options.valueOf("gap") as Int else null
                 require(gap == null || gap >= 0) { "Illegal gap: $gap, expected >= 0" }
 
@@ -150,32 +189,47 @@ object SpanCLAAnalyze {
                 val bigWig = options.contains("bigwig")
                 LOG.info("BIGWIG: $bigWig")
 
-                val noclip = options.has("noclip")
-                LOG.info("NOCLIP: $noclip")
-
                 val multipleTesting = if ("multiple" in params)
                     MultipleTesting.valueOf(options.valueOf("multiple") as String)
                 else
                     SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION
                 LOG.info("MULTIPLE TEST CORRECTION: ${multipleTesting.description}")
 
+                val clip = options.valueOf("clip") as Double
+                val fragmentationThreshold  = when {
+                    gap != null -> 0.0
+                    options.has("fragmentation") -> options.valueOf("fragmentation") as Double
+                    else -> SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD
+                }
+
+                val gapFragmentationCompensation = when {
+                    gap != null -> 0
+                    options.has("gap-fragmentation") -> options.valueOf("gap-fragmentation") as Int
+                    else -> SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP
+                }
+
                 if (peaksPath != null) {
                     if (labelsPath != null) {
                         LOG.info("LABELS: $labelsPath")
-                        LOG.info("Fdr, sensitivity, gap, noclip options are ignored.")
+                        LOG.info("Fdr, sensitivity, gap, and other options are ignored.")
                     } else {
                         LOG.info("FDR: $fdr")
                         if (sensitivity != null) {
-                            LOG.info("BACKGROUND SENSITIVITY: $sensitivity")
+                            LOG.info("SENSITIVITY: $sensitivity")
                         }
                         if (gap != null) {
                             LOG.info("GAP: $gap")
                         }
                     }
+                    if (gap == null) {
+                        LOG.info("FRAGMENTATION THRESHOLD: $fragmentationThreshold")
+                        LOG.info("GAP FRAGMENTATION: $gapFragmentationCompensation")
+                    }
+                    LOG.info("CLIP: $clip")
                     LOG.info("PEAKS: $peaksPath")
                 } else {
                     LOG.info("NO peaks path given, process model fitting only.")
-                    LOG.info("Labels, fdr, sensitivity, gap, noclip options are ignored.")
+                    LOG.info("Labels, fdr, sensitivity, gap, clip options are ignored.")
                 }
 
                 val threads = options.valueOf("threads") as Int? ?: Runtime.getRuntime().availableProcessors()
@@ -228,7 +282,9 @@ object SpanCLAAnalyze {
                         ModelToPeaks.getPeaks(
                             spanResults, genomeQuery, fdr, multipleTesting,
                             sensitivity, gap,
-                            clip = !noclip, blackListPath = blackListPath
+                            fragmentationThreshold, gapFragmentationCompensation,
+                            clip = clip,
+                            blackListPath = blackListPath
                         )
                     else
                         tune(spanResults, genomeQuery, labelsPath, peaksPath, blackListPath)
@@ -259,8 +315,9 @@ object SpanCLAAnalyze {
                             fitInfo,
                             genomeQuery,
                             fdr,
-                            sensitivity,
-                            gap,
+                            sensitivity, gap,
+                            fragmentationThreshold,
+                            gapFragmentationCompensation,
                             blackListPath,
                             peaksList,
                             peaksPath
@@ -329,6 +386,9 @@ object SpanCLAAnalyze {
         return ModelToPeaks.getPeaks(
             spanResults, genomeQuery, optimalFDR, SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION,
             optimalSensitivity, optimalGap,
+            SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD,
+            SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP,
+            SPAN_DEFAULT_CLIP_MAX_SIGNAL,
             blackListPath = blackListPath
         )
     }
@@ -440,8 +500,8 @@ object SpanCLAAnalyze {
             val bin = SpanCLA.getBin(options, log = true)
             val fragment = SpanCLA.getFragment(options, log = true)
             val unique = SpanCLA.getUnique(options, log = true)
-            val threshold = SpanCLA.getThreshold(options, log = true)
-            val maxIterations = SpanCLA.getMaxIter(options, log = true)
+            val fitThreshold = SpanCLA.getFitThreshold(options, log = true)
+            val fitMaxIterations = SpanCLA.getFitMaxIteration(options, log = true)
             val mapabilityPath: Path?
             val modelType: SpanModelType = getModelType(options, modelPath)
             mapabilityPath = if (
@@ -452,6 +512,10 @@ object SpanCLAAnalyze {
             } else {
                 null
             }
+            val hmmEstimateSNR = options.valueOf("hmm-snr") as Double
+            LOG.info("HMM ESTIMATE SNR: $hmmEstimateSNR")
+            val hmmLow = options.valueOf("hmm-low") as Double
+            LOG.info("HMM LOW STATE MIN: $hmmLow")
             val saveExtendedInfo = options.has("ext")
             LOG.info("EXTENDED MODEL INFO: $saveExtendedInfo")
             val keepCacheFiles = "keep-cache" in options
@@ -462,8 +526,10 @@ object SpanCLAAnalyze {
                 else
                     GenomeQuery(Genome[chromSizesPath!!])
                 val experiment = getExperimentByModelType(
-                    modelType, genomeQuery, paths, unique, fragment, bin,
-                    threshold, maxIterations,
+                    modelType,
+                    genomeQuery, paths, unique, fragment, bin,
+                    hmmEstimateSNR, hmmLow,
+                    fitThreshold, fitMaxIterations,
                     modelPath, saveExtendedInfo, keepCacheFiles,
                     mapabilityPath
                 )
@@ -479,8 +545,10 @@ object SpanCLAAnalyze {
         unique: Boolean,
         fragment: Fragment,
         bin: Int,
-        threshold: Double,
-        maxIterations: Int,
+        hmmEstimateSNR: Double,
+        hmmLow: Double,
+        fitThreshold: Double,
+        fitMaxIterations: Int,
         modelPath: Path?,
         saveExtendedInfo: Boolean,
         keepCacheFiles: Boolean,
@@ -489,51 +557,51 @@ object SpanCLAAnalyze {
         val experiment = when (modelType) {
             SpanModelType.NB2Z_HMM ->
                 SpanPeakCallingExperiment.getExperiment(
-                    genomeQuery, paths, bin, fragment, unique, modelPath,
-                    threshold, maxIterations, saveExtendedInfo, keepCacheFiles
+                    genomeQuery, paths, bin, fragment, unique, hmmEstimateSNR, hmmLow,
+                    modelPath, fitThreshold, fitMaxIterations, saveExtendedInfo, keepCacheFiles
                 )
 
             SpanModelType.NB2Z_MIXTURE ->
                 SpanPeakCallingExperimentNB2ZMixture.getExperiment(
                     genomeQuery, paths, fragment, bin, unique, modelPath,
-                    threshold, maxIterations, saveExtendedInfo, keepCacheFiles
+                    fitThreshold, fitMaxIterations, saveExtendedInfo, keepCacheFiles
                 )
 
             SpanModelType.NB2_HMM ->
                 SpanPeakCallingExperimentNB2HMM.getExperiment(
                     genomeQuery, paths, bin, fragment, unique, modelPath,
-                    threshold, maxIterations, saveExtendedInfo, keepCacheFiles
+                    fitThreshold, fitMaxIterations, saveExtendedInfo, keepCacheFiles
                 )
 
             SpanModelType.NB3Z_HMM ->
                 SpanPeakCallingExperimentNB3ZHMM.getExperiment(
                     genomeQuery, paths, bin, fragment, unique, modelPath,
-                    threshold, maxIterations, saveExtendedInfo, keepCacheFiles
+                    fitThreshold, fitMaxIterations, saveExtendedInfo, keepCacheFiles
                 )
 
             SpanModelType.NB5Z_HMM ->
                 SpanPeakCallingExperimentNB5ZHMM.getExperiment(
                     genomeQuery, paths, bin, fragment, unique, modelPath,
-                    threshold, maxIterations, saveExtendedInfo, keepCacheFiles
+                    fitThreshold, fitMaxIterations, saveExtendedInfo, keepCacheFiles
                 )
 
             SpanModelType.NB3_HMM ->
                 SpanPeakCallingExperimentNB3HMM.getExperiment(
                     genomeQuery, paths, bin, fragment, unique, modelPath,
-                    threshold, maxIterations, saveExtendedInfo, keepCacheFiles
+                    fitThreshold, fitMaxIterations, saveExtendedInfo, keepCacheFiles
                 )
 
             SpanModelType.POISSON_REGRESSION_MIXTURE -> {
                 SpanPeakCallingExperimentP2ZRegrMixture.getExperiment(
                     genomeQuery, paths, mapabilityPath, fragment, bin, unique, modelPath,
-                    threshold, maxIterations, saveExtendedInfo, keepCacheFiles
+                    fitThreshold, fitMaxIterations, saveExtendedInfo, keepCacheFiles
                 )
             }
 
             SpanModelType.NEGBIN_REGRESSION_MIXTURE -> {
                 SpanPeakCallingExperimentNB2ZRegrMixture.getExperiment(
                     genomeQuery, paths, mapabilityPath, fragment, bin, unique, modelPath,
-                    threshold, maxIterations, saveExtendedInfo, keepCacheFiles
+                    fitThreshold, fitMaxIterations, saveExtendedInfo, keepCacheFiles
                 )
             }
         }

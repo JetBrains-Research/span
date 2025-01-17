@@ -14,16 +14,14 @@ import org.jetbrains.bio.genome.containers.toRangeMergingList
 import org.jetbrains.bio.genome.coverage.Coverage
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_AUTOCORRELATION_MAX_SHIFT
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_BROAD_AC_MIN_THRESHOLD
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_BROAD_EXTRA_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_CLIP_MAX_LENGTH
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_CLIP_MAX_SIGNAL
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP_MAX_SIGNAL
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_CLIP_STEPS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTATION_MAX_GAP
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTED_EXTRA_GAP
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTED_MAX_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_MIN_SENSITIVITY
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SCORE_BLOCKS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SCORE_BLOCKS_GAP
@@ -70,7 +68,9 @@ object ModelToPeaks {
         multipleTesting: MultipleTesting,
         sensitivityCmdArg: Double?,
         gapCmdArg: Int?,
-        clip: Boolean = true,
+        fragmentationThreshold: Double,
+        gapFragmentationCompensation: Int,
+        clip: Double,
         blackListPath: Path? = null,
         parallel: Boolean = true,
         cancellableState: CancellableState? = null,
@@ -127,10 +127,10 @@ object ModelToPeaks {
                     sensitivity2use, it
                 ).n
             }
-            val avgFragmentationScore = candidateGapNs.sumOf { it.toDouble() / candidateGapNs[0] }
+            val avgFragmentationScore = candidateGapNs.map { it.toDouble() / candidateGapNs[0] }.average()
             LOG.info("Average fragmentation score: $avgFragmentationScore")
 
-            estimateGap(avgAutoCorrelation, avgFragmentationScore)
+            estimateGap(avgFragmentationScore, fragmentationThreshold, gapFragmentationCompensation)
         }
         LOG.info("Candidates selection with gap: $gap2use")
 
@@ -161,7 +161,7 @@ object ModelToPeaks {
         }
 
         // Estimate signal and noise average signal by candidates
-        val canEstimateSignalToNoise = clip && fitInfo is SpanAnalyzeFitInformation &&
+        val canEstimateSignalToNoise = clip > 0 && fitInfo is SpanAnalyzeFitInformation &&
                 fitInfo.normalizedCoverageQueries?.all { it.areCachesPresent() } ?: false
 
         val (avgSignalDensity, avgNoiseDensity) = if (canEstimateSignalToNoise)
@@ -215,7 +215,7 @@ object ModelToPeaks {
                 chromosome, candidates, fitInfo, offsets,
                 logPVals, logQVals,
                 fdr, blackList,
-                avgSignalDensity, avgNoiseDensity,
+                avgSignalDensity, avgNoiseDensity, clip,
                 cancellableState = cancellableState
             )
         }
@@ -255,26 +255,22 @@ object ModelToPeaks {
     }
 
     fun estimateGap(
-        avgAutocorrelation: Double,
-        avgFragmentation: Double
+        avgFragmentation: Double,
+        fragmentationThreshold: Double = SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD,
+        gapFragmentationCompensation: Int = SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP,
     ): Int {
         LOG.debug("Estimating gap...")
-        var extraGap = 0
-        if (avgAutocorrelation > SPAN_BROAD_AC_MIN_THRESHOLD) {
+        var gap = SPAN_DEFAULT_GAP
+        if (avgFragmentation < fragmentationThreshold) {
+            val fragmentationGap =
+                ceil((fragmentationThreshold - avgFragmentation) /
+                        fragmentationThreshold * gapFragmentationCompensation).toInt()
             LOG.info(
-                "Autocorrelation $avgAutocorrelation > $SPAN_BROAD_AC_MIN_THRESHOLD, " +
-                        "adding +$SPAN_BROAD_EXTRA_GAP"
+                "Fragmentation $avgFragmentation < $fragmentationThreshold, adding +$fragmentationGap"
             )
-            extraGap += SPAN_BROAD_EXTRA_GAP
+            gap += fragmentationGap
         }
-        if (avgFragmentation < SPAN_FRAGMENTED_MAX_THRESHOLD) {
-            LOG.info(
-                "Fragmentation $avgFragmentation < $SPAN_FRAGMENTED_MAX_THRESHOLD, " +
-                        "adding +$SPAN_FRAGMENTED_EXTRA_GAP"
-            )
-            extraGap += SPAN_FRAGMENTED_EXTRA_GAP
-        }
-        return SPAN_DEFAULT_GAP + extraGap
+        return gap
     }
 
 
@@ -655,6 +651,7 @@ object ModelToPeaks {
         blackList: LocationsMergingList?,
         avgSignalDensity: Double?,
         avgNoiseDensity: Double?,
+        clip: Double,
         cancellableState: CancellableState?
     ): List<Peak> {
         // Compute candidate bins and peaks with relaxed background settings
@@ -671,7 +668,7 @@ object ModelToPeaks {
             cancellableState?.checkCanceled()
             val logPValue = logPVals[i]
             val logQValue = logQVals[i]
-            if (logQValue > lnFdr) {
+            if (logPValue > lnFdr || logQValue > lnFdr) {
                 return@mapIndexedNotNull null
             }
             var start = offsets[from]
@@ -681,7 +678,7 @@ object ModelToPeaks {
             }
             if (canEstimateScore && avgSignalDensity != null && avgNoiseDensity != null) {
                 val (cs, ce) = clipPeakByScore(
-                    chromosome, start, end, fitInfo, avgSignalDensity, avgNoiseDensity
+                    chromosome, start, end, fitInfo, avgSignalDensity, avgNoiseDensity, clipSignal = clip,
                 )
                 start = cs
                 end = ce
@@ -871,7 +868,7 @@ object ModelToPeaks {
         fitInfo: SpanFitInformation,
         avgSignalDensity: Double,
         avgNoiseDensity: Double,
-        clipSignal: Double = SPAN_CLIP_MAX_SIGNAL,
+        clipSignal: Double = SPAN_DEFAULT_CLIP_MAX_SIGNAL,
         clipLength: Double = SPAN_CLIP_MAX_LENGTH,
         clipSteps: DoubleArray = SPAN_CLIP_STEPS,
     ): Pair<Int, Int> {

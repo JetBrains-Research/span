@@ -5,6 +5,8 @@ import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FIT_MAX_ITERATIONS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FIT_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_HMM_ESTIMATE_SNR
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_HMM_LOW_THRESHOLD
 import org.jetbrains.bio.span.statistics.hmm.ConstrainedNBZHMM
 import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
@@ -38,8 +40,9 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
     saveExtendedInfo: Boolean,
     keepCacheFiles: Boolean
 ) : SpanModelFitExperiment<Model, SpanAnalyzeFitInformation, ZLH>(
-    fitInformation, modelFitter, modelClass, ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L), threshold,
-    maxIterations, fixedModelPath, saveExtendedInfo, keepCacheFiles
+    fitInformation, modelFitter, modelClass, ZLH.values(), NullHypothesis.of(ZLH.Z, ZLH.L),
+    threshold, maxIterations,
+    fixedModelPath, saveExtendedInfo, keepCacheFiles
 ) {
 
     override val defaultModelPath: Path =
@@ -65,6 +68,8 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
             bin: Int,
             fragment: Fragment = AutoFragment,
             unique: Boolean = true,
+            hmmEstimateSNR: Double = SPAN_DEFAULT_HMM_ESTIMATE_SNR,
+            hmmLow: Double = SPAN_DEFAULT_HMM_LOW_THRESHOLD,
             fixedModelPath: Path? = null,
             threshold: Double = SPAN_DEFAULT_FIT_THRESHOLD,
             maxIterations: Int = SPAN_DEFAULT_FIT_MAX_ITERATIONS,
@@ -79,11 +84,10 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
             return if (paths.size == 1) {
                 SpanPeakCallingExperiment(
                     fitInformation,
-                    NB2ZHMM.fitter(),
+                    NB2ZHMM.fitter(hmmEstimateSNR, hmmLow),
                     NB2ZHMM::class.java,
                     fixedModelPath,
-                    threshold,
-                    maxIterations,
+                    threshold, maxIterations,
                     saveExtendedInfo,
                     keepCacheFiles
                 )
@@ -93,8 +97,7 @@ class SpanPeakCallingExperiment<Model : ClassificationModel> private constructor
                     ConstrainedNBZHMM.fitter(paths.size),
                     ConstrainedNBZHMM::class.java,
                     fixedModelPath,
-                    threshold,
-                    maxIterations,
+                    threshold, maxIterations,
                     saveExtendedInfo,
                     keepCacheFiles
                 )

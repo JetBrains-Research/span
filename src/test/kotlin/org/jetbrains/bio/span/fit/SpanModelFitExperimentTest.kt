@@ -6,6 +6,9 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP_MAX_SIGNAL
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_SENSITIVITY
@@ -79,10 +82,13 @@ class SpanModelFitExperimentTest {
                 ModelToPeaks.getPeaks(
                     peakCallingExperiment.results, fullGenomeQuery,
                     fdr = 0.05,
+                    multipleTesting = SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION,
                     sensitivityCmdArg = SPAN_DEFAULT_SENSITIVITY,
                     gapCmdArg = SPAN_DEFAULT_GAP,
-                    cancellableState = null,
-                    multipleTesting = SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION
+                    fragmentationThreshold = SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD,
+                    gapFragmentationCompensation = SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP,
+                    clip = SPAN_DEFAULT_CLIP_MAX_SIGNAL,
+                    cancellableState = null
                 )
                     .toList()
                     .isNotEmpty(),

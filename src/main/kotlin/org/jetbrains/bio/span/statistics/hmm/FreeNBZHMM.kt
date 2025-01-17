@@ -3,8 +3,6 @@ package org.jetbrains.bio.span.statistics.hmm
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.span.fit.experimental.FreeNBHMM
 import org.jetbrains.bio.span.statistics.emission.NegBinEmissionScheme
-import org.jetbrains.bio.span.statistics.util.NegBinUtil
-import org.jetbrains.bio.span.statistics.util.NegBinUtil.guessByData
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.emission.ConstantIntegerEmissionScheme
 import org.jetbrains.bio.statistics.emission.IntegerEmissionScheme
@@ -76,13 +74,13 @@ open class FreeNBZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray,
         @JvmField
         val VERSION: Int = 1
 
-        fun guess(preprocessed: List<Preprocessed<DataFrame>>, n: Int): NegBinUtil.Guess {
+        fun positiveCoverage(preprocessed: List<Preprocessed<DataFrame>>): IntArray {
             // Filter out 0s, since they are covered by dedicated ZERO state
-            val emissions = preprocessed.flatMap {
+            val result = preprocessed.flatMap {
                 it.get().let { df -> df.sliceAsInt(df.labels.first()).toList() }
             }.filter { it != 0 }.toIntArray()
-            check(emissions.isNotEmpty()) { "Model can't be trained on empty coverage, exiting." }
-            return guessByData(emissions, n)
+            check(result.isNotEmpty()) { "Model can't be trained on empty coverage, exiting." }
+            return result
         }
 
     }

@@ -9,6 +9,14 @@ import kotlin.math.ln
 /**
  * Constants used in SPAN.
  * Those, configurable from command line interface, have "DEFAULT" in their names.
+ *
+ * SPAN_DEFAULT_HMM_ESTIMATE_SNR and SPAN_DEFAULT_HMM_LOW_THRESHOLD
+ * were configured using GSE26320 HSMM rep1,2 H3K36me3; HepG2 rep2 H3K27ac and
+ * https://artyomovlab.wustl.edu/aging/ H3K27ac OD9, YD11 replicates
+ *
+ * SPAN_BROAD_EXTRA_GAP, SPAN_FRAGMENTATION_EXTRA_GAP were estimated empirically
+ * from `--deep-analysis` SPAN results on GSE26320 and RoadmapEpigenomics
+ * after analysing autocorrelation_average_score vs fragmentation_average_score
  */
 object SpanConstants {
     /**
@@ -39,13 +47,16 @@ object SpanConstants {
     const val SPAN_FRAGMENTATION_MAX_GAP = 50
 
     // Technical minimal coefficient between variance and mean of Negative Binomials
-    const val SPAN_HMM_NB_VAR_MEAN_MULTIPLIER = 1.1
+    const val SPAN_HMM_NB_VAR_MEAN_MULTIPLIER = 1.001
 
-    // Fraction scores used for HMM signal estimation, guards for good signal-to-noise ratio
-    const val SPAN_HMM_SIGNAL_ESTIMATE = 0.05
+    // Fraction scores used for HMM signal, noise and ratio estimation, guards decent SNR in model
+    const val SPAN_DEFAULT_HMM_ESTIMATE_SNR = 0.1
 
-    // Minimal low state mean threshold, guards against over-peak calling and too broad peaks
-    const val SPAN_HMM_LOW_THRESHOLD = 0.3
+    // Fraction scores used for HMM noise estimation
+    const val SPAN_HMM_ESTIMATE_LOW = 0.5
+
+    // Minimal low state mean threshold, guards against too broad peaks
+    const val SPAN_DEFAULT_HMM_LOW_THRESHOLD = 0.3
 
     // Technical threshold to limit mean to std, guards against artificial data without noise
     const val SPAN_HMM_MAX_MEAN_TO_STD = 5.0
@@ -93,24 +104,19 @@ object SpanConstants {
 
     val SPAN_DEFAULT_SENSITIVITY = ln(SPAN_DEFAULT_FDR)
 
-    /**
-     * Gap value is computed from model bins autocorrelation and fragmentation
-     * These thresholds were estimated empirically from `--deep-analysis` SPAN output
-     * after analysing autocorrelation_average_score vs fragmentation_average_score
-     */
+    // Additional gap for tracks with high autocorrelation to compensate
+    const val SPAN_DEFAULT_BROAD_EXTRA_GAP = 0  // x default bin 100bp
 
-    const val SPAN_BROAD_AC_MIN_THRESHOLD = 0.5
+    // Don't compensate for fragmentation when exceeding threshold
+    const val SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD = 0.8
 
-    const val SPAN_BROAD_EXTRA_GAP = 10  // x default bin 100bp
-
-    const val SPAN_FRAGMENTED_MAX_THRESHOLD = 30
-
-    const val SPAN_FRAGMENTED_EXTRA_GAP = 20  // x default bin 100bp
+    // Additional compensation gap for tracks with high fragmentation
+    const val SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP = 50  // x default bin 100bp
 
     /**
      * Clipping allows to fine-tune boundaries of point-wise peaks according to the local signal.
      */
-    const val SPAN_CLIP_MAX_SIGNAL = 0.5
+    const val SPAN_DEFAULT_CLIP_MAX_SIGNAL = 0.4
 
     const val SPAN_CLIP_MAX_LENGTH = 0.8
 

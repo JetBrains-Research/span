@@ -35,6 +35,7 @@ class NegBinEmissionScheme(mean: Double, failures: Double) :
         updateTransients()
     }
 
+    // p
     val successProbability: Double get() = mean / (mean + failures)
 
     val variance: Double get() = estimateVariance(mean, failures)

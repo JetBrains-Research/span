@@ -8,6 +8,7 @@ import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
 import org.jetbrains.bio.span.fit.AbstractSpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP_MAX_SIGNAL
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FIT_MAX_ITERATIONS
@@ -131,18 +132,18 @@ compare                         Differential peak calling
                     """.trimIndent()
             ).withRequiredArg()
 
-            accepts(
-                "ext", "Save extended states information to model file.\n" +
-                        "Required for model visualization in JBR Genome Browser"
-            )
-            accepts(
-                "deep-analysis", "Deep analysis of model includes roughness / sensitivity / peaks by sensitivity"
-            )
+            accepts("clip",
+                "Clip max threshold for fine-tune boundaries of according to the local signal, 0 to disable")
+                .withRequiredArg()
+                .ofType(Double::class.java)
+                .defaultsTo(SPAN_DEFAULT_CLIP_MAX_SIGNAL)
+
             acceptsAll(
                 listOf("p", "peaks"),
                 "Resulting peaks file in ENCODE broadPeak (BED 6+3) format.\n" +
                         "If omitted, only the model fitting step is performed"
             ).withRequiredArg().withValuesConvertedBy(PathConverter.noCheck())
+
             acceptsAll(
                 listOf("fragment"),
                 """
@@ -268,14 +269,14 @@ compare                         Differential peak calling
         "bin size", "BIN", log
     )
 
-    internal fun getThreshold(
+    internal fun getFitThreshold(
         options: OptionSet, log: Boolean = false
     ) = getProperty(
         options.valueOf("threshold") as Double?, null, SPAN_DEFAULT_FIT_THRESHOLD,
         "convergence threshold", "CONVERGENCE THRESHOLD", log
     )
 
-    internal fun getMaxIter(
+    internal fun getFitMaxIteration(
         options: OptionSet, log: Boolean = false
     ) = getProperty(
         options.valueOf("iterations") as Int?, null, SPAN_DEFAULT_FIT_MAX_ITERATIONS,

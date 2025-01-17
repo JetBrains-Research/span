@@ -8,6 +8,7 @@ import org.jetbrains.bio.span.fit.*
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FIT_MAX_ITERATIONS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FIT_THRESHOLD
 import org.jetbrains.bio.span.statistics.hmm.FreeNBZHMM
+import org.jetbrains.bio.span.statistics.util.NegBinUtil.guessByData
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.model.ClassificationModel
@@ -107,7 +108,7 @@ class NB5ZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) : FreeNBZHMM(nbMean
                 threshold: Double,
                 maxIterations: Int
             ): NB5ZHMM {
-                val guess = guess(preprocessed, 5)
+                val guess = guessByData(positiveCoverage(preprocessed), 5)
                 return NB5ZHMM(guess.means, guess.failures)
             }
         }

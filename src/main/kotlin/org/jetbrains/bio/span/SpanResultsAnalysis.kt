@@ -10,7 +10,6 @@ import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.Coverage
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_SENSITIVITY
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTATION_MAX_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_MIN_SENSITIVITY
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SENSITIVITY_N
@@ -29,7 +28,6 @@ import org.jetbrains.bio.span.peaks.ModelToPeaks.linSpace
 import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.span.semisupervised.SpanSemiSupervised.SPAN_GAPS_VARIANTS
 import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
-import org.jetbrains.bio.statistics.hypothesis.Fdr
 import org.jetbrains.bio.util.await
 import org.jetbrains.bio.util.deleteIfExists
 import org.jetbrains.bio.util.toPath
@@ -55,6 +53,8 @@ object SpanResultsAnalysis {
         fdr: Double,
         sensitivityCmdArg: Double?,
         gapCmdArg: Int?,
+        fragmentationThreshold: Double,
+        gapFragmentationCompensation: Int,
         blackListPath: Path?,
         peaksList: List<Peak>,
         peaksPath: Path?
@@ -127,11 +127,11 @@ object SpanResultsAnalysis {
         logInfo("LogNullPVals mean: ${logNullPvals.average()}", infoWriter)
         logInfo("LogNullPVals std: ${logNullPvals.standardDeviation()}", infoWriter)
 
-        LOG.info("Analysing tracks roughness...")
-        val roughness = computeAverageRoughness(
+        LOG.info("Analysing tracks variance...")
+        val normVariance = computeAverageVariance(
             genomeQuery, treatmentCoverage, controlCoverage, controlScale, beta, blackList
         )
-        logInfo("Track roughness: ${"%.3f".format(roughness)}", infoWriter)
+        logInfo("Track normalized variance: ${"%.3f".format(normVariance)}", infoWriter)
 
         // Collect candidates from model
         val logNullMembershipsMap = genomeMap(genomeQuery, parallel = true) { chromosome ->
@@ -203,13 +203,13 @@ object SpanResultsAnalysis {
                 sensitivity2use, it
             ).n
         }
-        val avgFragmentationScore = candidateGapNs.sumOf { it.toDouble() / candidateGapNs[0] }
+        val avgFragmentationScore = candidateGapNs.map { it.toDouble() / candidateGapNs[0] }.average()
         logInfo("Average fragmentation score: $avgFragmentationScore", infoWriter)
 
         val gap2use = if (gapCmdArg != null) {
             gapCmdArg
         } else {
-            estimateGap(avgAutoCorrelation, avgFragmentationScore)
+            estimateGap(avgFragmentationScore, fragmentationThreshold, gapFragmentationCompensation)
         }
 
         logInfo("Gap2use: $gap2use", infoWriter)
@@ -464,10 +464,10 @@ object SpanResultsAnalysis {
     val RESOLUTION = 100
 
     /**
-     * Detects roughness of the coverage.
+     * Detects normalized variance as average std / mean for candidates 
      */
 
-    private fun computeAverageRoughness(
+    private fun computeAverageVariance(
         genomeQuery: GenomeQuery,
         treatmentCoverage: Coverage,
         controlCoverage: Coverage?,
@@ -487,13 +487,13 @@ object SpanResultsAnalysis {
             .take(3)
             .map { it.name }.toTypedArray()
         val limitedQuery = GenomeQuery(genomeQuery.genome, *chrs)
-        val genome_regions = limitedQuery.get().sumOf { floor(it.length.toDouble() / region_len).toLong() }
-        check(top_regions < genome_regions) {
-            "Too many top regions $top_regions > $genome_regions"
+        val genomeRegions = limitedQuery.get().sumOf { floor(it.length.toDouble() / region_len).toLong() }
+        check(top_regions < genomeRegions) {
+            "Too many top regions $top_regions > $genomeRegions"
         }
 
         val comparator = Comparator<Triple<Chromosome, Int, Double>> { o1, o2 -> o2.third.compareTo(o1.third) }
-        val region_coverages: MinMaxPriorityQueue<Triple<Chromosome, Int, Double>> =
+        val regionCoverages: MinMaxPriorityQueue<Triple<Chromosome, Int, Double>> =
             MinMaxPriorityQueue
                 .orderedBy(comparator)
                 .maximumSize(top_regions)
@@ -514,28 +514,28 @@ object SpanResultsAnalysis {
                     chr, start, end,
                     treatmentCoverage, controlCoverage, controlScale, beta
                 )
-                region_coverages.add(Triple(chr, i, c))
+                regionCoverages.add(Triple(chr, i, c))
             }
         }
         if (blackList != null) {
             LOG.debug("Marked {} / {} blacklisted regions", blackListIgnored, regions)
         }
 
-        val region_coverages_array = region_coverages.toTypedArray()
-        region_coverages_array.sortWith(comparator)
+        val regionCoveragesArray = regionCoverages.toTypedArray()
+        regionCoveragesArray.sortWith(comparator)
 
-        val step = if (region_coverages_array.size > work_regions) {
+        val step = if (regionCoveragesArray.size > work_regions) {
             LOG.debug("Pick $work_regions / $top_regions uniform regions for computation speedup")
-            ceil(region_coverages_array.size.toDouble() / work_regions).toInt()
+            ceil(regionCoveragesArray.size.toDouble() / work_regions).toInt()
         } else
             1
 
-        val std_means = DoubleArray(work_regions)
-        for (i in region_coverages_array.indices) {
+        val stdMeans = DoubleArray(work_regions)
+        for (i in regionCoveragesArray.indices) {
             if (i % step != 0) {
                 continue
             }
-            val (chr, start, _) = region_coverages_array[i]
+            val (chr, start, _) = regionCoveragesArray[i]
             val stats = DoubleArray(region_len / resolution) {
                 coverage(
                     chr, start + it * resolution, start + (it + 1) * resolution,
@@ -544,9 +544,9 @@ object SpanResultsAnalysis {
             }
             val mean = stats.average()
             val std = stats.standardDeviation()
-            std_means[i / step] = if (mean > 0) std / mean else 0.0
+            stdMeans[i / step] = if (mean > 0) std / mean else 0.0
         }
-        return std_means.average()
+        return stdMeans.average()
     }
 
 

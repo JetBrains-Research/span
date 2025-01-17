@@ -2,7 +2,8 @@ package org.jetbrains.bio.span.statistics.mixture
 
 import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.span.statistics.emission.NegBinEmissionScheme
-import org.jetbrains.bio.span.statistics.hmm.FreeNBZHMM
+import org.jetbrains.bio.span.statistics.hmm.FreeNBZHMM.Companion.positiveCoverage
+import org.jetbrains.bio.span.statistics.util.NegBinUtil.guessByData
 import org.jetbrains.bio.statistics.Preprocessed
 import org.jetbrains.bio.statistics.emission.ConstantIntegerEmissionScheme
 import org.jetbrains.bio.statistics.emission.IntegerEmissionScheme
@@ -90,7 +91,7 @@ class NB2ZMixture(
                 threshold: Double,
                 maxIterations: Int
             ): NB2ZMixture {
-                val (means, failures) = FreeNBZHMM.guess(preprocessed, 2)
+                val (means, failures) = guessByData(positiveCoverage(preprocessed), 2)
                 return NB2ZMixture(
                     means, failures,
                     doubleArrayOf(1 / 3.0, 1 / 3.0, 1 / 3.0).asF64Array()

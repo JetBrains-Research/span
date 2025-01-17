@@ -7,6 +7,9 @@ import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.span.SpanCLA.LOG
 import org.jetbrains.bio.span.fit.*
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP_MAX_SIGNAL
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION
 import org.jetbrains.bio.span.fit.SpanConstants.printSpanConstants
 import org.jetbrains.bio.span.peaks.ModelToPeaks
@@ -92,9 +95,6 @@ object SpanCLACompare {
                 val fdr = options.valueOf("fdr") as Double
                 require(0 < fdr && fdr < 1) { "Illegal fdr: $fdr, expected range: (0, 1)" }
                 val sensitivity = if (options.has("sensitivity")) options.valueOf("sensitivity") as Double else null
-                require(sensitivity == null || 0 < sensitivity && sensitivity <= 1) {
-                    "Illegal background sensitivity: $sensitivity, expected range: (0, 1]"
-                }
                 val gap = if (options.has("gap")) options.valueOf("gap") as Int else null
                 require(gap == null || gap >= 0) { "Illegal gap: $gap, expected >= 0" }
 
@@ -119,15 +119,17 @@ object SpanCLACompare {
                 // Call now to preserve correct params logging
                 val lazyDifferentialPeakCallingResults = differentialPeakCallingResults(options)
 
-                LOG.info("FDR: $fdr")
-                LOG.info("BACKGROUND SENSITIVITY: $sensitivity")
-                LOG.info("GAP: $gap")
+                val clip = if (options.has("clip")) options.valueOf("clip") as Double else SPAN_DEFAULT_CLIP_MAX_SIGNAL
 
                 if (peaksPath != null) {
+                    LOG.info("FDR: $fdr")
+                    LOG.info("SENSITIVITY: $sensitivity")
+                    LOG.info("GAP: $gap")
+                    LOG.info("CLIP: $clip")
                     LOG.info("PEAKS: $peaksPath")
                 } else {
                     LOG.info("NO peaks path given, process model fitting only.")
-                    LOG.info("Labels, fdr, sensitivity, gap, noclip options are ignored.")
+                    LOG.info("Labels, fdr, sensitivity, gap, clip options are ignored.")
                 }
 
                 val threads = options.valueOf("threads") as Int? ?: Runtime.getRuntime().availableProcessors()
@@ -148,9 +150,6 @@ object SpanCLACompare {
                 val differentialPeakCallingResults = lazyDifferentialPeakCallingResults.value
                 val genomeQuery = differentialPeakCallingResults.fitInfo.genomeQuery()
 
-                val noclip = options.has("noclip")
-                LOG.info("NOCLIP: $noclip")
-
                 val multipleTesting = if ("multiple" in params)
                     MultipleTesting.valueOf(options.valueOf("multiple") as String)
                 else
@@ -165,7 +164,10 @@ object SpanCLACompare {
                         genomeQuery,
                         fdr, multipleTesting,
                         sensitivity, gap,
-                        clip = !noclip, blackListPath = blackListPath
+                        SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD,
+                        SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP,
+                        clip = clip,
+                        blackListPath = blackListPath
                     )
                     LOG.info("Format chromosome, start, end, name, score, strand, foldchange, -log(p), -log(q)")
                     Peak.savePeaks(peaks.toList(), peaksPath, "diff_${id}.peak")
@@ -230,12 +232,12 @@ object SpanCLACompare {
         val bin = SpanCLA.getBin(options, log = true)
         val fragment = SpanCLA.getFragment(options, log = true)
         val unique = SpanCLA.getUnique(options, log = true)
-        val maxIterations = SpanCLA.getMaxIter(options, log = true)
-        val threshold = SpanCLA.getThreshold(options, log = true)
+        val fitThreshold = SpanCLA.getFitThreshold(options, log = true)
+        val fitMaxIterations = SpanCLA.getFitMaxIteration(options, log = true)
         return lazy {
             val experiment = SpanDifferentialPeakCallingExperiment.getExperiment(
                 genomeQuery, data1, data2, bin, fragment, unique,
-                threshold, maxIterations
+                fitThreshold, fitMaxIterations
             )
             experiment.results
         }

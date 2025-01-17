@@ -3,8 +3,10 @@ package org.jetbrains.bio.span.semisupervised
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.LocationsMergingList
 import org.jetbrains.bio.span.fit.SpanConstants
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP_MAX_SIGNAL
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanFitResults
 import org.jetbrains.bio.span.peaks.ModelToPeaks
 import org.jetbrains.bio.span.semisupervised.LocationLabel.Companion.computeErrors
@@ -61,6 +63,9 @@ object SpanSemiSupervised {
                         results, labeledGenomeQuery, fdr,
                         SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION,
                         sensitivity, gap,
+                        SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD,
+                        SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP,
+                        SPAN_DEFAULT_CLIP_MAX_SIGNAL,
                         cancellableState = CancellableState.current()
                     )
                 labelErrorsGrid[index] = computeErrors(

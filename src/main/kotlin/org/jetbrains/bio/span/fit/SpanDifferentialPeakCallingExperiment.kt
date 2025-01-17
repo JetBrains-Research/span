@@ -2,6 +2,9 @@ package org.jetbrains.bio.span.fit
 
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.Fragment
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP_MAX_SIGNAL
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_SENSITIVITY
 import org.jetbrains.bio.span.peaks.ModelToPeaks
@@ -52,6 +55,9 @@ class SpanDifferentialPeakCallingExperiment private constructor(
             fdr, SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION,
             SPAN_DEFAULT_SENSITIVITY,
             SPAN_DEFAULT_GAP,
+            SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD,
+            SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP,
+            SPAN_DEFAULT_CLIP_MAX_SIGNAL,
         ).peaks
         val highLow = arrayListOf<Peak>()
         val lowHigh = arrayListOf<Peak>()

@@ -14,39 +14,38 @@ class NegBitUtilTest {
 
     @Test
     fun testGuessByData() {
-        val sLow = NegBinEmissionScheme(0.5, 100.0).sampler()
+        val sLow = NegBinEmissionScheme(1.0, 100.0).sampler()
         val sHigh = NegBinEmissionScheme(40.0, 1.0).sampler()
 
-        val emissions = IntArray(10000) { sLow.asInt + 1 } + IntArray(100) { sHigh.asInt + 1 }
+        val emissions = IntArray(1000) { sLow.asInt + 1 } + IntArray(100) { sHigh.asInt + 1 }
         emissions.shuffle()
-        val (means0, failures0, _, _) = NegBinUtil.guessByData(
+        val (means, failures, lowMin, snrMin) = NegBinUtil.guessByData(
             emissions, 2
         )
-        assertEquals(1.3, means0[0], .1)
-        assertEquals(8.7, means0[1], .1)
-        assertEquals(0.1, failures0[0], .1)
-        assertEquals(4.8, failures0[1], .1)
+        assertEquals(1.0, means[0], 1.0)
+        assertEquals(34.0, means[1], 1.0)
+        assertEquals(0.1, failures[0], .1)
+        assertEquals(0.1, failures[1], .1)
+        assertEquals(0.4, lowMin, .1)
+        assertEquals(26.1, snrMin, 1.0)
     }
 
     @Test
     fun testGuessByData3() {
-        val sLow = NegBinEmissionScheme(0.5, 100.0).sampler()
+        val sLow = NegBinEmissionScheme(1.0, 100.0).sampler()
         val sMed = NegBinEmissionScheme(10.0, 30.0).sampler()
         val sHigh = NegBinEmissionScheme(40.0, 1.0).sampler()
 
-        val emissions = IntArray(10000) { sLow.asInt + 1 } +
+        val emissions = IntArray(1000) { sLow.asInt + 1 } +
                 IntArray(1000) { sMed.asInt + 1 } +
-                IntArray(100) { sHigh.asInt + 1 }
+                IntArray(1000) { sHigh.asInt + 1 }
         emissions.shuffle()
-        val (means0, failures0, _, _) = NegBinUtil.guessByData(
+        val (mean, _, _, _) = NegBinUtil.guessByData(
             emissions, 3
         )
-        assertEquals(1.7, means0[0], .1)
-        assertEquals(6.2, means0[1], .1)
-        assertEquals(23.6, means0[2], .1)
-        assertEquals(0.1, failures0[0], .1)
-        assertEquals(0.8, failures0[1], .1)
-        assertEquals(19.8, failures0[2], .1)
+        assertEquals(3.0, mean[0], 1.0)
+        assertEquals(16.0, mean[1], 1.0)
+        assertEquals(86.0, mean[2], 1.0)
     }
 
 }
