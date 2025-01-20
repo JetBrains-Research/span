@@ -3,6 +3,18 @@ SPAN Changelog
 
 Here you can see the full list of changes between each release.
 
+Version 2.0 bugfix
+----------------
+
+Released on January 20, 2025
+
+- Added `--chromosomes` parameter to limit analysis to selected chromosomes only
+- Added `--hmm-snr` and `--hmm-low` parameters to tweak constraints during HMM fitting
+  (defaults are optimized for a broad range of ChIP-seq experiments)
+- Added  `--fragmentation` and `--gap-fragmentation` parameters to configure compensation gap
+  for tracks with high fragmentation
+- Added `--clip` parameter to configure local signal clipping to refine peaks boundaries
+
 Version 2.0
 ----------------
 
