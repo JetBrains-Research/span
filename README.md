@@ -25,7 +25,7 @@ JBR Genome Browser. Bioinformatics. 2021 May 21. https://doi.org/10.1093/bioinfo
 Features
 --------
 
-* Supports both narrow and broad footprint experiments
+* Supports both narrow and broad footprint experiments (ChIP-seq, ATAC-seq, DNAse-seq)
 * Produces robust results on datasets of different signal-to-noise ratio, including Ultra-Low-Input ChIP-seq
 * Produces highly consistent results in multiple-replicates experiment setup
 * Tolerates missing control experiment
@@ -145,9 +145,9 @@ FAQ
 ---
 
 * Q: What is the average running time?<br>
-  A: SPAN is capable of processing a single ChIP-Seq track in less than 20 minutes on an average laptop.
+  A: SPAN is capable of processing a single ChIP-Seq track in less than 10 minutes on an average laptop.
 * Q: Which operating systems are supported?<br>
-  A: SPAN is developed in modern Kotlin programming language and can be executed on any platform supported by java.
+  A: SPAN is developed in modern [Kotlin](https://kotlinlang.org) programming language and can be executed on any platform supported by Java.
 * Q: Where did you get this lovely span picture?<br>
   A: From [ascii.co.uk](https://ascii.co.uk), the original author goes by the name jgs.
 
