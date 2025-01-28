@@ -332,7 +332,7 @@ object SpanCLAAnalyze {
         }
     }
 
-    private fun processBlackList(
+    fun processBlackList(
         genomeQuery: GenomeQuery,
         peaks: SpanPeaksResult,
         blacklistPath: Path?
@@ -538,7 +538,7 @@ object SpanCLAAnalyze {
         }
     }
 
-    private fun getExperimentByModelType(
+    fun getExperimentByModelType(
         modelType: SpanModelType,
         genomeQuery: GenomeQuery,
         paths: List<SpanDataPaths>,
