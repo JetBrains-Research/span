@@ -114,6 +114,11 @@ data class SpanRegrMixtureAnalyzeFitInformation(
         // Not implemented yet
     }
 
+    override fun difference(loadedFitInfo: SpanFitInformation): String? {
+        // Not yet implemented
+        return null
+    }
+
     companion object {
         @Suppress("MayBeConstant", "unused")
         @Transient

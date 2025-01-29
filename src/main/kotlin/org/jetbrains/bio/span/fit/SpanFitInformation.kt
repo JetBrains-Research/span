@@ -190,6 +190,8 @@ interface SpanFitInformation {
         path.bufferedWriter().use { GSON.toJson(this, it) }
     }
 
+    fun difference(loadedFitInfo: SpanFitInformation): String?
+
     companion object {
 
         /**

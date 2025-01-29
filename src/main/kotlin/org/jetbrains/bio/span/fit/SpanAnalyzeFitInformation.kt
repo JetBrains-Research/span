@@ -119,6 +119,44 @@ data class SpanAnalyzeFitInformation(
         }
     }
 
+    override fun toString(): String {
+        return """
+            SpanAnalyzeFitInformation
+                build='$build',
+                paths=$paths,
+                fragment=$fragment,
+                unique=$unique,
+                binSize=$binSize,
+                chromosomesSizes=$chromosomesSizes
+        """.trimIndent()
+    }
+
+    override fun difference(loadedFitInfo: SpanFitInformation): String? {
+        if (loadedFitInfo !is SpanAnalyzeFitInformation) {
+            return "Incompatible fit information type: ${loadedFitInfo::class.java.simpleName} " +
+                    "instead of ${this::class.java.simpleName}"
+        }
+        if (binSize != loadedFitInfo.binSize) {
+            return "Incompatible bin size: $binSize vs ${loadedFitInfo.binSize}"
+        }
+        if (fragment != loadedFitInfo.fragment) {
+            return "Incompatible fragment: $fragment vs ${loadedFitInfo.fragment}"
+        }
+        if (unique != loadedFitInfo.unique) {
+            return "Incompatible unique: $unique vs ${loadedFitInfo.unique}"
+        }
+        if (chromosomesSizes != loadedFitInfo.chromosomesSizes) {
+            return "Incompatible chromosomes sizes: $chromosomesSizes vs ${loadedFitInfo.chromosomesSizes}"
+        }
+        if (paths != loadedFitInfo.paths) {
+            return "Incompatible paths: $paths vs ${loadedFitInfo.paths}"
+        }
+        if (genomeQuery().id != loadedFitInfo.genomeQuery().id) {
+            return "Incompatible genome: ${genomeQuery().id} vs ${loadedFitInfo.genomeQuery().id}"
+        }
+        return null
+    }
+
     companion object {
         @Suppress("MayBeConstant", "unused")
         @Transient

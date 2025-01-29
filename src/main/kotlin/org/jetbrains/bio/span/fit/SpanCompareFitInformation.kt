@@ -124,6 +124,42 @@ data class SpanCompareFitInformation(
         }
     }
 
+    override fun toString(): String {
+        return """
+            SpanCompareFitInformation
+                build=$build,
+                data1=$data1,
+                data2=$data2,
+                fragment=$fragment,
+                unique=$unique,
+                binSize=$binSize,
+                chromosomesSizes=$chromosomesSizes
+        """.trimIndent()
+    }
+
+    override fun difference(loadedFitInfo: SpanFitInformation): String? {
+        if (loadedFitInfo !is SpanCompareFitInformation) {
+            return "Incompatible fit information type: ${loadedFitInfo::class.java.simpleName} " +
+                    "instead of ${this::class.java.simpleName}"
+        }
+        if (binSize != loadedFitInfo.binSize) {
+            return "Incompatible bin size: $binSize vs ${loadedFitInfo.binSize}"
+        }
+        if (fragment != loadedFitInfo.fragment) {
+            return "Incompatible fragment: $fragment vs ${loadedFitInfo.fragment}"
+        }
+        if (genomeQuery().id != loadedFitInfo.genomeQuery().id) {
+            return "Incompatible genome: ${genomeQuery().id} vs ${loadedFitInfo.genomeQuery().id}"
+        }
+        if (data1 != loadedFitInfo.data1) {
+            return "Incompatible data1: $data1 vs ${loadedFitInfo.data1}"
+        }
+        if (data2 != loadedFitInfo.data2) {
+            return "Incompatible data2: $data2 vs ${loadedFitInfo.data2}"
+        }
+        return null
+    }
+
     companion object {
         @Suppress("MayBeConstant", "unused")
         @Transient

@@ -229,10 +229,22 @@ abstract class SpanModelFitExperiment<
             val loadedResults = loadResults(genomeQuery, modelPath)
             val loadedFitInfo = loadedResults.fitInfo
             check(loadedFitInfo == fitInformation) {
-                "Wrong model information: expected $fitInformation, but got $loadedFitInfo"
+                "Different model information!\n${loadedFitInfo.difference(fitInformation)}"
             }
             loadedResults
         }
+    }
+
+    override fun toString(): String {
+        return """
+            SpanModelFitExperiment:
+                fitInformation: $fitInformation
+                modelPath: $modelPath
+                threshold: $threshold
+                maxIterations: $maxIterations
+                saveModel: $saveModel
+                saveExtendedInfo: $saveExtendedInfo
+        """.trimIndent()
     }
 
     companion object {
