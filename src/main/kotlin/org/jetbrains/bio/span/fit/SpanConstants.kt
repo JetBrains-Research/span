@@ -42,12 +42,8 @@ object SpanConstants {
     // Max shift to compute auto correlations
     const val SPAN_AUTOCORRELATION_MAX_SHIFT = 50
 
-    // Max gap to compute fragmentation,
-    // i.e. reduction of candidate number when merging with gap
-    const val SPAN_FRAGMENTATION_MAX_GAP = 50
-
     // Technical minimal coefficient between variance and mean of Negative Binomials
-    const val SPAN_HMM_NB_VAR_MEAN_MULTIPLIER = 1.001
+    const val SPAN_HMM_NB_VAR_MEAN_MULTIPLIER = 1.1
 
     // Fraction scores used for HMM signal, noise and ratio estimation, guards decent SNR in model
     const val SPAN_DEFAULT_HMM_ESTIMATE_SNR = 0.1
@@ -104,14 +100,21 @@ object SpanConstants {
 
     val SPAN_DEFAULT_SENSITIVITY = ln(SPAN_DEFAULT_FDR)
 
-    // Additional gap for tracks with high autocorrelation to compensate
-    const val SPAN_DEFAULT_BROAD_EXTRA_GAP = 0  // x default bin 100bp
+    // Max gap to compute fragmentation,
+    // i.e. reduction of candidate number when merging with gap
+    const val SPAN_FRAGMENTATION_MAX_GAP = 50  // 5kbp with defaults
 
-    // Don't compensate for fragmentation when exceeding threshold
-    const val SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD = 0.8
+    // Gap to check if fragmentation presents
+    const val SPAN_FRAGMENTATION_CHECKPOINT = 20  // 2kbp with defaults
 
-    // Additional compensation gap for tracks with high fragmentation
-    const val SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP = 50  // x default bin 100bp
+    // Rule of thumb:  max when narrow marks and ATAC-seq data are not fragmented
+    const val SPAN_DEFAULT_FRAGMENTATION_LIGHT = 0.7
+
+    // Don't merge after this fragmentation
+    const val SPAN_DEFAULT_FRAGMENTATION_HARD = 0.5
+
+    // When fragmentation is detected, max speed to estimate compensation gap
+    const val SPAN_DEFAULT_FRAGMENTATION_SPEED = 0.01
 
     /**
      * Clipping allows to fine-tune boundaries of point-wise peaks according to the local signal.

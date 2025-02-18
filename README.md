@@ -105,8 +105,9 @@ Command line options
 | `--hmm-low LOW`                                         | Minimal low state mean threshold, guards against too broad peaks, `0` to disable.                                                                                                                                                                                    |
 | `--sensitivity SENSITIVITY`                             | Configures log PEP threshold sensitivity for candidates selection.<br>Automatically estimated from the data, or during semi-supervised peak calling.                                                                                                                 |
 | `--gap GAP`                                             | Configures minimal gap between peaks.<br>Generally, not required, but used in semi-supervised peak calling.                                                                                                                                                          |
-| `--fragmentation FRAGMENTATION_THRESHOLD`               | Maximal fragmentation threshold to apply compensation gap.<br>Not available when `gap` is explicitly provided.                                                                                                                                                       |                  
-| `--gap-fragmentation FRAGMENTATION_GAP`                 | Additional gap for compensation for tracks with high fragmentation.<br>Not available when `gap` is explicitly provided.                                                                                                                                              |                  
+| `--f-light FLIGHT`                                      | Lightest fragmentation threshold to apply compensation gap.<br>Not available when `gap` is explicitly provided.                                                                                                                                                      |                  
+| `--f-hard FHARD`                                        | Hardest fragmentation threshold to apply compensation gap.<br>Not available when `gap` is explicitly provided.                                                                                                                                                       |                  
+| `--f-speed FSPEED`                                      | Fragmentation acceleration threshold to compute gap.<br>Not available when `gap` is explicitly provided.                                                                                                                                                             |                  
 | `--clip CLIP_TRESHOLD`                                  | Clip max threshold for fine-tune boundaries according to local signal, `0` to disable.                                                                                                                                                                               |
 | `--multiple TEST`                                       | Method applied for multiple hypothesis testing.<br/>`BH` for Benjamini-Hochberg, `BF` for Bonferroni.                                                                                                                                                                |
 | `-i, --iterations`                                      | Maximum number of iterations for Expectation Maximisation (EM) algorithm.                                                                                                                                                                                            |
@@ -147,7 +148,8 @@ FAQ
 * Q: What is the average running time?<br>
   A: SPAN is capable of processing a single ChIP-Seq track in less than 10 minutes on an average laptop.
 * Q: Which operating systems are supported?<br>
-  A: SPAN is developed in modern [Kotlin](https://kotlinlang.org) programming language and can be executed on any platform supported by Java.
+  A: SPAN is developed in modern [Kotlin](https://kotlinlang.org) programming language and can be executed on any
+  platform supported by Java.
 * Q: Where did you get this lovely span picture?<br>
   A: From [ascii.co.uk](https://ascii.co.uk), the original author goes by the name jgs.
 

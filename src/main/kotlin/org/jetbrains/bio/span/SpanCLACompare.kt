@@ -8,8 +8,9 @@ import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.span.SpanCLA.LOG
 import org.jetbrains.bio.span.fit.*
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP_MAX_SIGNAL
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_HARD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_SPEED
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_LIGHT
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION
 import org.jetbrains.bio.span.fit.SpanConstants.printSpanConstants
 import org.jetbrains.bio.span.peaks.ModelToPeaks
@@ -164,10 +165,12 @@ object SpanCLACompare {
                         genomeQuery,
                         fdr, multipleTesting,
                         sensitivity, gap,
-                        SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD,
-                        SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP,
+                        SPAN_DEFAULT_FRAGMENTATION_LIGHT,
+                        SPAN_DEFAULT_FRAGMENTATION_HARD,
+                        SPAN_DEFAULT_FRAGMENTATION_SPEED,
                         clip = clip,
-                        blackListPath = blackListPath
+                        blackListPath = blackListPath,
+                        name = peaksPath.fileName.stem
                     )
                     LOG.info("Format chromosome, start, end, name, score, strand, foldchange, -log(p), -log(q)")
                     Peak.savePeaks(peaks.toList(), peaksPath, "diff_${id}.peak")

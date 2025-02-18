@@ -18,10 +18,11 @@ import org.jetbrains.bio.span.fit.SpanConstants.SPAN_CLIP_MAX_LENGTH
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP_MAX_SIGNAL
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_CLIP_STEPS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_HARD
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTATION_MAX_GAP
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_SPEED
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_LIGHT
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTATION_CHECKPOINT
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_MIN_SENSITIVITY
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SCORE_BLOCKS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SCORE_BLOCKS_GAP
@@ -52,14 +53,15 @@ object ModelToPeaks {
     /**
      * Main method to compute peaks from the model.
      *
-     * 1) Estimate posterior probabilities.
+     * 1) Estimate posterior error probabilities PEP
      * 2) Find sensitivity setting as stable point wrt candidates number and average length.
-     * 3) Assign p-value to each peak based on combined p-values for cores (consequent foreground bins).
+     * 3) Compute required gap to compensate for extra high fragmentation, i.e. fraction of peaks when increasing gap
+     * 4) Assign p-value to each peak based on combined p-values for cores (consequent foreground bins).
      *    In case when control track is present, we use Poisson CDF to estimate log P-value;
      *    otherwise, an average log PEP (posterior error probability) for bins in blocks is used.
      *    N% top significant blocks scores are aggregated using length-weighted average as P for peak.
-     * 4) Compute qvalues by peaks p-values, filter by alpha.
-     * 5) Optional clipping to fine-tune boundaries of point-wise peaks according to the local signal.
+     * 5) Compute qvalues by peaks p-values, filter by alpha.
+     * 6) Fine-tuning boundaries of point-wise peaks according to the local signal.
      */
     fun getPeaks(
         spanFitResults: SpanFitResults,
@@ -68,11 +70,13 @@ object ModelToPeaks {
         multipleTesting: MultipleTesting,
         sensitivityCmdArg: Double?,
         gapCmdArg: Int?,
-        fragmentationThreshold: Double,
-        gapFragmentationCompensation: Int,
+        fragmentationLight: Double,
+        fragmentationHard: Double,
+        fragmentationSpeed: Double,
         clip: Double,
         blackListPath: Path? = null,
         parallel: Boolean = true,
+        name: String? = null,
         cancellableState: CancellableState? = null,
     ): SpanPeaksResult {
         val fitInfo = spanFitResults.fitInfo
@@ -96,7 +100,7 @@ object ModelToPeaks {
         } else {
             val estimatedSensitivity = estimateSensitivity(
                 genomeQuery, spanFitResults, logNullMembershipsMap, bitList2reuseMap,
-                parallel, cancellableState
+                parallel, name, cancellableState
             )
             estimatedSensitivity
 //            // We want to be able to get shorter peaks with stringent fdr values
@@ -114,25 +118,16 @@ object ModelToPeaks {
         val gap2use = if (gapCmdArg != null) {
             gapCmdArg
         } else {
-            LOG.info("Analysing pvalues autocorrelation...")
-            val logNullPvals = getLogNullPvals(genomeQuery, spanFitResults, blackList)
-            val logNullPValsCorrelations = computeCorrelations(logNullPvals)
-            val avgAutoCorrelation = logNullPValsCorrelations.average()
-            LOG.info("Average autocorrelation score: $avgAutoCorrelation")
-
-            LOG.info("Analysing fragmentation...")
+            LOG.info("${name?:""} Analysing fragmentation...")
             val candidateGapNs = IntArray(SPAN_FRAGMENTATION_MAX_GAP) {
                 estimateCandidatesNumberLens(
                     genomeQuery, fitInfo, logNullMembershipsMap, bitList2reuseMap,
                     sensitivity2use, it
                 ).n
             }
-            val avgFragmentationScore = candidateGapNs.map { it.toDouble() / candidateGapNs[0] }.average()
-            LOG.info("Average fragmentation score: $avgFragmentationScore")
-
-            estimateGap(avgFragmentationScore, fragmentationThreshold, gapFragmentationCompensation)
+            estimateGap(candidateGapNs, name, fragmentationLight, fragmentationHard, fragmentationSpeed)
         }
-        LOG.info("Candidates selection with gap: $gap2use")
+        LOG.info("${name?:""} Candidates selection with gap: $gap2use")
 
         val candidatesMap = genomeMap(genomeQuery, parallel = parallel) { chromosome ->
             cancellableState?.checkCanceled()
@@ -166,7 +161,7 @@ object ModelToPeaks {
 
         val (avgSignalDensity, avgNoiseDensity) = if (canEstimateSignalToNoise)
             estimateGenomeSignalNoiseAverage(genomeQuery, fitInfo, candidatesMap, parallel).apply {
-                LOG.debug("Signal density $first, noise density $second")
+                LOG.debug("${name?:""} Signal density $first, noise density $second")
             }
         else
             null to null
@@ -191,7 +186,7 @@ object ModelToPeaks {
         }
 
         // Adjust globally log pValues -> log qValues
-        LOG.info("Adjusting pvalues ${multipleTesting.description}, N=${genomeLogPVals.length}")
+        LOG.info("${name?:""} Adjusting pvalues ${multipleTesting.description}, N=${genomeLogPVals.length}")
         val genomeLogQVals = if (multipleTesting == MultipleTesting.BH)
             Fdr.qvalidate(genomeLogPVals, logResults = true)
         else
@@ -255,22 +250,44 @@ object ModelToPeaks {
     }
 
     fun estimateGap(
-        avgFragmentation: Double,
-        fragmentationThreshold: Double = SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD,
-        gapFragmentationCompensation: Int = SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP,
+        candidatesNs: IntArray,
+        name: String?,
+        fragmentationLight: Double = SPAN_DEFAULT_FRAGMENTATION_LIGHT,
+        fragmentationHard: Double = SPAN_DEFAULT_FRAGMENTATION_HARD,
+        fragmentationSpeed: Double = SPAN_DEFAULT_FRAGMENTATION_SPEED,
     ): Int {
-        LOG.debug("Estimating gap...")
-        var gap = SPAN_DEFAULT_GAP
-        if (avgFragmentation < fragmentationThreshold) {
-            val fragmentationGap =
-                ceil((fragmentationThreshold - avgFragmentation) /
-                        fragmentationThreshold * gapFragmentationCompensation).toInt()
-            LOG.info(
-                "Fragmentation $avgFragmentation < $fragmentationThreshold, adding +$fragmentationGap"
-            )
-            gap += fragmentationGap
+        val fragmentations = DoubleArray(candidatesNs.size) {
+            candidatesNs[it].toDouble() / candidatesNs[0]
         }
-        return gap
+        val tLightFragmentation = (1 until SPAN_FRAGMENTATION_CHECKPOINT).firstOrNull {
+            fragmentations[it] <= fragmentationLight
+        }
+        LOG.debug("${name?:""} Fragmentation light gap: $tLightFragmentation")
+        if (tLightFragmentation == null) {
+            LOG.info("${name?:""} No fragmentation detected!")
+            return 0  // No fragmentation at all!
+        }
+        val speed = DoubleArray(fragmentations.size - 1) {
+            fragmentations[it + 1] - fragmentations[it] /
+                    (fragmentations.maxOrNull()!! - fragmentations.minOrNull()!!)
+        }
+        val tHardFragmentation = (tLightFragmentation / 2 until speed.size).firstOrNull {
+            fragmentations[it] <= fragmentationHard
+        }
+        LOG.debug("${name?:""} Fragmentation hard gap: $tHardFragmentation")
+        val tSpeedFragmentation = (tLightFragmentation / 2 until speed.size).firstOrNull {
+            abs(speed[it]) < fragmentationSpeed
+        }
+        LOG.debug("${name?:""} Fragmentation speed gap: $tSpeedFragmentation")
+        val finalFragmentationGap = when {
+            tHardFragmentation != null &&
+                    (tSpeedFragmentation == null || tHardFragmentation < tSpeedFragmentation) -> tHardFragmentation
+
+            tSpeedFragmentation != null -> tSpeedFragmentation
+            else -> tLightFragmentation
+        }
+        LOG.info("${name?:""} Fragmentation compensation gap: $finalFragmentationGap")
+        return finalFragmentationGap
     }
 
 
@@ -280,11 +297,12 @@ object ModelToPeaks {
         logNullMembershipsMap: GenomeMap<F64Array>,
         bitList2reuseMap: GenomeMap<BitList>,
         parallel: Boolean,
+        name: String?,
         cancellableState: CancellableState?
     ): Double {
         cancellableState?.checkCanceled()
 
-        LOG.info("Adjusting sensitivity...")
+        LOG.info("${name?:""} Adjusting sensitivity...")
         val minLogNull = genomeQuery.get().minOf { logNullMembershipsMap[it].min() }
         // Limit value due to floating point errors
         val maxLogNull = min(
@@ -296,7 +314,7 @@ object ModelToPeaks {
         )
         cancellableState?.checkCanceled()
         if (si != null) {
-            LOG.info("Analysing candidates additive numbers...")
+            LOG.info("${name?:""} Analysing candidates additive numbers...")
             val sensitivitiesLimited =
                 sensitivities.slice(si.beforeMerge until si.stable).toDoubleArray()
             val (totals, news) = analyzeAdditiveCandidates(
@@ -312,10 +330,10 @@ object ModelToPeaks {
             val minAdditionalIdx = newCandidatesList.indices.minByOrNull { newCandidatesList[it] }!!
 //            println("New $newCandidatesList[$minAdditionalIdx] = ${newCandidatesList[minAdditionalIdx]}")
             val minAdditionalSensitivity = sensitivitiesLimited[minAdditionalIdx]
-            LOG.info("Minimal additional ${si.beforeMerge + minAdditionalIdx}: $minAdditionalSensitivity")
+            LOG.info("${name?:""} Minimal additional ${si.beforeMerge + minAdditionalIdx}: $minAdditionalSensitivity")
             return minAdditionalSensitivity
         } else {
-            LOG.error("Failed to estimate sensitivity, using defaults.")
+            LOG.error("${name?:""} Failed to estimate sensitivity, using defaults.")
             return ln(SPAN_DEFAULT_FDR)
         }
     }

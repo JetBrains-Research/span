@@ -7,8 +7,9 @@ import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.span.coverage.SpanCoverageSampler.sampleCoverage
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP_MAX_SIGNAL
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_HARD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_SPEED
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_LIGHT
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_SENSITIVITY
@@ -85,8 +86,9 @@ class SpanModelFitExperimentTest {
                     multipleTesting = SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION,
                     sensitivityCmdArg = SPAN_DEFAULT_SENSITIVITY,
                     gapCmdArg = SPAN_DEFAULT_GAP,
-                    fragmentationThreshold = SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD,
-                    gapFragmentationCompensation = SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP,
+                    fragmentationLight = SPAN_DEFAULT_FRAGMENTATION_LIGHT,
+                    fragmentationHard = SPAN_DEFAULT_FRAGMENTATION_HARD,
+                    fragmentationSpeed = SPAN_DEFAULT_FRAGMENTATION_SPEED,
                     clip = SPAN_DEFAULT_CLIP_MAX_SIGNAL,
                     cancellableState = null
                 )

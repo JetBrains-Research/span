@@ -14,11 +14,12 @@ import org.jetbrains.bio.span.SpanCLA.checkGenomeInFitInformation
 import org.jetbrains.bio.span.SpanResultsAnalysis.doDeepAnalysis
 import org.jetbrains.bio.span.fit.*
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP_MAX_SIGNAL
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_SPEED
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_HMM_LOW_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_HMM_ESTIMATE_SNR
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_LIGHT
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_HARD
 import org.jetbrains.bio.span.fit.SpanConstants.printSpanConstants
 import org.jetbrains.bio.span.fit.experimental.*
 import org.jetbrains.bio.span.peaks.ModelToPeaks
@@ -98,20 +99,27 @@ object SpanCLAAnalyze {
                 .ofType(Double::class.java)
                 .defaultsTo(SPAN_DEFAULT_HMM_LOW_THRESHOLD)
 
-            accepts("fragmentation",
-                "Fragmentation threshold to enable compensation")
+            accepts("f-light",
+                "Lightest fragmentation threshold to enable gap compensation")
                 .availableUnless("gap")
                 .withRequiredArg()
                 .ofType(Double::class.java)
-                .defaultsTo(SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD)
+                .defaultsTo(SPAN_DEFAULT_FRAGMENTATION_LIGHT)
 
-
-            accepts("gap-fragmented",
-                "Additional compensation gap for tracks with high fragmentation")
+            accepts("f-hard",
+                "Hardest fragmentation threshold to stop gap compensation")
                 .availableUnless("gap")
                 .withRequiredArg()
-                .ofType(Int::class.java)
-                .defaultsTo(SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP)
+                .ofType(Double::class.java)
+                .defaultsTo(SPAN_DEFAULT_FRAGMENTATION_LIGHT)
+
+
+            accepts("f-speed",
+                "Minimal fragmentation speed threshold for compensation")
+                .availableUnless("gap")
+                .withRequiredArg()
+                .ofType(Double::class.java)
+                .defaultsTo(SPAN_DEFAULT_FRAGMENTATION_SPEED)
 
             // Additional parameter for *_REGRESSION_MIXTURE models
             accepts(
@@ -196,16 +204,22 @@ object SpanCLAAnalyze {
                 LOG.info("MULTIPLE TEST CORRECTION: ${multipleTesting.description}")
 
                 val clip = options.valueOf("clip") as Double
-                val fragmentationThreshold  = when {
+                val fragmentationLight  = when {
                     gap != null -> 0.0
-                    options.has("fragmentation") -> options.valueOf("fragmentation") as Double
-                    else -> SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD
+                    options.has("f-light") -> options.valueOf("f-light") as Double
+                    else -> SPAN_DEFAULT_FRAGMENTATION_LIGHT
+                }
+                val fragmentationHard  = when {
+                    gap != null -> 0.0
+                    options.has("f-hard") -> options.valueOf("f-hard") as Double
+                    else -> SPAN_DEFAULT_FRAGMENTATION_HARD
                 }
 
-                val gapFragmentationCompensation = when {
-                    gap != null -> 0
-                    options.has("gap-fragmentation") -> options.valueOf("gap-fragmentation") as Int
-                    else -> SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP
+                val fragmentationSpeed = when {
+                    gap != null -> 0.0
+                    options.has("f-speed") ->
+                        options.valueOf("f-speed") as Double
+                    else -> SPAN_DEFAULT_FRAGMENTATION_SPEED
                 }
 
                 if (peaksPath != null) {
@@ -222,8 +236,9 @@ object SpanCLAAnalyze {
                         }
                     }
                     if (gap == null) {
-                        LOG.info("FRAGMENTATION THRESHOLD: $fragmentationThreshold")
-                        LOG.info("GAP FRAGMENTATION: $gapFragmentationCompensation")
+                        LOG.info("FRAGMENTATION MIN THRESHOLD: $fragmentationLight")
+                        LOG.info("FRAGMENTATION MAX THRESHOLD: $fragmentationHard")
+                        LOG.info("FRAGMENTATION SPEED THRESHOLD: $fragmentationSpeed")
                     }
                     LOG.info("CLIP: $clip")
                     LOG.info("PEAKS: $peaksPath")
@@ -282,9 +297,10 @@ object SpanCLAAnalyze {
                         ModelToPeaks.getPeaks(
                             spanResults, genomeQuery, fdr, multipleTesting,
                             sensitivity, gap,
-                            fragmentationThreshold, gapFragmentationCompensation,
+                            fragmentationLight, fragmentationHard, fragmentationSpeed,
                             clip = clip,
-                            blackListPath = blackListPath
+                            blackListPath = blackListPath,
+                            name = peaksPath.fileName.stem,
                         )
                     else
                         tune(spanResults, genomeQuery, labelsPath, peaksPath, blackListPath)
@@ -316,8 +332,8 @@ object SpanCLAAnalyze {
                             genomeQuery,
                             fdr,
                             sensitivity, gap,
-                            fragmentationThreshold,
-                            gapFragmentationCompensation,
+                            fragmentationLight, fragmentationHard,
+                            fragmentationSpeed,
                             blackListPath,
                             peaksList,
                             peaksPath
@@ -386,10 +402,12 @@ object SpanCLAAnalyze {
         return ModelToPeaks.getPeaks(
             spanResults, genomeQuery, optimalFDR, SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION,
             optimalSensitivity, optimalGap,
-            SPAN_DEFAULT_FRAGMENTATION_MAX_THRESHOLD,
-            SPAN_DEFAULT_FRAGMENTATION_COMPENSATION_GAP,
+            SPAN_DEFAULT_FRAGMENTATION_LIGHT,
+            SPAN_DEFAULT_FRAGMENTATION_HARD,
+            SPAN_DEFAULT_FRAGMENTATION_SPEED,
             SPAN_DEFAULT_CLIP_MAX_SIGNAL,
-            blackListPath = blackListPath
+            blackListPath = blackListPath,
+            name = peaksPath.fileName.stem
         )
     }
 

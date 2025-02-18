@@ -30,6 +30,7 @@ import org.jetbrains.bio.span.semisupervised.SpanSemiSupervised.SPAN_GAPS_VARIAN
 import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
 import org.jetbrains.bio.util.await
 import org.jetbrains.bio.util.deleteIfExists
+import org.jetbrains.bio.util.stem
 import org.jetbrains.bio.util.toPath
 import org.jetbrains.bio.viktor.F64Array
 import org.slf4j.Logger
@@ -53,24 +54,26 @@ object SpanResultsAnalysis {
         fdr: Double,
         sensitivityCmdArg: Double?,
         gapCmdArg: Int?,
-        fragmentationThreshold: Double,
-        gapFragmentationCompensation: Int,
+        fragmentationLight: Double,
+        fragmentationHard: Double,
+        fragmentationSpeed: Double,
         blackListPath: Path?,
         peaksList: List<Peak>,
         peaksPath: Path?
     ) {
+        val name = actualModelPath.fileName.stem
         check(fitInfo.normalizedCoverageQueries != null) {
-            "Please use prepareData before!"
+            "$name Please use prepareData before!"
         }
         check(fitInfo.normalizedCoverageQueries!!.all { it.areCachesPresent() }) {
-            "Coverage information is not available"
+            "$name Coverage information is not available"
         }
         val infoFile = if (peaksPath != null) "$peaksPath.txt" else null
         infoFile?.toPath()?.deleteIfExists()
         val infoWriter = if (infoFile != null) BufferedWriter(FileWriter(infoFile)) else null
 
         // Save basic stats to infoFile
-        LOG.info("Processing basic info")
+        LOG.info("$name Processing basic info")
         if (infoWriter != null) {
             val aboutModel = spanFitResults.modelInformation(actualModelPath)
             val aboutPeaks = PeaksInfo.compute(
@@ -87,7 +90,7 @@ object SpanResultsAnalysis {
                 spanFitResults.model.outOfSignalToNoiseRatioRangeDown
         logInfo("Model low signal to noise: $modelLowSignalToNoise", infoWriter)
 
-        LOG.info("Analysing auto correlations...")
+        LOG.info("$name Analysing auto correlations...")
         val ncq = fitInfo.normalizedCoverageQueries!!.first()
         val (controlScale, beta, minCorrelation) = ncq.coveragesNormalizedInfo
         val treatmentCoverage = ncq.treatmentReads.coverage()
@@ -106,10 +109,10 @@ object SpanResultsAnalysis {
             logInfo("Min control correlation: $minCorrelation", infoWriter)
         }
         val blackList = if (blackListPath != null) {
-            LOG.info("Loading blacklist regions: $blackListPath")
+            LOG.info("$name Loading blacklist regions: $blackListPath")
             LocationsMergingList.load(genomeQuery, blackListPath)
         } else null
-        LOG.info("Analysing coverage distribution...")
+        LOG.info("$name Analysing coverage distribution...")
         var coverage = computeCoverageScores(
             genomeQuery,
             treatmentCoverage, controlCoverage, controlScale,
@@ -122,12 +125,12 @@ object SpanResultsAnalysis {
         logInfo("Coverage >0 median: ${StatUtils.percentile(coverage, 50.0)}", infoWriter)
         logInfo("Coverage >0 std: ${coverage.standardDeviation()}", infoWriter)
 
-        LOG.info("Analysing log null pvalues distribution...")
+        LOG.info("$name Analysing log null pvalues distribution...")
         val logNullPvals = getLogNullPvals(genomeQuery, spanFitResults, blackList)
         logInfo("LogNullPVals mean: ${logNullPvals.average()}", infoWriter)
         logInfo("LogNullPVals std: ${logNullPvals.standardDeviation()}", infoWriter)
 
-        LOG.info("Analysing tracks variance...")
+        LOG.info("$name Analysing tracks variance...")
         val normVariance = computeAverageVariance(
             genomeQuery, treatmentCoverage, controlCoverage, controlScale, beta, blackList
         )
@@ -146,14 +149,13 @@ object SpanResultsAnalysis {
             BitList(logNullMembershipsMap[chromosome].length)
         }
 
-
-        LOG.debug("Analysing autocorrelation...")
+        LOG.debug("$name Analysing autocorrelation...")
         val coverageCorrelations = computeCorrelations(coverage)
         val logNullPValsCorrelations = computeCorrelations(logNullPvals)
         val avgAutoCorrelation = logNullPValsCorrelations.average()
         logInfo("Average autocorrelation score: $avgAutoCorrelation", infoWriter)
 
-        LOG.info("Analysing sensitivity...")
+        LOG.info("$name Analysing sensitivity...")
         val minLogNull = genomeQuery.get().minOf { logNullMembershipsMap[it].min() }
         // Limit value due to floating point errors
         val maxLogNull = min(SPAN_MIN_SENSITIVITY, genomeQuery.get().maxOf { logNullMembershipsMap[it].max() })
@@ -190,26 +192,23 @@ object SpanResultsAnalysis {
 //                sensitivity2use = (ln(fdr) + minAdditionalSensitivity) / 2
             }
             else -> {
-                LOG.error("Failed to automatically estimate sensitivity")
+                LOG.error("$name Failed to automatically estimate sensitivity")
                 sensitivity2use = ln(fdr)
             }
         }
         logInfo("Sensitivity2use: $sensitivity2use", infoWriter)
 
-        LOG.debug("Analysing fragmentation...")
+        LOG.debug("$name Analysing fragmentation...")
         val candidateGapNs = IntArray(SPAN_FRAGMENTATION_MAX_GAP) {
             estimateCandidatesNumberLens(
                 genomeQuery, fitInfo, logNullMembershipsMap, bitList2reuseMap,
                 sensitivity2use, it
             ).n
         }
-        val avgFragmentationScore = candidateGapNs.map { it.toDouble() / candidateGapNs[0] }.average()
-        logInfo("Average fragmentation score: $avgFragmentationScore", infoWriter)
-
         val gap2use = if (gapCmdArg != null) {
             gapCmdArg
         } else {
-            estimateGap(avgFragmentationScore, fragmentationThreshold, gapFragmentationCompensation)
+            estimateGap(candidateGapNs, name, fragmentationLight, fragmentationHard, fragmentationSpeed)
         }
 
         logInfo("Gap2use: $gap2use", infoWriter)
@@ -252,6 +251,7 @@ object SpanResultsAnalysis {
         )
 
         prepareSegmentsTsvFile(genomeQuery, fitInfo, logNullMembershipsMap, bitList2reuseMap, sensitivities, peaksPath)
+        LOG.info("$name Done analysis")
     }
 
     private fun prepareAutocorrelationTsvFile(correlations: DoubleArray, suffix: String, peaksPath: Path?) {

@@ -82,7 +82,7 @@ class NormalizedCoverageQuery(
      * Cached value for treatment and control scales, see [analyzeCoverage]
      */
     val coveragesNormalizedInfo by lazy {
-        analyzeCoverage(genomeQuery, treatmentReads.get(), controlReads?.get(), binSize)
+        analyzeCoverage(genomeQuery, treatmentPath, treatmentReads.get(), controlPath, controlReads?.get(), binSize)
     }
 
     fun score(t: ChromosomeRange): Double {
@@ -128,11 +128,13 @@ class NormalizedCoverageQuery(
          */
         fun analyzeCoverage(
             genomeQuery: GenomeQuery,
+            treatmentPath: Path,
             treatmentCoverage: Coverage,
+            controlPath: Path?,
             controlCoverage: Coverage?,
             binSize: Int
         ): NormalizedCoverageInfo {
-            if (controlCoverage == null) {
+            if (controlPath == null || controlCoverage == null) {
                 return NormalizedCoverageInfo(0.0, 0.0, 0.0)
             }
             val treatmentTotal = genomeQuery.get().sumOf {
@@ -145,7 +147,8 @@ class NormalizedCoverageQuery(
                 genomeQuery, treatmentCoverage, controlCoverage, treatmentTotal, controlTotal, binSize
             )
             LOG.info(
-                "Treatment ${"%,d".format(treatmentTotal)}, " +
+                "Treatment ${treatmentPath.fileName} ${"%,d".format(treatmentTotal)}, " +
+                        " ${controlPath.fileName} " +
                         "control ${"%,d".format(controlTotal)} x ${"%.3f".format(ncq.controlScale)}, " +
                         "min correlation ${"%.3f".format(ncq.minCorrelation)}, beta ${"%.3f".format(ncq.beta)}"
             )
