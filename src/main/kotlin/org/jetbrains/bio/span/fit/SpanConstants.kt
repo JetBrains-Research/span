@@ -48,11 +48,11 @@ object SpanConstants {
     // Fraction scores used for HMM signal, noise and ratio estimation, guards decent SNR in model
     const val SPAN_DEFAULT_HMM_ESTIMATE_SNR = 0.1
 
-    // Fraction scores used for HMM noise estimation
-    const val SPAN_HMM_ESTIMATE_LOW = 0.5
+    // Steps to estimate HMM noise, starting from the lowest fraction
+    const val SPAN_HMM_ESTIMATE_LOW_STEP = 0.1
 
     // Minimal low state mean threshold, guards against too broad peaks
-    const val SPAN_DEFAULT_HMM_LOW_THRESHOLD = 0.3
+    const val SPAN_DEFAULT_HMM_LOW_THRESHOLD = 0.5
 
     // Technical threshold to limit mean to std, guards against artificial data without noise
     const val SPAN_HMM_MAX_MEAN_TO_STD = 5.0
@@ -105,10 +105,10 @@ object SpanConstants {
     const val SPAN_FRAGMENTATION_MAX_GAP = 50  // 5kbp with defaults
 
     // Gap to check if fragmentation presents
-    const val SPAN_FRAGMENTATION_CHECKPOINT = 20  // 2kbp with defaults
+    const val SPAN_FRAGMENTATION_CHECKPOINT = 10  // 1kbp with defaults
 
-    // Rule of thumb:  max when narrow marks and ATAC-seq data are not fragmented
-    const val SPAN_DEFAULT_FRAGMENTATION_LIGHT = 0.7
+    // Rule of thumb: max when narrow marks and ATAC-seq data are not fragmented
+    const val SPAN_DEFAULT_FRAGMENTATION_LIGHT = 0.8
 
     // Don't merge after this fragmentation
     const val SPAN_DEFAULT_FRAGMENTATION_HARD = 0.5

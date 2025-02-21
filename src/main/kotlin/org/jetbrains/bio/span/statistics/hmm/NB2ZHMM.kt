@@ -63,7 +63,11 @@ class NB2ZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) :
             }
 
             val snr = highState.mean / lowState.mean
-            val snrTarget = max(guess.signalToNoise, snrPrevious)
+            // Dynamic threshold allows to propagate initial estimation
+            val snrTarget = if (snrPrevious < guess.signalToNoise)
+                guess.signalToNoise
+            else
+                (guess.signalToNoise + snrPrevious) / 2
 
             // This check is required mostly for narrow marks to guard decent signal-to-noise ratio
             if (snr < snrTarget) {

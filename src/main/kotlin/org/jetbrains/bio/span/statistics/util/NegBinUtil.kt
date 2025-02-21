@@ -2,7 +2,7 @@ package org.jetbrains.bio.span.statistics.util
 
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_HMM_ESTIMATE_SNR
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_HMM_LOW_THRESHOLD
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_HMM_ESTIMATE_LOW
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_HMM_ESTIMATE_LOW_STEP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_HMM_MAX_MEAN_TO_STD
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_HMM_NB_VAR_MEAN_MULTIPLIER
 import org.jetbrains.bio.statistics.distribution.NegativeBinomialDistribution.Companion.estimateFailuresUsingMoments
@@ -30,11 +30,11 @@ object NegBinUtil {
         emissions: IntArray,
         n: Int,
         estimateSNRFraction: Double = SPAN_DEFAULT_HMM_ESTIMATE_SNR,
-        estimateLowFraction: Double = SPAN_HMM_ESTIMATE_LOW,
+        estimateLowStep: Double = SPAN_HMM_ESTIMATE_LOW_STEP,
         estimateLowMinThreshold: Double = SPAN_DEFAULT_HMM_LOW_THRESHOLD,
         maxMeanToStd: Double = SPAN_HMM_MAX_MEAN_TO_STD
     ): Guess {
-        require(estimateSNRFraction + estimateLowFraction < 1.0) { "Estimate SNR fraction is too high $estimateSNRFraction" }
+        require(estimateSNRFraction <= 0.3) { "Estimate SNR fraction is too high $estimateSNRFraction" }
         val mean = emissions.average()
         val sd = emissions.standardDeviation()
         val vars = sd * sd
@@ -52,12 +52,22 @@ object NegBinUtil {
             LOG.debug("Adjusted high $fraction emissions mean $meanH\t std $sdH")
         }
 
-        val lowEmissions = IntArray((emissions.size * estimateLowFraction).toInt()) {
-            emissions[emissions.size - it - 1]
+        // Pick minimal level when noise begins
+        var meanL = 1.0
+        var sdL = 0.0
+        var hmmEstimateLowFraction = estimateLowStep
+        while (hmmEstimateLowFraction < 1.0 - estimateSNRFraction) {
+            val lowEmissions = IntArray((emissions.size * hmmEstimateLowFraction).toInt()) {
+                emissions[emissions.size - it - 1]
+            }
+            meanL = lowEmissions.average()
+            sdL = lowEmissions.standardDeviation()
+            if (meanL > 1.0 && sdL > 0.0) {
+                break
+            }
+            hmmEstimateLowFraction += estimateLowStep
         }
-        val meanL = lowEmissions.average()
-        val sdL = lowEmissions.standardDeviation()
-        LOG.debug("Low $estimateLowFraction emissions mean $meanL\t std $sdL")
+        LOG.debug("Low $hmmEstimateLowFraction emissions mean $meanL\t std $sdL")
 
         val signalToNoiseRatio = meanH / meanL
 
