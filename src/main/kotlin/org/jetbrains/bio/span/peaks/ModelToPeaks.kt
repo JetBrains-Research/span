@@ -262,16 +262,18 @@ object ModelToPeaks {
         val tLightFragmentation = (1 until SPAN_FRAGMENTATION_CHECKPOINT).firstOrNull {
             fragmentations[it] <= fragmentationLight
         }
-        LOG.debug("${name?:""} Fragmentation light gap: $tLightFragmentation")
+        LOG.debug("${name?:""} Fragmentation @${SPAN_FRAGMENTATION_CHECKPOINT} = " +
+                "${fragmentations[SPAN_FRAGMENTATION_CHECKPOINT]}")
         if (tLightFragmentation == null) {
             LOG.info("${name?:""} No fragmentation detected!")
-            return 0  // No fragmentation at all!
+            return 0
+        } else {
+            LOG.debug("${name?:""} Fragmentation light gap: $tLightFragmentation")
         }
         val speed = DoubleArray(fragmentations.size - 1) {
-            fragmentations[it + 1] - fragmentations[it] /
-                    (fragmentations.maxOrNull()!! - fragmentations.minOrNull()!!)
+            fragmentations[it + 1] - fragmentations[it]
         }
-        val tHardFragmentation = (tLightFragmentation / 2 until speed.size).firstOrNull {
+        val tHardFragmentation = fragmentations.indices.firstOrNull {
             fragmentations[it] <= fragmentationHard
         }
         LOG.debug("${name?:""} Fragmentation hard gap: $tHardFragmentation")
@@ -280,9 +282,9 @@ object ModelToPeaks {
         }
         LOG.debug("${name?:""} Fragmentation speed gap: $tSpeedFragmentation")
         val finalFragmentationGap = when {
-            tHardFragmentation != null &&
-                    (tSpeedFragmentation == null || tHardFragmentation < tSpeedFragmentation) -> tHardFragmentation
-
+            tHardFragmentation != null && tSpeedFragmentation != null ->
+                min(tHardFragmentation, tSpeedFragmentation)
+            tHardFragmentation != null -> tHardFragmentation
             tSpeedFragmentation != null -> tSpeedFragmentation
             else -> tLightFragmentation
         }
