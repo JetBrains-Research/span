@@ -9,14 +9,6 @@ import kotlin.math.ln
 /**
  * Constants used in SPAN.
  * Those, configurable from command line interface, have "DEFAULT" in their names.
- *
- * SPAN_DEFAULT_HMM_ESTIMATE_SNR and SPAN_DEFAULT_HMM_LOW_THRESHOLD
- * were configured using GSE26320 HSMM rep1,2 H3K36me3; HepG2 rep2 H3K27ac and
- * https://artyomovlab.wustl.edu/aging/ H3K27ac OD9, YD11 replicates
- *
- * SPAN_BROAD_EXTRA_GAP, SPAN_FRAGMENTATION_EXTRA_GAP were estimated empirically
- * from `--deep-analysis` SPAN results on GSE26320 and RoadmapEpigenomics
- * after analysing autocorrelation_average_score vs fragmentation_average_score
  */
 object SpanConstants {
     /**
@@ -43,7 +35,7 @@ object SpanConstants {
     const val SPAN_AUTOCORRELATION_MAX_SHIFT = 50
 
     // Technical minimal coefficient between variance and mean of Negative Binomials
-    const val SPAN_HMM_NB_VAR_MEAN_MULTIPLIER = 1.1
+    const val SPAN_HMM_NB_VAR_MEAN_MULTIPLIER = 1 + 1e-3
 
     // Fraction scores used for HMM signal, noise and ratio estimation, guards decent SNR in model
     const val SPAN_DEFAULT_HMM_ESTIMATE_SNR = 0.1
@@ -107,7 +99,7 @@ object SpanConstants {
     // Gap to check if fragmentation presents
     const val SPAN_FRAGMENTATION_CHECKPOINT = 20  // 2kbp with defaults
 
-    // Rule of thumb:  max when narrow marks and ATAC-seq data are not fragmented
+    // Rule of thumb: max when narrow marks and ATAC-seq data are not fragmented
     const val SPAN_DEFAULT_FRAGMENTATION_LIGHT = 0.7
 
     // Don't merge after this fragmentation

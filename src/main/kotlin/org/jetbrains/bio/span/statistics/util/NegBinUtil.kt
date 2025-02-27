@@ -34,7 +34,9 @@ object NegBinUtil {
         estimateLowMinThreshold: Double = SPAN_DEFAULT_HMM_LOW_THRESHOLD,
         maxMeanToStd: Double = SPAN_HMM_MAX_MEAN_TO_STD
     ): Guess {
-        require(estimateSNRFraction + estimateLowFraction < 1.0) { "Estimate SNR fraction is too high $estimateSNRFraction" }
+        require(estimateSNRFraction + estimateLowFraction < 1.0) {
+            "Estimate SNR fraction is too high $estimateSNRFraction"
+        }
         val mean = emissions.average()
         val sd = emissions.standardDeviation()
         val vars = sd * sd
@@ -52,6 +54,7 @@ object NegBinUtil {
             LOG.debug("Adjusted high $fraction emissions mean $meanH\t std $sdH")
         }
 
+        // Most likely close to 1, but in case when all the coverage is extremely high this helps
         val lowEmissions = IntArray((emissions.size * estimateLowFraction).toInt()) {
             emissions[emissions.size - it - 1]
         }
