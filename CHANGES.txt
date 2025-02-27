@@ -3,6 +3,15 @@ SPAN Changelog
 
 Here you can see the full list of changes between each release.
 
+Version 2.0 bugfix 2
+--------------------
+
+Released on February 27, 2025
+
+- Improved integration with JBR - whole genome peak calling model parameters estimation
+- Reworked fragmentation analysis and compensation, introduced `--f-light`, `--f-hard` and `--f-speed`
+ parameters to compute fragmentation compensation gap
+
 Version 2.0 bugfix
 ----------------
 
