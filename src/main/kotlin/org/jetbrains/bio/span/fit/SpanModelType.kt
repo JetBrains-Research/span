@@ -13,6 +13,8 @@ enum class SpanModelType(val id: String, val extension: String, val description:
     // Default SPAN model
     NB2Z_HMM("nb2zhmm", "span", "Negative binomial HMM 2 states with zero inflation"),
 
+    NORM2Z_HMM("norm2zhmm", "span-norm", "Normal HMM 2 states with zero inflation"),
+
     // Experimental
     NB2Z_MIXTURE("nb2zm", "span-nb2zm", "Negative binomial 2 states mixture with zero inflation"),
 
@@ -42,6 +44,8 @@ enum class SpanModelType(val id: String, val extension: String, val description:
 
 
         fun guessSpanModelByExtension(extension: String): SpanModelType? {
+            // Ignore model type for default SPAN extension
+            if (extension == NB2Z_HMM.extension) return null
             val model = values().find { it.extension == extension }
             if (model == null) {
                 LOG.warn("Unrecognized model extension '.$extension'")

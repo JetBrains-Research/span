@@ -579,6 +579,11 @@ object SpanCLAAnalyze {
                     modelPath, fitThreshold, fitMaxIterations, saveExtendedInfo, keepCacheFiles
                 )
 
+            SpanModelType.NORM2Z_HMM -> SpanPeakCallingExperimentNorm2ZHMM.getExperiment(
+                genomeQuery, paths, bin, fragment, unique, hmmEstimateSNR, hmmLow,
+                modelPath, fitThreshold, fitMaxIterations, saveExtendedInfo, keepCacheFiles
+            )
+
             SpanModelType.NB2Z_MIXTURE ->
                 SpanPeakCallingExperimentNB2ZMixture.getExperiment(
                     genomeQuery, paths, fragment, bin, unique, modelPath,
