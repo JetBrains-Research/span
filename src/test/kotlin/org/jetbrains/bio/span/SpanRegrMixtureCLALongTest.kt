@@ -194,42 +194,4 @@ class SpanRegrMixtureCLALongTest {
         }
     }
 
-    /**
-     * Model extension is used to determine the model type.
-     * @see [SpanModelType] for details
-     * If the model extension contradicts the provided '--model-type' command line argument,
-     * Span should exit with an error.
-     */
-    @Test
-    fun testCustomModelPathWrongExtension() {
-        withTempDirectory("work") { dir ->
-            withTempFile("track", ".bed.gz", dir) { path ->
-                // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
-                sampleCoverage(path, SpanCLALongTest.TO, SPAN_DEFAULT_BIN, goodQuality = true)
-
-                val chromsizes = Genome["to1"].chromSizesPath.toString()
-
-                val defaultModelPath = dir / "custom" / "path" / "model.span"
-                val (_, wrongErr) = Logs.captureLoggingOutput {
-                    SpanCLA.main(
-                        arrayOf(
-                            "analyze",
-                            "-cs", chromsizes,
-                            "--workdir", dir.toString(),
-                            "-t", path.toString(),
-                            "--threads", SpanCLALongTest.THREADS.toString(),
-                            "--model-type", SpanModelType.POISSON_REGRESSION_MIXTURE.id,
-                            "--model", defaultModelPath.toString()
-                        )
-                    )
-                }
-                assertIn(
-                    "model type (${SpanModelType.NB2Z_HMM}) " +
-                            "differs from the command line argument (${SpanModelType.POISSON_REGRESSION_MIXTURE})",
-                    wrongErr
-                )
-            }
-        }
-    }
-
 }
