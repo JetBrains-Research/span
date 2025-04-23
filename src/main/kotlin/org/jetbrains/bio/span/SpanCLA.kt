@@ -226,7 +226,6 @@ compare                         Differential peak calling
                 "Keep cache files.\n" +
                         "By default SPAN creates cache files in working directory and removes them after computation is done"
             )
-            accepts("noclip", "Do not perform additional peaks clipping to increase reads density")
         }
     }
 
