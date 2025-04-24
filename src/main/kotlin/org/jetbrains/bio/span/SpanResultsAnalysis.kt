@@ -21,6 +21,7 @@ import org.jetbrains.bio.span.peaks.ModelToPeaks.detectSensitivityTriangle
 import org.jetbrains.bio.span.peaks.ModelToPeaks.estimateCandidatesNumberLens
 import org.jetbrains.bio.span.peaks.ModelToPeaks.estimateGap
 import org.jetbrains.bio.span.peaks.ModelToPeaks.estimateGenomeSignalNoiseAverage
+import org.jetbrains.bio.span.peaks.ModelToPeaks.getCandidatesCharacteristics
 import org.jetbrains.bio.span.peaks.ModelToPeaks.getChromosomeCandidates
 import org.jetbrains.bio.span.peaks.ModelToPeaks.getLogNullPvals
 import org.jetbrains.bio.span.peaks.ModelToPeaks.getLogNulls
@@ -160,15 +161,21 @@ object SpanResultsAnalysis {
         // Limit value due to floating point errors
         val maxLogNull = min(SPAN_MIN_SENSITIVITY, genomeQuery.get().maxOf { logNullMembershipsMap[it].max() })
         val sensitivities = linSpace(minLogNull, maxLogNull, SPAN_SENSITIVITY_N)
-        val si = detectSensitivityTriangle(
-            genomeQuery, spanFitResults, logNullMembershipsMap, bitList2reuseMap, sensitivities
+        // Compute candidates characteristics
+        val (candidatesLogNs, candidatesLogALs) = getCandidatesCharacteristics(
+            sensitivities,
+            genomeQuery,
+            spanFitResults,
+            logNullMembershipsMap,
+            bitList2reuseMap
         )
+        val st = detectSensitivityTriangle(sensitivities, candidatesLogNs, candidatesLogALs)
         val sensitivity2use: Double
         when {
             sensitivityCmdArg != null ->
                 sensitivity2use = sensitivityCmdArg
-            si != null -> {
-                val (beforeMerge, stable, beforeNoise) = si
+            st != null -> {
+                val (beforeMerge, stable, beforeNoise) = st
                 logInfo("Sensitivity beforeMerge: ${sensitivities[beforeMerge]}", infoWriter)
                 logInfo("Sensitivity beforeMerge index: $beforeMerge", infoWriter)
                 logInfo("Sensitivity stable: ${sensitivities[stable]}", infoWriter)
@@ -177,7 +184,7 @@ object SpanResultsAnalysis {
                 logInfo("Sensitivity beforeNoise index: $beforeNoise", infoWriter)
 
                 val sensitivitiesLimited =
-                    sensitivities.slice(si.beforeMerge until si.stable).toDoubleArray()
+                    sensitivities.slice(st.beforeMerge until st.stable).toDoubleArray()
                 val (totals, news) = analyzeAdditiveCandidates(
                     genomeQuery, fitInfo, logNullMembershipsMap, bitList2reuseMap,
                     sensitivitiesLimited, true
@@ -186,10 +193,8 @@ object SpanResultsAnalysis {
                     .minByOrNull { news[it].toDouble() / totals[it].toDouble() }!!
                 val minAdditionalSensitivity = sensitivitiesLimited[minAdditionalIdx]
                 logInfo("Minimal additional: $minAdditionalSensitivity", infoWriter)
-                logInfo("Minimal additional index: ${si.beforeMerge + minAdditionalIdx}", infoWriter)
+                logInfo("Minimal additional index: ${st.beforeMerge + minAdditionalIdx}", infoWriter)
                 sensitivity2use = minAdditionalSensitivity
-//                // We want to be able to get shorter peaks with stringent fdr values
-//                sensitivity2use = (ln(fdr) + minAdditionalSensitivity) / 2
             }
             else -> {
                 LOG.error("$name Failed to automatically estimate sensitivity")

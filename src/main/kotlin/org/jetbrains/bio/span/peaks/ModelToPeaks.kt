@@ -98,13 +98,10 @@ object ModelToPeaks {
         val sensitivity2use = if (sensitivityCmdArg != null) {
             sensitivityCmdArg
         } else {
-            val estimatedSensitivity = estimateSensitivity(
+            estimateSensitivity(
                 genomeQuery, spanFitResults, logNullMembershipsMap, bitList2reuseMap,
                 parallel, name, cancellableState
             )
-            estimatedSensitivity
-//            // We want to be able to get shorter peaks with stringent fdr values
-//            (ln(fdr) + estimatedSensitivity) / 2
         }
 
         val blackList =
@@ -311,14 +308,20 @@ object ModelToPeaks {
             SPAN_MIN_SENSITIVITY, genomeQuery.get().maxOf { logNullMembershipsMap[it].max() }
         )
         val sensitivities = linSpace(minLogNull, maxLogNull, SPAN_SENSITIVITY_N)
-        val si = detectSensitivityTriangle(
-            genomeQuery, spanFitResults, logNullMembershipsMap, bitList2reuseMap, sensitivities
+        // Compute candidates characteristics
+        val (candidatesLogNs, candidatesLogALs) = getCandidatesCharacteristics(
+            sensitivities,
+            genomeQuery,
+            spanFitResults,
+            logNullMembershipsMap,
+            bitList2reuseMap
         )
+        val st = detectSensitivityTriangle(sensitivities, candidatesLogNs, candidatesLogALs)
         cancellableState?.checkCanceled()
-        if (si != null) {
+        if (st != null) {
             LOG.info("${name?:""} Analysing candidates additive numbers...")
             val sensitivitiesLimited =
-                sensitivities.slice(si.beforeMerge until si.stable).toDoubleArray()
+                sensitivities.slice(st.beforeMerge until st.stable).toDoubleArray()
             val (totals, news) = analyzeAdditiveCandidates(
                 genomeQuery,
                 spanFitResults.fitInfo,
@@ -330,9 +333,8 @@ object ModelToPeaks {
             val newCandidatesList = sensitivitiesLimited.indices
                 .map { news[it].toDouble() / totals[it].toDouble() }
             val minAdditionalIdx = newCandidatesList.indices.minByOrNull { newCandidatesList[it] }!!
-//            println("New $newCandidatesList[$minAdditionalIdx] = ${newCandidatesList[minAdditionalIdx]}")
             val minAdditionalSensitivity = sensitivitiesLimited[minAdditionalIdx]
-            LOG.info("${name?:""} Minimal additional ${si.beforeMerge + minAdditionalIdx}: $minAdditionalSensitivity")
+            LOG.info("${name?:""} Minimal additional ${st.beforeMerge + minAdditionalIdx}: $minAdditionalSensitivity")
             return minAdditionalSensitivity
         } else {
             LOG.error("${name?:""} Failed to estimate sensitivity, using defaults.")
@@ -359,26 +361,12 @@ object ModelToPeaks {
      * See [SensitivityInfo] for details
      */
     fun detectSensitivityTriangle(
-        genomeQuery: GenomeQuery,
-        spanFitResults: SpanFitResults,
-        logNullMembershipsMap: GenomeMap<F64Array>,
-        bitList2reuseMap: GenomeMap<BitList>,
         sensitivities: DoubleArray,
+        candidatesLogNs: DoubleArray,
+        candidatesLogALs: DoubleArray
     ): SensitivityInfo? {
         LOG.debug("Compute sensitivity triangle...")
         val n = sensitivities.size
-        val candidatesLogNs = DoubleArray(n)
-        val candidatesLogALs = DoubleArray(n)
-//        println("Sensitivity\tGap\tCandidatesN\tCandidatesAL")
-        for ((i, s) in sensitivities.withIndex()) {
-            val ci = estimateCandidatesNumberLens(
-                genomeQuery, spanFitResults.fitInfo, logNullMembershipsMap, bitList2reuseMap,
-                s, 0
-            )
-            candidatesLogNs[i] = ln1p(ci.n.toDouble())
-            candidatesLogALs[i] = ln1p(ci.averageLen)
-//            println("$s\t0\t${ci.n}\t${ci.averageLen}")
-        }
         var maxArea = 0.0
         var i1 = -1
         var i2 = -1
@@ -422,11 +410,34 @@ object ModelToPeaks {
         return result
     }
 
+    internal fun getCandidatesCharacteristics(
+        sensitivities: DoubleArray,
+        genomeQuery: GenomeQuery,
+        spanFitResults: SpanFitResults,
+        logNullMembershipsMap: GenomeMap<F64Array>,
+        bitList2reuseMap: GenomeMap<BitList>
+    ): Pair<DoubleArray, DoubleArray> {
+        val n = sensitivities.size
+        val candidatesLogNs = DoubleArray(n)
+        val candidatesLogALs = DoubleArray(n)
+        // println("Sensitivity\tGap\tCandidatesN\tCandidatesAL")
+        for ((i, s) in sensitivities.withIndex()) {
+            val ci = estimateCandidatesNumberLens(
+                genomeQuery, spanFitResults.fitInfo, logNullMembershipsMap, bitList2reuseMap,
+                s, 0
+            )
+            candidatesLogNs[i] = ln1p(ci.n.toDouble())
+            candidatesLogALs[i] = ln1p(ci.averageLen)
+            // println("$s\t0\t${ci.n}\t${ci.averageLen}")
+        }
+        return Pair(candidatesLogNs, candidatesLogALs)
+    }
+
     internal fun linSpace(min: Double, max: Double, n: Int): DoubleArray {
         // If we use linear space here, we can't see the plots with merge
-//        return DoubleArray(n) {
-//            min + (max - min) * it.toDouble() / (n - 1)
-//        }
+        // return DoubleArray(n) {
+        //     min + (max - min) * it.toDouble() / (n - 1)
+        // }
         require(min * max >= 0) { "Both min and max should have same sign, got $min, $max" }
         val sign = if (min + max < 0) -1 else 1
         val maxLog = log10(max * sign)
@@ -505,8 +516,7 @@ object ModelToPeaks {
                     chromosome, logNullMemberships, bitList2reuse, s, 0,
                 ).toRangeMergingList()
             }
-            val candidatesSize = genomeQuery.get().sumOf { candidates[it].size }
-            val total = candidatesSize
+            val total = genomeQuery.get().sumOf { candidates[it].size }
             val old = genomeQuery.get().sumOf { chromosome ->
                 val chrCandidatesPrev = candidatesPrev[chromosome]
                 candidates[chromosome].count { chrCandidatesPrev.intersectionLength(it) > 0 }
