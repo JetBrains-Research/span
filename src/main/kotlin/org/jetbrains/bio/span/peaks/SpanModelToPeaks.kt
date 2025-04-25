@@ -109,11 +109,15 @@ object SpanModelToPeaks {
 
         val blackList =
             if (blackListPath != null) {
-                LOG.info("Loading blacklisted regions: $blackListPath")
+                LOG.info("${name ?: ""} Loading blacklisted regions: $blackListPath")
                 LocationsMergingList.load(genomeQuery, blackListPath)
             } else null
 
-        LOG.info("Candidates selection with sensitivity: $sensitivity2use")
+        if (summits) {
+            LOG.info("${name ?: ""} Selecting candidates with sensitivity: ${sensitivity2use.first}, summits: ${sensitivity2use.second}")
+        } else {
+            LOG.info("${name ?: ""} Selecting candidates with sensitivity: $sensitivity2use")
+        }
 
         val gap2use = when {
             gapCmdArg != null -> gapCmdArg
@@ -312,7 +316,7 @@ object SpanModelToPeaks {
     ): Pair<Double, Double?> {
         cancellableState?.checkCanceled()
 
-        LOG.info("${name ?: ""} Adjusting sensitivity...")
+        LOG.info("${name ?: ""} Analyzing candidates by sensitivity...")
         val minLogNull = genomeQuery.get().minOf { logNullMembershipsMap[it].min() }
         // Limit value due to floating point errors
         val maxLogNull = min(
@@ -330,7 +334,7 @@ object SpanModelToPeaks {
         val st = detectSensitivityTriangle(sensitivities, candidatesLogNs, candidatesLogALs)
         cancellableState?.checkCanceled()
         if (st != null) {
-            LOG.info("${name ?: ""} Analysing candidates additive numbers...")
+            LOG.debug("${name ?: ""} Analyzing candidates additive numbers...")
             val sensitivitiesLimited =
                 sensitivities.slice(st.beforeMerge until st.stable).toDoubleArray()
             val (totals, news) = analyzeAdditiveCandidates(
@@ -345,7 +349,7 @@ object SpanModelToPeaks {
                 .map { news[it].toDouble() / totals[it].toDouble() }
             val minAdditionalIdx = newCandidatesList.indices.minByOrNull { newCandidatesList[it] }!!
             val minAdditionalSensitivity = sensitivitiesLimited[minAdditionalIdx]
-            LOG.info("${name ?: ""} Minimal additional ${st.beforeMerge + minAdditionalIdx}: $minAdditionalSensitivity")
+            LOG.debug("${name ?: ""} Minimal additional ${st.beforeMerge + minAdditionalIdx}: $minAdditionalSensitivity")
             return if (summits) {
                 minAdditionalSensitivity to sensitivities[st.beforeMerge]
             } else {
@@ -418,7 +422,7 @@ object SpanModelToPeaks {
             i1 = i1mab.first
         }
         val result = SensitivityInfo(i1, i2, i3)
-        LOG.info(
+        LOG.debug(
             "Result beforeMerge: {}: {}, stable: {}: {}, beforeNoise: {}: {}",
             i1, sensitivities[i1], i2, sensitivities[i2], i3, sensitivities[i3],
         )

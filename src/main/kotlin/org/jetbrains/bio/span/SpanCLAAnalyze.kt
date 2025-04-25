@@ -311,7 +311,7 @@ object SpanCLAAnalyze {
                         tune(spanResults, genomeQuery, labelsPath, peaksPath, blackListPath)
                     val peaksList = processBlackList(genomeQuery, peaks, blackListPath)
 
-                    LOG.info("Format chromosome, start, end, name, score, strand, signal, -log(p), -log(q)")
+                    LOG.info("${peaksPath.fileName.stem} format chromosome, start, end, name, score, strand, signal, -log(p), -log(q)")
                     Peak.savePeaks(
                         peaksList, peaksPath,
                         "peak${if (fragment is FixedFragment) "_$fragment" else ""}_" +
