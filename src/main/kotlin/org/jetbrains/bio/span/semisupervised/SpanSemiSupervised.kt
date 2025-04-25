@@ -9,7 +9,7 @@ import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_HARD
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_SPEED
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_LIGHT
 import org.jetbrains.bio.span.fit.SpanFitResults
-import org.jetbrains.bio.span.peaks.ModelToPeaks
+import org.jetbrains.bio.span.peaks.SpanModelToPeaks
 import org.jetbrains.bio.span.semisupervised.LocationLabel.Companion.computeErrors
 import org.jetbrains.bio.util.CancellableState
 import org.jetbrains.bio.util.MultitaskProgress
@@ -60,7 +60,7 @@ object SpanSemiSupervised {
             Callable {
                 cancellableState.checkCanceled()
                 val peaksOnLabeledGenomeQuery =
-                    ModelToPeaks.getPeaks(
+                    SpanModelToPeaks.getPeaks(
                         results, labeledGenomeQuery, fdr,
                         SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION,
                         sensitivity, gap, false,

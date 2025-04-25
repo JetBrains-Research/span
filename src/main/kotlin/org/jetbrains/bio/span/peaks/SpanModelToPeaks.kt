@@ -48,9 +48,9 @@ import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.*
 
 
-object ModelToPeaks {
+object SpanModelToPeaks {
 
-    val LOG: Logger = LoggerFactory.getLogger(ModelToPeaks.javaClass)
+    val LOG: Logger = LoggerFactory.getLogger(SpanModelToPeaks.javaClass)
 
     /**
      * Main method to compute peaks from the model.

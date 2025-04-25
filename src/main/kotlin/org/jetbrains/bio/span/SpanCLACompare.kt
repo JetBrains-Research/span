@@ -13,7 +13,7 @@ import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_SPEED
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_LIGHT
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION
 import org.jetbrains.bio.span.fit.SpanConstants.printSpanConstants
-import org.jetbrains.bio.span.peaks.ModelToPeaks
+import org.jetbrains.bio.span.peaks.SpanModelToPeaks
 import org.jetbrains.bio.span.peaks.MultipleTesting
 import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.util.*
@@ -160,7 +160,7 @@ object SpanCLACompare {
                 val blackListPath = options.valueOf("blacklist") as Path?
 
                 if (peaksPath != null) {
-                    val peaks = ModelToPeaks.getPeaks(
+                    val peaks = SpanModelToPeaks.getPeaks(
                         differentialPeakCallingResults,
                         genomeQuery,
                         fdr, multipleTesting,

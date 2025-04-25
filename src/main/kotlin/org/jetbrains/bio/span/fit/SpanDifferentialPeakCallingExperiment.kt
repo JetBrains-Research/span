@@ -8,7 +8,7 @@ import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_SPEED
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_LIGHT
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_SENSITIVITY
-import org.jetbrains.bio.span.peaks.ModelToPeaks
+import org.jetbrains.bio.span.peaks.SpanModelToPeaks
 import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.span.statistics.hmm.ConstrainedNBZHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
@@ -50,7 +50,7 @@ class SpanDifferentialPeakCallingExperiment private constructor(
     fun computeDirectedDifferencePeaks(
         fdr: Double
     ): Pair<List<Peak>, List<Peak>> {
-        val map = ModelToPeaks.getPeaks(
+        val map = SpanModelToPeaks.getPeaks(
             results,
             genomeQuery,
             fdr, SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION,

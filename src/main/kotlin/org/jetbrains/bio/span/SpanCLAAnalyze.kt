@@ -22,7 +22,7 @@ import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_LIGHT
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_HARD
 import org.jetbrains.bio.span.fit.SpanConstants.printSpanConstants
 import org.jetbrains.bio.span.fit.experimental.*
-import org.jetbrains.bio.span.peaks.ModelToPeaks
+import org.jetbrains.bio.span.peaks.SpanModelToPeaks
 import org.jetbrains.bio.span.peaks.MultipleTesting
 import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.span.peaks.SpanPeaksResult
@@ -299,7 +299,7 @@ object SpanCLAAnalyze {
                 }
                 if (peaksPath != null) {
                     val peaks = if (labelsPath == null)
-                        ModelToPeaks.getPeaks(
+                        SpanModelToPeaks.getPeaks(
                             spanResults, genomeQuery, fdr, multipleTesting,
                             sensitivity, gap, summits,
                             fragmentationLight, fragmentationHard, fragmentationSpeed,
@@ -404,7 +404,7 @@ object SpanCLAAnalyze {
             peaksPath.parent
                     / "${peaksPath.fileName.stem}_parameters.csv"
         )
-        return ModelToPeaks.getPeaks(
+        return SpanModelToPeaks.getPeaks(
             spanResults, genomeQuery, optimalFDR, SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION,
             optimalSensitivity, optimalGap, false,
             SPAN_DEFAULT_FRAGMENTATION_LIGHT,
