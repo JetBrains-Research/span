@@ -208,7 +208,7 @@ object SpanCLAAnalyze {
 
                 val clip = options.valueOf("clip") as Double
                 val summits = "summits" in options
-                LOG.info("Summits: $summits")
+                LOG.info("SUMMITS: $summits")
                 val fragmentationLight  = when {
                     summits || gap != null -> 0.0
                     options.has("f-light") -> options.valueOf("f-light") as Double
