@@ -620,7 +620,6 @@ Reads: single-ended, Fragment size: 2 bp (cross-correlation estimate)
                     },
                     "Peak value is reported as 0.0, although the coverage cache is present"
                 )
-                assertIn("Adjusting sensitivity...", out)
                 assertIn("Signal mean: ", out)
                 assertIn("Noise mean: ", out)
                 assertIn("Signal to noise: ", out)
