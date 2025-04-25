@@ -15,18 +15,20 @@ import org.jetbrains.bio.genome.coverage.Coverage
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_AUTOCORRELATION_MAX_SHIFT
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_CLIP_MAX_LENGTH
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP_MAX_SIGNAL
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_CLIP_STEPS
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP_MAX_SIGNAL
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_HARD
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTATION_MAX_GAP
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_SPEED
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_LIGHT
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_SPEED
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTATION_CHECKPOINT
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTATION_MAX_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_MIN_SENSITIVITY
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SCORE_BLOCKS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SCORE_BLOCKS_GAP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SENSITIVITY_N
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SUMMITS_MIN_DISTANCE
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SUMMITS_MIN_LENGTH
 import org.jetbrains.bio.span.fit.SpanFitInformation
 import org.jetbrains.bio.span.fit.SpanFitResults
 import org.jetbrains.bio.span.fit.SpanModelFitExperiment
@@ -70,6 +72,7 @@ object ModelToPeaks {
         multipleTesting: MultipleTesting,
         sensitivityCmdArg: Double?,
         gapCmdArg: Int?,
+        summits: Boolean,
         fragmentationLight: Double,
         fragmentationHard: Double,
         fragmentationSpeed: Double,
@@ -96,10 +99,10 @@ object ModelToPeaks {
             BitList(logNullMembershipsMap[chromosome].length)
         }
         val sensitivity2use = if (sensitivityCmdArg != null) {
-            sensitivityCmdArg
+            sensitivityCmdArg to null
         } else {
             estimateSensitivity(
-                genomeQuery, spanFitResults, logNullMembershipsMap, bitList2reuseMap,
+                genomeQuery, spanFitResults, logNullMembershipsMap, bitList2reuseMap, summits,
                 parallel, name, cancellableState
             )
         }
@@ -112,19 +115,21 @@ object ModelToPeaks {
 
         LOG.info("Candidates selection with sensitivity: $sensitivity2use")
 
-        val gap2use = if (gapCmdArg != null) {
-            gapCmdArg
-        } else {
-            LOG.info("${name?:""} Analysing fragmentation...")
-            val candidateGapNs = IntArray(SPAN_FRAGMENTATION_MAX_GAP) {
-                estimateCandidatesNumberLens(
-                    genomeQuery, fitInfo, logNullMembershipsMap, bitList2reuseMap,
-                    sensitivity2use, it
-                ).n
+        val gap2use = when {
+            gapCmdArg != null -> gapCmdArg
+            summits -> 0
+            else -> {
+                LOG.info("${name ?: ""} Analysing fragmentation...")
+                val candidateGapNs = IntArray(SPAN_FRAGMENTATION_MAX_GAP) {
+                    estimateCandidatesNumberLens(
+                        genomeQuery, fitInfo, logNullMembershipsMap, bitList2reuseMap,
+                        sensitivity2use.first, it
+                    ).n
+                }
+                estimateGap(candidateGapNs, name, fragmentationLight, fragmentationHard, fragmentationSpeed)
             }
-            estimateGap(candidateGapNs, name, fragmentationLight, fragmentationHard, fragmentationSpeed)
         }
-        LOG.info("${name?:""} Candidates selection with gap: $gap2use")
+        LOG.info("${name ?: ""} Candidates selection with gap: $gap2use")
 
         val candidatesMap = genomeMap(genomeQuery, parallel = parallel) { chromosome ->
             cancellableState?.checkCanceled()
@@ -135,7 +140,7 @@ object ModelToPeaks {
             val bitList2reuse = bitList2reuseMap[chromosome]
             getChromosomeCandidates(
                 chromosome, logNullMemberships, bitList2reuse,
-                sensitivity2use, gap2use
+                sensitivity2use.first, sensitivity2use.second, gap2use
             )
         }
 
@@ -149,7 +154,9 @@ object ModelToPeaks {
         }
         // Return empty list when nothing found
         if (candidatesTotal == 0) {
-            return SpanPeaksResult(fdr, sensitivity2use, gap2use, genomeMap(genomeQuery) { emptyList() })
+            return SpanPeaksResult(
+                fdr, sensitivity2use.first, sensitivity2use.second, gap2use,
+                genomeMap(genomeQuery) { emptyList() })
         }
 
         // Estimate signal and noise average signal by candidates
@@ -158,7 +165,7 @@ object ModelToPeaks {
 
         val (avgSignalDensity, avgNoiseDensity) = if (canEstimateSignalToNoise)
             estimateGenomeSignalNoiseAverage(genomeQuery, fitInfo, candidatesMap, parallel).apply {
-                LOG.debug("${name?:""} Signal density $first, noise density $second")
+                LOG.debug("${name ?: ""} Signal density $first, noise density $second")
             }
         else
             null to null
@@ -183,7 +190,7 @@ object ModelToPeaks {
         }
 
         // Adjust globally log pValues -> log qValues
-        LOG.info("${name?:""} Adjusting pvalues ${multipleTesting.description}, N=${genomeLogPVals.length}")
+        LOG.info("${name ?: ""} Adjusting pvalues ${multipleTesting.description}, N=${genomeLogPVals.length}")
         val genomeLogQVals = if (multipleTesting == MultipleTesting.BH)
             Fdr.qvalidate(genomeLogPVals, logResults = true)
         else
@@ -211,7 +218,7 @@ object ModelToPeaks {
                 cancellableState = cancellableState
             )
         }
-        return SpanPeaksResult(fdr, sensitivity2use, gap2use, peaks)
+        return SpanPeaksResult(fdr, sensitivity2use.first, sensitivity2use.second, gap2use, peaks)
     }
 
     private fun collectPVals(
@@ -259,13 +266,15 @@ object ModelToPeaks {
         val tLightFragmentation = (1 until SPAN_FRAGMENTATION_CHECKPOINT).firstOrNull {
             fragmentations[it] <= fragmentationLight
         }
-        LOG.debug("${name?:""} Fragmentation @${SPAN_FRAGMENTATION_CHECKPOINT} = " +
-                "${fragmentations[SPAN_FRAGMENTATION_CHECKPOINT]}")
+        LOG.debug(
+            "${name ?: ""} Fragmentation @${SPAN_FRAGMENTATION_CHECKPOINT} = " +
+                    "${fragmentations[SPAN_FRAGMENTATION_CHECKPOINT]}"
+        )
         if (tLightFragmentation == null) {
-            LOG.info("${name?:""} No fragmentation detected!")
+            LOG.info("${name ?: ""} No fragmentation detected!")
             return 0
         } else {
-            LOG.debug("${name?:""} Fragmentation light gap: $tLightFragmentation")
+            LOG.debug("${name ?: ""} Fragmentation light gap: $tLightFragmentation")
         }
         val speed = DoubleArray(fragmentations.size - 1) {
             fragmentations[it + 1] - fragmentations[it]
@@ -273,19 +282,20 @@ object ModelToPeaks {
         val tHardFragmentation = fragmentations.indices.firstOrNull {
             fragmentations[it] <= fragmentationHard
         }
-        LOG.debug("${name?:""} Fragmentation hard gap: $tHardFragmentation")
+        LOG.debug("${name ?: ""} Fragmentation hard gap: $tHardFragmentation")
         val tSpeedFragmentation = (tLightFragmentation / 2 until speed.size).firstOrNull {
             abs(speed[it]) < fragmentationSpeed
         }
-        LOG.debug("${name?:""} Fragmentation speed gap: $tSpeedFragmentation")
+        LOG.debug("${name ?: ""} Fragmentation speed gap: $tSpeedFragmentation")
         val finalFragmentationGap = when {
             tHardFragmentation != null && tSpeedFragmentation != null ->
                 min(tHardFragmentation, tSpeedFragmentation)
+
             tHardFragmentation != null -> tHardFragmentation
             tSpeedFragmentation != null -> tSpeedFragmentation
             else -> tLightFragmentation
         }
-        LOG.info("${name?:""} Fragmentation compensation gap: $finalFragmentationGap")
+        LOG.info("${name ?: ""} Fragmentation compensation gap: $finalFragmentationGap")
         return finalFragmentationGap
     }
 
@@ -295,13 +305,14 @@ object ModelToPeaks {
         spanFitResults: SpanFitResults,
         logNullMembershipsMap: GenomeMap<F64Array>,
         bitList2reuseMap: GenomeMap<BitList>,
+        summits: Boolean,
         parallel: Boolean,
         name: String?,
         cancellableState: CancellableState?
-    ): Double {
+    ): Pair<Double, Double?> {
         cancellableState?.checkCanceled()
 
-        LOG.info("${name?:""} Adjusting sensitivity...")
+        LOG.info("${name ?: ""} Adjusting sensitivity...")
         val minLogNull = genomeQuery.get().minOf { logNullMembershipsMap[it].min() }
         // Limit value due to floating point errors
         val maxLogNull = min(
@@ -319,7 +330,7 @@ object ModelToPeaks {
         val st = detectSensitivityTriangle(sensitivities, candidatesLogNs, candidatesLogALs)
         cancellableState?.checkCanceled()
         if (st != null) {
-            LOG.info("${name?:""} Analysing candidates additive numbers...")
+            LOG.info("${name ?: ""} Analysing candidates additive numbers...")
             val sensitivitiesLimited =
                 sensitivities.slice(st.beforeMerge until st.stable).toDoubleArray()
             val (totals, news) = analyzeAdditiveCandidates(
@@ -334,11 +345,15 @@ object ModelToPeaks {
                 .map { news[it].toDouble() / totals[it].toDouble() }
             val minAdditionalIdx = newCandidatesList.indices.minByOrNull { newCandidatesList[it] }!!
             val minAdditionalSensitivity = sensitivitiesLimited[minAdditionalIdx]
-            LOG.info("${name?:""} Minimal additional ${st.beforeMerge + minAdditionalIdx}: $minAdditionalSensitivity")
-            return minAdditionalSensitivity
+            LOG.info("${name ?: ""} Minimal additional ${st.beforeMerge + minAdditionalIdx}: $minAdditionalSensitivity")
+            return if (summits) {
+                minAdditionalSensitivity to sensitivities[st.beforeMerge]
+            } else {
+                minAdditionalSensitivity to null
+            }
         } else {
-            LOG.error("${name?:""} Failed to estimate sensitivity, using defaults.")
-            return ln(SPAN_DEFAULT_FDR)
+            LOG.error("${name ?: ""} Failed to estimate sensitivity, using defaults.")
+            return ln(SPAN_DEFAULT_FDR) to null
         }
     }
 
@@ -495,7 +510,7 @@ object ModelToPeaks {
             val logNullMemberships = logNullMembershipsMap[chromosome]
             val bitList2reuse = bitList2reuseMap[chromosome]
             getChromosomeCandidates(
-                chromosome, logNullMemberships, bitList2reuse, sensitivities[0], 0,
+                chromosome, logNullMemberships, bitList2reuse, sensitivities[0], null, 0,
             ).toRangeMergingList()
         }
 
@@ -513,7 +528,7 @@ object ModelToPeaks {
                 val logNullMemberships = logNullMembershipsMap[chromosome]
                 val bitList2reuse = bitList2reuseMap[chromosome]
                 getChromosomeCandidates(
-                    chromosome, logNullMemberships, bitList2reuse, s, 0,
+                    chromosome, logNullMemberships, bitList2reuse, s, null, 0,
                 ).toRangeMergingList()
             }
             val total = genomeQuery.get().sumOf { candidates[it].size }
@@ -622,7 +637,7 @@ object ModelToPeaks {
                 val logNullMemberships = logNullMembershipsMap[chromosome]
                 val bitList2reuse = bitList2reuseMap[chromosome]
                 val candidates = getChromosomeCandidates(
-                    chromosome, logNullMemberships, bitList2reuse, sensitivity, gap,
+                    chromosome, logNullMemberships, bitList2reuse, sensitivity, null, gap,
                 )
                 if (candidates.isNotEmpty()) {
                     synchronized(lens) {
@@ -645,7 +660,8 @@ object ModelToPeaks {
         logNullMemberships: F64Array,
         bitList2reuse: BitList?,
         sensitivity: Double,
-        gap: Int,
+        sensitivitySummits: Double?,
+        gap: Int
     ): List<Range> {
         if ('_' in chromosome.name ||
             "random" in chromosome.name.lowercase() ||
@@ -662,7 +678,40 @@ object ModelToPeaks {
         for (i in 0 until logNullMemberships.length) {
             bins.set(i, logNullMemberships[i] <= sensitivity)
         }
-        return bins.aggregate(gap)
+        val candidates = bins.aggregate(gap)
+        if (sensitivitySummits == null) {
+            return candidates
+        }
+        // Prepare to detect summits
+        bins.set(0, bins.size(), false)
+        for (i in 0 until logNullMemberships.length) {
+            bins.set(i, logNullMemberships[i] <= sensitivitySummits)
+        }
+        // Keep summits at least 3 bin
+        val summits = bins.aggregate().filter { it.length() >= SPAN_SUMMITS_MIN_LENGTH }
+        bins.set(0, bins.size(), false)
+        summits.forEach { (s, e) -> bins.set(s, e, true) }
+        // merge summits by min relative distance
+        var lastEnd = -1
+        var lastD = Int.MAX_VALUE
+        for ((start, end) in summits) {
+            val d = (end - start) * SPAN_SUMMITS_MIN_DISTANCE
+            if (lastEnd != -1) {
+                if (start - lastEnd <= min(lastD, d)) {
+                    bins.set(lastEnd, start)
+                }
+            }
+            lastEnd = end
+            lastD = d
+        }
+        // Add candidates not covered by more than one summit
+        candidates.forEach { (s, e) ->
+            if ((s until e).count { bins[it] && (it == s || !bins[it - 1]) } <= 1) {
+                bins.set(s, e, true)
+            }
+        }
+        // Final summits
+        return bins.aggregate()
     }
 
     fun getLogNulls(

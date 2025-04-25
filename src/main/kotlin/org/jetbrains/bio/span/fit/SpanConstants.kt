@@ -108,6 +108,12 @@ object SpanConstants {
     // When fragmentation is detected, max speed to estimate compensation gap
     const val SPAN_DEFAULT_FRAGMENTATION_SPEED = 0.01
 
+    // When calling summits, min summit length
+    const val SPAN_SUMMITS_MIN_LENGTH = 3
+
+    // When calling summits, minimal relative length between summits to merge
+    const val SPAN_SUMMITS_MIN_DISTANCE = 2
+
     /**
      * Clipping allows to fine-tune boundaries of point-wise peaks according to the local signal.
      */

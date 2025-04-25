@@ -164,7 +164,7 @@ object SpanCLACompare {
                         differentialPeakCallingResults,
                         genomeQuery,
                         fdr, multipleTesting,
-                        sensitivity, gap,
+                        sensitivity, gap, false,
                         SPAN_DEFAULT_FRAGMENTATION_LIGHT,
                         SPAN_DEFAULT_FRAGMENTATION_HARD,
                         SPAN_DEFAULT_FRAGMENTATION_SPEED,

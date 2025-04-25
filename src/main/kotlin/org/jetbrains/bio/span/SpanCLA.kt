@@ -10,9 +10,9 @@ import org.jetbrains.bio.span.fit.AbstractSpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP_MAX_SIGNAL
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FDR
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FIT_MAX_ITERATIONS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FIT_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION
 import org.jetbrains.bio.span.fit.SpanDataPaths
 import org.jetbrains.bio.span.fit.SpanFitInformation
 import org.jetbrains.bio.util.*
@@ -132,8 +132,10 @@ compare                         Differential peak calling
                     """.trimIndent()
             ).withRequiredArg()
 
-            accepts("clip",
-                "Clip max threshold for fine-tune boundaries of according to the local signal, 0 to disable")
+            accepts(
+                "clip",
+                "Clip max threshold for fine-tune boundaries of according to the local signal, 0 to disable"
+            )
                 .withRequiredArg()
                 .ofType(Double::class.java)
                 .defaultsTo(SPAN_DEFAULT_CLIP_MAX_SIGNAL)
@@ -177,6 +179,7 @@ compare                         Differential peak calling
                 .withRequiredArg()
                 .ofType(Double::class.java)
                 .defaultsTo(SPAN_DEFAULT_FDR)
+
             acceptsAll(
                 listOf("sensitivity"),
                 "Configures background sensitivity for peaks. Estimated from the data"
@@ -184,13 +187,16 @@ compare                         Differential peak calling
                 .availableIf("peaks")
                 .withRequiredArg()
                 .ofType(Double::class.java)
+            accepts("summits", "Report summits, recommended for ATAC-seq or single-cell ATAC-seq experiments.")
             accepts(
                 "gap",
                 "Gap is used for broad histone marks to join adjacent peaks. Estimated from the data"
             )
                 .availableIf("peaks")
+                .availableUnless("summits")
                 .withRequiredArg()
                 .ofType(Int::class.java)
+
 
             acceptsAll(listOf("w", "workdir"), "Path to the working directory. Used to save coverage and model cache")
                 .withRequiredArg().withValuesConvertedBy(PathConverter.exists())

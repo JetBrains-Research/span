@@ -102,6 +102,7 @@ object SpanCLAAnalyze {
             accepts("f-light",
                 "Lightest fragmentation threshold to enable gap compensation")
                 .availableUnless("gap")
+                .availableUnless("summits")
                 .withRequiredArg()
                 .ofType(Double::class.java)
                 .defaultsTo(SPAN_DEFAULT_FRAGMENTATION_LIGHT)
@@ -109,6 +110,7 @@ object SpanCLAAnalyze {
             accepts("f-hard",
                 "Hardest fragmentation threshold to stop gap compensation")
                 .availableUnless("gap")
+                .availableUnless("summits")
                 .withRequiredArg()
                 .ofType(Double::class.java)
                 .defaultsTo(SPAN_DEFAULT_FRAGMENTATION_LIGHT)
@@ -117,6 +119,7 @@ object SpanCLAAnalyze {
             accepts("f-speed",
                 "Minimal fragmentation speed threshold for compensation")
                 .availableUnless("gap")
+                .availableUnless("summits")
                 .withRequiredArg()
                 .ofType(Double::class.java)
                 .defaultsTo(SPAN_DEFAULT_FRAGMENTATION_SPEED)
@@ -204,19 +207,21 @@ object SpanCLAAnalyze {
                 LOG.info("MULTIPLE TEST CORRECTION: ${multipleTesting.description}")
 
                 val clip = options.valueOf("clip") as Double
+                val summits = "summits" in options
+                LOG.info("Summits: $summits")
                 val fragmentationLight  = when {
-                    gap != null -> 0.0
+                    summits || gap != null -> 0.0
                     options.has("f-light") -> options.valueOf("f-light") as Double
                     else -> SPAN_DEFAULT_FRAGMENTATION_LIGHT
                 }
                 val fragmentationHard  = when {
-                    gap != null -> 0.0
+                    summits || gap != null -> 0.0
                     options.has("f-hard") -> options.valueOf("f-hard") as Double
                     else -> SPAN_DEFAULT_FRAGMENTATION_HARD
                 }
 
                 val fragmentationSpeed = when {
-                    gap != null -> 0.0
+                    summits || gap != null -> 0.0
                     options.has("f-speed") ->
                         options.valueOf("f-speed") as Double
                     else -> SPAN_DEFAULT_FRAGMENTATION_SPEED
@@ -296,7 +301,7 @@ object SpanCLAAnalyze {
                     val peaks = if (labelsPath == null)
                         ModelToPeaks.getPeaks(
                             spanResults, genomeQuery, fdr, multipleTesting,
-                            sensitivity, gap,
+                            sensitivity, gap, summits,
                             fragmentationLight, fragmentationHard, fragmentationSpeed,
                             clip = clip,
                             blackListPath = blackListPath,
@@ -401,7 +406,7 @@ object SpanCLAAnalyze {
         )
         return ModelToPeaks.getPeaks(
             spanResults, genomeQuery, optimalFDR, SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION,
-            optimalSensitivity, optimalGap,
+            optimalSensitivity, optimalGap, false,
             SPAN_DEFAULT_FRAGMENTATION_LIGHT,
             SPAN_DEFAULT_FRAGMENTATION_HARD,
             SPAN_DEFAULT_FRAGMENTATION_SPEED,

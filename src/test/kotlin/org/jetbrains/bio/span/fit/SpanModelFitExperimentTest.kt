@@ -86,6 +86,7 @@ class SpanModelFitExperimentTest {
                     multipleTesting = SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION,
                     sensitivityCmdArg = SPAN_DEFAULT_SENSITIVITY,
                     gapCmdArg = SPAN_DEFAULT_GAP,
+                    summits = false,
                     fragmentationLight = SPAN_DEFAULT_FRAGMENTATION_LIGHT,
                     fragmentationHard = SPAN_DEFAULT_FRAGMENTATION_HARD,
                     fragmentationSpeed = SPAN_DEFAULT_FRAGMENTATION_SPEED,

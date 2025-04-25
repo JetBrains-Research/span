@@ -63,7 +63,7 @@ object SpanSemiSupervised {
                     ModelToPeaks.getPeaks(
                         results, labeledGenomeQuery, fdr,
                         SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION,
-                        sensitivity, gap,
+                        sensitivity, gap, false,
                         SPAN_DEFAULT_FRAGMENTATION_LIGHT,
                         SPAN_DEFAULT_FRAGMENTATION_HARD,
                         SPAN_DEFAULT_FRAGMENTATION_SPEED,

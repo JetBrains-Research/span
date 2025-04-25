@@ -224,7 +224,7 @@ object SpanResultsAnalysis {
             }
             val logNullMemberships = logNullMembershipsMap[chromosome]
             val bitList2reuse = bitList2reuseMap[chromosome]
-            getChromosomeCandidates(chromosome, logNullMemberships, bitList2reuse, sensitivity2use, gap2use)
+            getChromosomeCandidates(chromosome, logNullMemberships, bitList2reuse, sensitivity2use, null, gap2use)
         }
 
         val (avgSignalDensity, avgNoiseDensity) =
@@ -384,7 +384,7 @@ object SpanResultsAnalysis {
                     }
                     val logNullMemberships = logNullMembershipsMap[chromosome]
                     val bitList2reuse = bitList2reuseMap[chromosome]
-                    getChromosomeCandidates(chromosome, logNullMemberships, bitList2reuse, s, g)
+                    getChromosomeCandidates(chromosome, logNullMemberships, bitList2reuse, s, null, g)
                 }
                 val candidatesList = genomeQuery.get().flatMap { chromosome ->
                     candidatesMap[chromosome].map {

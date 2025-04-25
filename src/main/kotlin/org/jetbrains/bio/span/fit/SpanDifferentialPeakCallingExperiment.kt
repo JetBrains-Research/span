@@ -56,6 +56,7 @@ class SpanDifferentialPeakCallingExperiment private constructor(
             fdr, SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION,
             SPAN_DEFAULT_SENSITIVITY,
             SPAN_DEFAULT_GAP,
+            false,
             SPAN_DEFAULT_FRAGMENTATION_LIGHT,
             SPAN_DEFAULT_FRAGMENTATION_HARD,
             SPAN_DEFAULT_FRAGMENTATION_SPEED,
