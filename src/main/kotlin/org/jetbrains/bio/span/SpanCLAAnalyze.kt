@@ -14,17 +14,17 @@ import org.jetbrains.bio.span.SpanCLA.checkGenomeInFitInformation
 import org.jetbrains.bio.span.SpanResultsAnalysis.doDeepAnalysis
 import org.jetbrains.bio.span.fit.*
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP_MAX_SIGNAL
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_SPEED
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_HMM_LOW_THRESHOLD
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_HMM_ESTIMATE_SNR
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_LIGHT
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_HARD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_LIGHT
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_SPEED
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_HMM_ESTIMATE_SNR
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_HMM_LOW_THRESHOLD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_MULTIPLE_TEST_CORRECTION
 import org.jetbrains.bio.span.fit.SpanConstants.printSpanConstants
 import org.jetbrains.bio.span.fit.experimental.*
-import org.jetbrains.bio.span.peaks.SpanModelToPeaks
 import org.jetbrains.bio.span.peaks.MultipleTesting
 import org.jetbrains.bio.span.peaks.Peak
+import org.jetbrains.bio.span.peaks.SpanModelToPeaks
 import org.jetbrains.bio.span.peaks.SpanPeaksResult
 import org.jetbrains.bio.span.semisupervised.LocationLabel
 import org.jetbrains.bio.span.semisupervised.SpanSemiSupervised
@@ -78,8 +78,11 @@ object SpanCLAAnalyze {
                 .defaultsTo(SpanModelType.NB2Z_HMM.id)
 
             accepts(
-                "ext", "Save extended states information to model file.\n" +
-                        "Required for model visualization in JBR Genome Browser"
+                "ext",
+                """
+                    Save extended states information to model file.
+                    Required for model visualization in JBR Genome Browser
+                    """.trimIndent()
             )
 
             accepts(
@@ -87,28 +90,36 @@ object SpanCLAAnalyze {
                 "Deep analysis of model including analysis of coverage / candidates / peaks"
             )
 
-            accepts("hmm-snr",
-                "Fraction of coverage to estimate and guard signal to noise ratio, 0 to disable")
+            accepts(
+                "hmm-snr",
+                "Fraction of coverage to estimate and guard signal to noise ratio, 0 to disable"
+            )
                 .withRequiredArg()
                 .ofType(Double::class.java)
                 .defaultsTo(SPAN_DEFAULT_HMM_ESTIMATE_SNR)
 
-            accepts("hmm-low",
-                "Minimal low state mean threshold, guards against too broad peaks, 0 to disable")
+            accepts(
+                "hmm-low",
+                "Minimal low state mean threshold, guards against too broad peaks, 0 to disable"
+            )
                 .withRequiredArg()
                 .ofType(Double::class.java)
                 .defaultsTo(SPAN_DEFAULT_HMM_LOW_THRESHOLD)
 
-            accepts("f-light",
-                "Lightest fragmentation threshold to enable gap compensation")
+            accepts(
+                "f-light",
+                "Lightest fragmentation threshold to enable gap compensation"
+            )
                 .availableUnless("gap")
                 .availableUnless("summits")
                 .withRequiredArg()
                 .ofType(Double::class.java)
                 .defaultsTo(SPAN_DEFAULT_FRAGMENTATION_LIGHT)
 
-            accepts("f-hard",
-                "Hardest fragmentation threshold to stop gap compensation")
+            accepts(
+                "f-hard",
+                "Hardest fragmentation threshold to stop gap compensation"
+            )
                 .availableUnless("gap")
                 .availableUnless("summits")
                 .withRequiredArg()
@@ -116,8 +127,10 @@ object SpanCLAAnalyze {
                 .defaultsTo(SPAN_DEFAULT_FRAGMENTATION_LIGHT)
 
 
-            accepts("f-speed",
-                "Minimal fragmentation speed threshold for compensation")
+            accepts(
+                "f-speed",
+                "Minimal fragmentation speed threshold for compensation"
+            )
                 .availableUnless("gap")
                 .availableUnless("summits")
                 .withRequiredArg()
@@ -209,12 +222,12 @@ object SpanCLAAnalyze {
                 val clip = options.valueOf("clip") as Double
                 val summits = "summits" in options
                 LOG.info("SUMMITS: $summits")
-                val fragmentationLight  = when {
+                val fragmentationLight = when {
                     summits || gap != null -> 0.0
                     options.has("f-light") -> options.valueOf("f-light") as Double
                     else -> SPAN_DEFAULT_FRAGMENTATION_LIGHT
                 }
-                val fragmentationHard  = when {
+                val fragmentationHard = when {
                     summits || gap != null -> 0.0
                     options.has("f-hard") -> options.valueOf("f-hard") as Double
                     else -> SPAN_DEFAULT_FRAGMENTATION_HARD
@@ -224,6 +237,7 @@ object SpanCLAAnalyze {
                     summits || gap != null -> 0.0
                     options.has("f-speed") ->
                         options.valueOf("f-speed") as Double
+
                     else -> SPAN_DEFAULT_FRAGMENTATION_SPEED
                 }
 

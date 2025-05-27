@@ -108,9 +108,11 @@ compare                         Differential peak calling
             acceptsAll(listOf("q", "quiet"), "Turn off output")
             acceptsAll(
                 listOf("m", "model"),
-                "This option is used to specify SPAN model path.\n" +
-                        "Required for further semi-supervised peak calling.\n" +
-                        "If not provided, will be created in working directory"
+                """
+                    This option is used to specify SPAN model path.
+                    Required for further semi-supervised peak calling.
+                    If not provided, will be created in working directory
+                    """.trimIndent()
             )
                 .withRequiredArg().withValuesConvertedBy(PathConverter.noCheck())
             acceptsAll(
@@ -127,9 +129,7 @@ compare                         Differential peak calling
             ).requiredUnless("model").withRequiredArg().withValuesConvertedBy(PathConverter.exists())
             acceptsAll(
                 listOf("chr", "chromosomes"),
-                """
-                    Chromosome names to process, should be a comma-separated list. 
-                    """.trimIndent()
+                "Chromosome names to process, should be a comma-separated list"
             ).withRequiredArg()
 
             accepts(
@@ -142,8 +142,10 @@ compare                         Differential peak calling
 
             acceptsAll(
                 listOf("p", "peaks"),
-                "Resulting peaks file in ENCODE broadPeak (BED 6+3) format.\n" +
-                        "If omitted, only the model fitting step is performed"
+                """
+                    Resulting peaks file in ENCODE broadPeak (BED 6+3) format.
+                    If omitted, only the model fitting step is performed
+                    """.trimIndent()
             ).withRequiredArg().withValuesConvertedBy(PathConverter.noCheck())
 
             acceptsAll(
@@ -187,7 +189,7 @@ compare                         Differential peak calling
                 .availableIf("peaks")
                 .withRequiredArg()
                 .ofType(Double::class.java)
-            accepts("summits", "Report summits, recommended for ATAC-seq or single-cell ATAC-seq experiments.")
+            accepts("summits", "Report summits, recommended for ATAC-seq or single-cell ATAC-seq experiments")
             accepts(
                 "gap",
                 "Gap is used for broad histone marks to join adjacent peaks. Estimated from the data"
@@ -198,7 +200,10 @@ compare                         Differential peak calling
                 .ofType(Int::class.java)
 
 
-            acceptsAll(listOf("w", "workdir"), "Path to the working directory. Used to save coverage and model cache")
+            acceptsAll(
+                listOf("w", "workdir"),
+                "Path to the working directory. Used to save coverage and model cache"
+            )
                 .withRequiredArg().withValuesConvertedBy(PathConverter.exists())
                 .defaultsTo(System.getProperty("user.dir").toPath())
             acceptsAll(
@@ -223,14 +228,18 @@ compare                         Differential peak calling
                 .defaultsTo(SPAN_DEFAULT_FIT_THRESHOLD)
             acceptsAll(
                 listOf("kd", "keep-duplicates"),
-                "Keep duplicates.\n" +
-                        "By default, SPAN filters out redundant reads aligned at the same genomic position.\n" +
-                        "Recommended for bulk single cell ATAC-Seq data processing"
+                """
+                    Keep duplicates.
+                    By default, SPAN filters out redundant reads aligned at the same genomic position.
+                    Recommended for bulk single cell ATAC-Seq data processing
+                    """.trimIndent()
             )
             acceptsAll(
                 listOf("kc", "keep-cache"),
-                "Keep cache files.\n" +
-                        "By default SPAN creates cache files in working directory and removes them after computation is done"
+                """
+                    Keep cache files.
+                    By default SPAN creates cache files in working directory and removes them after computation is done
+                    """.trimIndent()
             )
         }
     }
