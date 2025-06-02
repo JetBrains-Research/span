@@ -4,6 +4,7 @@ import org.jetbrains.bio.dataframe.DataFrame
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
+import org.jetbrains.bio.genome.format.ReadsFormat
 import org.jetbrains.bio.span.fit.*
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FIT_MAX_ITERATIONS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FIT_THRESHOLD
@@ -47,9 +48,10 @@ class SpanPeakCallingExperimentNB5ZHMM<Model : ClassificationModel> private cons
         fun getExperiment(
             genomeQuery: GenomeQuery,
             paths: List<SpanDataPaths>,
-            bin: Int,
+            explicitFormat: ReadsFormat?,
             fragment: Fragment = AutoFragment,
             unique: Boolean = true,
+            bin: Int,
             fixedModelPath: Path? = null,
             threshold: Double = SPAN_DEFAULT_FIT_THRESHOLD,
             maxIterations: Int = SPAN_DEFAULT_FIT_MAX_ITERATIONS,
@@ -58,7 +60,8 @@ class SpanPeakCallingExperimentNB5ZHMM<Model : ClassificationModel> private cons
         ): SpanPeakCallingExperimentNB5ZHMM<out ClassificationModel> {
             require(paths.isNotEmpty()) { "No data" }
             val fitInformation = SpanAnalyzeFitInformation.createFitInformation(
-                genomeQuery, paths, MultiLabels.generate(SpanPeakCallingExperiment.SPAN_TRACK_PREFIX, paths.size).toList(),
+                genomeQuery, paths, explicitFormat,
+                MultiLabels.generate(SpanPeakCallingExperiment.SPAN_TRACK_PREFIX, paths.size).toList(),
                 fragment, unique, bin
             )
             require(paths.size == 1) { "Multiple replicates are not supported" }

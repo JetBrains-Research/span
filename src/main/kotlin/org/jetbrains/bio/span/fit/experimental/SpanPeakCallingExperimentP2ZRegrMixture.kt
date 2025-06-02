@@ -2,6 +2,7 @@ package org.jetbrains.bio.span.fit.experimental
 
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.Fragment
+import org.jetbrains.bio.genome.format.ReadsFormat
 import org.jetbrains.bio.span.fit.SpanDataPaths
 import org.jetbrains.bio.span.fit.SpanModelFitExperiment
 import org.jetbrains.bio.span.fit.SpanModelType
@@ -53,10 +54,11 @@ class SpanPeakCallingExperimentP2ZRegrMixture private constructor(
         fun getExperiment(
             genomeQuery: GenomeQuery,
             paths: List<SpanDataPaths>,
+            explicitFormat: ReadsFormat?,
             mapabilityPath: Path?,
             fragment: Fragment,
-            binSize: Int,
             unique: Boolean,
+            binSize: Int,
             fixedModelPath: Path?,
             threshold: Double,
             maxIterations: Int,
@@ -65,7 +67,7 @@ class SpanPeakCallingExperimentP2ZRegrMixture private constructor(
         ): SpanPeakCallingExperimentP2ZRegrMixture {
             require(paths.size == 1) { "Poisson regression mixture currently accepts a single data track." }
             val fitInformation = SpanRegrMixtureAnalyzeFitInformation(
-                genomeQuery, paths.single(), mapabilityPath, fragment, unique, binSize
+                genomeQuery, paths.single(), explicitFormat, mapabilityPath, fragment, unique, binSize
             )
             return SpanPeakCallingExperimentP2ZRegrMixture(
                 fitInformation,

@@ -7,6 +7,7 @@ import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.Coverage
 import org.jetbrains.bio.genome.coverage.Fragment
+import org.jetbrains.bio.genome.format.ReadsFormat
 import org.jetbrains.bio.genome.query.CachingQuery
 import org.jetbrains.bio.genome.query.Query
 import org.jetbrains.bio.genome.query.ReadsQuery
@@ -23,6 +24,7 @@ import java.nio.file.Path
 data class SpanRegrMixtureAnalyzeFitInformation(
     override val build: String,
     override val paths: List<SpanDataPaths>,
+    override val explicitFormat: ReadsFormat?,
     val mapabilityPath: Path?,
     override val fragment: Fragment,
     override val unique: Boolean,
@@ -32,6 +34,7 @@ data class SpanRegrMixtureAnalyzeFitInformation(
     constructor(
         genomeQuery: GenomeQuery,
         data: SpanDataPaths,
+        explicitFormat: ReadsFormat?,
         mapabilityPath: Path?,
         fragment: Fragment,
         unique: Boolean,
@@ -39,6 +42,7 @@ data class SpanRegrMixtureAnalyzeFitInformation(
     ) : this(
         genomeQuery.build,
         listOf(data),
+        explicitFormat,
         mapabilityPath,
         fragment,
         unique,
@@ -57,10 +61,10 @@ data class SpanRegrMixtureAnalyzeFitInformation(
             return object : CachingQuery<Chromosome, DataFrame>() {
 
                 private val treatmentCoverage = ReadsQuery(
-                    genomeQuery, datum.treatment, unique, fragment, showLibraryInfo = false
+                    genomeQuery, datum.treatment, explicitFormat, unique, fragment, showLibraryInfo = false
                 )
                 private val controlCoverage = datum.control?.let {
-                    ReadsQuery(genomeQuery, it, unique, fragment, showLibraryInfo = false)
+                    ReadsQuery(genomeQuery, it, explicitFormat, unique, fragment, showLibraryInfo = false)
                 }
 
                 override val id: String
@@ -91,7 +95,7 @@ data class SpanRegrMixtureAnalyzeFitInformation(
             normalizedCoverageQuery =
                 NormalizedCoverageQuery(
                     genomeQuery(), paths.single().treatment, paths.single().control,
-                    fragment, unique, binSize, showLibraryInfo = true
+                    explicitFormat, fragment, unique, binSize, showLibraryInfo = true
                 )
         }
     }

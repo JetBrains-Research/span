@@ -2,6 +2,7 @@ package org.jetbrains.bio.span.fit.experimental
 
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.Fragment
+import org.jetbrains.bio.genome.format.ReadsFormat
 import org.jetbrains.bio.span.fit.*
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation.Companion.createFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FIT_MAX_ITERATIONS
@@ -48,9 +49,10 @@ class SpanPeakCallingExperimentNB2ZMixture private constructor(
         fun getExperiment(
             genomeQuery: GenomeQuery,
             paths: List<SpanDataPaths>,
+            explicitFormat: ReadsFormat?,
             fragment: Fragment,
-            binSize: Int,
             unique: Boolean,
+            binSize: Int,
             fixedModelPath: Path?,
             threshold: Double = SPAN_DEFAULT_FIT_THRESHOLD,
             maxIterations: Int = SPAN_DEFAULT_FIT_MAX_ITERATIONS,
@@ -59,7 +61,7 @@ class SpanPeakCallingExperimentNB2ZMixture private constructor(
         ): SpanPeakCallingExperimentNB2ZMixture {
             require(paths.size == 1) { "Mixture currently accepts a single data track." }
             val fitInformation = createFitInformation(
-                genomeQuery, paths, MultiLabels.generate(SPAN_TRACK_PREFIX, paths.size).toList(),
+                genomeQuery, paths, explicitFormat, MultiLabels.generate(SPAN_TRACK_PREFIX, paths.size).toList(),
                 fragment, unique, binSize
             )
             return SpanPeakCallingExperimentNB2ZMixture(

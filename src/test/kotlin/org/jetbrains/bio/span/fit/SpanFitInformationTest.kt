@@ -30,14 +30,14 @@ class SpanFitInformationTest {
         expectedEx.expect(IllegalStateException::class.java)
         expectedEx.expectMessage("Wrong genome build, expected: hg19, got: to1")
         SpanAnalyzeFitInformation(
-            "hg19", emptyList(), emptyList(), FixedFragment(100), true, 200, LinkedHashMap()
+            "hg19", emptyList(), null, emptyList(), FixedFragment(100), true, 200, LinkedHashMap()
         ).checkGenome(Genome["to1"])
     }
 
     @Test
     fun checkGenomeQueryOrder() {
         SpanAnalyzeFitInformation(
-            GenomeQuery(Genome["to1"], "chr1", "chr2"), emptyList(), emptyList(), FixedFragment(100), true, 200
+            GenomeQuery(Genome["to1"], "chr1", "chr2"), emptyList(), null, emptyList(), FixedFragment(100), true, 200
         ).checkGenome(Genome["to1"])
     }
 
@@ -45,7 +45,7 @@ class SpanFitInformationTest {
     @Test
     fun checkOf() {
         val of = SpanAnalyzeFitInformation(
-            gq, emptyList(), emptyList(), FixedFragment(100), true, 200
+            gq, emptyList(), null, emptyList(), FixedFragment(100), true, 200
         )
         assertEquals(listOf("chr1", "chr2", "chr3", "chrM", "chrX"), of.chromosomesSizes.keys.toList())
     }
@@ -55,7 +55,7 @@ class SpanFitInformationTest {
         withTempFile("treatment", ".bam") { t ->
             withTempFile("control", ".bam") { c ->
                 val info = SpanAnalyzeFitInformation(
-                    gq, listOf(SpanDataPaths(t, c)), listOf("treatment_control"),
+                    gq, listOf(SpanDataPaths(t, c)), null, listOf("treatment_control"),
                     FixedFragment(100), false, 200
                 )
                 withTempFile("foo", ".tar") { path ->
@@ -217,7 +217,7 @@ class SpanFitInformationTest {
     @Test
     fun checkIndices() {
         val info = SpanAnalyzeFitInformation(
-            gq, emptyList(), emptyList(), FixedFragment(100), true, 200
+            gq, emptyList(), null, emptyList(), FixedFragment(100), true, 200
         )
         assertEquals(50000 to 55000, info.getChromosomesIndices(chr2))
     }
@@ -225,7 +225,7 @@ class SpanFitInformationTest {
     @Test
     fun checkOffsets() {
         val info = SpanAnalyzeFitInformation(
-            gq, emptyList(), emptyList(), FixedFragment(100), true, 200
+            gq, emptyList(), null, emptyList(), FixedFragment(100), true, 200
         )
         assertEquals(listOf(0, 200, 400, 600, 800), info.offsets(chr2).take(5))
         assertEquals(5000, chr2.length / 200)

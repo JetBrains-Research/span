@@ -6,6 +6,7 @@ import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.Fragment
+import org.jetbrains.bio.genome.format.ReadsFormat
 import org.jetbrains.bio.genome.query.ReadsQuery
 import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
 import org.jetbrains.bio.statistics.Preprocessed
@@ -261,17 +262,18 @@ abstract class SpanModelFitExperiment<
         fun filterGenomeQueryWithData(
             genomeQuery: GenomeQuery,
             paths: List<SpanDataPaths>,
+            explicitFormat: ReadsFormat?,
             fragment: Fragment,
             unique: Boolean = true
         ): GenomeQuery {
             val chromosomes = genomeQuery.get()
             val nonEmptyChromosomes = hashSetOf<Chromosome>()
             paths.forEach { (t, c) ->
-                val coverage = ReadsQuery(genomeQuery, t, unique, fragment, showLibraryInfo = false).get()
+                val coverage = ReadsQuery(genomeQuery, t, explicitFormat, unique, fragment, showLibraryInfo = false).get()
                 if (c != null) {
                     // we have to be sure that the control coverage cache is calculated for the full genome query,
                     // otherwise we can get some very hard-to-catch bugs later
-                    ReadsQuery(genomeQuery, c, unique, fragment, showLibraryInfo = false).get()
+                    ReadsQuery(genomeQuery, c, explicitFormat, unique, fragment, showLibraryInfo = false).get()
                 }
                 nonEmptyChromosomes.addAll(
                     chromosomes.filter { coverage.getBothStrandsCoverage(it.chromosomeRange) > 0 }

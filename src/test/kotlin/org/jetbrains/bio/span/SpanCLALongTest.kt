@@ -240,6 +240,65 @@ PEAKS: $peaksPath
     }
 
     @Test
+    fun testUnrecognizedFileFormat() {
+        // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
+        withTempFile("track", ".foobar.gz") { path ->
+
+            sampleCoverage(path, TO, SPAN_DEFAULT_BIN, goodQuality = true)
+            println("Saved sampled track file: $path")
+
+            withTempDirectory("work") {
+                val chromsizes = Genome["to1"].chromSizesPath.toString()
+                val (out, err) = Logs.captureLoggingOutput {
+                    SpanCLA.main(
+                        arrayOf(
+                            "analyze",
+                            "-cs", chromsizes,
+                            "--workdir", it.toString(),
+                            "-t", path.toString(),
+                            "--format", "BED",
+                            "--keep-cache"
+                        )
+                    )
+                }
+                assertIn("Done computing data model", out)
+                assertEquals("", err)
+            }
+        }
+    }
+
+
+    @Test
+    fun testWrongFileFormat() {
+        // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
+        withTempFile("track", ".bed.gz") { path ->
+
+            sampleCoverage(path, TO, SPAN_DEFAULT_BIN, goodQuality = true)
+            println("Saved sampled track file: $path")
+
+            withTempDirectory("work") {
+                val chromsizes = Genome["to1"].chromSizesPath.toString()
+                val (_, err) = Logs.captureLoggingOutput {
+                    SpanCLA.main(
+                        arrayOf(
+                            "analyze",
+                            "-cs", chromsizes,
+                            "--workdir", it.toString(),
+                            "-t", path.toString(),
+                            "--format", "BAM",
+                            "--keep-cache"
+                        )
+                    )
+                }
+                assertIn(
+                    "Error parsing text SAM file.",
+                    err
+                )
+            }
+        }
+    }
+
+    @Test
     fun testQuietMode() {
         withTempFile("track", ".bed.gz") { path ->
 

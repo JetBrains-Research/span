@@ -3,13 +3,12 @@ package org.jetbrains.bio.span.fit.experimental
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
+import org.jetbrains.bio.genome.format.ReadsFormat
 import org.jetbrains.bio.span.fit.*
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FIT_MAX_ITERATIONS
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FIT_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_HMM_ESTIMATE_SNR
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_HMM_LOW_THRESHOLD
-import org.jetbrains.bio.span.statistics.hmm.ConstrainedNBZHMM
-import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
 import org.jetbrains.bio.span.statistics.hmm.Norm2ZHMM
 import org.jetbrains.bio.statistics.hypothesis.NullHypothesis
 import org.jetbrains.bio.statistics.model.ClassificationModel
@@ -43,9 +42,10 @@ class SpanPeakCallingExperimentNorm2ZHMM<Model : ClassificationModel> private co
         fun getExperiment(
             genomeQuery: GenomeQuery,
             paths: List<SpanDataPaths>,
-            bin: Int,
+            explicitFormat: ReadsFormat?,
             fragment: Fragment = AutoFragment,
             unique: Boolean = true,
+            bin: Int,
             hmmEstimateSNR: Double = SPAN_DEFAULT_HMM_ESTIMATE_SNR,
             hmmLow: Double = SPAN_DEFAULT_HMM_LOW_THRESHOLD,
             fixedModelPath: Path? = null,
@@ -56,7 +56,7 @@ class SpanPeakCallingExperimentNorm2ZHMM<Model : ClassificationModel> private co
         ): SpanPeakCallingExperimentNorm2ZHMM<out ClassificationModel> {
             require(paths.isNotEmpty()) { "No data" }
             val fitInformation = SpanAnalyzeFitInformation.createFitInformation(
-                genomeQuery, paths, MultiLabels.generate(SPAN_TRACK_PREFIX, paths.size).toList(),
+                genomeQuery, paths, explicitFormat, MultiLabels.generate(SPAN_TRACK_PREFIX, paths.size).toList(),
                 fragment, unique, bin
             )
             return if (paths.size == 1) {

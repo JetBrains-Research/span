@@ -6,6 +6,7 @@ import org.jetbrains.bio.genome.Chromosome
 import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.Fragment
+import org.jetbrains.bio.genome.format.ReadsFormat
 import org.jetbrains.bio.genome.query.CachingQuery
 import org.jetbrains.bio.genome.query.Query
 import org.jetbrains.bio.span.coverage.NormalizedCoverageQuery
@@ -19,6 +20,7 @@ data class SpanCompareFitInformation(
     val data2: List<SpanDataPaths>,
     val labels1: List<String>,
     val labels2: List<String>,
+    val explicitFormat: ReadsFormat?,
     val fragment: Fragment,
     val unique: Boolean,
     override val binSize: Int,
@@ -59,6 +61,7 @@ data class SpanCompareFitInformation(
                     genomeQuery(),
                     it.treatment,
                     it.control,
+                    explicitFormat,
                     fragment,
                     unique,
                     binSize,
@@ -72,6 +75,7 @@ data class SpanCompareFitInformation(
                     genomeQuery(),
                     it.treatment,
                     it.control,
+                    explicitFormat,
                     fragment,
                     unique,
                     binSize,
@@ -172,15 +176,16 @@ data class SpanCompareFitInformation(
             paths2: List<SpanDataPaths>,
             labels1: List<String>,
             labels2: List<String>,
+            explicitFormat: ReadsFormat?,
             fragment: Fragment,
             unique: Boolean,
             binSize: Int
         ): SpanCompareFitInformation {
             return SpanCompareFitInformation(
-                genomeQuery.build, paths1, paths2, labels1, labels2, fragment, unique, binSize,
+                genomeQuery.build, paths1, paths2, labels1, labels2, explicitFormat, fragment, unique, binSize,
                 SpanFitInformation.chromSizes(
                     SpanModelFitExperiment.filterGenomeQueryWithData(
-                        genomeQuery, paths1 + paths2, fragment, unique
+                        genomeQuery, paths1 + paths2, explicitFormat, fragment, unique
                     )
                 )
             )

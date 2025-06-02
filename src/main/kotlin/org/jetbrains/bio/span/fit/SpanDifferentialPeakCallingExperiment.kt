@@ -2,6 +2,7 @@ package org.jetbrains.bio.span.fit
 
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.Fragment
+import org.jetbrains.bio.genome.format.ReadsFormat
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP_MAX_SIGNAL
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_HARD
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_FRAGMENTATION_SPEED
@@ -96,6 +97,7 @@ class SpanDifferentialPeakCallingExperiment private constructor(
             genomeQuery: GenomeQuery,
             paths1: List<SpanDataPaths>,
             paths2: List<SpanDataPaths>,
+            explicitFormat: ReadsFormat?,
             bin: Int,
             fragment: Fragment,
             unique: Boolean,
@@ -108,7 +110,7 @@ class SpanDifferentialPeakCallingExperiment private constructor(
                 paths1, paths2,
                 MultiLabels.generate(SPAN_TRACK1_PREFIX, paths1.size).toList(),
                 MultiLabels.generate(SPAN_TRACK2_PREFIX, paths2.size).toList(),
-                fragment, unique, bin
+                explicitFormat, fragment, unique, bin
             )
             return SpanDifferentialPeakCallingExperiment(fitInformation, threshold, maxIterations)
         }

@@ -7,8 +7,10 @@ import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.Coverage
 import org.jetbrains.bio.genome.coverage.Fragment
+import org.jetbrains.bio.genome.format.ReadsFormat
 import org.jetbrains.bio.genome.query.Query
 import org.jetbrains.bio.genome.query.ReadsQuery
+import org.jetbrains.bio.span.coverage.NormalizedCoverageQuery.Companion.analyzeCoverage
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_BETA_STEP
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
 import org.jetbrains.bio.util.isAccessible
@@ -45,6 +47,7 @@ class NormalizedCoverageQuery(
     val genomeQuery: GenomeQuery,
     val treatmentPath: Path,
     val controlPath: Path?,
+    val explicitFormat: ReadsFormat?,
     val fragment: Fragment,
     val unique: Boolean = true,
     val binSize: Int = SPAN_DEFAULT_BIN,
@@ -63,12 +66,12 @@ class NormalizedCoverageQuery(
                 "Fragment: $fragment, Keep-duplicates: ${!unique}"
 
     val treatmentReads by lazy {
-        ReadsQuery(genomeQuery, treatmentPath, unique, fragment, showLibraryInfo = showLibraryInfo)
+        ReadsQuery(genomeQuery, treatmentPath, explicitFormat, unique, fragment, showLibraryInfo = showLibraryInfo)
     }
 
     val controlReads by lazy {
         controlPath?.let {
-            ReadsQuery(genomeQuery, it, unique, fragment, showLibraryInfo = showLibraryInfo)
+            ReadsQuery(genomeQuery, it, explicitFormat, unique, fragment, showLibraryInfo = showLibraryInfo)
         }
     }
 
@@ -94,7 +97,7 @@ class NormalizedCoverageQuery(
     }
 
     fun controlScore(chromosomeRange: ChromosomeRange): Double {
-        require (controlReads != null) { "Control is not available" }
+        require(controlReads != null) { "Control is not available" }
         return controlReads!!.get().getBothStrandsCoverage(chromosomeRange) * coveragesNormalizedInfo.controlScale
     }
 
@@ -174,11 +177,11 @@ class NormalizedCoverageQuery(
                 return NormalizedCoverageInfo(0.0, 0.0, 0.0)
             }
             // Scale control to treatment
-            val controlScale = treatmentTotal.toDouble()  / controlTotal
+            val controlScale = treatmentTotal.toDouble() / controlTotal
             // Estimate beta corrected signal only on not empty chromosomes
             val chromosomeWithMaxSignal = genomeQuery.get()
-                .maxByOrNull { treatmentCoverage.getBothStrandsCoverage(it.chromosomeRange) } ?:
-                return NormalizedCoverageInfo(0.0, 0.0, 0.0)
+                .maxByOrNull { treatmentCoverage.getBothStrandsCoverage(it.chromosomeRange) }
+                ?: return NormalizedCoverageInfo(0.0, 0.0, 0.0)
             val binnedTreatment = chromosomeWithMaxSignal.range.slice(bin).mapToDouble {
                 treatmentCoverage.getBothStrandsCoverage(it.on(chromosomeWithMaxSignal)).toDouble()
             }.toArray()

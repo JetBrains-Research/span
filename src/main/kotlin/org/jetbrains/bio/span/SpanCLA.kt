@@ -6,6 +6,7 @@ import org.jetbrains.bio.experiment.Configuration
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.coverage.AutoFragment
 import org.jetbrains.bio.genome.coverage.Fragment
+import org.jetbrains.bio.genome.format.ReadsFormat
 import org.jetbrains.bio.span.fit.AbstractSpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_BIN
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP_MAX_SIGNAL
@@ -106,6 +107,13 @@ compare                         Differential peak calling
         init {
             acceptsAll(listOf("d", "debug"), "Print all the debug information, used for troubleshooting")
             acceptsAll(listOf("q", "quiet"), "Turn off output")
+            acceptsAll(
+                listOf("fmt", "format"),
+                """Format of input file, supported formats: ${
+                    ReadsFormat.values().joinToString(", ") { it.name }
+                    }. 
+                    Text format can be in zip or gzip archive""".trimIndent()
+            ).withRequiredArg()
             acceptsAll(
                 listOf("m", "model"),
                 """
@@ -260,6 +268,17 @@ compare                         Differential peak calling
             LOG.info("$propertyId: $property")
         }
         return property
+    }
+
+    internal fun readsFormat(options: OptionSet, log: Boolean): ReadsFormat? {
+        var explicitFormat: ReadsFormat? = null
+        if ("format" in options) {
+            explicitFormat = ReadsFormat.valueOf(options.valueOf("format") as String)
+            if (log) LOG.info("FORMAT: $explicitFormat")
+        } else {
+            if (log) LOG.info("FORMAT: auto")
+        }
+        return explicitFormat
     }
 
     internal fun getUnique(

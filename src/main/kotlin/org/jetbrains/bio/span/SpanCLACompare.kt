@@ -5,6 +5,7 @@ import org.jetbrains.bio.experiment.Configuration
 import org.jetbrains.bio.experiment.configurePaths
 import org.jetbrains.bio.genome.Genome
 import org.jetbrains.bio.genome.GenomeQuery
+import org.jetbrains.bio.genome.format.ReadsFormat
 import org.jetbrains.bio.span.SpanCLA.LOG
 import org.jetbrains.bio.span.fit.*
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_CLIP_MAX_SIGNAL
@@ -232,14 +233,15 @@ object SpanCLACompare {
         val genomeQuery = GenomeQuery(Genome[chromSizesPath!!])
         val (data1, data2) = getComparePaths(options, log = true)
         LOG.info("CHROM.SIZES: $chromSizesPath")
-        val bin = SpanCLA.getBin(options, log = true)
+        val explicitFormat: ReadsFormat? = SpanCLA.readsFormat(options, log=true)
         val fragment = SpanCLA.getFragment(options, log = true)
         val unique = SpanCLA.getUnique(options, log = true)
+        val bin = SpanCLA.getBin(options, log = true)
         val fitThreshold = SpanCLA.getFitThreshold(options, log = true)
         val fitMaxIterations = SpanCLA.getFitMaxIteration(options, log = true)
         return lazy {
             val experiment = SpanDifferentialPeakCallingExperiment.getExperiment(
-                genomeQuery, data1, data2, bin, fragment, unique,
+                genomeQuery, data1, data2, explicitFormat, bin, fragment, unique,
                 fitThreshold, fitMaxIterations
             )
             experiment.results

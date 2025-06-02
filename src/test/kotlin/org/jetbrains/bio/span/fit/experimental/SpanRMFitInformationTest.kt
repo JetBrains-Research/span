@@ -26,7 +26,7 @@ class SpanRMFitInformationTest {
         val gq = GenomeQuery(Genome["to1"])
         val info = SpanRegrMixtureAnalyzeFitInformation(
             gq, SpanDataPaths("path_to_file".toPath(), "path_to_control".toPath()),
-            "mapability.bigWig".toPath(), FixedFragment(42), false, 200
+            null, "mapability.bigWig".toPath(), FixedFragment(42), false, 200
         )
         withTempFile("foo", ".tar") { path ->
             path.bufferedWriter().use {

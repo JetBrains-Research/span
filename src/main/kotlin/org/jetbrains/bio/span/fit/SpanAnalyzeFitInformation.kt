@@ -6,6 +6,7 @@ import org.jetbrains.bio.genome.ChromosomeRange
 import org.jetbrains.bio.genome.GenomeQuery
 import org.jetbrains.bio.genome.coverage.Coverage
 import org.jetbrains.bio.genome.coverage.Fragment
+import org.jetbrains.bio.genome.format.ReadsFormat
 import org.jetbrains.bio.genome.query.CachingQuery
 import org.jetbrains.bio.genome.query.Query
 import org.jetbrains.bio.span.coverage.NormalizedCoverageQuery
@@ -26,6 +27,7 @@ import org.jetbrains.bio.util.stemGz
 data class SpanAnalyzeFitInformation(
     override val build: String,
     override val paths: List<SpanDataPaths>,
+    override val explicitFormat: ReadsFormat?,
     val labels: List<String>,
     override val fragment: Fragment,
     override val unique: Boolean,
@@ -36,12 +38,13 @@ data class SpanAnalyzeFitInformation(
     constructor(
         genomeQuery: GenomeQuery,
         paths: List<SpanDataPaths>,
+        explicitFormat: ReadsFormat?,
         labels: List<String>,
         fragment: Fragment,
         unique: Boolean,
         binSize: Int
     ) : this(
-        genomeQuery.build, paths,
+        genomeQuery.build, paths, explicitFormat,
         labels, fragment, unique, binSize,
         SpanFitInformation.chromSizes(genomeQuery)
     )
@@ -80,6 +83,7 @@ data class SpanAnalyzeFitInformation(
                         genomeQuery(),
                         it.treatment,
                         it.control,
+                        explicitFormat,
                         fragment,
                         unique,
                         binSize,
@@ -186,16 +190,18 @@ data class SpanAnalyzeFitInformation(
         fun createFitInformation(
             genomeQuery: GenomeQuery,
             paths: List<SpanDataPaths>,
+            explicitFormat: ReadsFormat?,
             labels: List<String>,
             fragment: Fragment,
             unique: Boolean,
             binSize: Int
         ): SpanAnalyzeFitInformation {
             val genomeQueryWithData =
-                SpanModelFitExperiment.filterGenomeQueryWithData(genomeQuery, paths, fragment, unique)
+                SpanModelFitExperiment.filterGenomeQueryWithData(genomeQuery, paths, explicitFormat, fragment, unique)
             return SpanAnalyzeFitInformation(
                 genomeQueryWithData.build,
                 paths,
+                explicitFormat,
                 labels,
                 fragment,
                 unique,
