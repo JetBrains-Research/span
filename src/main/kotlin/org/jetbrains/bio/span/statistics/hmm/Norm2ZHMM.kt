@@ -6,6 +6,7 @@ import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_HMM_ESTIMATE_SNR
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_DEFAULT_HMM_LOW_THRESHOLD
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_HMM_ESTIMATE_LOW
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_HMM_MAX_MEAN_TO_STD
+import org.jetbrains.bio.span.fit.SpanConstants.SPAN_HMM_NB_VAR_MEAN_MULTIPLIER
 import org.jetbrains.bio.span.statistics.emission.NormalEmissionScheme
 import org.jetbrains.bio.span.statistics.hmm.FreeNBZHMM.Companion.positiveCoverage
 import org.jetbrains.bio.statistics.Preprocessed
@@ -18,6 +19,7 @@ import org.jetbrains.bio.statistics.stochastic
 import org.jetbrains.bio.viktor.F64Array
 import kotlin.math.max
 import kotlin.math.pow
+import kotlin.math.sqrt
 
 /**
  * Hidden Markov model with multidimensional integer-valued emissions.
@@ -57,29 +59,37 @@ class Norm2ZHMM(
             val lowState = getEmissionScheme(1, d) as NormalEmissionScheme
             val highState = getEmissionScheme(2, d) as NormalEmissionScheme
 
+            // Need to update transients in case of any change
+            var updatedLow = false
+            var updatedHigh = false
+
             val snrPrevious = highState.mean / lowState.mean
-            var updated = false
+            val snrTarget = max(guess.signalToNoise, snrPrevious)
 
             // This check is required to prevent low state go too close to 0, causing too broad peaks
             if (lowState.mean < guess.lowMin) {
-                LOG.warn("Low state mean ${lowState.mean} < ${guess.lowMin}, fixing...")
+                LOG.info("Low state mean ${lowState.mean} < ${guess.lowMin}, fixing...")
                 lowState.mean = guess.lowMin
                 lowState.variance = max(lowState.variance, lowState.mean)
-                updated = true
+                updatedLow = true
             }
-
-            val snr = highState.mean / lowState.mean
-            val snrTarget = max(guess.signalToNoise, snrPrevious)
 
             // This check is required mostly for narrow marks to guard decent signal-to-noise ratio
-            if (snr < snrTarget) {
-                LOG.warn("Signal-to-noise ratio $snr < ${snrTarget}, fixing...")
+            if (snrPrevious < snrTarget || updatedLow) {
+                if (snrPrevious < snrTarget) {
+                    LOG.info("Signal-to-noise ratio $snrPrevious < ${snrTarget}, fixing...")
+                } else {
+                    LOG.info("Updating high state mean, snr = $snrPrevious...")
+                }
                 highState.mean = lowState.mean * snrTarget
-                updated = true
+                highState.variance = max(highState.variance, highState.mean)
+                updatedHigh = true
             }
 
-            if (updated) {
+            if (updatedLow) {
                 lowState.updateTransients()
+            }
+            if (updatedHigh) {
                 highState.updateTransients()
             }
         }
@@ -148,7 +158,7 @@ class Norm2ZHMM(
             val sdH = highEmissions.standardDeviation()
             LOG.debug("High $fraction emissions mean $meanH\t std $sdH")
             if (meanH > maxMeanToStd * (sdH + 1e-10)) {
-                LOG.warn("High mean / std > $maxMeanToStd, adjusting...")
+                LOG.info("High mean / std > $maxMeanToStd, adjusting...")
                 meanH = (sdH + 1e-10) * maxMeanToStd
                 LOG.debug("Adjusted high $fraction emissions mean $meanH\t std $sdH")
             }

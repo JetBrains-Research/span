@@ -47,7 +47,7 @@ object SpanConstants {
     const val SPAN_DEFAULT_HMM_LOW_THRESHOLD = 0.3
 
     // Technical threshold to limit mean to std, guards against artificial data without noise
-    const val SPAN_HMM_MAX_MEAN_TO_STD = 5.0
+    const val SPAN_HMM_MAX_MEAN_TO_STD = 10.0
 
     // General model priors and priors based on real data peaks footprint
     val SPAN_HMM_PRIORS = F64Array.of(0.75, 0.249, 0.001)

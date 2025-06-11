@@ -49,7 +49,7 @@ object NegBinUtil {
         val sdH = highEmissions.standardDeviation()
         LOG.debug("High $fraction emissions mean $meanH\t std $sdH")
         if (meanH > maxMeanToStd * (sdH + 1e-10)) {
-            LOG.warn("High mean / std > $maxMeanToStd, adjusting...")
+            LOG.info("High mean / std > $maxMeanToStd, adjusting...")
             meanH = (sdH + 1e-10) * maxMeanToStd
             LOG.debug("Adjusted high $fraction emissions mean $meanH\t std $sdH")
         }

@@ -14,6 +14,7 @@ import org.jetbrains.bio.viktor.F64Array
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import kotlin.math.max
+import kotlin.math.sqrt
 
 /**
  * A zero-inflated constrained HMM with univariate Negative Binomial emissions and constraints.
@@ -46,40 +47,45 @@ class NB2ZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) :
             val highState = getEmissionScheme(2, d) as NegBinEmissionScheme
 
             // Need to update transients in case of any change
-            var updated = false
+            var updatedLow = false
+            var updatedHigh = false
 
             val snrPrevious = highState.mean / lowState.mean
+            val snrTarget = max(guess.signalToNoise, snrPrevious)
 
             // This check is required to prevent low state go too close to 0, causing too broad peaks
             if (lowState.mean < guess.lowMin) {
-                LOG.warn("Low state mean ${lowState.mean} < ${guess.lowMin}, fixing...")
+                LOG.info("Low state mean ${lowState.mean} < ${guess.lowMin}, fixing...")
                 outOfLowerNoise = true
                 lowState.mean = guess.lowMin
                 lowState.failures = estimateFailuresUsingMoments(
                     lowState.mean,
                     max(lowState.mean * SPAN_HMM_NB_VAR_MEAN_MULTIPLIER, lowState.variance)
                 )
-                updated = true
+                updatedLow = true
             }
 
-            val snr = highState.mean / lowState.mean
-            val snrTarget = max(guess.signalToNoise, snrPrevious)
-
             // This check is required mostly for narrow marks to guard decent signal-to-noise ratio
-            if (snr < snrTarget) {
-                LOG.warn("Signal-to-noise ratio $snr < ${snrTarget}, fixing...")
-                outOfSignalToNoiseRatioRangeDown = true
-                highState.mean = lowState.mean * snrTarget
+            if (snrPrevious < snrTarget || updatedLow) {
+                if (snrPrevious < snrTarget) {
+                    LOG.info("Signal-to-noise ratio $snrPrevious < ${snrTarget}, fixing...")
+                    outOfSignalToNoiseRatioRangeDown = true
+                } else {
+                    LOG.info("Updating high state mean, snr = $snrPrevious...")
+                }
+                highState.mean = max(highState.mean, lowState.mean * guess.signalToNoise)
                 highState.failures = estimateFailuresUsingMoments(
                     highState.mean,
                     max(highState.mean * SPAN_HMM_NB_VAR_MEAN_MULTIPLIER, highState.variance)
                 )
-                updated = true
+                updatedHigh = true
             }
 
-            if (updated) {
-                highState.updateTransients()
+            if (updatedLow) {
                 lowState.updateTransients()
+            }
+            if (updatedHigh) {
+                highState.updateTransients()
             }
         }
     }
