@@ -40,9 +40,6 @@ object SpanConstants {
     // Fraction scores used for HMM signal, noise and ratio estimation, guards decent SNR in model
     const val SPAN_DEFAULT_HMM_ESTIMATE_SNR = 0.1
 
-    // Fraction scores used for HMM noise estimation
-    const val SPAN_HMM_ESTIMATE_LOW = 0.5
-
     // Minimal low state mean threshold, guards against too broad peaks
     const val SPAN_DEFAULT_HMM_LOW_THRESHOLD = 0.3
 

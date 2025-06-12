@@ -34,6 +34,8 @@ class NB2ZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) :
     var outOfSignalToNoiseRatioRangeDown: Boolean = false
     // Indicator: low state mean value is smaller than threshold
     var outOfLowerNoise: Boolean = false
+    // Indicator: states switched = false, when low mean becomes bigger than high mean
+    var statesSwitched: Boolean = false
 
     /**
      * Keep model signal-to-noise ratio in the normal range
@@ -67,7 +69,11 @@ class NB2ZHMM(nbMeans: DoubleArray, nbFailures: DoubleArray) :
 
             // This check is required mostly for narrow marks to guard decent signal-to-noise ratio
             if (snrPrevious < snrTarget || updatedLow) {
-                if (snrPrevious < snrTarget) {
+                if (snrPrevious < 1) {
+                    LOG.warn("Signal-to-noise ratio $snrPrevious < 1, fixing...")
+                    statesSwitched = true
+                }
+                else if (snrPrevious < snrTarget) {
                     LOG.info("Signal-to-noise ratio $snrPrevious < ${snrTarget}, fixing...")
                     outOfSignalToNoiseRatioRangeDown = true
                 } else {

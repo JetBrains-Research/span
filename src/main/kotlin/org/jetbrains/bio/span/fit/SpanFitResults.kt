@@ -43,6 +43,7 @@ open class SpanFitResults(
         val CT_SIGNAL_TO_NOISE = TrackAboutDoubleColumnType("Signal to noise")
         val CT_OUT_OF_SNR_DOWN = TrackAboutBooleanColumnType("Out of signal-to-noise range down")
         val CT_OUT_OF_NOISE_DOWN = TrackAboutBooleanColumnType("Out of low noise level down")
+        val CT_STATES_SWITCHED = TrackAboutBooleanColumnType("States switched")
     }
 
     /**
@@ -53,6 +54,7 @@ open class SpanFitResults(
             is NB2ZHMM -> {
                 val outOfSnrHitDown = model.outOfSignalToNoiseRatioRangeDown
                 val outOfLowerNoise = model.outOfLowerNoise
+                val statesSwitched = model.statesSwitched
                 val signalMean = model.means[1]
                 val noiseMean = model.means[0]
                 listOf(
@@ -62,6 +64,7 @@ open class SpanFitResults(
                     CT_NOISE_MEAN to noiseMean,
                     CT_SIGNAL_TO_NOISE to ((signalMean + 1e-10) / (noiseMean + 1e-10)),
                     CT_OUT_OF_SNR_DOWN to outOfSnrHitDown,
+                    CT_STATES_SWITCHED to statesSwitched,
                     CT_OUT_OF_NOISE_DOWN to outOfLowerNoise
                 )
             }
