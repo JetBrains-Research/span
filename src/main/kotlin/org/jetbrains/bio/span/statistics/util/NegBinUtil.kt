@@ -69,13 +69,12 @@ object NegBinUtil {
         // NegativeBinomialDistribution requires variance greater than mean, tweak variance if required.
         // Otherwise, failures will be set to +Inf and won't be updated during EM steps.
         val failures = DoubleArray(n) {
-            estimateFailuresUsingMoments(mean, max(mean * SPAN_HMM_NB_VAR_MEAN_MULTIPLIER, vars))
+            estimateFailuresUsingMoments(means[it], max(means[it] * SPAN_HMM_NB_VAR_MEAN_MULTIPLIER, vars))
         }
         LOG.debug(
             "Guess NegBinEmissionScheme means ${means.joinToString(",")}, " +
                     "failures ${failures.joinToString(",")}"
         )
-
         val snrMin = if (estimateSNRFraction > 0) signalToNoiseRatio else 0.0
         LOG.debug("Minimal signal to noise ratio: $snrMin")
         val lowMin = meanL * estimateLowMinThreshold

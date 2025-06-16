@@ -25,7 +25,7 @@ class NegBitUtilTest {
         assertEquals(1.0, means[0], 1.0)
         assertEquals(34.0, means[1], 1.0)
         assertEquals(0.1, failures[0], .1)
-        assertEquals(0.1, failures[1], .1)
+        assertEquals(5.4, failures[1], .1)
         assertEquals(0.4, lowMin, .1)
         assertEquals(26.1, snrMin, 1.0)
     }

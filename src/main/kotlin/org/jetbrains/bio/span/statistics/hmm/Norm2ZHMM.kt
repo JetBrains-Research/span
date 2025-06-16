@@ -138,7 +138,6 @@ class Norm2ZHMM(
             }
             val mean = emissions.average()
             val sd = emissions.standardDeviation()
-            val vars = sd * sd
             LOG.debug("All emissions mean $mean\t std $sd")
             emissions.sortDescending()
 
