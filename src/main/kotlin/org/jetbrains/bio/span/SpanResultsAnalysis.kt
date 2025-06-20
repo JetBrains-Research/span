@@ -11,22 +11,19 @@ import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.coverage.Coverage
 import org.jetbrains.bio.span.fit.SpanAnalyzeFitInformation
 import org.jetbrains.bio.span.fit.SpanConstants.SPAN_FRAGMENTATION_MAX_GAP
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_MIN_SENSITIVITY
-import org.jetbrains.bio.span.fit.SpanConstants.SPAN_SENSITIVITY_N
 import org.jetbrains.bio.span.fit.SpanFitInformation
 import org.jetbrains.bio.span.fit.SpanFitResults
+import org.jetbrains.bio.span.peaks.Peak
 import org.jetbrains.bio.span.peaks.SpanModelToPeaks.analyzeAdditiveCandidates
 import org.jetbrains.bio.span.peaks.SpanModelToPeaks.computeCorrelations
 import org.jetbrains.bio.span.peaks.SpanModelToPeaks.detectSensitivityTriangle
 import org.jetbrains.bio.span.peaks.SpanModelToPeaks.estimateCandidatesNumberLens
 import org.jetbrains.bio.span.peaks.SpanModelToPeaks.estimateGap
 import org.jetbrains.bio.span.peaks.SpanModelToPeaks.estimateGenomeSignalNoiseAverage
-import org.jetbrains.bio.span.peaks.SpanModelToPeaks.getCandidatesCharacteristics
 import org.jetbrains.bio.span.peaks.SpanModelToPeaks.getChromosomeCandidates
 import org.jetbrains.bio.span.peaks.SpanModelToPeaks.getLogNullPvals
 import org.jetbrains.bio.span.peaks.SpanModelToPeaks.getLogNulls
-import org.jetbrains.bio.span.peaks.SpanModelToPeaks.linSpace
-import org.jetbrains.bio.span.peaks.Peak
+import org.jetbrains.bio.span.peaks.SpanModelToPeaks.getSensitivitiesAndCandidatesCharacteristics
 import org.jetbrains.bio.span.semisupervised.SpanSemiSupervised.SPAN_GAPS_VARIANTS
 import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
 import org.jetbrains.bio.util.await
@@ -157,23 +154,19 @@ object SpanResultsAnalysis {
         logInfo("Average autocorrelation score: $avgAutoCorrelation", infoWriter)
 
         LOG.info("$name Analysing sensitivity...")
-        val minLogNull = genomeQuery.get().minOf { logNullMembershipsMap[it].min() }
-        // Limit value due to floating point errors
-        val maxLogNull = min(SPAN_MIN_SENSITIVITY, genomeQuery.get().maxOf { logNullMembershipsMap[it].max() })
-        val sensitivities = linSpace(minLogNull, maxLogNull, SPAN_SENSITIVITY_N)
-        // Compute candidates characteristics
-        val (candidatesLogNs, candidatesLogALs) = getCandidatesCharacteristics(
-            sensitivities,
-            genomeQuery,
-            spanFitResults,
-            logNullMembershipsMap,
-            bitList2reuseMap
-        )
+        val (sensitivities, candidatesLogNs, candidatesLogALs) =
+            getSensitivitiesAndCandidatesCharacteristics(
+                genomeQuery,
+                spanFitResults,
+                logNullMembershipsMap,
+                bitList2reuseMap
+            )
         val st = detectSensitivityTriangle(sensitivities, candidatesLogNs, candidatesLogALs)
         val sensitivity2use: Double
         when {
             sensitivityCmdArg != null ->
                 sensitivity2use = sensitivityCmdArg
+
             st != null -> {
                 val (beforeMerge, stable, beforeNoise) = st
                 logInfo("Sensitivity beforeMerge: ${sensitivities[beforeMerge]}", infoWriter)
@@ -196,6 +189,7 @@ object SpanResultsAnalysis {
                 logInfo("Minimal additional index: ${st.beforeMerge + minAdditionalIdx}", infoWriter)
                 sensitivity2use = minAdditionalSensitivity
             }
+
             else -> {
                 LOG.error("$name Failed to automatically estimate sensitivity")
                 sensitivity2use = ln(fdr)
@@ -469,7 +463,7 @@ object SpanResultsAnalysis {
     val RESOLUTION = 100
 
     /**
-     * Detects normalized variance as average std / mean for candidates 
+     * Detects normalized variance as average std / mean for candidates
      */
 
     private fun computeAverageVariance(
@@ -588,7 +582,8 @@ object SpanResultsAnalysis {
                     // val score = fitInfo.score(chromosomeRange)
                     val score = SpanAnalyzeFitInformation.fastScore(treatmentCovs, chromosomeRange)
                     // val controlScore = fitInfo.controlScore(chromosomeRange)
-                    val controlScore = SpanAnalyzeFitInformation.fastControlScore(controlCovs, controlScales, chromosomeRange)
+                    val controlScore =
+                        SpanAnalyzeFitInformation.fastControlScore(controlCovs, controlScales, chromosomeRange)
                     val ratio = if (controlScore != 0.0) score / controlScore else 0.0
                     signalToControls.addAndGet(ratio)
                     signalToControlsN.addAndGet(1)

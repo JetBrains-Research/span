@@ -317,15 +317,7 @@ object SpanModelToPeaks {
         cancellableState?.checkCanceled()
 
         LOG.info("${name ?: ""} Analyzing candidates by sensitivity...")
-        val minLogNull = genomeQuery.get().minOf { logNullMembershipsMap[it].min() }
-        // Limit value due to floating point errors
-        val maxLogNull = min(
-            SPAN_MIN_SENSITIVITY, genomeQuery.get().maxOf { logNullMembershipsMap[it].max() }
-        )
-        val sensitivities = linSpace(minLogNull, maxLogNull, SPAN_SENSITIVITY_N)
-        // Compute candidates characteristics
-        val (candidatesLogNs, candidatesLogALs) = getCandidatesCharacteristics(
-            sensitivities,
+        val (sensitivities, candidatesLogNs, candidatesLogALs) = getSensitivitiesAndCandidatesCharacteristics(
             genomeQuery,
             spanFitResults,
             logNullMembershipsMap,
@@ -429,7 +421,64 @@ object SpanModelToPeaks {
         return result
     }
 
-    internal fun getCandidatesCharacteristics(
+    internal fun getSensitivitiesAndCandidatesCharacteristics(
+        genomeQuery: GenomeQuery,
+        spanFitResults: SpanFitResults,
+        logNullMembershipsMap: GenomeMap<F64Array>,
+        bitList2reuseMap: GenomeMap<BitList>
+    ): Triple<DoubleArray, DoubleArray, DoubleArray> {
+        val minLogNull = genomeQuery.get().minOf { logNullMembershipsMap[it].min() }
+        // Limit value due to floating point errors
+        val maxLogNull = min(SPAN_MIN_SENSITIVITY, genomeQuery.get().maxOf { logNullMembershipsMap[it].max() })
+        return getSensitivitiesAndCandidatesCharacteristics(
+            minLogNull,
+            maxLogNull,
+            genomeQuery,
+            spanFitResults,
+            logNullMembershipsMap,
+            bitList2reuseMap
+        )
+    }
+
+    private fun getSensitivitiesAndCandidatesCharacteristics(
+        minLogNull: Double,
+        maxLogNull: Double,
+        genomeQuery: GenomeQuery,
+        spanFitResults: SpanFitResults,
+        logNullMembershipsMap: GenomeMap<F64Array>,
+        bitList2reuseMap: GenomeMap<BitList>
+    ): Triple<DoubleArray, DoubleArray, DoubleArray> {
+        val sensitivities = linSpace(minLogNull, maxLogNull, SPAN_SENSITIVITY_N)
+        // Compute candidates characteristics
+        val (candidatesLogNs, candidatesLogALs) = candidatesNumbersLengths(
+            sensitivities,
+            genomeQuery,
+            spanFitResults,
+            logNullMembershipsMap,
+            bitList2reuseMap
+        )
+        val equalTale = candidatesLogNs.indices.reversed().takeWhile {
+            candidatesLogNs[it] == candidatesLogNs.last()
+        }.count()
+        if (equalTale <= 5) {
+//            println("Sensitivity\tGap\tCandidatesN\tCandidatesAL")
+//            for (i in sensitivities.indices) {
+//                println("${sensitivities[i]}\t0\t${candidatesLogNs[i]}\t${candidatesLogALs[i]}")
+//            }
+            return Triple(sensitivities, candidatesLogNs, candidatesLogALs)
+        }
+        return getSensitivitiesAndCandidatesCharacteristics(
+            minLogNull,
+            sensitivities[sensitivities.size - equalTale + 1],
+            genomeQuery,
+            spanFitResults,
+            logNullMembershipsMap,
+            bitList2reuseMap
+        )
+    }
+
+
+    private fun candidatesNumbersLengths(
         sensitivities: DoubleArray,
         genomeQuery: GenomeQuery,
         spanFitResults: SpanFitResults,
@@ -439,7 +488,6 @@ object SpanModelToPeaks {
         val n = sensitivities.size
         val candidatesLogNs = DoubleArray(n)
         val candidatesLogALs = DoubleArray(n)
-        // println("Sensitivity\tGap\tCandidatesN\tCandidatesAL")
         for ((i, s) in sensitivities.withIndex()) {
             val ci = estimateCandidatesNumberLens(
                 genomeQuery, spanFitResults.fitInfo, logNullMembershipsMap, bitList2reuseMap,
@@ -447,7 +495,6 @@ object SpanModelToPeaks {
             )
             candidatesLogNs[i] = ln1p(ci.n.toDouble())
             candidatesLogALs[i] = ln1p(ci.averageLen)
-            // println("$s\t0\t${ci.n}\t${ci.averageLen}")
         }
         return Pair(candidatesLogNs, candidatesLogALs)
     }
