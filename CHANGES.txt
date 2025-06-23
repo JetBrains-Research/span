@@ -3,6 +3,15 @@ SPAN Changelog
 
 Here you can see the full list of changes between each release.
 
+Version 2.0 bugfix 3
+--------------------
+
+Released on June 23, 2025
+
+- Added `--format` option to explicitly specify format when it cannot be guessed from the filename.
+ Supported: BAM, SAM, CRAM, BED. Text format can be in zip or gzip archive.
+- Improved performance when noise is almost missing
+
 Version 2.0 bugfix 2
 --------------------
 
