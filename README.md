@@ -3,8 +3,8 @@
 [![tests](http://teamcity.jetbrains.com/app/rest/builds/buildType:(id:Biolabs_Span)/statusIcon.svg)](http://teamcity.jetbrains.com/viewType.html?buildTypeId=Biolabs_Span&guest=1)
 [![DOI](https://zenodo.org/badge/159559994.svg)](https://doi.org/10.5281/zenodo.15131734)
 
-SPAN Peak Analyzer
-==================
+SPAN Peak Analyzer version 2.0
+==============================
 
 ```           ,        ,
       __.-'|'-.__.-'|'-.__
@@ -12,12 +12,8 @@ SPAN Peak Analyzer
     ~_^~-^~~_~^-^~-~~^_~^~^~^
 ```
 
-**SPAN Peak Analyzer** is a universal HMM-based peak caller capable of processing a broad range of ChIP-seq, ATAC-seq,
-and single-cell ATAC-seq datasets of different quality.<br>
-
-**Open Access Paper:**
-Shpynov O, Dievskii A, Chernyatchik R, Tsurinov P, Artyomov MN. Semi-supervised peak calling with SPAN and
-JBR Genome Browser. Bioinformatics. 2021 May 21. https://doi.org/10.1093/bioinformatics/btab376
+**SPAN Peak Analyzer version 2.0** is a universal HMM-based peak caller capable of processing a broad range of ChIP-seq, ATAC-seq,
+and single-cell ATAC-seq datasets of different quality.<br> 
 
 Features
 --------
@@ -38,6 +34,24 @@ Features
 Latest release
 ------------------
 See [releases](https://github.com/JetBrains-Research/span/releases) section for actual information.
+
+SPAN 2.0 enhancements compared to version 1.0
+------------------------------------------
+
+SPAN version 2.0 introduces several key improvements over the original semi-supervised SPAN 1.0, most notably eliminating the need for manual markup annotations.
+It now operates in a **fully unsupervised mode** with robust default parameters.<br>
+Key changes include:
+
+* **Automated Setup**: SPAN 2.0 no longer requires semi-supervised markup to function. It runs directly with improved default settings.
+* **Enhanced Preprocessing**: The data preprocessing pipeline has been redesigned, featuring better control regression and smarter initialization of HMM parameters.
+* **Constraint-Driven Model Fitting**: The HMM now includes adaptive constraints for noise floor and signal-to-noise ratio, enhancing robustness across datasets with variable quality.
+* **New Peak Detection Framework**: Peak identification now leverages post-model analysis and a unified strategy for extracting peaks from HMM output.
+* **Improved Replicates-model**: These enhancements significantly boost performance in replicate-based analyses.
+* **Expanded Applicability**: SPAN 2.0 is more effective for diverse data types, including ATAC-seq, CUT&RUN, and CUT&Tag, and supports explicit input format declaration, BigWig signal visualization, and summit calling for fine resolution.
+
+The original SPAN 1.0, which required semi-supervised input, is described in:<br>
+<i>Shpynov O, Dievskii A, Chernyatchik R, Tsurinov P, Artyomov MN. Semi-supervised peak calling with SPAN and
+JBR Genome Browser. Bioinformatics. 2021 May 21. https://doi.org/10.1093/bioinformatics/btab376</i>
 
 Requirements
 ------------
@@ -118,11 +132,6 @@ Command line options
 | `-d, --debug`                                           | Print debug information, useful for troubleshooting.                                                                                                                                                                                                                 |
 | `-q, --quiet`                                           | Turn off standard output.                                                                                                                                                                                                                                            |
 | `-kc, --keep-cache`                                     | Keep cache files. By default SPAN creates cache files in working directory and cleans up.                                                                                                                                                                            |
-
-Example
--------
-Step-by-step example with test dataset is available [here](https://github.com/JetBrains-Research/span/wiki).
-
 
 Build from sources
 ------------------
