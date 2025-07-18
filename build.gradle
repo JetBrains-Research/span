@@ -83,6 +83,9 @@ test {
 
     testLogging.showStandardStreams = true
 
+    // Add JVM options for Vector API
+    jvmArgs '--add-modules', 'jdk.incubator.vector'
+
     systemProperty "genomes.path", settingsFolder("genomes.path", "genomes")
     systemProperty "experiments.path", settingsFolder("experiments.path", "experiments")
     systemProperty "raw.data.path", settingsFolder("experiments.path", "rawdata")
