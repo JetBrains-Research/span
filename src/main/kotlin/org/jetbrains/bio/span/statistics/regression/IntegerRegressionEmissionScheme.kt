@@ -16,7 +16,7 @@ import kotlin.math.abs
  *
  * @param covariateLabels the labels that will be used to procure covariates from the supplied [DataFrame]
  * @param regressionCoefficients the regression coefficients. Note that
- *     regressionCoefficients.size == covariateLabels.size + 1
+ *     regressionCoefficients.length == covariateLabels.length + 1
  * because the 0th coefficient corresponds to the intercept, the 1st coefficient corresponds to 0th label etc.
  *
  * @author Elena Kartysheva
@@ -97,7 +97,7 @@ abstract class IntegerRegressionEmissionScheme(
      * @return [eta] for easier call chaining.
      */
     open fun meanInPlace(eta: F64Array): F64Array {
-        for (i in 0 until eta.size) {
+        for (i in 0 until eta.length) {
             eta[i] = mean(eta[i])
         }
         return eta
@@ -113,7 +113,7 @@ abstract class IntegerRegressionEmissionScheme(
      * @return [eta] for easier call chaining.
      */
     open fun meanDerivativeInPlace(eta: F64Array): F64Array {
-        for (i in 0 until eta.size) {
+        for (i in 0 until eta.length) {
             eta[i] = meanDerivative(eta[i])
         }
         return eta
@@ -129,7 +129,7 @@ abstract class IntegerRegressionEmissionScheme(
      * @return [mean] for easier call chaining.
      */
     open fun meanVarianceInPlace(mean: F64Array): F64Array {
-        for (i in 0 until mean.size) {
+        for (i in 0 until mean.length) {
             mean[i] = meanVariance(mean[i])
         }
         return mean

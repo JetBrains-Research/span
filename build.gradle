@@ -4,7 +4,7 @@ import org.apache.tools.ant.filters.ReplaceTokens
 version = "2.0"
 
 buildscript {
-    ext.kotlin_version = "1.6.10"
+    ext.kotlin_version = "2.2.0"
 
     repositories {
         maven { url("https://repo1.maven.org/maven2") }
@@ -13,7 +13,7 @@ buildscript {
     }
 
     dependencies {
-        classpath "com.github.jengelman.gradle.plugins:shadow:6.1.0"
+        classpath "gradle.plugin.com.github.johnrengelman:shadow:7.1.2"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
@@ -24,9 +24,11 @@ apply plugin: "application"
 apply plugin: "com.github.johnrengelman.shadow"
 apply plugin: "kotlin"
 
-mainClassName = "org.jetbrains.bio.span.SpanCLA"
+application {
+    mainClass.set("org.jetbrains.bio.span.SpanCLA")
+}
 
-sourceCompatibility = 8
+sourceCompatibility = 21
 targetCompatibility = sourceCompatibility
 compileKotlin { kotlinOptions.jvmTarget = sourceCompatibility }
 compileTestKotlin { kotlinOptions.jvmTarget = sourceCompatibility }
@@ -48,9 +50,10 @@ dependencies {
 
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("org.apache.commons:commons-csv:1.10.0")
+    implementation("org.jetbrains.bio:npy:0.3.5")
 
     implementation("net.sf.jopt-simple:jopt-simple:5.0.4")
-    implementation("org.jetbrains.bio:viktor:1.2.0")
+    implementation("org.jetbrains.bio:viktor:2.0.0")
     implementation("org.jetbrains.bio:big:0.9.1")
 
     implementation project(":bioinf-commons")
@@ -108,7 +111,7 @@ task processBuildProperties(type: Copy) {
 }
 
 task sourcesJar(type: Jar) {
-    classifier = "sources"
+    archiveClassifier = "sources"
     from sourceSets.main.allSource
 }
 
@@ -142,6 +145,6 @@ clean {
 // https://github.com/gradle/gradle/issues/5816
 if (rootProject == project) {
     wrapper {
-        gradleVersion = "6.8"
+        gradleVersion = "8.5"
     }
 }

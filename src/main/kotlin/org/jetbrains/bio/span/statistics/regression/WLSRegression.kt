@@ -48,8 +48,8 @@ object WLSRegression {
      * @param weights the weight vector w
      */
     fun calculateBeta(x: Array<DoubleArray>, y: F64Array, weights: F64Array): DoubleArray {
-        check(weights.size == y.size) { "weights and y have different size" }
-        check(x.all { it.size == weights.size }) { "X columns and weights vector have different size" }
+        check(weights.length == y.length) { "weights and y have different size" }
+        check(x.all { it.size == weights.length }) { "X columns and weights vector have different size" }
 
         val inverse = calculateBetaVariance(x, weights)
         val Wy = weights * y
