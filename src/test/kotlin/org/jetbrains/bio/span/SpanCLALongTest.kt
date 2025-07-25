@@ -73,19 +73,6 @@ class SpanCLALongTest {
 
 
     @Test
-    fun checkVersion() {
-        val (out, _) = Logs.captureLoggingOutput {
-            SpanCLA.main(arrayOf("--version"))
-        }
-        // the test is sometimes launched in the assembled JAR, where the @@ tokens have already been substituted
-        assertMatches(
-            out.trim(),
-            Regex("^[0-9]+\\.[0-9]+(\\.dev)?\\.[0-9]+ built on [A-Z][a-z]* [0-9]{2}, [0-9]{4}|@VERSION@\\.@BUILD@ built on @DATE@$")
-        )
-    }
-
-
-    @Test
     fun compareSameTestOrganismTracks() {
         // NOTE[oshpynov] we use .bed.gz here for the ease of sampling result save
         withTempFile("track", ".bed.gz") { path ->

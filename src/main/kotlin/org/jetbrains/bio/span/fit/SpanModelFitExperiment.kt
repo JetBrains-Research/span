@@ -310,7 +310,8 @@ abstract class SpanModelFitExperiment<
                 // Check genome build
                 genomeQuery?.let { info.checkGenome(it.genome) }
                 // Load model and PEPs
-                val model = ClassificationModel.load<ClassificationModel>(dir / MODEL_JSON)
+                val model = ClassificationModel.load<ClassificationModel>(
+                    (dir / MODEL_JSON).bufferedReader().readText())!!
                 val logNullMembershipsDF = DataFrame.load(dir / NULL_NPZ)
                 val logNullMembershipsMap = info.split(logNullMembershipsDF, genomeQuery)
                 var statesDfMap: Map<String, DataFrame>? = null

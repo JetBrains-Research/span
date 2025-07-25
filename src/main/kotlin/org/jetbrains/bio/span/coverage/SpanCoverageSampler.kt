@@ -7,6 +7,7 @@ import org.jetbrains.bio.genome.containers.genomeMap
 import org.jetbrains.bio.genome.format.BedFormat
 import org.jetbrains.bio.span.statistics.hmm.NB2ZHMM
 import org.jetbrains.bio.statistics.model.ClassificationModel
+import org.jetbrains.bio.util.bufferedReader
 import org.jetbrains.bio.util.withResource
 import java.nio.file.Path
 import java.util.*
@@ -38,7 +39,7 @@ object SpanCoverageSampler {
             else
                 "yd6_k27ac_failed_model.json"
         ) { modelPath ->
-            val model = ClassificationModel.load<NB2ZHMM>(modelPath)
+            val model = ClassificationModel.load<NB2ZHMM>(modelPath.bufferedReader().readText())!!
             model.logPriorProbabilities[0] = Double.NEGATIVE_INFINITY
             val chromosomes = genomeQuery.get()
             BedFormat().print(path).use { printer ->
