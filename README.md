@@ -3,7 +3,8 @@
 [![tests](http://teamcity.jetbrains.com/app/rest/builds/buildType:(id:Biolabs_Span)/statusIcon.svg)](http://teamcity.jetbrains.com/viewType.html?buildTypeId=Biolabs_Span&guest=1)
 [![DOI](https://zenodo.org/badge/159559994.svg)](https://doi.org/10.5281/zenodo.15131734)
 
-SPAN Peak Analyzer version 2.0
+
+SPAN Peak Analyzer version 2
 ==============================
 
 ```           ,        ,
@@ -12,8 +13,13 @@ SPAN Peak Analyzer version 2.0
     ~_^~-^~~_~^-^~-~~^_~^~^~^
 ```
 
-**SPAN Peak Analyzer version 2.0** is a universal HMM-based peak caller capable of processing a broad range of ChIP-seq, ATAC-seq,
+**SPAN Peak Analyzer version 2** is a universal HMM-based peak caller capable of processing a broad range of ChIP-seq, ATAC-seq,
 and single-cell ATAC-seq datasets of different quality.<br> 
+
+NOTICE
+======
+
+Future development of **SPAN Peak Analyzer version 2** continues under the [OmniPeak](https://github.com/JetBrains-Research/omnipeak) peak caller.
 
 Features
 --------
